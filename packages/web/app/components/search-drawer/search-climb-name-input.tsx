@@ -4,6 +4,7 @@ import React from 'react';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchOutlined from '@mui/icons-material/SearchOutlined';
+import { themeTokens } from '../../theme/theme-config';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 
 const SearchClimbNameInput = () => {
@@ -19,7 +20,7 @@ const SearchClimbNameInput = () => {
         input: {
           startAdornment: (
             <InputAdornment position="start">
-              <SearchOutlined color="action" />
+              <SearchOutlined sx={{ color: themeTokens.neutral[400] }} />
             </InputAdornment>
           ),
         },

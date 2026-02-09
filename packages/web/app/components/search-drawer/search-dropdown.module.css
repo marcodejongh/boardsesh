@@ -4,8 +4,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: var(--semantic-surface, #FFFFFF);
-  border-top: 1px solid var(--neutral-100, #F0F0F0);
+  background: var(--semantic-surface);
+  border-top: 1px solid var(--neutral-100);
 }
 
 /* Clear all - underlined text link */
@@ -15,14 +15,14 @@
   padding: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--neutral-900, #111827);
+  color: var(--neutral-900);
   text-decoration: underline;
   cursor: pointer;
   line-height: 1.5;
 }
 
 .clearAllButton:hover {
-  color: var(--neutral-500, #6B7280);
+  color: var(--neutral-500);
 }
 
 .clearAllButton:active {

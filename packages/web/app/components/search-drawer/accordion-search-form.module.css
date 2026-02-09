@@ -8,7 +8,7 @@
 
 /* Section card base */
 .sectionCard {
-  background: var(--semantic-surface, #FFFFFF);
+  background: var(--semantic-surface);
   border-radius: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
   overflow: hidden;
@@ -42,7 +42,7 @@
 
 .collapsedLabel {
   font-size: 14px;
-  color: var(--neutral-400, #9CA3AF);
+  color: var(--neutral-400);
   font-weight: 400;
   flex-shrink: 0;
   transition: font-size 250ms ease, color 250ms ease;
@@ -51,13 +51,13 @@
 .sectionCardActive .collapsedLabel {
   font-size: 22px;
   font-weight: 700;
-  color: var(--neutral-900, #111827);
+  color: var(--neutral-900);
   line-height: 1.2;
 }
 
 .collapsedSummary {
   font-size: 14px;
-  color: var(--neutral-900, #111827);
+  color: var(--neutral-900);
   font-weight: 500;
   text-align: right;
   max-width: 65%;
@@ -105,7 +105,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: var(--neutral-400, #9CA3AF);
+  color: var(--neutral-400);
   margin-bottom: 2px;
 }
 
@@ -148,18 +148,18 @@
 
 /* Scoped MUI input overrides for modern filled-background look */
 .panelContent :global(.MuiOutlinedInput-root) {
-  background-color: var(--neutral-50, #F9FAFB);
+  background-color: var(--neutral-50);
   border-radius: 12px;
   transition: background-color 200ms ease, box-shadow 200ms ease;
 }
 
 .panelContent :global(.MuiOutlinedInput-root:hover) {
-  background-color: var(--neutral-100, #F3F4F6);
+  background-color: var(--neutral-100);
 }
 
 .panelContent :global(.MuiOutlinedInput-root.Mui-focused) {
-  background-color: var(--semantic-surface, #FFFFFF);
-  box-shadow: 0 0 0 2px var(--color-primary, #8C4A52);
+  background-color: var(--semantic-surface);
+  box-shadow: 0 0 0 2px var(--color-primary);
 }
 
 .panelContent :global(.MuiOutlinedInput-notchedOutline) {
@@ -196,7 +196,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  background-color: var(--neutral-50, #F9FAFB);
+  background-color: var(--neutral-50);
   border-radius: 12px;
   padding: 4px 0;
 }
@@ -210,18 +210,18 @@
 }
 
 .switchRow:hover {
-  background-color: var(--neutral-100, #F3F4F6);
+  background-color: var(--neutral-100);
 }
 
 /* Subtle divider between switch rows */
 .switchRow + .switchRow {
-  border-top: 1px solid var(--neutral-200, #E5E7EB);
+  border-top: 1px solid var(--neutral-200);
 }
 
 /* Sort toggle */
 .sortToggle {
   font-size: 13px;
-  color: var(--neutral-500, #6B7280);
+  color: var(--neutral-500);
   padding: 0;
   height: auto;
 }
