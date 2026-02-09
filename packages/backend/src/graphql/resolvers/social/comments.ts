@@ -439,26 +439,28 @@ export const socialCommentMutations = {
       return true; // Already deleted
     }
 
-    // Check if comment has replies
-    const replyResult = await db
-      .select({ count: count() })
-      .from(dbSchema.comments)
-      .where(eq(dbSchema.comments.parentCommentId, comment.id));
+    // Use transaction to prevent race condition between reply check and delete
+    await db.transaction(async (tx) => {
+      const replyResult = await tx
+        .select({ count: count() })
+        .from(dbSchema.comments)
+        .where(eq(dbSchema.comments.parentCommentId, comment.id));
 
-    const hasReplies = Number(replyResult[0]?.count || 0) > 0;
+      const hasReplies = Number(replyResult[0]?.count || 0) > 0;
 
-    if (hasReplies) {
-      // Soft delete — preserve thread structure
-      await db
-        .update(dbSchema.comments)
-        .set({ deletedAt: new Date() })
-        .where(eq(dbSchema.comments.uuid, commentUuid));
-    } else {
-      // Hard delete
-      await db
-        .delete(dbSchema.comments)
-        .where(eq(dbSchema.comments.uuid, commentUuid));
-    }
+      if (hasReplies) {
+        // Soft delete — preserve thread structure
+        await tx
+          .update(dbSchema.comments)
+          .set({ deletedAt: new Date() })
+          .where(eq(dbSchema.comments.uuid, commentUuid));
+      } else {
+        // Hard delete
+        await tx
+          .delete(dbSchema.comments)
+          .where(eq(dbSchema.comments.uuid, commentUuid));
+      }
+    });
 
     return true;
   },
