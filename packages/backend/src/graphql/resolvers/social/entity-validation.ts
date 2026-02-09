@@ -3,8 +3,6 @@ import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import type { SocialEntityType } from '@boardsesh/shared-schema';
 
-const VALID_BOARD_TYPES = ['kilter', 'tension', 'moonboard'];
-
 /**
  * Validates that a target entity exists before allowing a comment or vote.
  * Performs minimal SELECT ... LIMIT 1 existence checks.
@@ -94,8 +92,18 @@ export async function validateEntityExists(
     }
 
     case 'board': {
-      if (!VALID_BOARD_TYPES.includes(entityId)) {
-        throw new Error(`Invalid board type: ${entityId}`);
+      const [board] = await db
+        .select({ uuid: dbSchema.userBoards.uuid })
+        .from(dbSchema.userBoards)
+        .where(
+          and(
+            eq(dbSchema.userBoards.uuid, entityId),
+            isNull(dbSchema.userBoards.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (!board) {
+        throw new Error('Board not found');
       }
       break;
     }
