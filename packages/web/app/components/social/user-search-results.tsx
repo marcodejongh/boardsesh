@@ -72,7 +72,11 @@ export default function UserSearchResults({ query, authToken }: UserSearchResult
       setResults([]);
       setTotalCount(0);
       setHasMore(false);
-      return;
+      return () => {
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+        }
+      };
     }
 
     debounceRef.current = setTimeout(() => {
