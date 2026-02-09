@@ -17,7 +17,6 @@ import {
   AddClimbToPlaylistMutationResponse,
 } from '@/app/lib/graphql/operations/playlists';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
 import { WorkoutType, GeneratorOptions, PlannedClimbSlot, WORKOUT_TYPES } from './types';
 import WorkoutTypeSelector from './workout-type-selector';
 import GeneratorOptionsForm, { getDefaultOptions } from './generator-options-form';
@@ -46,8 +45,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
   angle,
   onSuccess,
 }) => {
-  const { token } = useWsAuthToken();
-  const { isAuthenticated } = useBoardProvider();
+  const { token, isAuthenticated } = useWsAuthToken();
   const { showMessage } = useSnackbar();
 
   // Default target grade (middle of range)
