@@ -9,6 +9,11 @@
 #include <lgfx/v1/platforms/esp32s3/Bus_RGB.hpp>
 #include <display_base.h>
 
+// Board image data is only available when explicitly enabled
+#ifdef ENABLE_BOARD_IMAGE
+#include <board_hold_data.h>
+#endif
+
 #include "ch422g.h"
 
 // ============================================
@@ -100,6 +105,12 @@
 #define WS_HISTORY_MAX_ITEMS 3
 #define WS_HISTORY_LABEL_HEIGHT 25
 
+// Board image section (v2 layout with board image)
+#define WS_BOARD_IMAGE_Y        40
+#define WS_BOARD_IMAGE_MAX_H    560
+#define WS_BOARD_IMAGE_MAX_W    480
+#define WS_CLIMB_INFO_V2_HEIGHT 80
+
 // Navigation buttons at bottom (touch targets)
 #define WS_NAV_BUTTON_Y 740
 #define WS_NAV_BUTTON_HEIGHT 60
@@ -180,6 +191,29 @@ class WaveshareDisplay : public DisplayBase {
     void drawNextClimbIndicator();
     void drawHistory();
     void drawNavButtons();
+
+#ifdef ENABLE_BOARD_IMAGE
+  public:
+    // LED command struct (public so main.cpp can construct them)
+    struct LedCmd { uint16_t position; uint8_t r, g, b; };
+    static const int MAX_LED_COMMANDS = 512;
+
+    void setBoardConfig(const BoardConfig* config);
+    void setLedCommands(const LedCmd* commands, int count);
+
+  private:
+    // Board image rendering (v2 layout)
+    void drawBoardImageWithHolds();
+    void drawClimbInfoCompact();
+
+    // Board image state
+    bool _hasBoardImage = false;
+    const BoardConfig* _currentBoardConfig = nullptr;
+
+    // Current LED commands for hold overlay
+    LedCmd _ledCommands[MAX_LED_COMMANDS];
+    int _ledCommandCount = 0;
+#endif
 };
 
 extern WaveshareDisplay Display;

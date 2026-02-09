@@ -21,6 +21,9 @@
 // Display support - include the right display driver
 #ifdef ENABLE_WAVESHARE_DISPLAY
 #include <waveshare_display.h>
+#ifdef ENABLE_BOARD_IMAGE
+#include <board_hold_data.h>
+#endif
 #elif defined(ENABLE_DISPLAY)
 #include <lilygo_display.h>
 #endif
@@ -60,6 +63,73 @@ bool hasCurrentClimb = false;
 // Static buffer for queue sync to avoid heap fragmentation
 // LocalQueueItem is ~88 bytes each, so 150 items = ~13KB
 static LocalQueueItem g_queueSyncBuffer[MAX_QUEUE_SIZE];
+
+#if defined(ENABLE_WAVESHARE_DISPLAY) && defined(ENABLE_BOARD_IMAGE)
+// Board image config lookup state
+const BoardConfig* currentBoardConfig = nullptr;
+String currentBoardConfigKey = "";
+
+/**
+ * Extract config key from boardPath, stripping the angle segment.
+ * "kilter/1/7/1,20/40" -> "kilter/1/7/1,20"
+ * Also sorts set_ids numerically for consistent matching.
+ */
+String extractConfigKey(const char* boardPath) {
+    if (!boardPath) return "";
+
+    String bp = boardPath;
+    // Find segments: board_name/layout_id/size_id/set_ids/angle
+    int slash1 = bp.indexOf('/');
+    if (slash1 < 0) return "";
+    int slash2 = bp.indexOf('/', slash1 + 1);
+    if (slash2 < 0) return "";
+    int slash3 = bp.indexOf('/', slash2 + 1);
+    if (slash3 < 0) return "";
+    int slash4 = bp.indexOf('/', slash3 + 1);
+
+    // Extract set_ids part and sort numerically
+    String setIdsPart;
+    if (slash4 > 0) {
+        setIdsPart = bp.substring(slash3 + 1, slash4);
+    } else {
+        setIdsPart = bp.substring(slash3 + 1);
+    }
+
+    // Parse and sort set IDs
+    int setIds[16];
+    int setCount = 0;
+    int start = 0;
+    for (int i = 0; i <= (int)setIdsPart.length(); i++) {
+        if (i == (int)setIdsPart.length() || setIdsPart[i] == ',') {
+            if (i > start && setCount < 16) {
+                setIds[setCount++] = setIdsPart.substring(start, i).toInt();
+            }
+            start = i + 1;
+        }
+    }
+
+    // Simple insertion sort
+    for (int i = 1; i < setCount; i++) {
+        int key = setIds[i];
+        int j = i - 1;
+        while (j >= 0 && setIds[j] > key) {
+            setIds[j + 1] = setIds[j];
+            j--;
+        }
+        setIds[j + 1] = key;
+    }
+
+    // Rebuild sorted set_ids string
+    String sortedSetIds;
+    for (int i = 0; i < setCount; i++) {
+        if (i > 0) sortedSetIds += ",";
+        sortedSetIds += String(setIds[i]);
+    }
+
+    // Build config key: board_name/layout_id/size_id/sorted_set_ids
+    return bp.substring(0, slash3 + 1) + sortedSetIds;
+}
+#endif
 
 /**
  * Convert hex color string to RGB565 without String allocations
@@ -772,6 +842,42 @@ void handleLedUpdateExtended(JsonObject& data) {
             boardType = bp.substring(0, slashPos);
         }
     }
+
+#if defined(ENABLE_WAVESHARE_DISPLAY) && defined(ENABLE_BOARD_IMAGE)
+    // Look up board image config from boardPath
+    if (boardPath) {
+        String configKey = extractConfigKey(boardPath);
+        if (configKey.length() > 0 && configKey != currentBoardConfigKey) {
+            currentBoardConfigKey = configKey;
+            currentBoardConfig = findBoardConfig(configKey.c_str());
+            if (currentBoardConfig) {
+                Display.setBoardConfig(currentBoardConfig);
+                Logger.logln("Board image: loaded config '%s' (%dx%d, %d holds)",
+                             configKey.c_str(), currentBoardConfig->imageWidth,
+                             currentBoardConfig->imageHeight, currentBoardConfig->holdCount);
+            } else {
+                Display.setBoardConfig(nullptr);
+                Logger.logln("Board image: no config found for '%s'", configKey.c_str());
+            }
+        }
+    }
+
+    // Pass LED commands to display for hold overlay rendering
+    if (!commands.isNull() && count > 0 && currentBoardConfig) {
+        WaveshareDisplay::LedCmd ledCmds[512];
+        int cmdCount = min(count, 512);
+        int idx = 0;
+        for (JsonObject cmd : commands) {
+            if (idx >= cmdCount) break;
+            ledCmds[idx].position = cmd["position"] | 0;
+            ledCmds[idx].r = cmd["r"] | 0;
+            ledCmds[idx].g = cmd["g"] | 0;
+            ledCmds[idx].b = cmd["b"] | 0;
+            idx++;
+        }
+        Display.setLedCommands(ledCmds, idx);
+    }
+#endif
 
     // Update state
     currentQueueItemUuid = queueItemUuid ? queueItemUuid : "";
