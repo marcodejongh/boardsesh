@@ -88,12 +88,12 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     </div>
   ) : null, [effectiveSwipeEnabled, showDragHandle, placement]);
 
-  // For vertical placement (top/bottom) with a title:
+  // For bottom placement with a title:
   // Inject the drag handle into the title so it appears above the header content.
-  const handleInHeader = isVerticalPlacement && userTitle !== undefined && userTitle !== null;
+  const handleInHeader = placement === 'bottom' && userTitle !== undefined && userTitle !== null;
 
-  // For top-placed drawers without a title, render drag handle below footer (always visible)
-  const hasExternalBottomHandle = placement === 'top' && !handleInHeader && showDragHandle;
+  // For top-placed drawers, render drag handle below footer (at the bottom edge)
+  const hasExternalBottomHandle = placement === 'top' && showDragHandle;
 
   // Build the header element if title is provided
   const headerElement = useMemo(() => {

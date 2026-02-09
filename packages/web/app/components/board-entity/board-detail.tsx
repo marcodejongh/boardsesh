@@ -143,17 +143,19 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
       }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* Handle bar */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1 }}>
-          <Box
-            sx={{
-              width: 36,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: themeTokens.neutral[300],
-            }}
-          />
-        </Box>
+        {/* Handle bar (top for bottom-anchored, bottom for top-anchored) */}
+        {anchor === 'bottom' && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1 }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: themeTokens.neutral[300],
+              }}
+            />
+          </Box>
+        )}
 
         {/* Close button */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 1 }}>
@@ -293,6 +295,19 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
               )}
             </Box>
           </>
+        )}
+
+        {anchor === 'top' && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', pb: 1 }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: themeTokens.neutral[300],
+              }}
+            />
+          </Box>
         )}
       </Box>
     </Drawer>
