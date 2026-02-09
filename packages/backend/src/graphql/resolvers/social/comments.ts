@@ -206,7 +206,7 @@ export const socialCommentQueries = {
           : sql`0`
         } as "userVote"
       FROM "comments" c
-      INNER JOIN "user" u ON c."user_id" = u."id"
+      INNER JOIN "users" u ON c."user_id" = u."id"
       LEFT JOIN "user_profiles" up ON c."user_id" = up."user_id"
       LEFT JOIN "comments" parent_c ON c."parent_comment_id" = parent_c."id"
       LEFT JOIN LATERAL (

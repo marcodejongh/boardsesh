@@ -9,7 +9,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS "comments" (
   "id" bigserial PRIMARY KEY NOT NULL,
   "uuid" text NOT NULL UNIQUE,
-  "user_id" text NOT NULL REFERENCES "user" ("id") ON DELETE CASCADE,
+  "user_id" text NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
   "entity_type" "social_entity_type" NOT NULL,
   "entity_id" text NOT NULL,
   "parent_comment_id" bigint,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS "comments" (
 -- Create votes table
 CREATE TABLE IF NOT EXISTS "votes" (
   "id" bigserial PRIMARY KEY NOT NULL,
-  "user_id" text NOT NULL REFERENCES "user" ("id") ON DELETE CASCADE,
+  "user_id" text NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
   "entity_type" "social_entity_type" NOT NULL,
   "entity_id" text NOT NULL,
   "value" integer NOT NULL,
