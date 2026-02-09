@@ -1,6 +1,6 @@
 #include "lilygo_display.h"
 
-#include "grade_colors.h"
+#include <grade_colors.h>
 
 #include <qrcode.h>
 
@@ -77,10 +77,7 @@ LGFX_TDisplayS3::LGFX_TDisplayS3() {
 // LilyGoDisplay Implementation
 // ============================================
 
-LilyGoDisplay::LilyGoDisplay()
-    : _wifiConnected(false), _backendConnected(false), _bleEnabled(false), _bleConnected(false), _hasClimb(false),
-      _angle(0), _boardType("kilter"), _queueIndex(-1), _queueTotal(0), _hasNavigation(false), _hasQRCode(false),
-      _queueCount(0), _currentQueueIndex(-1), _pendingNavigation(false) {}
+LilyGoDisplay::LilyGoDisplay() {}
 
 LilyGoDisplay::~LilyGoDisplay() {}
 
@@ -111,22 +108,6 @@ bool LilyGoDisplay::begin() {
     pinMode(BUTTON_2_PIN, INPUT_PULLUP);
 
     return true;
-}
-
-void LilyGoDisplay::setWiFiStatus(bool connected) {
-    _wifiConnected = connected;
-    drawStatusBar();
-}
-
-void LilyGoDisplay::setBackendStatus(bool connected) {
-    _backendConnected = connected;
-    drawStatusBar();
-}
-
-void LilyGoDisplay::setBleStatus(bool enabled, bool connected) {
-    _bleEnabled = enabled;
-    _bleConnected = connected;
-    drawStatusBar();
 }
 
 void LilyGoDisplay::showConnecting() {
@@ -261,80 +242,8 @@ void LilyGoDisplay::showSetupScreen(const char* apName) {
     _display.setTextDatum(lgfx::top_left);
 }
 
-void LilyGoDisplay::setSessionId(const char* sessionId) {
-    _sessionId = sessionId ? sessionId : "";
-}
-
-void LilyGoDisplay::showClimb(const char* name, const char* grade, const char* gradeColor, int angle, const char* uuid,
-                              const char* boardType) {
-    // Store climb data
-    _climbName = name ? name : "";
-    _grade = grade ? grade : "";
-    _gradeColor = gradeColor ? gradeColor : "";
-    _angle = angle;
-    _climbUuid = uuid ? uuid : "";
-    _boardType = boardType ? boardType : "kilter";
-    _hasClimb = true;
-
-    // Generate QR code for the session (boardsesh.com/join/{sessionId})
-    if (_sessionId.length() > 0) {
-        String url = "https://www.boardsesh.com/join/";
-        url += _sessionId;
-        setQRCodeUrl(url.c_str());
-    }
-
-    // Update display
-    refresh();
-}
-
-void LilyGoDisplay::showNoClimb() {
-    _hasClimb = false;
-    _climbName = "";
-    _grade = "";
-    _gradeColor = "";
-    _angle = 0;
-    _climbUuid = "";
-    _hasQRCode = false;
-
-    refresh();
-}
-
-void LilyGoDisplay::addToHistory(const char* name, const char* grade, const char* gradeColor) {
-    if (!name || strlen(name) == 0)
-        return;
-
-    ClimbHistoryEntry entry;
-    entry.name = name;
-    entry.grade = grade ? grade : "";
-    entry.gradeColor = gradeColor ? gradeColor : "";
-
-    _history.push_back(entry);
-
-    // Keep only last N items
-    while (_history.size() > MAX_HISTORY_ITEMS) {
-        _history.erase(_history.begin());
-    }
-}
-
-void LilyGoDisplay::clearHistory() {
-    _history.clear();
-}
-
-void LilyGoDisplay::setNavigationContext(const QueueNavigationItem& prevClimb, const QueueNavigationItem& nextClimb,
-                                          int currentIndex, int totalCount) {
-    _prevClimb = prevClimb;
-    _nextClimb = nextClimb;
-    _queueIndex = currentIndex;
-    _queueTotal = totalCount;
-    _hasNavigation = true;
-}
-
-void LilyGoDisplay::clearNavigationContext() {
-    _prevClimb.clear();
-    _nextClimb.clear();
-    _queueIndex = -1;
-    _queueTotal = 0;
-    _hasNavigation = false;
+void LilyGoDisplay::onStatusChanged() {
+    drawStatusBar();
 }
 
 void LilyGoDisplay::refresh() {
@@ -381,58 +290,6 @@ void LilyGoDisplay::drawStatusBar() {
         _display.printf("%d", _angle);
         _display.drawCircle(SCREEN_WIDTH - 8, STATUS_BAR_Y + 7, 2, COLOR_TEXT);  // Degree symbol
     }
-}
-
-void LilyGoDisplay::drawPrevClimbIndicator() {
-    // Clear previous indicator area
-    _display.fillRect(0, PREV_INDICATOR_Y, SCREEN_WIDTH, PREV_INDICATOR_HEIGHT, COLOR_BACKGROUND);
-
-    // Only draw if we have navigation and a previous climb
-    if (!_hasNavigation || !_prevClimb.isValid) {
-        return;
-    }
-
-    _display.setFont(&fonts::Font0);
-    _display.setTextDatum(lgfx::middle_left);
-
-    // Draw left arrow
-    _display.setTextColor(COLOR_ACCENT);
-    _display.drawString("<", 4, PREV_INDICATOR_Y + PREV_INDICATOR_HEIGHT / 2);
-
-    // Draw "Prev:" label
-    _display.setTextColor(COLOR_TEXT_DIM);
-    _display.drawString("Prev:", 14, PREV_INDICATOR_Y + PREV_INDICATOR_HEIGHT / 2);
-
-    // Truncate name if needed
-    String name = _prevClimb.name;
-    if (name.length() > 10) {
-        name = name.substring(0, 8) + "..";
-    }
-
-    // Draw climb name
-    _display.setTextColor(COLOR_TEXT);
-    _display.drawString(name.c_str(), 50, PREV_INDICATOR_Y + PREV_INDICATOR_HEIGHT / 2);
-
-    // Draw grade with color
-    uint16_t gradeColor = COLOR_TEXT;
-    if (_prevClimb.gradeColor.length() > 0) {
-        gradeColor = hexToRgb565(_prevClimb.gradeColor.c_str());
-    } else if (_prevClimb.grade.length() > 0) {
-        gradeColor = getGradeColor(_prevClimb.grade.c_str());
-    }
-
-    // Extract V-grade for display
-    String grade = _prevClimb.grade;
-    int slashPos = grade.indexOf('/');
-    if (slashPos > 0) {
-        grade = grade.substring(slashPos + 1);
-    }
-
-    _display.setTextDatum(lgfx::middle_right);
-    _display.setTextColor(gradeColor);
-    _display.drawString(grade.c_str(), SCREEN_WIDTH - 4, PREV_INDICATOR_Y + PREV_INDICATOR_HEIGHT / 2);
-
-    _display.setTextDatum(lgfx::top_left);
 }
 
 void LilyGoDisplay::drawCurrentClimb() {
@@ -500,12 +357,6 @@ void LilyGoDisplay::drawCurrentClimb() {
     }
 
     _display.setTextDatum(lgfx::top_left);
-}
-
-void LilyGoDisplay::setQRCodeUrl(const char* url) {
-    // Store URL for QR code generation (actual generation happens in drawQRCode)
-    _qrUrl = url;
-    _hasQRCode = true;
 }
 
 void LilyGoDisplay::drawQRCode() {
@@ -689,166 +540,4 @@ void LilyGoDisplay::drawButtonHints() {
     }
 
     _display.setTextDatum(lgfx::top_left);
-}
-
-uint16_t LilyGoDisplay::hexToRgb565(const char* hex) {
-    // Check for null or empty string first, then validate format
-    if (!hex || strlen(hex) < 7 || hex[0] != '#') {
-        return COLOR_TEXT;  // Default to white if invalid
-    }
-
-    // Parse #RRGGBB
-    char r_str[3] = {hex[1], hex[2], 0};
-    char g_str[3] = {hex[3], hex[4], 0};
-    char b_str[3] = {hex[5], hex[6], 0};
-
-    uint8_t r = strtol(r_str, NULL, 16);
-    uint8_t g = strtol(g_str, NULL, 16);
-    uint8_t b = strtol(b_str, NULL, 16);
-
-    // Convert to RGB565
-    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-}
-
-// ============================================
-// Queue Management Methods
-// ============================================
-
-void LilyGoDisplay::setQueueFromSync(LocalQueueItem* items, int count, int currentIndex) {
-    // Clear existing queue
-    clearQueue();
-
-    // Copy items (up to max)
-    _queueCount = min(count, MAX_QUEUE_SIZE);
-    for (int i = 0; i < _queueCount; i++) {
-        _queueItems[i] = items[i];
-    }
-
-    _currentQueueIndex = currentIndex;
-    _pendingNavigation = false;
-
-    // Update navigation context to match new queue state
-    if (_queueCount > 0 && _currentQueueIndex >= 0 && _currentQueueIndex < _queueCount) {
-        // Build prev/next from local queue
-        QueueNavigationItem prevItem, nextItem;
-
-        if (_currentQueueIndex > 0) {
-            const LocalQueueItem& prev = _queueItems[_currentQueueIndex - 1];
-            prevItem = QueueNavigationItem(prev.name, prev.grade, "");
-        }
-
-        if (_currentQueueIndex < _queueCount - 1) {
-            const LocalQueueItem& next = _queueItems[_currentQueueIndex + 1];
-            nextItem = QueueNavigationItem(next.name, next.grade, "");
-        }
-
-        setNavigationContext(prevItem, nextItem, _currentQueueIndex, _queueCount);
-    } else {
-        clearNavigationContext();
-    }
-}
-
-void LilyGoDisplay::clearQueue() {
-    for (int i = 0; i < MAX_QUEUE_SIZE; i++) {
-        _queueItems[i].clear();
-    }
-    _queueCount = 0;
-    _currentQueueIndex = -1;
-    _pendingNavigation = false;
-}
-
-const LocalQueueItem* LilyGoDisplay::getQueueItem(int index) const {
-    if (index < 0 || index >= _queueCount) {
-        return nullptr;
-    }
-    return &_queueItems[index];
-}
-
-const LocalQueueItem* LilyGoDisplay::getCurrentQueueItem() const {
-    return getQueueItem(_currentQueueIndex);
-}
-
-const LocalQueueItem* LilyGoDisplay::getPreviousQueueItem() const {
-    return getQueueItem(_currentQueueIndex - 1);
-}
-
-const LocalQueueItem* LilyGoDisplay::getNextQueueItem() const {
-    return getQueueItem(_currentQueueIndex + 1);
-}
-
-bool LilyGoDisplay::navigateToPrevious() {
-    if (!canNavigatePrevious()) {
-        return false;
-    }
-
-    _currentQueueIndex--;
-    _pendingNavigation = true;
-
-    // Update navigation context for immediate UI feedback
-    const LocalQueueItem* current = getCurrentQueueItem();
-    if (current) {
-        QueueNavigationItem prevItem, nextItem;
-
-        if (_currentQueueIndex > 0) {
-            const LocalQueueItem* prev = getPreviousQueueItem();
-            if (prev) {
-                prevItem = QueueNavigationItem(prev->name, prev->grade, "");
-            }
-        }
-
-        if (_currentQueueIndex < _queueCount - 1) {
-            const LocalQueueItem* next = getNextQueueItem();
-            if (next) {
-                nextItem = QueueNavigationItem(next->name, next->grade, "");
-            }
-        }
-
-        setNavigationContext(prevItem, nextItem, _currentQueueIndex, _queueCount);
-    }
-
-    return true;
-}
-
-bool LilyGoDisplay::navigateToNext() {
-    if (!canNavigateNext()) {
-        return false;
-    }
-
-    _currentQueueIndex++;
-    _pendingNavigation = true;
-
-    // Update navigation context for immediate UI feedback
-    const LocalQueueItem* current = getCurrentQueueItem();
-    if (current) {
-        QueueNavigationItem prevItem, nextItem;
-
-        if (_currentQueueIndex > 0) {
-            const LocalQueueItem* prev = getPreviousQueueItem();
-            if (prev) {
-                prevItem = QueueNavigationItem(prev->name, prev->grade, "");
-            }
-        }
-
-        if (_currentQueueIndex < _queueCount - 1) {
-            const LocalQueueItem* next = getNextQueueItem();
-            if (next) {
-                nextItem = QueueNavigationItem(next->name, next->grade, "");
-            }
-        }
-
-        setNavigationContext(prevItem, nextItem, _currentQueueIndex, _queueCount);
-    }
-
-    return true;
-}
-
-void LilyGoDisplay::setCurrentQueueIndex(int index) {
-    if (index >= 0 && index < _queueCount) {
-        _currentQueueIndex = index;
-    }
-}
-
-const char* LilyGoDisplay::getPendingQueueItemUuid() const {
-    const LocalQueueItem* current = getCurrentQueueItem();
-    return current ? current->uuid : nullptr;
 }

@@ -18,7 +18,12 @@ from pathlib import Path
 Import("env")
 
 # Paths
-SCRIPT_DIR = Path(__file__).parent
+# __file__ may not be defined in some Python/SCons versions
+try:
+    SCRIPT_DIR = Path(__file__).parent
+except NameError:
+    # Fallback: derive from the env's project directory
+    SCRIPT_DIR = Path(env.subst("$PROJECT_DIR")).parent.parent / "scripts"
 PROJECT_ROOT = SCRIPT_DIR.parent.parent
 SCHEMA_PATH = PROJECT_ROOT / "packages" / "shared-schema" / "src" / "schema.ts"
 TYPES_PATH = PROJECT_ROOT / "packages" / "shared-schema" / "src" / "types.ts"

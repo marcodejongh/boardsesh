@@ -7,9 +7,11 @@
 
 // LED configuration
 // Note: GPIO 5 conflicts with LCD_RST on T-Display-S3
-// Use TDISPLAY_LED_PIN build flag to override for display builds
+// Use TDISPLAY_LED_PIN or WAVESHARE_LED_PIN build flag to override for display builds
 #ifdef TDISPLAY_LED_PIN
 #define LED_PIN TDISPLAY_LED_PIN
+#elif defined(WAVESHARE_LED_PIN)
+#define LED_PIN WAVESHARE_LED_PIN
 #else
 #define LED_PIN 5  // GPIO pin for LED data (default for non-display builds)
 #endif
@@ -21,7 +23,8 @@
 #define DEFAULT_BRIGHTNESS 128
 
 // Button configuration (T-Display-S3 built-in buttons)
-#ifdef ENABLE_DISPLAY
+// Waveshare uses touch instead of physical buttons, and GPIO14 is an RGB data pin
+#if defined(ENABLE_DISPLAY) && !defined(ENABLE_WAVESHARE_DISPLAY)
 #define BUTTON_1_PIN 0   // GPIO0 - Boot button
 #define BUTTON_2_PIN 14  // GPIO14 - User button
 #endif
