@@ -280,7 +280,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
             className={styles.swipeContainer}
             style={{
               padding: `6px ${themeTokens.spacing[3]}px 6px ${themeTokens.spacing[3]}px`,
-              backgroundColor: gradeTintColor ?? 'rgba(255, 255, 255, 0.6)',
+              backgroundColor: gradeTintColor
+                ? gradeTintColor.replace('hsl(', 'hsla(').replace(')', ', 0.85)')
+                : 'rgba(255, 255, 255, 0.6)',
             }}
           >
             <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }} className={styles.row}>
