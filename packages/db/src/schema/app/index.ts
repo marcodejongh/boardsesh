@@ -7,3 +7,4 @@ export * from './hold-classifications';
 export * from './controllers';
 export * from './follows';
 export * from './social';
+export * from './notifications';

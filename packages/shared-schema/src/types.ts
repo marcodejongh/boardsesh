@@ -455,6 +455,93 @@ export type FollowingAscentsFeedResult = {
 };
 
 // ============================================
+// Notification Types
+// ============================================
+
+export type NotificationType =
+  | 'new_follower'
+  | 'comment_reply'
+  | 'comment_on_tick'
+  | 'comment_on_climb'
+  | 'vote_on_tick'
+  | 'vote_on_comment'
+  | 'new_climb'
+  | 'new_climb_global'
+  | 'proposal_approved'
+  | 'proposal_rejected'
+  | 'proposal_vote';
+
+export type Notification = {
+  uuid: string;
+  type: NotificationType;
+  actorId?: string | null;
+  actorDisplayName?: string | null;
+  actorAvatarUrl?: string | null;
+  entityType?: SocialEntityType | null;
+  entityId?: string | null;
+  commentBody?: string | null;
+  climbName?: string | null;
+  climbUuid?: string | null;
+  boardType?: string | null;
+  isRead: boolean;
+  createdAt: string;
+};
+
+export type NotificationConnection = {
+  notifications: Notification[];
+  totalCount: number;
+  unreadCount: number;
+  hasMore: boolean;
+};
+
+export type NotificationEvent = {
+  notification: Notification;
+};
+
+export type CommentAdded = {
+  __typename: 'CommentAdded';
+  comment: Comment;
+};
+
+export type CommentUpdated = {
+  __typename: 'CommentUpdated';
+  comment: Comment;
+};
+
+export type CommentDeleted = {
+  __typename: 'CommentDeleted';
+  commentUuid: string;
+  entityType: SocialEntityType;
+  entityId: string;
+};
+
+export type CommentEvent = CommentAdded | CommentUpdated | CommentDeleted;
+
+// ============================================
+// Social Event Types (Redis Streams)
+// ============================================
+
+export type SocialEventType =
+  | 'comment.created'
+  | 'comment.reply'
+  | 'vote.cast'
+  | 'follow.created'
+  | 'climb.created'
+  | 'proposal.created'
+  | 'proposal.voted'
+  | 'proposal.approved'
+  | 'proposal.rejected';
+
+export type SocialEvent = {
+  type: SocialEventType;
+  actorId: string;
+  entityType: string;
+  entityId: string;
+  timestamp: number;
+  metadata: Record<string, string>;
+};
+
+// ============================================
 // Comments & Votes Types
 // ============================================
 

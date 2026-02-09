@@ -2759,7 +2759,7 @@ Each milestone creates only the DB tables and types it needs, and delivers testa
 - Follow a public board → see it in your board selector
 - Post comments on a board's discussion thread
 
-### Milestone 4: Notification Pipeline + Real-Time Updates
+### Milestone 4: Notification Pipeline + Real-Time Updates [COMPLETED]
 
 **User value**: "I get notified when someone follows me, replies to my comment, or votes on my content. Comments appear live."
 

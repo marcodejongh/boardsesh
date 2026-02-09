@@ -9,6 +9,8 @@ import {
   CommentsInputSchema,
 } from '../../../validation/schemas';
 import { validateEntityExists } from './entity-validation';
+import { publishSocialEvent } from '../../../events/index';
+import { pubsub } from '../../../pubsub/index';
 import crypto from 'crypto';
 
 interface CommentRow {
@@ -288,7 +290,7 @@ export const socialCommentMutations = {
       .where(eq(dbSchema.users.id, userId))
       .limit(1);
 
-    return {
+    const commentResult = {
       uuid: inserted.uuid,
       userId: inserted.userId,
       userDisplayName: user?.displayName || user?.name || undefined,
@@ -306,6 +308,28 @@ export const socialCommentMutations = {
       createdAt: inserted.createdAt.toISOString(),
       updatedAt: inserted.updatedAt.toISOString(),
     };
+
+    // Live comment update via PubSub (synchronous for real-time)
+    const entityKey = `${entityType}:${entityId}`;
+    pubsub.publishCommentEvent(entityKey, {
+      __typename: 'CommentAdded',
+      comment: commentResult,
+    });
+
+    // Notification via event broker (async)
+    publishSocialEvent({
+      type: parentCommentUuid ? 'comment.reply' : 'comment.created',
+      actorId: userId,
+      entityType,
+      entityId,
+      timestamp: Date.now(),
+      metadata: {
+        commentUuid: uuid,
+        ...(parentCommentUuid ? { parentCommentId: parentCommentUuid } : {}),
+      },
+    }).catch((err) => console.error('[Comments] Failed to publish social event:', err));
+
+    return commentResult;
   },
 
   updateComment: async (
@@ -395,7 +419,7 @@ export const socialCommentMutations = {
       parentCommentUuid = parentComment?.uuid || null;
     }
 
-    return {
+    const updateResult = {
       uuid: updated.uuid,
       userId: updated.userId,
       userDisplayName: user?.displayName || user?.name || undefined,
@@ -413,6 +437,15 @@ export const socialCommentMutations = {
       createdAt: updated.createdAt.toISOString(),
       updatedAt: updated.updatedAt.toISOString(),
     };
+
+    // Live comment update via PubSub (synchronous, no notification needed)
+    const entityKey = `${updated.entityType}:${updated.entityId}`;
+    pubsub.publishCommentEvent(entityKey, {
+      __typename: 'CommentUpdated',
+      comment: updateResult,
+    });
+
+    return updateResult;
   },
 
   deleteComment: async (
@@ -460,6 +493,15 @@ export const socialCommentMutations = {
           .delete(dbSchema.comments)
           .where(eq(dbSchema.comments.uuid, commentUuid));
       }
+    });
+
+    // Live comment update via PubSub (synchronous, no notification needed)
+    const entityKey = `${comment.entityType}:${comment.entityId}`;
+    pubsub.publishCommentEvent(entityKey, {
+      __typename: 'CommentDeleted',
+      commentUuid,
+      entityType: comment.entityType,
+      entityId: comment.entityId,
     });
 
     return true;

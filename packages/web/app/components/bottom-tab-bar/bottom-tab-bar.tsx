@@ -14,6 +14,8 @@ import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOu
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
+import NotificationsOutlined from '@mui/icons-material/NotificationsOutlined';
+import Badge from '@mui/material/Badge';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
@@ -27,8 +29,9 @@ import { getLastUsedBoard } from '@/app/lib/last-used-board-db';
 import { getRecentSearches } from '@/app/components/search-drawer/recent-searches-storage';
 import BoardSelectorDrawer from '../board-selector-drawer/board-selector-drawer';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
+import { useNotifications } from '../providers/notification-provider';
 
-type Tab = 'home' | 'climbs' | 'library' | 'create';
+type Tab = 'home' | 'climbs' | 'library' | 'create' | 'notifications';
 
 interface BottomTabBarProps {
   boardDetails?: BoardDetails | null;
@@ -43,6 +46,7 @@ const isValidHexColor = (color: string): boolean => {
 
 const getActiveTab = (pathname: string): Tab => {
   if (pathname === '/') return 'home';
+  if (pathname.startsWith('/notifications')) return 'notifications';
   if (pathname.startsWith('/my-library') || pathname.includes('/playlist/')) return 'library';
   return 'climbs';
 };
@@ -67,6 +71,8 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
   const [playlistFormErrors, setPlaylistFormErrors] = useState<Record<string, string>>({});
   const pathname = usePathname();
   const router = useRouter();
+
+  const { unreadCount: notificationUnreadCount } = useNotifications();
 
   // PlaylistsContext is only available on board routes (within PlaylistsProvider)
   const playlistsContext = useContext(PlaylistsContext);
@@ -192,6 +198,13 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     track('Bottom Tab Bar', { tab: 'library' });
   };
 
+  const handleNotificationsTab = () => {
+    setIsCreateOpen(false);
+    setIsCreatePlaylistOpen(false);
+    router.push('/notifications');
+    track('Bottom Tab Bar', { tab: 'notifications' });
+  };
+
   const handleCreateTab = () => {
     if (!playlistsContext) {
       if (createClimbUrl) {
@@ -218,6 +231,9 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
         break;
       case 'create':
         handleCreateTab();
+        break;
+      case 'notifications':
+        handleNotificationsTab();
         break;
     }
   };
@@ -325,6 +341,21 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
           label="Create"
           icon={<AddOutlined sx={{ fontSize: 20 }} />}
           value="create"
+          sx={actionSx}
+        />
+        <BottomNavigationAction
+          label="Alerts"
+          icon={
+            <Badge
+              badgeContent={notificationUnreadCount}
+              color="error"
+              max={99}
+              sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 16, minWidth: 16 } }}
+            >
+              <NotificationsOutlined sx={{ fontSize: 20 }} />
+            </Badge>
+          }
+          value="notifications"
           sx={actionSx}
         />
       </BottomNavigation>

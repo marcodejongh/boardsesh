@@ -9,6 +9,7 @@ import {
   SocialEntityTypeSchema,
 } from '../../../validation/schemas';
 import { validateEntityExists } from './entity-validation';
+import { publishSocialEvent } from '../../../events/index';
 
 async function getVoteSummary(
   entityType: SocialEntityType,
@@ -196,6 +197,8 @@ export const socialVoteMutations = {
       )
       .limit(1);
 
+    let isNewVote = false;
+
     if (existing) {
       if (existing.value === value) {
         // Same value — toggle off (remove vote)
@@ -208,6 +211,7 @@ export const socialVoteMutations = {
           .update(dbSchema.votes)
           .set({ value })
           .where(eq(dbSchema.votes.id, existing.id));
+        isNewVote = true;
       }
     } else {
       // No existing vote — insert
@@ -219,6 +223,19 @@ export const socialVoteMutations = {
           entityId,
           value,
         });
+      isNewVote = true;
+    }
+
+    // Publish event only when a new vote is cast (not on toggle-off)
+    if (isNewVote) {
+      publishSocialEvent({
+        type: 'vote.cast',
+        actorId: userId,
+        entityType,
+        entityId,
+        timestamp: Date.now(),
+        metadata: { value: String(value) },
+      }).catch((err) => console.error('[Votes] Failed to publish social event:', err));
     }
 
     return getVoteSummary(entityType as SocialEntityType, entityId, userId);
