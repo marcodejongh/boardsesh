@@ -209,8 +209,8 @@ export const socialCommentQueries = {
       OFFSET ${offset}
     `);
 
-    // Cast the result to CommentRow array
-    const rows = (rawResult as unknown as CommentRow[]);
+    // Convert RowList to a plain array, then cast to CommentRow[]
+    const rows = Array.from(rawResult as Iterable<unknown>) as CommentRow[];
     const comments = rows.map(mapCommentRow);
 
     return {
