@@ -10,7 +10,6 @@ Usage in platformio.ini:
 """
 
 import os
-import sys
 import subprocess
 import hashlib
 from pathlib import Path
