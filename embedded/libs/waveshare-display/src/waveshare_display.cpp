@@ -283,11 +283,26 @@ void WaveshareDisplay::onStatusChanged() {
 }
 
 void WaveshareDisplay::refresh() {
+    _display.fillScreen(COLOR_BACKGROUND);
     drawStatusBar();
+
+#ifdef ENABLE_BOARD_IMAGE
+    if (_hasBoardImage && _currentBoardConfig) {
+        drawBoardImageWithHolds();
+        drawClimbInfoCompact();
+    } else {
+        drawCurrentClimb();
+        drawQRCode();
+        drawNextClimbIndicator();
+        drawHistory();
+    }
+#else
     drawCurrentClimb();
     drawQRCode();
     drawNextClimbIndicator();
     drawHistory();
+#endif
+
     drawNavButtons();
 }
 
@@ -560,6 +575,112 @@ void WaveshareDisplay::drawNavButtons() {
 
     _display.setTextDatum(lgfx::top_left);
 }
+
+// ============================================
+// Board Image Rendering (v2 layout)
+// ============================================
+
+#ifdef ENABLE_BOARD_IMAGE
+void WaveshareDisplay::setBoardConfig(const BoardConfig* config) {
+    _currentBoardConfig = config;
+    _hasBoardImage = (config != nullptr);
+}
+
+void WaveshareDisplay::setLedCommands(const LedCmd* commands, int count) {
+    _ledCommandCount = min(count, MAX_LED_COMMANDS);
+    if (commands && _ledCommandCount > 0) {
+        memcpy(_ledCommands, commands, _ledCommandCount * sizeof(LedCmd));
+    }
+}
+
+void WaveshareDisplay::drawBoardImageWithHolds() {
+    if (!_currentBoardConfig) return;
+
+    const BoardConfig* cfg = _currentBoardConfig;
+
+    // Center the image horizontally
+    int offsetX = (SCREEN_WIDTH - cfg->imageWidth) / 2;
+    int offsetY = WS_BOARD_IMAGE_Y;
+
+    // Draw JPEG from PROGMEM to display
+    _display.drawJpg(cfg->imageData, cfg->imageSize,
+                     offsetX, offsetY,
+                     cfg->imageWidth, cfg->imageHeight);
+
+    // Overlay hold circles for each active LED command.
+    // holdMap is sorted by ledPosition (at code generation time),
+    // so we use binary search for O(n log m) instead of O(n*m).
+    for (int i = 0; i < _ledCommandCount; i++) {
+        uint16_t target = _ledCommands[i].position;
+        int lo = 0, hi = cfg->holdCount - 1;
+        while (lo <= hi) {
+            int mid = (lo + hi) / 2;
+            uint16_t midPos = cfg->holdMap[mid].ledPosition;
+            if (midPos == target) {
+                uint16_t color = _display.color565(
+                    _ledCommands[i].r, _ledCommands[i].g, _ledCommands[i].b);
+                int dx = offsetX + cfg->holdMap[mid].cx;
+                int dy = offsetY + cfg->holdMap[mid].cy;
+                int dr = cfg->holdMap[mid].radius;
+                // 2px stroke circle (matching web renderer style)
+                _display.drawCircle(dx, dy, dr, color);
+                _display.drawCircle(dx, dy, dr - 1, color);
+                break;
+            } else if (midPos < target) {
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+    }
+}
+
+void WaveshareDisplay::drawClimbInfoCompact() {
+    if (!_hasClimb || !_currentBoardConfig) return;
+
+    int yStart = WS_BOARD_IMAGE_Y + _currentBoardConfig->imageHeight + 10;
+
+    // Clear the climb info area
+    _display.fillRect(0, yStart, SCREEN_WIDTH, WS_CLIMB_INFO_V2_HEIGHT, COLOR_BACKGROUND);
+
+    // Draw climb name centered
+    _display.setFont(&fonts::FreeSansBold18pt7b);
+    _display.setTextColor(COLOR_TEXT);
+    _display.setTextDatum(lgfx::top_center);
+
+    String displayName = _climbName;
+    if (displayName.length() > 28) {
+        displayName = displayName.substring(0, 25) + "...";
+    }
+    _display.drawString(displayName.c_str(), SCREEN_WIDTH / 2, yStart);
+
+    // Draw grade badge
+    if (_grade.length() > 0) {
+        int badgeWidth = 140;
+        int badgeHeight = 40;
+        int badgeX = (SCREEN_WIDTH - badgeWidth) / 2;
+        int badgeY = yStart + 38;
+
+        uint16_t gradeColor565 = getGradeColor(_grade.c_str());
+        _display.fillRoundRect(badgeX, badgeY, badgeWidth, badgeHeight, 10, gradeColor565);
+
+        uint16_t textColor = getGradeTextColor(gradeColor565);
+        _display.setFont(&fonts::FreeSansBold12pt7b);
+        _display.setTextColor(textColor);
+        _display.setTextDatum(lgfx::middle_center);
+
+        // Extract V-grade for display
+        String displayGrade = _grade;
+        int slashPos = displayGrade.indexOf('/');
+        if (slashPos > 0) {
+            displayGrade = displayGrade.substring(slashPos + 1);
+        }
+        _display.drawString(displayGrade.c_str(), badgeX + badgeWidth / 2, badgeY + badgeHeight / 2);
+    }
+
+    _display.setTextDatum(lgfx::top_left);
+}
+#endif
 
 // ============================================
 // Touch Handling

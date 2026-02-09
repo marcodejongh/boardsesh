@@ -117,9 +117,10 @@ export const controllerSubscriptions = {
         .set({ lastSeenAt: new Date() })
         .where(eq(esp32Controllers.id, controller.id));
 
-      // Get session details to get boardPath
-      const sessionData = await roomManager.getSessionById(sessionId);
-      const boardPath = sessionData?.boardPath || '';
+      // Build numeric boardPath from controller's registered config
+      // Format: "board_name/layout_id/size_id/set_ids" (e.g., "kilter/8/17/26,27")
+      // This is used by the ESP32 display to look up the board image config
+      const boardPath = `${controller.boardName}/${controller.layoutId}/${controller.sizeId}/${controller.setIds}`;
 
       console.log(
         `[Controller] Controller ${controller.id} subscribed to session ${sessionId} (boardPath: ${boardPath})`
