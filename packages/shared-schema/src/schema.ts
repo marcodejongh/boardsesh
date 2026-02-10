@@ -1587,6 +1587,103 @@ export const typeDefs = /* GraphQL */ `
     hasMore: Boolean!
   }
 
+  # ============================================
+  # Activity Feed Types
+  # ============================================
+
+  enum ActivityFeedItemType {
+    ascent
+    new_climb
+    comment
+    proposal_approved
+  }
+
+  """
+  A materialized activity feed item.
+  """
+  type ActivityFeedItem {
+    "Feed item ID"
+    id: ID!
+    "Type of activity"
+    type: ActivityFeedItemType!
+    "Entity type this item relates to"
+    entityType: SocialEntityType!
+    "Entity ID"
+    entityId: String!
+    "Board UUID (for board-scoped filtering)"
+    boardUuid: String
+    "Actor user ID"
+    actorId: String
+    "Actor display name"
+    actorDisplayName: String
+    "Actor avatar URL"
+    actorAvatarUrl: String
+    "Name of the climb"
+    climbName: String
+    "UUID of the climb"
+    climbUuid: String
+    "Board type (kilter, tension, moonboard)"
+    boardType: String
+    "Layout ID"
+    layoutId: Int
+    "Grade name"
+    gradeName: String
+    "Ascent status (flash, send, attempt)"
+    status: String
+    "Board angle"
+    angle: Int
+    "Encoded hold frames for thumbnail"
+    frames: String
+    "Setter username"
+    setterUsername: String
+    "Comment body preview"
+    commentBody: String
+    "Whether climb was mirrored"
+    isMirror: Boolean
+    "Whether this is a benchmark climb"
+    isBenchmark: Boolean
+    "Difficulty rating"
+    difficulty: Int
+    "Human-readable difficulty name"
+    difficultyName: String
+    "Quality rating"
+    quality: Int
+    "Number of attempts"
+    attemptCount: Int
+    "User comment on the ascent"
+    comment: String
+    "When this feed item was created (ISO 8601)"
+    createdAt: String!
+  }
+
+  """
+  Cursor-based paginated activity feed result.
+  """
+  type ActivityFeedResult {
+    "List of feed items"
+    items: [ActivityFeedItem!]!
+    "Cursor for next page"
+    cursor: String
+    "Whether more items are available"
+    hasMore: Boolean!
+  }
+
+  """
+  Input for activity feed queries.
+  """
+  input ActivityFeedInput {
+    "Cursor from previous page"
+    cursor: String
+    "Maximum number of items to return"
+    limit: Int
+    "Filter by board UUID"
+    boardUuid: String
+    "Sort mode"
+    sortBy: SortMode
+    "Time period for top/controversial sorts"
+    topPeriod: TimePeriod
+  }
+
   """
   Input for follow/unfollow operations.
   """
@@ -1853,14 +1950,27 @@ export const typeDefs = /* GraphQL */ `
     """
     Get activity feed of ascents from followed users.
     Requires authentication.
+    Deprecated: Use activityFeed instead.
     """
-    followingAscentsFeed(input: FollowingAscentsFeedInput): FollowingAscentsFeedResult!
+    followingAscentsFeed(input: FollowingAscentsFeedInput): FollowingAscentsFeedResult! @deprecated(reason: "Use activityFeed query instead")
 
     """
     Get global activity feed of all recent ascents.
     No authentication required.
+    Deprecated: Use trendingFeed instead.
     """
-    globalAscentsFeed(input: FollowingAscentsFeedInput): FollowingAscentsFeedResult!
+    globalAscentsFeed(input: FollowingAscentsFeedInput): FollowingAscentsFeedResult! @deprecated(reason: "Use trendingFeed query instead")
+
+    """
+    Get materialized activity feed for the authenticated user.
+    Requires authentication.
+    """
+    activityFeed(input: ActivityFeedInput): ActivityFeedResult!
+
+    """
+    Get trending feed of recent activity (public, no auth required).
+    """
+    trendingFeed(input: ActivityFeedInput): ActivityFeedResult!
 
     # ============================================
     # Board Entity Queries

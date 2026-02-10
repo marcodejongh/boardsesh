@@ -26,6 +26,7 @@ import { controllerSubscriptions, controllerEventResolver } from './controller/s
 import { socialFollowQueries, socialFollowMutations } from './social/follows';
 import { socialSearchQueries } from './social/search';
 import { socialFeedQueries } from './social/feed';
+import { activityFeedQueries } from './social/activity-feed';
 import { socialCommentQueries, socialCommentMutations } from './social/comments';
 import { socialVoteQueries, socialVoteMutations } from './social/votes';
 import { socialBoardQueries, socialBoardMutations } from './social/boards';
@@ -53,6 +54,7 @@ export const resolvers = {
     ...socialCommentQueries,
     ...socialVoteQueries,
     ...socialBoardQueries,
+    ...activityFeedQueries,
     ...socialNotificationQueries,
   },
 

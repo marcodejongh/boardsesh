@@ -539,6 +539,21 @@ export const BulkVoteSummaryInputSchema = z.object({
 });
 
 // ============================================
+// Activity Feed Schemas
+// ============================================
+
+/**
+ * Activity feed input validation schema
+ */
+export const ActivityFeedInputSchema = z.object({
+  cursor: z.string().max(500).optional().nullable(),
+  limit: z.number().int().min(1).max(50).optional().default(20),
+  boardUuid: z.string().max(100).optional().nullable(),
+  sortBy: SortModeSchema.optional().default('new'),
+  topPeriod: TimePeriodSchema.optional().default('all'),
+});
+
+// ============================================
 // Board Entity Schemas
 // ============================================
 

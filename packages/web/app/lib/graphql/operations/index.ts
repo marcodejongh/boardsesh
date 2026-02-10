@@ -6,3 +6,4 @@ export * from './social';
 export * from './comments-votes';
 export * from './boards';
 export * from './notifications';
+export * from './activity-feed';

@@ -88,6 +88,47 @@ async function createInlineNotification(event: SocialEvent): Promise<void> {
         }
         break;
       }
+      case 'ascent.logged': {
+        // Fan-out feed items to followers inline
+        const followers = await db
+          .select({ followerId: dbSchema.userFollows.followerId })
+          .from(dbSchema.userFollows)
+          .where(eq(dbSchema.userFollows.followingId, event.actorId));
+
+        if (followers.length > 0) {
+          const feedRows = followers.map((f) => ({
+            recipientId: f.followerId,
+            actorId: event.actorId,
+            type: 'ascent' as const,
+            entityType: 'tick' as dbSchema.SocialEntityType,
+            entityId: event.entityId,
+            boardUuid: event.metadata.boardUuid || null,
+            metadata: {
+              actorDisplayName: event.metadata.actorDisplayName,
+              actorAvatarUrl: event.metadata.actorAvatarUrl,
+              climbName: event.metadata.climbName,
+              climbUuid: event.metadata.climbUuid,
+              boardType: event.metadata.boardType,
+              setterUsername: event.metadata.setterUsername,
+              layoutId: event.metadata.layoutId ? Number(event.metadata.layoutId) : null,
+              frames: event.metadata.frames,
+              gradeName: event.metadata.gradeName,
+              difficulty: event.metadata.difficulty ? Number(event.metadata.difficulty) : null,
+              difficultyName: event.metadata.difficultyName,
+              status: event.metadata.status,
+              angle: event.metadata.angle ? Number(event.metadata.angle) : null,
+              isMirror: event.metadata.isMirror === 'true',
+              isBenchmark: event.metadata.isBenchmark === 'true',
+              quality: event.metadata.quality ? Number(event.metadata.quality) : null,
+              attemptCount: event.metadata.attemptCount ? Number(event.metadata.attemptCount) : null,
+              comment: event.metadata.comment,
+            },
+          }));
+          await db.insert(dbSchema.feedItems).values(feedRows);
+        }
+        // No notification for ascent.logged - it's feed-only
+        return;
+      }
     }
 
     if (!recipientId || !notificationType || recipientId === event.actorId) return;

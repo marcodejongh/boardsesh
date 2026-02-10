@@ -242,6 +242,20 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   }, 24 * 60 * 60 * 1000);
   intervals.push(notificationCleanupInterval);
 
+  // Periodic feed items cleanup (hourly, retains 180 days)
+  const feedCleanupInterval = setInterval(async () => {
+    try {
+      const result = await db.execute(sql`DELETE FROM feed_items WHERE created_at < NOW() - INTERVAL '180 days'`);
+      const deleted = (result as unknown as { rowCount?: number }).rowCount ?? 0;
+      if (deleted > 0) {
+        console.log(`[Server] Feed cleanup: deleted ${deleted} old feed items`);
+      }
+    } catch (error) {
+      console.error('[Server] Feed cleanup error:', error);
+    }
+  }, 60 * 60 * 1000);
+  intervals.push(feedCleanupInterval);
+
   // Periodic TTL refresh for active sessions (every 2 minutes)
   const ttlRefreshInterval = setInterval(async () => {
     try {

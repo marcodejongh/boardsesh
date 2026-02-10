@@ -455,6 +455,55 @@ export type FollowingAscentsFeedResult = {
 };
 
 // ============================================
+// Activity Feed Types
+// ============================================
+
+export type ActivityFeedItemType = 'ascent' | 'new_climb' | 'comment' | 'proposal_approved';
+
+export type ActivityFeedItem = {
+  id: string;
+  type: ActivityFeedItemType;
+  entityType: SocialEntityType;
+  entityId: string;
+  boardUuid?: string | null;
+  actorId?: string | null;
+  actorDisplayName?: string | null;
+  actorAvatarUrl?: string | null;
+  climbName?: string | null;
+  climbUuid?: string | null;
+  boardType?: string | null;
+  layoutId?: number | null;
+  gradeName?: string | null;
+  status?: string | null;
+  angle?: number | null;
+  frames?: string | null;
+  setterUsername?: string | null;
+  commentBody?: string | null;
+  isMirror?: boolean | null;
+  isBenchmark?: boolean | null;
+  difficulty?: number | null;
+  difficultyName?: string | null;
+  quality?: number | null;
+  attemptCount?: number | null;
+  comment?: string | null;
+  createdAt: string;
+};
+
+export type ActivityFeedResult = {
+  items: ActivityFeedItem[];
+  cursor?: string | null;
+  hasMore: boolean;
+};
+
+export type ActivityFeedInput = {
+  cursor?: string | null;
+  limit?: number;
+  boardUuid?: string | null;
+  sortBy?: SortMode;
+  topPeriod?: TimePeriod;
+};
+
+// ============================================
 // Notification Types
 // ============================================
 
@@ -527,6 +576,7 @@ export type SocialEventType =
   | 'vote.cast'
   | 'follow.created'
   | 'climb.created'
+  | 'ascent.logged'
   | 'proposal.created'
   | 'proposal.voted'
   | 'proposal.approved'
