@@ -122,21 +122,31 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
   // Ref for the intersection observer sentinel element
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Intersection Observer callback for infinite scroll
+  // Refs for observer callback values — prevents observer recreation on every page load
+  const fetchMoreClimbsRef = useRef(fetchMoreClimbs);
+  const hasMoreResultsRef = useRef(hasMoreResults);
+  const isFetchingNextPageRef = useRef(isFetchingNextPage);
+  const suggestedClimbsLengthRef = useRef(suggestedClimbs.length);
+  fetchMoreClimbsRef.current = fetchMoreClimbs;
+  hasMoreResultsRef.current = hasMoreResults;
+  isFetchingNextPageRef.current = isFetchingNextPage;
+  suggestedClimbsLengthRef.current = suggestedClimbs.length;
+
+  // Intersection Observer callback for infinite scroll — stable ref, never recreated
   // Skip if suggestions are below threshold - proactive fetch in QueueContext handles that case
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
       if (
         target.isIntersecting &&
-        hasMoreResults &&
-        !isFetchingNextPage &&
-        suggestedClimbs.length >= SUGGESTIONS_THRESHOLD
+        hasMoreResultsRef.current &&
+        !isFetchingNextPageRef.current &&
+        suggestedClimbsLengthRef.current >= SUGGESTIONS_THRESHOLD
       ) {
-        fetchMoreClimbs();
+        fetchMoreClimbsRef.current();
       }
     },
-    [hasMoreResults, isFetchingNextPage, fetchMoreClimbs, suggestedClimbs.length],
+    [],
   );
 
   // Set up Intersection Observer for infinite scroll
