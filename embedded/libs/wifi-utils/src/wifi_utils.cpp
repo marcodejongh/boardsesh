@@ -6,7 +6,7 @@ const char* WiFiUtils::KEY_SSID = "wifi_ssid";
 const char* WiFiUtils::KEY_PASSWORD = "wifi_pass";
 
 WiFiUtils::WiFiUtils()
-    : state(WiFiConnectionState::DISCONNECTED), stateCallback(nullptr), connectStartTime(0), lastReconnectAttempt(0) {}
+    : state(WiFiConnectionState::DISCONNECTED), stateCallback(nullptr), connectStartTime(0), lastReconnectAttempt(0), dnsRunning(false) {}
 
 void WiFiUtils::begin() {
     WiFi.mode(WIFI_STA);
@@ -14,6 +14,9 @@ void WiFiUtils::begin() {
 }
 
 void WiFiUtils::loop() {
+    if (dnsRunning) {
+        dnsServer.processNextRequest();
+    }
     checkConnection();
 }
 
@@ -65,12 +68,19 @@ bool WiFiUtils::startAP(const char* apName) {
     // Start the access point
     bool success = WiFi.softAP(apName);
     if (success) {
+        // Start DNS server to redirect all domains to our AP IP (captive portal)
+        dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+        dnsRunning = true;
         setState(WiFiConnectionState::AP_MODE);
     }
     return success;
 }
 
 void WiFiUtils::stopAP() {
+    if (dnsRunning) {
+        dnsServer.stop();
+        dnsRunning = false;
+    }
     WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_STA);
     WiFi.setAutoReconnect(true);

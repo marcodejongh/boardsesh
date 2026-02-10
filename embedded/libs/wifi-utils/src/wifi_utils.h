@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <DNSServer.h>
 
 #include <config_manager.h>
 
@@ -10,6 +11,7 @@
 #define WIFI_RECONNECT_INTERVAL_MS 5000
 #define DEFAULT_AP_NAME "Boardsesh-Setup"
 #define DEFAULT_AP_IP "192.168.4.1"
+#define DNS_PORT 53
 
 enum class WiFiConnectionState { DISCONNECTED, CONNECTING, CONNECTED, CONNECTION_FAILED, AP_MODE };
 
@@ -53,6 +55,9 @@ class WiFiUtils {
     unsigned long lastReconnectAttempt;
     String currentSSID;
     String currentPassword;
+
+    DNSServer dnsServer;
+    bool dnsRunning;
 
     void setState(WiFiConnectionState newState);
     void checkConnection();

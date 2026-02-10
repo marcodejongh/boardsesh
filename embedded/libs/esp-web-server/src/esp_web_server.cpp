@@ -75,6 +75,13 @@ void ESPWebServer::setupRoutes() {
         [this]() { handleFirmwareUploadData(); }
     );
 
+    // Captive portal detection endpoints (redirect to config page in AP mode)
+    server.on("/generate_204", HTTP_GET, [this]() { handleCaptivePortal(); });       // Android
+    server.on("/hotspot-detect.html", HTTP_GET, [this]() { handleCaptivePortal(); }); // Apple
+    server.on("/connecttest.txt", HTTP_GET, [this]() { handleCaptivePortal(); });     // Windows
+    server.on("/redirect", HTTP_GET, [this]() { handleCaptivePortal(); });            // Windows
+    server.on("/fwlink", HTTP_GET, [this]() { handleCaptivePortal(); });              // Windows
+
     server.onNotFound([this]() { handleNotFound(); });
 }
 
@@ -457,8 +464,20 @@ void ESPWebServer::handleRoot() {
 )rawliteral");
 }
 
+void ESPWebServer::handleCaptivePortal() {
+    setCorsHeaders();
+    server.sendHeader("Location", "http://192.168.4.1/");
+    server.send(302, "text/plain", "");
+}
+
 void ESPWebServer::handleNotFound() {
     setCorsHeaders();
+    // In AP mode, redirect all unknown URLs to root (captive portal behavior)
+    if (WiFiMgr.isAPMode()) {
+        server.sendHeader("Location", "http://192.168.4.1/");
+        server.send(302, "text/plain", "");
+        return;
+    }
     sendError(404, "Not found");
 }
 

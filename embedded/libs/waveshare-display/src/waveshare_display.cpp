@@ -233,19 +233,20 @@ void WaveshareDisplay::showSetupScreen(const char* apName) {
     _display.setTextDatum(lgfx::top_center);
     _display.drawString("WiFi Setup", SCREEN_WIDTH / 2, 20);
 
-    // Step 1: Connect to WiFi AP
+    // Step 1: Scan QR to join WiFi
     _display.setFont(&fonts::FreeSansBold18pt7b);
     _display.setTextColor(COLOR_TEXT);
-    _display.drawString("1. Connect to WiFi:", SCREEN_WIDTH / 2, 90);
+    _display.drawString("1. Scan QR to join WiFi", SCREEN_WIDTH / 2, 90);
 
     _display.setFont(&fonts::FreeSansBold24pt7b);
     _display.setTextColor(COLOR_STATUS_OK);
     _display.drawString(apName, SCREEN_WIDTH / 2, 140);
 
-    // QR Code section - generate QR for http://192.168.4.1
-    const char* configUrl = "http://192.168.4.1";
+    // QR Code section - generate WiFi join QR code
+    char wifiQr[80];
+    snprintf(wifiQr, sizeof(wifiQr), "WIFI:T:nopass;S:%s;;;", apName);
     QRCode qrCode;
-    qrcode_initText(&qrCode, _qrCodeData, QR_VERSION, ECC_LOW, configUrl);
+    qrcode_initText(&qrCode, _qrCodeData, QR_VERSION, ECC_LOW, wifiQr);
 
     int qrSize = qrCode.size;
     int pixelSize = 250 / qrSize;  // Target ~250px QR code
@@ -267,30 +268,31 @@ void WaveshareDisplay::showSetupScreen(const char* apName) {
         }
     }
 
-    // Step 2: Instructions below QR code
+    // Step 2: Open browser
     int instructionY = qrY + actualQrSize + 30;
 
     _display.setFont(&fonts::FreeSansBold18pt7b);
     _display.setTextColor(COLOR_TEXT);
-    _display.drawString("2. Scan QR code or", SCREEN_WIDTH / 2, instructionY);
-    _display.drawString("open in browser:", SCREEN_WIDTH / 2, instructionY + 40);
+    _display.drawString("2. Open browser:", SCREEN_WIDTH / 2, instructionY);
 
     _display.setFont(&fonts::FreeSansBold24pt7b);
     _display.setTextColor(COLOR_ACCENT);
-    _display.drawString("192.168.4.1", SCREEN_WIDTH / 2, instructionY + 100);
+    _display.drawString("192.168.4.1", SCREEN_WIDTH / 2, instructionY + 60);
 
     _display.setFont(&fonts::FreeSansBold9pt7b);
     _display.setTextColor(COLOR_TEXT_DIM);
-    _display.drawString("to configure settings", SCREEN_WIDTH / 2, instructionY + 160);
+    _display.drawString("to configure settings", SCREEN_WIDTH / 2, instructionY + 120);
 
     _display.setTextDatum(lgfx::top_left);
 }
 
 void WaveshareDisplay::onStatusChanged() {
+    if (_settingsScreenActive) return;
     drawStatusBar();
 }
 
 void WaveshareDisplay::refresh() {
+    if (_settingsScreenActive) return;
     drawStatusBar();
 
 #ifdef ENABLE_BOARD_IMAGE
@@ -324,6 +326,7 @@ void WaveshareDisplay::refresh() {
 }
 
 void WaveshareDisplay::refreshInfoOnly() {
+    if (_settingsScreenActive) return;
     drawStatusBar();
 #ifdef ENABLE_BOARD_IMAGE
     if (_hasBoardImage && _currentBoardConfig) {
@@ -367,13 +370,31 @@ void WaveshareDisplay::drawStatusBar() {
         _display.fillCircle(240, WS_STATUS_BAR_Y + 25, 8, _bleConnected ? COLOR_STATUS_OK : COLOR_STATUS_OFF);
     }
 
-    // Angle display (right side)
+    // Angle display (shifted left to make room for gear icon)
     if (_hasClimb && _angle > 0) {
         _display.setTextColor(COLOR_TEXT);
-        _display.setCursor(SCREEN_WIDTH - 80, WS_STATUS_BAR_Y + 18);
+        _display.setCursor(SCREEN_WIDTH - 130, WS_STATUS_BAR_Y + 18);
         _display.printf("%d", _angle);
-        _display.drawCircle(SCREEN_WIDTH - 20, WS_STATUS_BAR_Y + 18, 4, COLOR_TEXT);  // Degree symbol
+        _display.drawCircle(SCREEN_WIDTH - 70, WS_STATUS_BAR_Y + 18, 4, COLOR_TEXT);  // Degree symbol
     }
+
+    // Settings gear icon (top-right)
+    int gearCx = WS_SETTINGS_BUTTON_X + WS_SETTINGS_BUTTON_W / 2;
+    int gearCy = WS_STATUS_BAR_Y + WS_SETTINGS_BUTTON_H / 2;
+    int gearR = 12;
+    _display.drawCircle(gearCx, gearCy, gearR, COLOR_TEXT_DIM);
+    _display.drawCircle(gearCx, gearCy, 5, COLOR_TEXT_DIM);
+    // Draw gear teeth (4 ticks at N/S/E/W)
+    _display.drawFastHLine(gearCx - gearR - 4, gearCy, 8, COLOR_TEXT_DIM);
+    _display.drawFastHLine(gearCx + gearR - 4, gearCy, 8, COLOR_TEXT_DIM);
+    _display.drawFastVLine(gearCx, gearCy - gearR - 4, 8, COLOR_TEXT_DIM);
+    _display.drawFastVLine(gearCx, gearCy + gearR - 4, 8, COLOR_TEXT_DIM);
+    // Diagonal teeth
+    int d = (gearR * 707) / 1000;  // cos(45) * R
+    _display.fillRect(gearCx + d - 2, gearCy - d - 2, 5, 5, COLOR_TEXT_DIM);
+    _display.fillRect(gearCx - d - 2, gearCy - d - 2, 5, 5, COLOR_TEXT_DIM);
+    _display.fillRect(gearCx + d - 2, gearCy + d - 2, 5, 5, COLOR_TEXT_DIM);
+    _display.fillRect(gearCx - d - 2, gearCy + d - 2, 5, 5, COLOR_TEXT_DIM);
 }
 
 void WaveshareDisplay::drawCurrentClimb() {
@@ -749,6 +770,116 @@ void WaveshareDisplay::drawClimbInfoCompact() {
 #endif
 
 // ============================================
+// Settings Screen
+// ============================================
+
+void WaveshareDisplay::setSettingsData(const char* ssid, const char* ip, bool proxyEnabled) {
+    _settingsSSID = ssid ? ssid : "";
+    _settingsIP = ip ? ip : "";
+    _settingsProxyEnabled = proxyEnabled;
+}
+
+void WaveshareDisplay::showSettingsScreen() {
+    _settingsScreenActive = true;
+    drawSettingsScreen();
+}
+
+void WaveshareDisplay::hideSettingsScreen() {
+    _settingsScreenActive = false;
+    refresh();
+}
+
+void WaveshareDisplay::drawSettingsScreen() {
+    _display.fillScreen(COLOR_BACKGROUND);
+
+    // Title
+    _display.setFont(&fonts::FreeSansBold24pt7b);
+    _display.setTextColor(COLOR_ACCENT);
+    _display.setTextDatum(lgfx::top_center);
+    _display.drawString("Settings", SCREEN_WIDTH / 2, WS_SETTINGS_TITLE_Y);
+
+    // WiFi info
+    _display.setFont(&fonts::FreeSansBold12pt7b);
+    _display.setTextColor(COLOR_TEXT_DIM);
+    _display.drawString("WiFi Network", SCREEN_WIDTH / 2, WS_SETTINGS_INFO_Y);
+
+    _display.setFont(&fonts::FreeSansBold18pt7b);
+    _display.setTextColor(COLOR_TEXT);
+    if (_settingsSSID.length() > 0) {
+        _display.drawString(_settingsSSID.c_str(), SCREEN_WIDTH / 2, WS_SETTINGS_INFO_Y + 40);
+    } else {
+        _display.drawString("Not connected", SCREEN_WIDTH / 2, WS_SETTINGS_INFO_Y + 40);
+    }
+
+    // IP address
+    _display.setFont(&fonts::FreeSansBold12pt7b);
+    _display.setTextColor(COLOR_TEXT_DIM);
+    _display.drawString("IP Address", SCREEN_WIDTH / 2, WS_SETTINGS_INFO_Y + 90);
+
+    _display.setFont(&fonts::FreeSansBold18pt7b);
+    _display.setTextColor(COLOR_TEXT);
+    if (_settingsIP.length() > 0) {
+        _display.drawString(_settingsIP.c_str(), SCREEN_WIDTH / 2, WS_SETTINGS_INFO_Y + 130);
+    } else {
+        _display.drawString("--", SCREEN_WIDTH / 2, WS_SETTINGS_INFO_Y + 130);
+    }
+
+    // Reset WiFi button (red)
+    _display.fillRoundRect(WS_SETTINGS_BTN_X, WS_SETTINGS_RESET_BTN_Y,
+                           WS_SETTINGS_BTN_W, WS_SETTINGS_BTN_H, 12, 0xE8A4);  // Red
+    _display.setFont(&fonts::FreeSansBold18pt7b);
+    _display.setTextColor(0xFFFF);
+    _display.setTextDatum(lgfx::middle_center);
+    _display.drawString("Reset WiFi", SCREEN_WIDTH / 2,
+                        WS_SETTINGS_RESET_BTN_Y + WS_SETTINGS_BTN_H / 2);
+
+    // BLE Proxy toggle button (green if on, gray if off)
+    uint16_t proxyColor = _settingsProxyEnabled ? 0x07E0 : 0x6B6D;  // Green or gray
+    _display.fillRoundRect(WS_SETTINGS_BTN_X, WS_SETTINGS_PROXY_BTN_Y,
+                           WS_SETTINGS_BTN_W, WS_SETTINGS_BTN_H, 12, proxyColor);
+    _display.setFont(&fonts::FreeSansBold18pt7b);
+    _display.setTextColor(_settingsProxyEnabled ? 0x0000 : 0xFFFF);
+    _display.setTextDatum(lgfx::middle_center);
+    char proxyLabel[32];
+    snprintf(proxyLabel, sizeof(proxyLabel), "BLE Proxy: %s", _settingsProxyEnabled ? "ON" : "OFF");
+    _display.drawString(proxyLabel, SCREEN_WIDTH / 2,
+                        WS_SETTINGS_PROXY_BTN_Y + WS_SETTINGS_BTN_H / 2);
+
+    // Back button (cyan)
+    _display.fillRoundRect(WS_SETTINGS_BTN_X, WS_SETTINGS_BACK_BTN_Y,
+                           WS_SETTINGS_BTN_W, WS_SETTINGS_BTN_H, 12, COLOR_ACCENT);
+    _display.setFont(&fonts::FreeSansBold18pt7b);
+    _display.setTextColor(0x0000);
+    _display.setTextDatum(lgfx::middle_center);
+    _display.drawString("Back", SCREEN_WIDTH / 2,
+                        WS_SETTINGS_BACK_BTN_Y + WS_SETTINGS_BTN_H / 2);
+
+    _display.setTextDatum(lgfx::top_left);
+}
+
+TouchAction WaveshareDisplay::handleSettingsTouch(int16_t x, int16_t y) {
+    // Reset WiFi button
+    if (x >= WS_SETTINGS_BTN_X && x <= WS_SETTINGS_BTN_X + WS_SETTINGS_BTN_W &&
+        y >= WS_SETTINGS_RESET_BTN_Y && y <= WS_SETTINGS_RESET_BTN_Y + WS_SETTINGS_BTN_H) {
+        return TouchAction::SETTINGS_RESET_WIFI;
+    }
+
+    // BLE Proxy toggle button
+    if (x >= WS_SETTINGS_BTN_X && x <= WS_SETTINGS_BTN_X + WS_SETTINGS_BTN_W &&
+        y >= WS_SETTINGS_PROXY_BTN_Y && y <= WS_SETTINGS_PROXY_BTN_Y + WS_SETTINGS_BTN_H) {
+        return TouchAction::SETTINGS_TOGGLE_PROXY;
+    }
+
+    // Back button
+    if (x >= WS_SETTINGS_BTN_X && x <= WS_SETTINGS_BTN_X + WS_SETTINGS_BTN_W &&
+        y >= WS_SETTINGS_BACK_BTN_Y && y <= WS_SETTINGS_BACK_BTN_Y + WS_SETTINGS_BTN_H) {
+        return TouchAction::SETTINGS_BACK;
+    }
+
+    return TouchAction::NONE;
+}
+
+// ============================================
 // Touch Handling
 // ============================================
 
@@ -763,12 +894,24 @@ TouchEvent WaveshareDisplay::pollTouch() {
     lgfx::touch_point_t tp;
     if (_display.getTouch(&tp)) {
         _lastTouchTime = now;
+        event.x = tp.x;
+        event.y = tp.y;
+
+        // When settings screen is active, route all touches through settings handler
+        if (_settingsScreenActive) {
+            event.action = handleSettingsTouch(tp.x, tp.y);
+            return event;
+        }
+
+        // Check for settings button touch (top-right gear icon)
+        if (tp.x >= WS_SETTINGS_BUTTON_X && tp.x <= WS_SETTINGS_BUTTON_X + WS_SETTINGS_BUTTON_W &&
+            tp.y >= WS_SETTINGS_BUTTON_Y && tp.y <= WS_SETTINGS_BUTTON_Y + WS_SETTINGS_BUTTON_H) {
+            event.action = TouchAction::OPEN_SETTINGS;
+            return event;
+        }
 
         // Check if touch is in the nav button area
         if (tp.y >= WS_NAV_BUTTON_Y && tp.y <= WS_NAV_BUTTON_Y + WS_NAV_BUTTON_HEIGHT) {
-            event.x = tp.x;
-            event.y = tp.y;
-
             // Left side = previous
             if (tp.x < SCREEN_WIDTH / 3) {
                 event.action = TouchAction::NAVIGATE_PREVIOUS;
