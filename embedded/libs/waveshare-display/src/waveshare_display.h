@@ -120,10 +120,30 @@
 // Touch Event
 // ============================================
 
+// Settings button layout (top-right of status bar)
+#define WS_SETTINGS_BUTTON_X (WS_SCREEN_WIDTH - 50)
+#define WS_SETTINGS_BUTTON_Y 0
+#define WS_SETTINGS_BUTTON_W 50
+#define WS_SETTINGS_BUTTON_H 50
+
+// Settings screen layout
+#define WS_SETTINGS_TITLE_Y 30
+#define WS_SETTINGS_INFO_Y 120
+#define WS_SETTINGS_BTN_W 360
+#define WS_SETTINGS_BTN_H 70
+#define WS_SETTINGS_BTN_X ((WS_SCREEN_WIDTH - WS_SETTINGS_BTN_W) / 2)
+#define WS_SETTINGS_RESET_BTN_Y 350
+#define WS_SETTINGS_PROXY_BTN_Y 450
+#define WS_SETTINGS_BACK_BTN_Y 580
+
 enum class TouchAction {
     NONE,
     NAVIGATE_PREVIOUS,
-    NAVIGATE_NEXT
+    NAVIGATE_NEXT,
+    OPEN_SETTINGS,
+    SETTINGS_BACK,
+    SETTINGS_RESET_WIFI,
+    SETTINGS_TOGGLE_PROXY
 };
 
 struct TouchEvent {
@@ -168,6 +188,12 @@ class WaveshareDisplay : public DisplayBase {
     // Touch handling
     TouchEvent pollTouch();
 
+    // Settings screen
+    void showSettingsScreen();
+    void hideSettingsScreen();
+    void setSettingsData(const char* ssid, const char* ip, bool proxyEnabled);
+    bool isSettingsScreenActive() const { return _settingsScreenActive; }
+
     // Get display for custom drawing
     LGFX_Waveshare7& getDisplay() { return _display; }
 
@@ -186,6 +212,12 @@ class WaveshareDisplay : public DisplayBase {
     unsigned long _lastTouchTime;
     static const unsigned long TOUCH_DEBOUNCE_MS = 150;
 
+    // Settings screen state
+    bool _settingsScreenActive = false;
+    String _settingsSSID;
+    String _settingsIP;
+    bool _settingsProxyEnabled = false;
+
     // Internal drawing methods
     void drawStatusBar();
     void drawCurrentClimb();
@@ -193,6 +225,8 @@ class WaveshareDisplay : public DisplayBase {
     void drawNextClimbIndicator();
     void drawHistory();
     void drawNavButtons();
+    void drawSettingsScreen();
+    TouchAction handleSettingsTouch(int16_t x, int16_t y);
 
 #ifdef ENABLE_BOARD_IMAGE
   public:

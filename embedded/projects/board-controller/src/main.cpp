@@ -376,12 +376,56 @@ void loop() {
 #ifdef ENABLE_WAVESHARE_DISPLAY
     // Handle touch input for Waveshare display
     TouchEvent touchEvent = Display.pollTouch();
-    if (touchEvent.action == TouchAction::NAVIGATE_PREVIOUS) {
-        Logger.logln("Touch: navigate previous");
-        navigatePrevious();
-    } else if (touchEvent.action == TouchAction::NAVIGATE_NEXT) {
-        Logger.logln("Touch: navigate next");
-        navigateNext();
+    switch (touchEvent.action) {
+        case TouchAction::NAVIGATE_PREVIOUS:
+            Logger.logln("Touch: navigate previous");
+            navigatePrevious();
+            break;
+        case TouchAction::NAVIGATE_NEXT:
+            Logger.logln("Touch: navigate next");
+            navigateNext();
+            break;
+        case TouchAction::OPEN_SETTINGS:
+            Logger.logln("Touch: open settings");
+            Display.setSettingsData(
+                WiFiMgr.isConnected() ? WiFiMgr.getSSID().c_str() : "",
+                WiFiMgr.isConnected() ? WiFiMgr.getIP().c_str() : WiFiMgr.isAPMode() ? WiFiMgr.getAPIP().c_str() : "",
+                Config.getBool("proxy_en", false)
+            );
+            Display.showSettingsScreen();
+            break;
+        case TouchAction::SETTINGS_BACK:
+            Logger.logln("Touch: settings back");
+            Display.hideSettingsScreen();
+            break;
+        case TouchAction::SETTINGS_RESET_WIFI:
+            Logger.logln("Touch: reset WiFi");
+            Config.setString("wifi_ssid", "");
+            Config.setString("wifi_pass", "");
+            WiFiMgr.disconnect();
+            Display.hideSettingsScreen();
+            if (WiFiMgr.startAP()) {
+                Display.showSetupScreen(DEFAULT_AP_NAME);
+            }
+            break;
+        case TouchAction::SETTINGS_TOGGLE_PROXY: {
+            Logger.logln("Touch: toggle BLE proxy");
+            bool newProxyState = !Config.getBool("proxy_en", false);
+            Config.setBool("proxy_en", newProxyState);
+#ifdef ENABLE_BLE_PROXY
+            Proxy.setEnabled(newProxyState);
+#endif
+            Display.setSettingsData(
+                WiFiMgr.isConnected() ? WiFiMgr.getSSID().c_str() : "",
+                WiFiMgr.isConnected() ? WiFiMgr.getIP().c_str() : WiFiMgr.isAPMode() ? WiFiMgr.getAPIP().c_str() : "",
+                newProxyState
+            );
+            Display.showSettingsScreen();
+            break;
+        }
+        case TouchAction::NONE:
+        default:
+            break;
     }
 #elif defined(ENABLE_DISPLAY)
     // Handle button presses with debouncing (LilyGo T-Display-S3)

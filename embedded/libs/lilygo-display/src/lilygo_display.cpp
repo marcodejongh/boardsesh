@@ -188,19 +188,20 @@ void LilyGoDisplay::showSetupScreen(const char* apName) {
     _display.setTextDatum(lgfx::top_center);
     _display.drawString("WiFi Setup", SCREEN_WIDTH / 2, 8);
 
-    // Step 1: Connect to WiFi AP
+    // Step 1: Scan QR to join WiFi
     _display.setFont(&fonts::Font2);
     _display.setTextColor(COLOR_TEXT);
-    _display.drawString("1. Connect to WiFi:", SCREEN_WIDTH / 2, 38);
+    _display.drawString("1. Scan QR to join WiFi", SCREEN_WIDTH / 2, 38);
 
     _display.setFont(&fonts::FreeSansBold9pt7b);
     _display.setTextColor(COLOR_STATUS_OK);
     _display.drawString(apName, SCREEN_WIDTH / 2, 58);
 
-    // QR Code section - generate QR for http://192.168.4.1
-    const char* configUrl = "http://192.168.4.1";
+    // QR Code section - generate WiFi join QR code
+    char wifiQr[80];
+    snprintf(wifiQr, sizeof(wifiQr), "WIFI:T:nopass;S:%s;;;", apName);
     QRCode qrCode;
-    qrcode_initText(&qrCode, _qrCodeData, QR_VERSION, ECC_LOW, configUrl);
+    qrcode_initText(&qrCode, _qrCodeData, QR_VERSION, ECC_LOW, wifiQr);
 
     // Calculate QR code size and position
     int qrSize = qrCode.size;
@@ -223,21 +224,20 @@ void LilyGoDisplay::showSetupScreen(const char* apName) {
         }
     }
 
-    // Step 2: Instructions below QR code
+    // Step 2: Open browser
     int instructionY = qrY + actualQrSize + 16;
 
     _display.setFont(&fonts::Font2);
     _display.setTextColor(COLOR_TEXT);
-    _display.drawString("2. Scan QR code or", SCREEN_WIDTH / 2, instructionY);
-    _display.drawString("open in browser:", SCREEN_WIDTH / 2, instructionY + 18);
+    _display.drawString("2. Open browser:", SCREEN_WIDTH / 2, instructionY);
 
     _display.setFont(&fonts::FreeSansBold9pt7b);
     _display.setTextColor(COLOR_ACCENT);
-    _display.drawString("192.168.4.1", SCREEN_WIDTH / 2, instructionY + 40);
+    _display.drawString("192.168.4.1", SCREEN_WIDTH / 2, instructionY + 22);
 
     _display.setFont(&fonts::Font0);
     _display.setTextColor(COLOR_TEXT_DIM);
-    _display.drawString("to configure settings", SCREEN_WIDTH / 2, instructionY + 65);
+    _display.drawString("to configure settings", SCREEN_WIDTH / 2, instructionY + 50);
 
     _display.setTextDatum(lgfx::top_left);
 }

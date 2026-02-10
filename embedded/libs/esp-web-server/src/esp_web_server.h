@@ -42,6 +42,7 @@ class ESPWebServer {
     // Built-in handlers
     void handleRoot();
     void handleNotFound();
+    void handleCaptivePortal();
     void handleGetConfig();
     void handleSetConfig();
     void handleWiFiScan();
