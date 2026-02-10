@@ -18,6 +18,8 @@ export function createYogaInstance() {
   const yoga = createYoga({
     schema,
     graphqlEndpoint: '/graphql',
+    // Depth/cost limiting for HTTP GraphQL requests.
+    // WebSocket subscriptions are protected separately via onSubscribe in websocket/setup.ts
     plugins: [
       maxDepthPlugin({ n: 10 }),
       costLimitPlugin({ maxCost: 5000 }),
