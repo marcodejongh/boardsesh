@@ -21,7 +21,11 @@ import type { ParsedBoardRouteParameters } from '@/app/lib/types';
  * Returns null when there is nothing to show, so callers can render it
  * unconditionally and only worry about positioning / layout.
  */
-export default function PersistentQueueControlBar() {
+interface PersistentQueueControlBarProps {
+  className?: string;
+}
+
+export default function PersistentQueueControlBar({ className }: PersistentQueueControlBarProps) {
   const {
     activeSession,
     localQueue,
@@ -63,7 +67,7 @@ export default function PersistentQueueControlBar() {
     return null;
   }
 
-  return (
+  const content = (
     <BoardProvider boardName={boardDetails.board_name}>
       <ConnectionSettingsProvider>
         <GraphQLQueueProvider
@@ -78,4 +82,10 @@ export default function PersistentQueueControlBar() {
       </ConnectionSettingsProvider>
     </BoardProvider>
   );
+
+  if (className) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return content;
 }

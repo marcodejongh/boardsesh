@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { PartyProfileProvider } from '../party-manager/party-profile-context';
 import { PersistentSessionProvider, useIsOnBoardRoute } from '../persistent-session';
 import PersistentQueueControlBar from '../queue-control/persistent-queue-control-bar';
+import styles from '../queue-control/persistent-queue-control-bar.module.css';
 
 interface PersistentSessionWrapperProps {
   children: React.ReactNode;
@@ -43,17 +44,5 @@ function OffBoardQueueBar() {
     return null;
   }
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        width: '100%',
-        zIndex: 999,
-      }}
-    >
-      <PersistentQueueControlBar />
-    </div>
-  );
+  return <PersistentQueueControlBar className={styles.fixedBottom} />;
 }
