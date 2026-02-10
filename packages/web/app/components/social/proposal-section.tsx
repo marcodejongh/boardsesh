@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import AcUnitIcon from '@mui/icons-material/AcUnit';
@@ -21,6 +20,8 @@ import type {
   ProposalConnection,
   CommunityRoleAssignment,
 } from '@boardsesh/shared-schema';
+import CollapsibleSection from '@/app/components/collapsible-section/collapsible-section';
+import type { CollapsibleSectionConfig } from '@/app/components/collapsible-section/collapsible-section';
 import ProposalCard from './proposal-card';
 import CreateProposalForm from './create-proposal-form';
 import FreezeIndicator from './freeze-indicator';
@@ -31,12 +32,15 @@ interface ProposalSectionProps {
   climbUuid: string;
   boardType: string;
   angle: number;
+  currentClimbDifficulty?: string;
+  boardName?: string;
 }
 
-export default function ProposalSection({ climbUuid, boardType, angle }: ProposalSectionProps) {
+export default function ProposalSection({ climbUuid, boardType, angle, currentClimbDifficulty, boardName }: ProposalSectionProps) {
   const { token } = useWsAuthToken();
   const [communityStatus, setCommunityStatus] = useState<ClimbCommunityStatusType | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [acceptedProposals, setAcceptedProposals] = useState<Proposal[]>([]);
   const [isAdminOrLeader, setIsAdminOrLeader] = useState(false);
   const [showFreezeDialog, setShowFreezeDialog] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -45,7 +49,7 @@ export default function ProposalSection({ climbUuid, boardType, angle }: Proposa
     try {
       const client = createGraphQLHttpClient(token || undefined);
 
-      const [statusResult, proposalsResult] = await Promise.all([
+      const [statusResult, proposalsResult, acceptedResult] = await Promise.all([
         client.request<{ climbCommunityStatus: ClimbCommunityStatusType }>(
           GET_CLIMB_COMMUNITY_STATUS,
           { climbUuid, boardType, angle },
@@ -54,10 +58,15 @@ export default function ProposalSection({ climbUuid, boardType, angle }: Proposa
           GET_CLIMB_PROPOSALS,
           { input: { climbUuid, boardType, angle, status: 'open', limit: 10, offset: 0 } },
         ),
+        client.request<{ climbProposals: ProposalConnection }>(
+          GET_CLIMB_PROPOSALS,
+          { input: { climbUuid, boardType, angle, status: 'approved', limit: 10, offset: 0 } },
+        ),
       ]);
 
       setCommunityStatus(statusResult.climbCommunityStatus);
       setProposals(proposalsResult.climbProposals.proposals);
+      setAcceptedProposals(acceptedResult.climbProposals.proposals);
 
       // Check user roles
       if (token) {
@@ -99,6 +108,93 @@ export default function ProposalSection({ climbUuid, boardType, angle }: Proposa
 
   if (loading) return null;
 
+  const acceptedSummaryParts: string[] = [];
+  for (const p of acceptedProposals) {
+    if (p.type === 'grade') acceptedSummaryParts.push(`Grade: ${p.proposedValue}`);
+    else if (p.type === 'classic') acceptedSummaryParts.push('Classic');
+    else if (p.type === 'benchmark') acceptedSummaryParts.push('Benchmark');
+  }
+
+  const hasAccepted = acceptedProposals.length > 0;
+  const hasOpen = proposals.length > 0;
+
+  const sections: CollapsibleSectionConfig[] = [
+    {
+      key: 'open',
+      label: 'Open Proposals',
+      title: 'Open Proposals',
+      defaultSummary: 'None',
+      getSummary: () => hasOpen ? [`${proposals.length} open`] : [],
+      content: (
+        <Box>
+          {/* Section header with create button */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {isAdminOrLeader && (
+                <Tooltip title={communityStatus?.isFrozen ? 'Unfreeze climb' : 'Freeze climb'}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setShowFreezeDialog(true)}
+                    sx={{ color: communityStatus?.isFrozen ? themeTokens.colors.warning : themeTokens.neutral[400] }}
+                  >
+                    <AcUnitIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <CreateProposalForm
+                climbUuid={climbUuid}
+                boardType={boardType}
+                angle={angle}
+                isFrozen={communityStatus?.isFrozen}
+                outlierWarning={communityStatus?.outlierAnalysis?.isOutlier}
+                currentClimbDifficulty={currentClimbDifficulty}
+                boardName={boardName}
+                onCreated={handleProposalCreated}
+              />
+            </Box>
+          </Box>
+
+          {/* Proposals list */}
+          {hasOpen ? (
+            proposals.map((proposal) => (
+              <ProposalCard
+                key={proposal.uuid}
+                proposal={proposal}
+                isAdminOrLeader={isAdminOrLeader}
+                onUpdate={handleProposalUpdated}
+              />
+            ))
+          ) : (
+            <Typography variant="body2" sx={{ color: themeTokens.neutral[400], textAlign: 'center', py: 2 }}>
+              No open proposals
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+  ];
+
+  if (hasAccepted) {
+    sections.push({
+      key: 'accepted',
+      label: 'Accepted',
+      title: 'Accepted Proposals',
+      defaultSummary: 'None',
+      getSummary: () => acceptedSummaryParts.length > 0 ? acceptedSummaryParts : [],
+      content: (
+        <Box>
+          {acceptedProposals.map((proposal) => (
+            <ProposalCard
+              key={proposal.uuid}
+              proposal={proposal}
+              isAdminOrLeader={false}
+            />
+          ))}
+        </Box>
+      ),
+    });
+  }
+
   return (
     <Box sx={{ mb: 2 }}>
       {/* Community status badges */}
@@ -119,53 +215,20 @@ export default function ProposalSection({ climbUuid, boardType, angle }: Proposa
       )}
 
       {/* Section header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: themeTokens.neutral[700] }}>
-          Community Proposals
-          {proposals.length > 0 && (
-            <Typography component="span" variant="caption" sx={{ ml: 0.5, color: themeTokens.neutral[400] }}>
-              ({proposals.length})
-            </Typography>
-          )}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          {isAdminOrLeader && (
-            <Tooltip title={communityStatus?.isFrozen ? 'Unfreeze climb' : 'Freeze climb'}>
-              <IconButton
-                size="small"
-                onClick={() => setShowFreezeDialog(true)}
-                sx={{ color: communityStatus?.isFrozen ? themeTokens.colors.warning : themeTokens.neutral[400] }}
-              >
-                <AcUnitIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-          <CreateProposalForm
-            climbUuid={climbUuid}
-            boardType={boardType}
-            angle={angle}
-            isFrozen={communityStatus?.isFrozen}
-            outlierWarning={communityStatus?.outlierAnalysis?.isOutlier}
-            onCreated={handleProposalCreated}
-          />
-        </Box>
-      </Box>
+      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: themeTokens.neutral[700], mb: 1.5 }}>
+        Community Proposals
+        {proposals.length > 0 && (
+          <Typography component="span" variant="caption" sx={{ ml: 0.5, color: themeTokens.neutral[400] }}>
+            ({proposals.length})
+          </Typography>
+        )}
+      </Typography>
 
-      {/* Proposals list */}
-      {proposals.length > 0 ? (
-        proposals.map((proposal) => (
-          <ProposalCard
-            key={proposal.uuid}
-            proposal={proposal}
-            isAdminOrLeader={isAdminOrLeader}
-            onUpdate={handleProposalUpdated}
-          />
-        ))
-      ) : (
-        <Typography variant="body2" sx={{ color: themeTokens.neutral[400], textAlign: 'center', py: 2 }}>
-          No open proposals
-        </Typography>
-      )}
+      {/* Collapsible sections */}
+      <CollapsibleSection
+        sections={sections}
+        defaultActiveKey="open"
+      />
 
       {/* Freeze dialog */}
       {showFreezeDialog && communityStatus && (

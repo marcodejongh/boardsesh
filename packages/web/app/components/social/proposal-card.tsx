@@ -9,11 +9,13 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
 import Tooltip from '@mui/material/Tooltip';
+import Collapse from '@mui/material/Collapse';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined';
 import ThumbDownOutlinedIcon from '@mui/icons-material/ThumbDownOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import Button from '@mui/material/Button';
@@ -24,6 +26,7 @@ import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { VOTE_ON_PROPOSAL, RESOLVE_PROPOSAL } from '@/app/lib/graphql/operations/proposals';
 import type { Proposal } from '@boardsesh/shared-schema';
 import ProposalVoteBar from './proposal-vote-bar';
+import CommentSection from './comment-section';
 
 const TYPE_LABELS: Record<string, string> = {
   grade: 'Grade',
@@ -48,6 +51,7 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate }: Pr
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState('');
   const [localProposal, setLocalProposal] = useState(proposal);
+  const [showComments, setShowComments] = useState(false);
 
   const handleVote = useCallback(async (value: number) => {
     if (!token) {
@@ -222,6 +226,27 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate }: Pr
               )}
             </Box>
           )}
+
+          {/* Comments toggle */}
+          <Button
+            size="small"
+            startIcon={<ChatBubbleOutlineIcon />}
+            onClick={() => setShowComments((prev) => !prev)}
+            sx={{
+              mt: 1.5,
+              color: themeTokens.neutral[500],
+              textTransform: 'none',
+              fontSize: 12,
+            }}
+          >
+            Comments
+          </Button>
+
+          <Collapse in={showComments} unmountOnExit>
+            <Box sx={{ mt: 1 }}>
+              <CommentSection entityType="proposal" entityId={localProposal.uuid} title="Comments" />
+            </Box>
+          </Collapse>
 
           {/* Timestamp */}
           <Typography variant="caption" sx={{ color: themeTokens.neutral[400], mt: 1, display: 'block' }}>

@@ -26,6 +26,8 @@ import {
   getProgressPanelSummary,
   getHoldsPanelSummary,
 } from './search-summary-utils';
+import CollapsibleSection from '@/app/components/collapsible-section/collapsible-section';
+import type { CollapsibleSectionConfig } from '@/app/components/collapsible-section/collapsible-section';
 import styles from './accordion-search-form.module.css';
 
 
@@ -34,15 +36,6 @@ import { KILTER_HOMEWALL_LAYOUT_ID } from '@/app/lib/board-constants';
 interface AccordionSearchFormProps {
   boardDetails: BoardDetails;
   defaultActiveKey?: string[];
-}
-
-interface SectionConfig {
-  key: string;
-  label: string;
-  title: string;
-  defaultSummary: string;
-  getSummary: () => string[];
-  content: React.ReactNode;
 }
 
 const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
@@ -54,7 +47,6 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
   const grades = TENSION_KILTER_GRADES;
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSort, setShowSort] = useState(false);
-  const [activeKey, setActiveKey] = useState<string>(defaultActiveKey[0] || 'climb');
 
   const isKilterHomewall = boardDetails.board_name === 'kilter' && boardDetails.layout_id === KILTER_HOMEWALL_LAYOUT_ID;
   const isLargestSize = boardDetails.size_name?.toLowerCase().includes('12');
@@ -78,7 +70,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
   const minGradeBg = getGradeSelectBackground(uiSearchParams.minGrade);
   const maxGradeBg = getGradeSelectBackground(uiSearchParams.maxGrade);
 
-  const sections: SectionConfig[] = [
+  const sections: CollapsibleSectionConfig[] = [
     {
       key: 'climb',
       label: 'Climb',
@@ -340,37 +332,10 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
 
   return (
     <>
-      <div className={styles.steppedContainer}>
-        {sections.map((section) => {
-          const isActive = activeKey === section.key;
-          const summaryParts = section.getSummary();
-          const summaryText = summaryParts.length > 0
-            ? summaryParts.join(' \u00B7 ')
-            : section.defaultSummary;
-
-          return (
-            <div
-              key={section.key}
-              className={`${styles.sectionCard} ${isActive ? styles.sectionCardActive : ''}`}
-              {...(!isActive ? { onClick: () => setActiveKey(section.key) } : {})}
-            >
-              <div className={`${styles.collapsedRow} ${isActive ? styles.collapsedRowActive : ''}`}>
-                <span className={styles.collapsedLabel}>{isActive ? section.title : section.label}</span>
-                <span className={`${styles.collapsedSummary} ${isActive ? styles.collapsedSummaryHidden : ''}`}>
-                  {summaryText}
-                </span>
-              </div>
-              <div className={`${styles.expandableContent} ${isActive ? styles.expandableContentOpen : ''}`}>
-                <div className={styles.expandableInner}>
-                  <div className={styles.expandableInnerPadding}>
-                    {section.content}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <CollapsibleSection
+        sections={sections}
+        defaultActiveKey={defaultActiveKey[0] || 'climb'}
+      />
       <AuthModal
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}

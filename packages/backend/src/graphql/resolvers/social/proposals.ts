@@ -25,14 +25,17 @@ async function enrichProposal(
   proposal: typeof dbSchema.climbProposals.$inferSelect,
   authenticatedUserId: string | null | undefined,
 ) {
-  // Fetch proposer profile
+  // Fetch proposer profile (LEFT JOIN to get OAuth name/image as fallback)
   const [proposer] = await db
     .select({
+      name: dbSchema.users.name,
+      image: dbSchema.users.image,
       displayName: dbSchema.userProfiles.displayName,
       avatarUrl: dbSchema.userProfiles.avatarUrl,
     })
-    .from(dbSchema.userProfiles)
-    .where(eq(dbSchema.userProfiles.userId, proposal.proposerId))
+    .from(dbSchema.users)
+    .leftJoin(dbSchema.userProfiles, eq(dbSchema.users.id, dbSchema.userProfiles.userId))
+    .where(eq(dbSchema.users.id, proposal.proposerId))
     .limit(1);
 
   // Compute weighted vote counts
@@ -82,8 +85,8 @@ async function enrichProposal(
     boardType: proposal.boardType,
     angle: proposal.angle,
     proposerId: proposal.proposerId,
-    proposerDisplayName: proposer?.displayName || undefined,
-    proposerAvatarUrl: proposer?.avatarUrl || undefined,
+    proposerDisplayName: proposer?.displayName || proposer?.name || undefined,
+    proposerAvatarUrl: proposer?.avatarUrl || proposer?.image || undefined,
     type: proposal.type,
     proposedValue: proposal.proposedValue,
     currentValue: proposal.currentValue,
@@ -186,11 +189,12 @@ async function analyzeGradeOutlier(
   angle: number,
 ): Promise<{ isOutlier: boolean; currentGrade: number; neighborAverage: number; neighborCount: number; gradeDifference: number } | null> {
   try {
-    // Query climb stats across all angles for this climb
+    // Query climb stats across all angles for this climb (unified table)
     const stats = await db.execute(sql`
       SELECT angle, display_difficulty, ascensionist_count
-      FROM ${sql.raw(`${boardType}_climb_stats`)}
+      FROM board_climb_stats
       WHERE climb_uuid = ${climbUuid}
+        AND board_type = ${boardType}
       ORDER BY angle
     `);
 
@@ -551,16 +555,29 @@ export const socialProposalMutations = {
         currentValue = communityStatus.communityGrade;
       } else {
         try {
+          // Use unified board_climb_stats table with board_type filter
+          // Join board_difficulty_grades for accurate grade name
           const result = await db.execute(sql`
-            SELECT display_difficulty FROM ${sql.raw(`${boardType}_climb_stats`)}
-            WHERE climb_uuid = ${climbUuid} AND angle = ${angle}
+            SELECT dg.boulder_name as grade_name
+            FROM board_climb_stats cs
+            LEFT JOIN board_difficulty_grades dg
+              ON dg.difficulty = ROUND(cs.display_difficulty::numeric)
+              AND dg.board_type = cs.board_type
+            WHERE cs.climb_uuid = ${climbUuid}
+              AND cs.angle = ${angle}
+              AND cs.board_type = ${boardType}
             LIMIT 1
           `);
-          const rows = (result as unknown as { rows: Array<{ display_difficulty: string }> }).rows;
-          currentValue = rows[0]?.display_difficulty?.toString() || '0';
+          const rows = (result as unknown as { rows: Array<{ grade_name: string | null }> }).rows;
+          currentValue = rows[0]?.grade_name || 'Unknown';
         } catch {
-          currentValue = '0';
+          currentValue = 'Unknown';
         }
+      }
+
+      // Prevent proposals to the same grade
+      if (currentValue === proposedValue) {
+        throw new Error('Proposed grade is the same as the current grade');
       }
     } else if (type === 'benchmark') {
       const [communityStatus] = await db

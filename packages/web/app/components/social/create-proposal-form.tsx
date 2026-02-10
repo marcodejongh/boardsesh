@@ -3,28 +3,26 @@
 import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Switch from '@mui/material/Switch';
-import Alert from '@mui/material/Alert';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Typography from '@mui/material/Typography';
 import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import AddIcon from '@mui/icons-material/Add';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { CREATE_PROPOSAL } from '@/app/lib/graphql/operations/proposals';
+import { BOULDER_GRADES, ANGLES } from '@/app/lib/board-data';
+import { getGradeTintColor } from '@/app/lib/grade-colors';
+import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
 import type { Proposal, ProposalType } from '@boardsesh/shared-schema';
+import type { BoardName } from '@/app/lib/types';
 
 interface CreateProposalFormProps {
   climbUuid: string;
@@ -32,6 +30,8 @@ interface CreateProposalFormProps {
   angle: number;
   isFrozen?: boolean;
   outlierWarning?: boolean;
+  currentClimbDifficulty?: string;
+  boardName?: string;
   onCreated?: (proposal: Proposal) => void;
 }
 
@@ -41,15 +41,37 @@ export default function CreateProposalForm({
   angle,
   isFrozen,
   outlierWarning,
+  currentClimbDifficulty,
+  boardName,
   onCreated,
 }: CreateProposalFormProps) {
   const { token } = useWsAuthToken();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<ProposalType>('grade');
-  const [proposedValue, setProposedValue] = useState('');
+  const [proposedValue, setProposedValue] = useState(currentClimbDifficulty || '');
   const [reason, setReason] = useState('');
+  const [selectedAngle, setSelectedAngle] = useState<number | 'all'>(angle);
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState('');
+
+  const boardAngles = boardName ? (ANGLES[boardName as BoardName] || []) : [];
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  const handleTypeChange = useCallback((_: React.MouseEvent, val: ProposalType | null) => {
+    if (!val) return;
+    setType(val);
+    // Reset proposed value when changing type
+    if (val === 'grade') {
+      setProposedValue(currentClimbDifficulty || '');
+      setSelectedAngle(angle);
+    } else {
+      setProposedValue('');
+      setSelectedAngle('all');
+    }
+  }, [currentClimbDifficulty, angle]);
 
   const handleSubmit = useCallback(async () => {
     if (!token) {
@@ -60,6 +82,10 @@ export default function CreateProposalForm({
       setSnackbar('Please enter a proposed value');
       return;
     }
+    if (type === 'grade' && proposedValue === currentClimbDifficulty) {
+      setSnackbar('Proposed grade is the same as the current grade');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -68,16 +94,16 @@ export default function CreateProposalForm({
         input: {
           climbUuid,
           boardType,
-          angle: type === 'classic' ? null : angle,
+          angle: selectedAngle === 'all' ? null : selectedAngle,
           type,
-          proposedValue: type === 'classic' || type === 'benchmark' ? proposedValue : proposedValue,
+          proposedValue,
           reason: reason || null,
         },
       });
 
       onCreated?.(result.createProposal);
-      setOpen(false);
-      setProposedValue('');
+      handleClose();
+      setProposedValue(type === 'grade' ? (currentClimbDifficulty || '') : '');
       setReason('');
       setSnackbar('Proposal created');
     } catch (err) {
@@ -85,9 +111,13 @@ export default function CreateProposalForm({
     } finally {
       setLoading(false);
     }
-  }, [token, climbUuid, boardType, angle, type, proposedValue, reason, onCreated]);
+  }, [token, climbUuid, boardType, selectedAngle, type, proposedValue, reason, onCreated, handleClose, currentClimbDifficulty]);
 
   if (isFrozen) return null;
+
+  const gradeBackground = type === 'grade' && proposedValue
+    ? getGradeTintColor(proposedValue, 'light')
+    : undefined;
 
   return (
     <>
@@ -112,42 +142,89 @@ export default function CreateProposalForm({
         Propose Change
       </Button>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Create Proposal</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            {/* Type selector */}
-            <ToggleButtonGroup
-              value={type}
-              exclusive
-              onChange={(_, val) => val && setType(val)}
-              size="small"
-              fullWidth
+      <SwipeableDrawer
+        placement="bottom"
+        title="Create Proposal"
+        open={open}
+        onClose={handleClose}
+        footer={
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button onClick={handleClose} sx={{ textTransform: 'none' }}>Cancel</Button>
+            <Button
+              onClick={handleSubmit}
+              variant="contained"
+              disabled={loading || !proposedValue || (type === 'grade' && proposedValue === currentClimbDifficulty)}
+              sx={{
+                textTransform: 'none',
+                bgcolor: themeTokens.colors.primary,
+                '&:hover': { bgcolor: themeTokens.colors.primaryHover },
+              }}
             >
-              <ToggleButton value="grade">Grade</ToggleButton>
-              <ToggleButton value="classic">Classic</ToggleButton>
-              <ToggleButton value="benchmark">Benchmark</ToggleButton>
-            </ToggleButtonGroup>
+              {loading ? 'Creating...' : 'Create Proposal'}
+            </Button>
+          </Box>
+        }
+      >
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* Type selector */}
+          <ToggleButtonGroup
+            value={type}
+            exclusive
+            onChange={handleTypeChange}
+            size="small"
+            fullWidth
+          >
+            <ToggleButton value="grade">Grade</ToggleButton>
+            <ToggleButton value="classic">Classic</ToggleButton>
+            <ToggleButton value="benchmark">Benchmark</ToggleButton>
+          </ToggleButtonGroup>
 
-            {type === 'classic' && (
-              <Typography variant="caption" sx={{ color: themeTokens.neutral[500] }}>
-                Classic proposals apply to all angles.
-              </Typography>
-            )}
+          {/* Angle selector */}
+          {boardAngles.length > 0 && (
+            <FormControl size="small" fullWidth>
+              <InputLabel>Angle</InputLabel>
+              <Select
+                value={selectedAngle}
+                label="Angle"
+                onChange={(e) => setSelectedAngle(e.target.value as number | 'all')}
+              >
+                {type !== 'grade' && (
+                  <MenuItem value="all">All angles</MenuItem>
+                )}
+                {boardAngles.map((a) => (
+                  <MenuItem key={a} value={a}>{a}°</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
 
-            {/* Value input */}
-            {type === 'grade' && (
-              <TextField
-                label="Proposed Grade"
+          {/* Grade dropdown */}
+          {type === 'grade' && (
+            <FormControl size="small" fullWidth>
+              <InputLabel>Proposed Grade</InputLabel>
+              <Select
                 value={proposedValue}
+                label="Proposed Grade"
                 onChange={(e) => setProposedValue(e.target.value)}
-                placeholder="e.g., V5 or 6B+"
-                size="small"
-                fullWidth
-              />
-            )}
+                sx={gradeBackground ? { bgcolor: gradeBackground } : undefined}
+              >
+                {BOULDER_GRADES.map((grade) => (
+                  <MenuItem key={grade.difficulty_id} value={grade.difficulty_name}>
+                    {grade.difficulty_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
 
-            {(type === 'classic' || type === 'benchmark') && (
+          {/* Classic/Benchmark status selector */}
+          {(type === 'classic' || type === 'benchmark') && (
+            <>
+              <Typography variant="caption" sx={{ color: themeTokens.neutral[500] }}>
+                {type === 'classic'
+                  ? 'Classic proposals apply to all angles by default.'
+                  : 'Benchmark proposals apply to all angles by default.'}
+              </Typography>
               <FormControl size="small" fullWidth>
                 <InputLabel>Proposed Status</InputLabel>
                 <Select
@@ -159,45 +236,30 @@ export default function CreateProposalForm({
                   <MenuItem value="false">No</MenuItem>
                 </Select>
               </FormControl>
-            )}
+            </>
+          )}
 
-            {/* Reason */}
-            <TextField
-              label="Reason (optional)"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              multiline
-              rows={2}
-              size="small"
-              fullWidth
-              placeholder="Why do you think this change is needed?"
-            />
+          {/* Reason */}
+          <TextField
+            label="Reason (optional)"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            multiline
+            rows={2}
+            size="small"
+            fullWidth
+            placeholder="Why do you think this change is needed?"
+          />
 
-            {/* Outlier warning */}
-            {outlierWarning && type === 'grade' && (
-              <Alert severity="info" sx={{ fontSize: 13 }}>
-                The grade at this angle appears to be an outlier compared to adjacent angles.
-                This proposal may be auto-approved if it aligns with neighboring data.
-              </Alert>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
-          <Button
-            onClick={handleSubmit}
-            variant="contained"
-            disabled={loading || !proposedValue}
-            sx={{
-              textTransform: 'none',
-              bgcolor: themeTokens.colors.primary,
-              '&:hover': { bgcolor: themeTokens.colors.primaryHover },
-            }}
-          >
-            {loading ? 'Creating...' : 'Create Proposal'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          {/* Outlier warning */}
+          {outlierWarning && type === 'grade' && (
+            <Alert severity="info" sx={{ fontSize: 13 }}>
+              The grade at this angle appears to be an outlier compared to adjacent angles.
+              This proposal may be auto-approved if it aligns with neighboring data.
+            </Alert>
+          )}
+        </Box>
+      </SwipeableDrawer>
 
       <Snackbar
         open={!!snackbar}
