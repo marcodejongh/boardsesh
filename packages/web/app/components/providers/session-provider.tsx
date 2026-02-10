@@ -13,7 +13,6 @@ export default function SessionProviderWrapper({ children }: SessionProviderWrap
     <SessionProvider
       refetchOnWindowFocus={false}
       refetchWhenOffline={false}
-      refetchInterval={5 * 60}
     >
       {children}
     </SessionProvider>
