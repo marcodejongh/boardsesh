@@ -29,6 +29,9 @@ export async function fanoutFeedItems(event: SocialEvent): Promise<void> {
     type: 'ascent' as const,
     entityType: 'tick' as SocialEntityType,
     entityId: event.entityId,
+    // boardUuid is intentionally null when a climb isn't associated with a user board.
+    // Board-scoped feed filtering simply won't match these items — they still appear
+    // in the unfiltered "All" feed.
     boardUuid: event.metadata.boardUuid || null,
     metadata,
   }));

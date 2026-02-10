@@ -1,10 +1,25 @@
-import { eq, and, desc, sql, lt, or, asc } from 'drizzle-orm';
+import { eq, and, desc, sql, lt, or } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, validateInput } from '../shared/helpers';
 import { ActivityFeedInputSchema } from '../../../validation/schemas';
-import { encodeCursor, decodeCursor } from '../../../utils/feed-cursor';
+import { encodeCursor, decodeCursor, encodeOffsetCursor, decodeOffsetCursor } from '../../../utils/feed-cursor';
+
+/**
+ * Map validated time period to a parameterized SQL interval condition.
+ * Avoids sql.raw() — each interval is an explicit SQL fragment.
+ */
+function timePeriodIntervalSql(column: unknown, period: string) {
+  switch (period) {
+    case 'hour':  return sql`${column} > NOW() - INTERVAL '1 hour'`;
+    case 'day':   return sql`${column} > NOW() - INTERVAL '1 day'`;
+    case 'week':  return sql`${column} > NOW() - INTERVAL '7 days'`;
+    case 'month': return sql`${column} > NOW() - INTERVAL '30 days'`;
+    case 'year':  return sql`${column} > NOW() - INTERVAL '365 days'`;
+    default:      return null;
+  }
+}
 
 /**
  * Subquery that computes vote score (upvotes - downvotes) for each feed item's entity.
@@ -80,41 +95,30 @@ export const activityFeedQueries = {
       conditions.push(eq(dbSchema.feedItems.boardUuid, validatedInput.boardUuid));
     }
 
-    // Decode cursor for keyset pagination
-    if (validatedInput.cursor) {
-      const cursor = decodeCursor(validatedInput.cursor);
-      if (cursor) {
-        conditions.push(
-          or(
-            lt(dbSchema.feedItems.createdAt, new Date(cursor.createdAt)),
-            and(
-              eq(dbSchema.feedItems.createdAt, new Date(cursor.createdAt)),
-              lt(dbSchema.feedItems.id, cursor.id)
-            )
-          )!
-        );
-      }
-    }
-
     // Apply time period filter for top/controversial/hot sorts
     if (sortBy !== 'new' && validatedInput.topPeriod && validatedInput.topPeriod !== 'all') {
-      const periodMap: Record<string, string> = {
-        hour: '1 hour',
-        day: '1 day',
-        week: '7 days',
-        month: '30 days',
-        year: '365 days',
-      };
-      const interval = periodMap[validatedInput.topPeriod];
-      if (interval) {
-        conditions.push(sql`${dbSchema.feedItems.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
-      }
+      const intervalCond = timePeriodIntervalSql(dbSchema.feedItems.createdAt, validatedInput.topPeriod);
+      if (intervalCond) conditions.push(intervalCond);
     }
 
-    const whereClause = and(...conditions);
-
     if (sortBy === 'new') {
-      // Optimized path: use the indexed (created_at DESC, id DESC) ordering
+      // Keyset pagination for chronological sort (stable — order doesn't change)
+      if (validatedInput.cursor) {
+        const cursor = decodeCursor(validatedInput.cursor);
+        if (cursor) {
+          conditions.push(
+            or(
+              lt(dbSchema.feedItems.createdAt, new Date(cursor.createdAt)),
+              and(
+                eq(dbSchema.feedItems.createdAt, new Date(cursor.createdAt)),
+                lt(dbSchema.feedItems.id, cursor.id)
+              )
+            )!
+          );
+        }
+      }
+
+      const whereClause = and(...conditions);
       const rows = await db
         .select()
         .from(dbSchema.feedItems)
@@ -135,7 +139,13 @@ export const activityFeedQueries = {
       return { items, cursor: nextCursor, hasMore };
     }
 
-    // Vote-based sort modes: LEFT JOIN with votes to compute scores
+    // Vote-based sort modes use offset pagination because scores can change
+    // between requests, making keyset cursors unstable (items shift/duplicate).
+    const offset = validatedInput.cursor
+      ? (decodeOffsetCursor(validatedInput.cursor) ?? 0)
+      : 0;
+
+    const whereClause = and(...conditions);
     const vs = voteScoreSubquery();
 
     const scoredRows = await db
@@ -160,7 +170,7 @@ export const activityFeedQueries = {
           ? desc(sql`COALESCE(${vs.score}, 0)`)
           : sortBy === 'controversial'
             // Controversial: most total votes with balanced ratio
-            // Wilson score: min(up, down) / (up + down) * log(up + down + 1)
+            // min(up, down) / (up + down) * log(up + down + 1)
             ? desc(sql`
                 CASE WHEN COALESCE(${vs.upvotes}, 0) + COALESCE(${vs.downvotes}, 0) = 0 THEN 0
                 ELSE LEAST(COALESCE(${vs.upvotes}, 0), COALESCE(${vs.downvotes}, 0))::float
@@ -176,18 +186,14 @@ export const activityFeedQueries = {
         desc(dbSchema.feedItems.createdAt),
         desc(dbSchema.feedItems.id),
       )
+      .offset(offset)
       .limit(limit + 1);
 
     const hasMore = scoredRows.length > limit;
     const resultRows = hasMore ? scoredRows.slice(0, limit) : scoredRows;
     const items = resultRows.map((r) => mapFeedItemToGraphQL(r.feedItem));
 
-    // For vote-based sorts, cursor still uses (createdAt, id) for stable pagination
-    let nextCursor: string | null = null;
-    if (hasMore && resultRows.length > 0) {
-      const lastRow = resultRows[resultRows.length - 1].feedItem;
-      nextCursor = encodeCursor(lastRow.createdAt, lastRow.id);
-    }
+    const nextCursor = hasMore ? encodeOffsetCursor(offset + limit) : null;
 
     return { items, cursor: nextCursor, hasMore };
   },
@@ -223,17 +229,8 @@ export const activityFeedQueries = {
 
     // Time period filter
     if (validatedInput.topPeriod && validatedInput.topPeriod !== 'all') {
-      const periodMap: Record<string, string> = {
-        hour: '1 hour',
-        day: '1 day',
-        week: '7 days',
-        month: '30 days',
-        year: '365 days',
-      };
-      const interval = periodMap[validatedInput.topPeriod];
-      if (interval) {
-        conditions.push(sql`${dbSchema.boardseshTicks.climbedAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
-      }
+      const intervalCond = timePeriodIntervalSql(dbSchema.boardseshTicks.climbedAt, validatedInput.topPeriod);
+      if (intervalCond) conditions.push(intervalCond);
     }
 
     const whereClause = and(...conditions);

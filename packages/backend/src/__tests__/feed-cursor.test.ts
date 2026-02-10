@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { encodeCursor, decodeCursor } from '../utils/feed-cursor';
+import { encodeCursor, decodeCursor, encodeOffsetCursor, decodeOffsetCursor } from '../utils/feed-cursor';
 
 describe('Feed Cursor', () => {
   describe('encodeCursor', () => {
@@ -77,6 +77,58 @@ describe('Feed Cursor', () => {
       // id=0 is falsy but should still decode (typeof check, not truthiness)
       expect(decoded).not.toBeNull();
       expect(decoded!.id).toBe(0);
+    });
+  });
+
+  describe('encodeOffsetCursor', () => {
+    it('should encode an offset', () => {
+      const cursor = encodeOffsetCursor(20);
+      expect(typeof cursor).toBe('string');
+      expect(cursor.length).toBeGreaterThan(0);
+    });
+
+    it('should produce base64url-safe output', () => {
+      const cursor = encodeOffsetCursor(100);
+      expect(cursor).not.toMatch(/[+/=]/);
+    });
+  });
+
+  describe('decodeOffsetCursor', () => {
+    it('should round-trip an offset value', () => {
+      const encoded = encodeOffsetCursor(40);
+      const decoded = decodeOffsetCursor(encoded);
+      expect(decoded).toBe(40);
+    });
+
+    it('should decode offset=0', () => {
+      const encoded = encodeOffsetCursor(0);
+      expect(decodeOffsetCursor(encoded)).toBe(0);
+    });
+
+    it('should return null for negative offset', () => {
+      const encoded = Buffer.from(JSON.stringify({ o: -5 })).toString('base64url');
+      expect(decodeOffsetCursor(encoded)).toBeNull();
+    });
+
+    it('should return null for non-number offset', () => {
+      const encoded = Buffer.from(JSON.stringify({ o: 'abc' })).toString('base64url');
+      expect(decodeOffsetCursor(encoded)).toBeNull();
+    });
+
+    it('should return null for missing offset field', () => {
+      const encoded = Buffer.from(JSON.stringify({ x: 10 })).toString('base64url');
+      expect(decodeOffsetCursor(encoded)).toBeNull();
+    });
+
+    it('should return null for invalid input', () => {
+      expect(decodeOffsetCursor('')).toBeNull();
+      expect(decodeOffsetCursor('garbage!!!')).toBeNull();
+    });
+
+    it('should not confuse keyset cursor with offset cursor', () => {
+      const keysetCursor = encodeCursor('2024-01-01T00:00:00.000Z', 42);
+      // keyset cursor has {t, i} but not {o} — should return null
+      expect(decodeOffsetCursor(keysetCursor)).toBeNull();
     });
   });
 });
