@@ -45,6 +45,10 @@ type GraphQLQueueContextProps = {
   parsedParams: ParsedBoardRouteParameters;
   boardDetails: BoardDetails;
   children: ReactNode;
+  // When provided, the provider operates in "off-board" mode:
+  // uses this path instead of computing from pathname, reads session ID
+  // from persistent session instead of URL, and skips URL manipulation.
+  baseBoardPath?: string;
 };
 
 const createClimbQueueItem = (
@@ -63,12 +67,16 @@ const createClimbQueueItem = (
 export const QueueContext = createContext<GraphQLQueueContextType | undefined>(undefined);
 
 
-export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: GraphQLQueueContextProps) => {
+export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, baseBoardPath: propsBaseBoardPath }: GraphQLQueueContextProps) => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const initialSearchParams = urlParamsToSearchParams(searchParams);
   const [state, dispatch] = useQueueReducer(initialSearchParams);
+
+  // Off-board mode: when a baseBoardPath is explicitly provided (e.g. from persistent session),
+  // skip URL-based session management and path computation.
+  const isOffBoardMode = propsBaseBoardPath !== undefined;
 
   // Correlation ID counter for tracking local updates (keeps reducer pure)
   const correlationCounterRef = useRef(0);
@@ -82,37 +90,48 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   // Get persistent session (managed at root level)
   const persistentSession = usePersistentSession();
 
-  // Read sessionId from URL search params - party mode is opt-in
+  // Session ID source differs by mode:
+  // - Board routes: read from URL ?session= param
+  // - Off-board: read from persistent session (URL doesn't carry session info)
   const sessionIdFromUrl = searchParams.get('session');
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(sessionIdFromUrl);
+  const persistentSessionId = persistentSession.activeSession?.sessionId ?? null;
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(
+    isOffBoardMode ? persistentSessionId : sessionIdFromUrl,
+  );
 
-  // Sync activeSessionId with URL changes (e.g., when navigating to a shared link)
+  // Sync activeSessionId with URL changes (board routes only)
   useEffect(() => {
-    // Only update activeSessionId from URL if:
-    // 1. URL has a session param (joining/starting), OR
-    // 2. We don't have an active session yet
-    // This prevents accidentally clearing the session when URL param is temporarily missing
+    if (isOffBoardMode) return;
     if (sessionIdFromUrl) {
       setActiveSessionId(sessionIdFromUrl);
     }
-    // Note: Don't clear activeSessionId when URL param is removed
-    // Only explicit endSession() should clear the session
-  }, [sessionIdFromUrl]);
+  }, [sessionIdFromUrl, isOffBoardMode]);
 
-  // Restore session param to URL if it's missing but we have an active session
+  // Sync activeSessionId from persistent session (off-board mode only)
   useEffect(() => {
+    if (!isOffBoardMode) return;
+    setActiveSessionId(persistentSessionId);
+  }, [isOffBoardMode, persistentSessionId]);
+
+  // Restore session param to URL if it's missing but we have an active session (board routes only)
+  useEffect(() => {
+    if (isOffBoardMode) return;
     if (activeSessionId && !sessionIdFromUrl) {
       const params = new URLSearchParams(searchParams.toString());
       params.set('session', activeSessionId);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [activeSessionId, sessionIdFromUrl, pathname, router, searchParams]);
+  }, [activeSessionId, sessionIdFromUrl, pathname, router, searchParams, isOffBoardMode]);
 
   // Session ID for connection - only connect if we have an active session
   const sessionId = activeSessionId;
 
   // Compute base board path for session comparison (excludes /play/[uuid] segments)
-  const baseBoardPath = useMemo(() => getBaseBoardPath(pathname), [pathname]);
+  // Off-board mode uses the provided path; board routes compute from pathname.
+  const baseBoardPath = useMemo(
+    () => propsBaseBoardPath ?? getBaseBoardPath(pathname),
+    [propsBaseBoardPath, pathname],
+  );
 
   // Check if persistent session is active for this board
   // Uses baseBoardPath to ensure navigation between climbs doesn't break the session check
@@ -377,6 +396,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
   // Session management functions
   const startSession = useCallback(
     async (options?: { discoverable?: boolean; name?: string }) => {
+      if (isOffBoardMode) {
+        throw new Error('Cannot start a session outside of a board route');
+      }
       if (!backendUrl) {
         throw new Error('Backend URL not configured');
       }
@@ -413,11 +435,14 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
 
       return newSessionId;
     },
-    [backendUrl, pathname, router, searchParams, state.queue, state.currentClimbQueueItem, persistentSession],
+    [backendUrl, pathname, router, searchParams, state.queue, state.currentClimbQueueItem, persistentSession, isOffBoardMode],
   );
 
   const joinSessionHandler = useCallback(
     async (sessionIdToJoin: string) => {
+      if (isOffBoardMode) {
+        throw new Error('Cannot join a session outside of a board route');
+      }
       if (!backendUrl) {
         throw new Error('Backend URL not configured');
       }
@@ -439,22 +464,24 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
         lastActivity: new Date().toISOString(),
       });
     },
-    [backendUrl, pathname, router, searchParams],
+    [backendUrl, pathname, router, searchParams, isOffBoardMode],
   );
 
   const endSession = useCallback(() => {
     // Deactivate persistent session
     persistentSession.deactivateSession();
 
-    // Remove session from URL
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('session');
-    const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+    // Remove session from URL (board routes only)
+    if (!isOffBoardMode) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('session');
+      const queryString = params.toString();
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+    }
 
     // Update state
     setActiveSessionId(null);
-  }, [persistentSession, pathname, router, searchParams]);
+  }, [persistentSession, pathname, router, searchParams, isOffBoardMode]);
 
   // Whether party mode is active
   const isSessionActive = !!sessionId && hasConnected;
@@ -868,18 +895,20 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       setClimbSearchParams: (params) => {
         dispatch({ type: 'SET_CLIMB_SEARCH_PARAMS', payload: params });
 
-        // Update URL with new search parameters, preserving session param
-        const urlParams = searchParamsToUrlParams(params);
+        // Update URL with new search parameters (board routes only)
+        if (!isOffBoardMode) {
+          const urlParams = searchParamsToUrlParams(params);
 
-        // Preserve the session parameter if it exists
-        const currentSession = searchParams.get('session');
-        if (currentSession) {
-          urlParams.set('session', currentSession);
+          // Preserve the session parameter if it exists
+          const currentSession = searchParams.get('session');
+          if (currentSession) {
+            urlParams.set('session', currentSession);
+          }
+
+          const queryString = urlParams.toString();
+          const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+          router.replace(newUrl, { scroll: false });
         }
-
-        const queryString = urlParams.toString();
-        const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
-        router.replace(newUrl, { scroll: false });
       },
 
       mirrorClimb: () => {
@@ -956,6 +985,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children }: G
       startSession,
       joinSessionHandler,
       endSession,
+      isOffBoardMode,
     ],
   );
 
