@@ -39,6 +39,8 @@ function OffBoardQueueBar() {
   const isOnBoardRoute = useIsOnBoardRoute();
   const pathname = usePathname();
   const isHomePage = pathname === '/';
+  // Pages with their own layout that includes BottomBarWithQueue handle the queue bar themselves
+  const hasOwnBottomBar = pathname.startsWith('/my-library') || pathname.startsWith('/notifications');
   const {
     activeSession,
     localQueue,
@@ -53,9 +55,9 @@ function OffBoardQueueBar() {
     : (localCurrentClimbQueueItem?.climb?.angle ?? 0);
 
   // Only show when off board routes and there's something to show
-  // Home page handles its own bottom bar with QueueControlBar integration
+  // Home page and pages with BottomBarWithQueue handle their own QueueControlBar integration
   const hasContent = localQueue.length > 0 || !!localCurrentClimbQueueItem || !!activeSession;
-  if (!hasContent || isOnBoardRoute || isHomePage || !boardDetails) {
+  if (!hasContent || isOnBoardRoute || isHomePage || hasOwnBottomBar || !boardDetails) {
     return null;
   }
 
