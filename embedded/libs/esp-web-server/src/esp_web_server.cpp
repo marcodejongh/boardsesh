@@ -624,6 +624,12 @@ void ESPWebServer::handleFirmwareUploadData() {
 
             // Server-side file extension validation
             String fname = upload.filename;
+            if (fname.length() == 0) {
+                _otaError = true;
+                _otaErrorMessage = "No filename provided";
+                Serial.println("Firmware upload rejected: empty filename");
+                break;
+            }
             if (fname.length() < 4 || fname.substring(fname.length() - 4) != ".bin") {
                 _otaError = true;
                 _otaErrorMessage = "Invalid file type: firmware must be a .bin file";
@@ -631,7 +637,9 @@ void ESPWebServer::handleFirmwareUploadData() {
                 break;
             }
 
-            if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+            // Use totalSize for upfront partition size validation when available
+            size_t updateSize = upload.totalSize > 0 ? upload.totalSize : UPDATE_SIZE_UNKNOWN;
+            if (!Update.begin(updateSize)) {
                 _otaError = true;
                 _otaErrorMessage = "Failed to begin update";
                 Serial.println("Update.begin() failed");

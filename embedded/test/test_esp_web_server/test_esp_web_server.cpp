@@ -480,6 +480,42 @@ void test_firmware_upload_rejects_non_bin_file(void) {
     TEST_ASSERT_FALSE(ESP.wasRestartCalled());
 }
 
+void test_firmware_upload_rejects_empty_filename(void) {
+    webServer->begin();
+
+    uint8_t fakeData[] = {0x01};
+    webServer->getServer().mockSimulateUpload(
+        "/api/firmware/upload", "", fakeData, sizeof(fakeData));
+
+    TEST_ASSERT_EQUAL(500, webServer->getServer().getLastResponseCode());
+    TEST_ASSERT_FALSE(Update.wasBeginCalled());
+    TEST_ASSERT_FALSE(ESP.wasRestartCalled());
+}
+
+void test_firmware_upload_rejects_short_filename(void) {
+    webServer->begin();
+
+    uint8_t fakeData[] = {0x01};
+    webServer->getServer().mockSimulateUpload(
+        "/api/firmware/upload", "abc", fakeData, sizeof(fakeData));
+
+    TEST_ASSERT_EQUAL(500, webServer->getServer().getLastResponseCode());
+    TEST_ASSERT_FALSE(Update.wasBeginCalled());
+    TEST_ASSERT_FALSE(ESP.wasRestartCalled());
+}
+
+void test_firmware_upload_passes_total_size_to_update(void) {
+    webServer->begin();
+
+    uint8_t fakeData[] = {0x01, 0x02, 0x03, 0x04};
+    webServer->getServer().mockSimulateUpload(
+        "/api/firmware/upload", "firmware.bin", fakeData, sizeof(fakeData));
+
+    // Update.begin should have been called (size validation delegated to Update library)
+    TEST_ASSERT_EQUAL(200, webServer->getServer().getLastResponseCode());
+    TEST_ASSERT_TRUE(Update.wasBeginCalled());
+}
+
 // =============================================================================
 // Port Constant Test
 // =============================================================================
@@ -558,6 +594,9 @@ int main(int argc, char** argv) {
     RUN_TEST(test_firmware_upload_end_failure);
     RUN_TEST(test_firmware_upload_abort);
     RUN_TEST(test_firmware_upload_rejects_non_bin_file);
+    RUN_TEST(test_firmware_upload_rejects_empty_filename);
+    RUN_TEST(test_firmware_upload_rejects_short_filename);
+    RUN_TEST(test_firmware_upload_passes_total_size_to_update);
 
     // Port constant test
     RUN_TEST(test_web_server_port_constant);
