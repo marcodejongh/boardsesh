@@ -64,6 +64,7 @@ class RoomManager {
   private postgresWriteTimers: Map<string, NodeJS.Timeout> = new Map();
   private pendingWrites: Map<string, { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number; sequence: number }> = new Map();
   private sessionGraceTimers: Map<string, NodeJS.Timeout> = new Map();
+  private readonly SESSION_GRACE_PERIOD_MS = 60_000; // 60 seconds before removing empty sessions from memory
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_BASE_DELAY = 1000; // 1 second
   private writeRetryAttempts: Map<string, number> = new Map();
@@ -345,10 +346,11 @@ class RoomManager {
 
     // Fire-and-forget Postgres metadata writes - Redis is the source of truth.
     // These don't affect the return value and shouldn't block the join response.
+    // Failures are logged at warn level since Postgres will be inconsistent until next write.
     Promise.all([
       this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined),
       db.update(sessions).set({ status: 'active', lastActivity: new Date() }).where(eq(sessions.id, sessionId)),
-    ]).catch(err => console.error(`[RoomManager] Background persist failed for session ${sessionId}:`, err));
+    ]).catch(err => console.warn(`[RoomManager] Background Postgres persist failed for session ${sessionId} (Redis is source of truth):`, err));
 
     // Initialize queue state for new sessions with provided initial queue
     if (isNewSession && initialQueue && initialQueue.length > 0) {
@@ -425,7 +427,7 @@ class RoomManager {
             console.log(`[RoomManager] Session ${sessionId} removed from memory after grace period`);
           }
           this.sessionGraceTimers.delete(sessionId);
-        }, 60_000);
+        }, this.SESSION_GRACE_PERIOD_MS);
         this.sessionGraceTimers.set(sessionId, timer);
 
         // Cancel any pending writes since session is now inactive
