@@ -33,6 +33,7 @@ import PlayViewBetaSlider from './play-view-beta-slider';
 import PlayViewComments from './play-view-comments';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 import styles from './play-view-drawer.module.css';
 import drawerStyles from '../swipeable-drawer/swipeable-drawer.module.css';
 
@@ -82,6 +83,9 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     setCurrentClimbQueueItem,
     viewOnlyMode,
   } = useQueueContext();
+
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
 
   const { isFavorited, toggleFavorite } = useFavorite({
     climbUuid: currentClimb?.uuid ?? '',
@@ -223,7 +227,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       showDragHandle={true}
       styles={{
         body: { padding: 0, overflow: 'hidden' },
-        wrapper: { height: '100%' },
+        wrapper: { height: '100%', ...(isDark ? { backgroundColor: '#000000' } : {}) },
       }}
     >
       <div className={styles.drawerContent}>
@@ -412,7 +416,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: `${themeTokens.spacing[4]}px ${themeTokens.spacing[6]}px`,
-                borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+                borderBottom: '1px solid var(--neutral-200)',
               }}
             >
               <Typography variant="h6" component="div" sx={{ fontWeight: themeTokens.typography.fontWeight.semibold, fontSize: themeTokens.typography.fontSize.base }}>
@@ -425,7 +429,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
                       <MuiButton
                         variant="text"
                         startIcon={<DeleteOutlined />}
-                        sx={{ color: themeTokens.neutral[400] }}
+                        sx={{ color: 'var(--neutral-400)' }}
                         onClick={() => {
                           setQueue([]);
                           handleExitEditMode();

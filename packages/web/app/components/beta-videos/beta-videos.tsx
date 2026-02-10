@@ -87,11 +87,11 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
               sx={{
                 padding: `${themeTokens.spacing[8]}px`,
                 textAlign: 'center',
-                background: themeTokens.neutral[100],
+                background: 'var(--neutral-100)',
               }}
             >
-              <Instagram sx={{ fontSize: 32, color: themeTokens.neutral[400] }} />
-              <Box component="p" sx={{ margin: `${themeTokens.spacing[2]}px 0 0`, color: themeTokens.neutral[500] }}>
+              <Instagram sx={{ fontSize: 32, color: 'var(--neutral-400)' }} />
+              <Box component="p" sx={{ margin: `${themeTokens.spacing[2]}px 0 0`, color: 'var(--neutral-500)' }}>
                 Unable to load video
               </Box>
             </Box>
@@ -102,7 +102,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              borderTop: `1px solid ${themeTokens.neutral[100]}`,
+              borderTop: `1px solid var(--neutral-100)`,
             }}
           >
             {betaLink.foreign_username && (

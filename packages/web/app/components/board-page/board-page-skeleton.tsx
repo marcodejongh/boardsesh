@@ -55,7 +55,7 @@ const BoardRendererSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
 const ClimbCardSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
   <MuiCard
     sx={{
-      backgroundColor: themeTokens.semantic.surface,
+      backgroundColor: 'var(--semantic-surface)',
     }}
   >
     <CardHeader
@@ -68,10 +68,10 @@ const ClimbCardSkeleton = ({ aspectRatio }: { aspectRatio?: number }) => (
       <BoardRendererSkeleton aspectRatio={aspectRatio} />
     </CardContent>
     <CardActions sx={{ justifyContent: 'space-around' }}>
-      <InfoOutlined key="info" sx={{ color: themeTokens.neutral[300] }} />
-      <CallSplitOutlined key="fork" sx={{ color: themeTokens.neutral[300] }} />
-      <FavoriteBorderOutlined key="heart" sx={{ color: themeTokens.neutral[300] }} />
-      <AddCircleOutlined key="plus" sx={{ color: themeTokens.neutral[300] }} />
+      <InfoOutlined key="info" sx={{ color: 'var(--neutral-300)' }} />
+      <CallSplitOutlined key="fork" sx={{ color: 'var(--neutral-300)' }} />
+      <FavoriteBorderOutlined key="heart" sx={{ color: 'var(--neutral-300)' }} />
+      <AddCircleOutlined key="plus" sx={{ color: 'var(--neutral-300)' }} />
     </CardActions>
   </MuiCard>
 );
@@ -86,8 +86,8 @@ const ClimbListItemSkeleton = () => (
       alignItems: 'center',
       padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[3]}px`,
       gap: themeTokens.spacing[3],
-      backgroundColor: themeTokens.semantic.surface,
-      borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+      backgroundColor: 'var(--semantic-surface)',
+      borderBottom: `1px solid var(--neutral-200)`,
     }}
   >
     {/* Thumbnail placeholder - matches ClimbListItem width of themeTokens.spacing[16] (64px) */}

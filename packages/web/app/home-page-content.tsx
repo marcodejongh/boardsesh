@@ -16,7 +16,7 @@ import { PersistentQueueProvider } from '@/app/components/queue-control/persiste
 import { BoardProvider } from '@/app/components/board-provider/board-provider-context';
 import { BluetoothProvider } from '@/app/components/board-bluetooth-control/bluetooth-context';
 import { useSession } from 'next-auth/react';
-import { themeTokens } from '@/app/theme/theme-config';
+
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import ErrorBoundary from '@/app/components/error-boundary';
 import BoardSelectorPills from '@/app/components/board-entity/board-selector-pills';
@@ -77,7 +77,7 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
           gap: 1.5,
           px: 2,
           py: 1.5,
-          borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+          borderBottom: '1px solid var(--neutral-200)',
         }}
       >
         <UserDrawer boardConfigs={boardConfigs} />

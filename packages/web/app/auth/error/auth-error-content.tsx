@@ -46,11 +46,11 @@ export default function AuthErrorContent() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: themeTokens.semantic.background }}>
+    <Box sx={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
       <Box
         component="header"
         sx={{
-          background: themeTokens.semantic.surface,
+          background: 'var(--semantic-surface)',
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',

@@ -10,7 +10,7 @@ import Box from '@mui/material/Box';
 import { DeleteOutlined } from '@mui/icons-material';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
-import { themeTokens } from '@/app/theme/theme-config';
+
 import AccordionSearchForm from '@/app/components/search-drawer/accordion-search-form';
 import SearchResultsFooter from '@/app/components/search-drawer/search-results-footer';
 import QueueList from '@/app/components/queue-control/queue-list';
@@ -59,7 +59,7 @@ const QueueTabContent: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetail
             okText="Clear"
             cancelText="Cancel"
           >
-            <MuiButton variant="text" startIcon={<DeleteOutlined />} size="small" sx={{ color: themeTokens.neutral[400] }}>
+            <MuiButton variant="text" startIcon={<DeleteOutlined />} size="small" sx={{ color: 'var(--neutral-400)' }}>
               Clear
             </MuiButton>
           </ConfirmPopover>

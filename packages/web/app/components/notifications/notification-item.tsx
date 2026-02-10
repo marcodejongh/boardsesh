@@ -82,8 +82,8 @@ export default function NotificationItem({ notification, onClick }: Notification
       sx={{
         cursor: 'pointer',
         backgroundColor: notification.isRead ? 'transparent' : `${themeTokens.colors.primary}08`,
-        '&:hover': { backgroundColor: themeTokens.neutral[100] },
-        borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+        '&:hover': { backgroundColor: 'var(--neutral-100)' },
+        borderBottom: `1px solid var(--neutral-200)`,
         py: 1.5,
         px: 2,
       }}

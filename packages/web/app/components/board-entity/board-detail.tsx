@@ -151,7 +151,7 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
                 width: 36,
                 height: 4,
                 borderRadius: 2,
-                backgroundColor: themeTokens.neutral[300],
+                backgroundColor: 'var(--neutral-300)',
               }}
             />
           </Box>
@@ -194,7 +194,7 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
                   </MuiTypography>
                   {board.locationName && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                      <LocationOnOutlined sx={{ fontSize: 16, color: themeTokens.neutral[400] }} />
+                      <LocationOnOutlined sx={{ fontSize: 16, color: 'var(--neutral-400)' }} />
                       <MuiTypography variant="body2" color="text.secondary">
                         {board.locationName}
                       </MuiTypography>
@@ -222,7 +222,7 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
               </Box>
 
               {board.description && (
-                <MuiTypography variant="body2" sx={{ mt: 1.5, color: themeTokens.neutral[600] }}>
+                <MuiTypography variant="body2" sx={{ mt: 1.5, color: 'var(--neutral-600)' }}>
                   {board.description}
                 </MuiTypography>
               )}
@@ -304,7 +304,7 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
                 width: 36,
                 height: 4,
                 borderRadius: 2,
-                backgroundColor: themeTokens.neutral[300],
+                backgroundColor: 'var(--neutral-300)',
               }}
             />
           </Box>
@@ -317,7 +317,7 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
 function StatChip({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-      <Box sx={{ color: themeTokens.neutral[400], display: 'flex' }}>{icon}</Box>
+      <Box sx={{ color: 'var(--neutral-400)', display: 'flex' }}>{icon}</Box>
       <MuiTypography variant="body2" sx={{ fontWeight: themeTokens.typography.fontWeight.semibold }}>
         {value}
       </MuiTypography>

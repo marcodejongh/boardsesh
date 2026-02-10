@@ -124,7 +124,7 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
                 label={statusSummary.text}
                 size="small"
                 color={statusSummary.color === 'green' ? 'success' : undefined}
-                sx={statusSummary.color === 'gold' ? { bgcolor: themeTokens.colors.amber, color: themeTokens.neutral[900] } : undefined}
+                sx={statusSummary.color === 'gold' ? { bgcolor: themeTokens.colors.amber, color: 'var(--neutral-900)' } : undefined}
                 className={styles.statusTag}
               />
               <MuiTypography variant="body2" component="span" fontWeight={600} className={styles.climbName}>

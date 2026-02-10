@@ -31,6 +31,7 @@ import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '../board-renderer/util';
 import { holdIdToCoordinate, MOONBOARD_GRADES, MOONBOARD_ANGLES } from '@/app/lib/moonboard-config';
 import { getSoftFontGradeColor } from '@/app/lib/grade-colors';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 import { themeTokens } from '@/app/theme/theme-config';
 import { parseScreenshot } from '@boardsesh/moonboard-ocr/browser';
 import { convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
@@ -74,6 +75,8 @@ export default function CreateClimbForm({
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
 
   // Aurora-specific hooks
   const { isAuthenticated, saveClimb } = useBoardProvider();
@@ -439,7 +442,7 @@ export default function CreateClimbForm({
               fontSize: 28,
               fontWeight: themeTokens.typography.fontWeight.bold,
               lineHeight: 1,
-              color: getSoftFontGradeColor(userGrade) ?? 'var(--neutral-500)',
+              color: getSoftFontGradeColor(userGrade, isDark) ?? 'var(--neutral-500)',
               flexShrink: 0,
             }}
           >
@@ -635,7 +638,7 @@ export default function CreateClimbForm({
             {boardType === 'aurora' ? (
               <>
                 <Chip label={`Starting: ${startingCount}/2`} size="small" color={startingCount > 0 ? 'success' : undefined} />
-                <Chip label={`Finish: ${finishCount}/2`} size="small" sx={finishCount > 0 ? { bgcolor: themeTokens.colors.pink, color: themeTokens.semantic.surface } : undefined} />
+                <Chip label={`Finish: ${finishCount}/2`} size="small" sx={finishCount > 0 ? { bgcolor: themeTokens.colors.pink, color: 'var(--semantic-surface)' } : undefined} />
                 <Chip label={`Total: ${totalHolds}`} size="small" color={totalHolds > 0 ? 'primary' : undefined} />
               </>
             ) : (

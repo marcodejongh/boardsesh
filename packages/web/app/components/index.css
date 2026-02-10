@@ -45,6 +45,44 @@
   --border-subtle: rgba(0, 0, 0, 0.06);
 }
 
+/* Dark mode overrides */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Neutral palette (inverted) */
+  --neutral-50: #000000;
+  --neutral-100: #121212;
+  --neutral-200: #1E1E1E;
+  --neutral-300: #2C2C2C;
+  --neutral-400: #6B7280;
+  --neutral-500: #9CA3AF;
+  --neutral-600: #D1D5DB;
+  --neutral-700: #E5E7EB;
+  --neutral-800: #F3F4F6;
+  --neutral-900: #F9FAFB;
+
+  /* Semantic colors */
+  --semantic-background: #000000;
+  --semantic-surface: #0A0A0A;
+  --semantic-surface-overlay: rgba(10, 10, 10, 0.95);
+  --semantic-selected: rgba(140, 74, 82, 0.12);
+  --semantic-selected-hover: rgba(140, 74, 82, 0.18);
+  --semantic-selected-light: rgba(140, 74, 82, 0.08);
+
+  /* Status background tints (semi-transparent for dark) */
+  --color-success-bg: rgba(107, 144, 128, 0.12);
+  --color-error-bg: rgba(184, 82, 76, 0.12);
+  --color-warning-bg: rgba(196, 148, 60, 0.12);
+
+  /* Shadows (stronger for dark backgrounds) */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+}
+
 /* Base styles */
 html {
   touch-action: manipulation;

@@ -11,7 +11,6 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import type { ActivityFeedItem } from '@boardsesh/shared-schema';
 import VoteButton from '@/app/components/social/vote-button';
-import { themeTokens } from '@/app/theme/theme-config';
 import styles from './ascents-feed.module.css';
 
 dayjs.extend(relativeTime);
@@ -69,8 +68,8 @@ export default function FeedItemComment({ item }: FeedItemCommentProps) {
         {item.commentBody && (
           <Box
             sx={{
-              bgcolor: themeTokens.neutral[50],
-              borderLeft: `3px solid ${themeTokens.neutral[300]}`,
+              bgcolor: 'var(--neutral-50)',
+              borderLeft: '3px solid var(--neutral-300)',
               borderRadius: 1,
               px: 1.5,
               py: 1,

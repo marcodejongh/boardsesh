@@ -20,7 +20,7 @@ import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { useBoardProvider, TickStatus } from '../board-provider/board-provider-context';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
-import { themeTokens } from '@/app/theme/theme-config';
+
 import dayjs from 'dayjs';
 
 type LogType = 'ascent' | 'attempt';
@@ -191,7 +191,7 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
                   onClick={handleMirrorToggle}
                 />
                 <MuiTooltip title="Click the tag to toggle whether you completed this climb on the mirrored side">
-                  <InfoOutlined sx={{ color: themeTokens.neutral[400], cursor: 'pointer' }} />
+                  <InfoOutlined sx={{ color: 'var(--neutral-400)', cursor: 'pointer' }} />
                 </MuiTooltip>
               </Stack>
             )}

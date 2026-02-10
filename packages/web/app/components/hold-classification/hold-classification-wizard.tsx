@@ -425,7 +425,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       styles={{
         wrapper: { height: '100dvh' },
         header: {
-          borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+          borderBottom: '1px solid var(--neutral-200)',
           paddingTop: 'max(16px, env(safe-area-inset-top))',
         },
         body: {

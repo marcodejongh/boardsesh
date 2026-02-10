@@ -96,7 +96,7 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
           sx={{
             cursor: 'pointer',
             '&:hover': { boxShadow: 3 },
-            backgroundColor: isSelected ? themeTokens.semantic.selected : undefined,
+            backgroundColor: isSelected ? 'var(--semantic-selected)' : undefined,
             borderColor: isSelected ? themeTokens.colors.primary : undefined,
             borderWidth: isSelected ? 2 : 1,
             borderStyle: 'solid',

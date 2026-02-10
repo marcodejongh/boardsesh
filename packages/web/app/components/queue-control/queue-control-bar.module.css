@@ -40,6 +40,26 @@
   }
 }
 
+/* Dark mode frosted glass effect */
+:global(html[data-theme="dark"]) .card {
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 768px) {
+  :global(html[data-theme="dark"]) .card {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@media (max-width: 767px) {
+  :global(html[data-theme="dark"]) .card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+}
+
 .swipeWrapper {
   position: relative;
   overflow: hidden;

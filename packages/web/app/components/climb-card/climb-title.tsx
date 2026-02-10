@@ -6,6 +6,7 @@ import Box from '@mui/material/Box';
 import CopyrightOutlined from '@mui/icons-material/CopyrightOutlined';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getSoftVGradeColor } from '@/app/lib/grade-colors';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 
 export type ClimbTitleData = {
   name?: string;
@@ -56,6 +57,9 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   centered = false,
   titleFontSize,
 }) => {
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
+
   if (!climb) {
     return (
       <Typography
@@ -147,7 +151,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     </Typography>
   );
 
-  const gradeColor = vGrade ? getSoftVGradeColor(vGrade) : undefined;
+  const gradeColor = vGrade ? getSoftVGradeColor(vGrade, isDark) : undefined;
 
   const largeGradeElement = vGrade && (
     <Typography

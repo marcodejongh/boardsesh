@@ -602,7 +602,7 @@ const ConsolidatedBoardConfig = ({ boardConfigs }: ConsolidatedBoardConfigProps)
                   Allow others nearby to join
                 </Box>
                 <MuiTooltip title="When enabled, climbers within 500 meters can find and join your session. Requires you to be signed in.">
-                  <InfoOutlined sx={{ color: themeTokens.neutral[400] }} />
+                  <InfoOutlined sx={{ color: 'var(--neutral-400)' }} />
                 </MuiTooltip>
               </Box>
               {allowOthersToJoin && !session && (

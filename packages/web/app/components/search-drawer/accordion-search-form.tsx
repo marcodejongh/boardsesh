@@ -13,6 +13,7 @@ import LoginOutlined from '@mui/icons-material/LoginOutlined';
 import ArrowUpwardOutlined from '@mui/icons-material/ArrowUpwardOutlined';
 import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import { useBoardProvider } from '@/app/components/board-provider/board-provider-context';
 import SearchClimbNameInput from './search-climb-name-input';
@@ -42,6 +43,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
   boardDetails,
   defaultActiveKey = ['climb'],
 }) => {
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
   const { uiSearchParams, updateFilters } = useUISearchParams();
   const { isAuthenticated } = useBoardProvider();
   const grades = TENSION_KILTER_GRADES;
@@ -64,7 +67,7 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
     if (!difficultyId || difficultyId === 0) return undefined;
     const grade = grades.find(g => g.difficulty_id === difficultyId);
     if (!grade) return undefined;
-    return getGradeTintColor(grade.difficulty_name, 'light');
+    return getGradeTintColor(grade.difficulty_name, 'light', isDark);
   };
 
   const minGradeBg = getGradeSelectBackground(uiSearchParams.minGrade);

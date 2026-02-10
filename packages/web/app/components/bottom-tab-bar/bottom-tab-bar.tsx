@@ -22,6 +22,7 @@ import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug, searchParamsToUrlParams } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 import { PlaylistsContext } from '../climb-actions/playlists-batch-context';
 import AuthModal from '../auth/auth-modal';
 import { usePersistentSession } from '../persistent-session';
@@ -54,7 +55,7 @@ const getActiveTab = (pathname: string): Tab => {
 const INITIAL_PLAYLIST_FORM = { name: '', description: '', color: '' };
 
 const actionSx = {
-  color: themeTokens.neutral[400],
+  color: 'var(--neutral-400)',
   '&.Mui-selected': { color: themeTokens.colors.primary },
   WebkitTapHighlightColor: 'transparent',
   touchAction: 'manipulation',
@@ -62,6 +63,8 @@ const actionSx = {
 };
 
 function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) {
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
@@ -305,9 +308,9 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
         onChange={handleTabChange}
         showLabels
         sx={{
-          background: 'rgba(255, 255, 255, 0.3)',
-          WebkitBackdropFilter: 'blur(5px)',
-          backdropFilter: 'blur(5px)',
+          background: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.3)',
+          WebkitBackdropFilter: isDark ? 'blur(20px)' : 'blur(5px)',
+          backdropFilter: isDark ? 'blur(20px)' : 'blur(5px)',
           borderRadius: `${themeTokens.borderRadius.xl}px`,
           py: `${themeTokens.spacing[2]}px`,
           height: 'auto',
@@ -315,7 +318,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
             maxWidth: 480,
             mx: 'auto',
             boxShadow: themeTokens.shadows.lg,
-            border: `1px solid ${themeTokens.neutral[200]}`,
+            border: `1px solid var(--neutral-200)`,
           },
         }}
       >

@@ -10,7 +10,6 @@ import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutl
 import { useRouter } from 'next/navigation';
 import type { Notification } from '@boardsesh/shared-schema';
 import { useNotifications } from '@/app/components/providers/notification-provider';
-import { themeTokens } from '@/app/theme/theme-config';
 import NotificationItem from './notification-item';
 
 const PAGE_SIZE = 20;
@@ -85,7 +84,7 @@ export default function NotificationList() {
       {/* Notification list */}
       {notifications.length === 0 ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 6, gap: 1 }}>
-          <NotificationsNoneOutlined sx={{ fontSize: 40, color: themeTokens.neutral[300] }} />
+          <NotificationsNoneOutlined sx={{ fontSize: 40, color: 'var(--neutral-300)' }} />
           <MuiTypography variant="body2" color="text.secondary">
             No notifications yet
           </MuiTypography>

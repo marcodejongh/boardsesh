@@ -107,7 +107,7 @@ const GradeProgressionChart: React.FC<GradeProgressionChartProps> = ({
                 y1={y}
                 x2="100"
                 y2={y}
-                stroke={themeTokens.neutral[200]}
+                stroke={'var(--neutral-200)'}
                 strokeWidth="0.5"
                 vectorEffect="non-scaling-stroke"
               />
@@ -132,7 +132,7 @@ const GradeProgressionChart: React.FC<GradeProgressionChartProps> = ({
               cx={point.x}
               cy={point.y}
               r="4"
-              fill={themeTokens.semantic.surface}
+              fill={'var(--semantic-surface)'}
               stroke={themeTokens.colors.primary}
               strokeWidth="2"
               vectorEffect="non-scaling-stroke"

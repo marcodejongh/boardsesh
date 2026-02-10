@@ -116,8 +116,8 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
 
   if (!displayClimb) {
     return (
-      <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
-        <div className={styles.emptyState} style={{ color: themeTokens.neutral[400] }}>
+      <div className={styles.pageContainer} style={{ backgroundColor: 'var(--semantic-background)' }}>
+        <div className={styles.emptyState} style={{ color: 'var(--neutral-400)' }}>
           <EmptyState description="No climb selected" />
           <MuiButton variant="contained" onClick={() => router.push(getBackToListUrl())}>
             Browse Climbs
@@ -128,7 +128,7 @@ const PlayViewClient: React.FC<PlayViewClientProps> = ({ boardDetails, initialCl
   }
 
   return (
-    <div className={styles.pageContainer} style={{ backgroundColor: themeTokens.semantic.background }}>
+    <div className={styles.pageContainer} style={{ backgroundColor: 'var(--semantic-background)' }}>
       {/* Main Content with Swipe */}
       <div className={styles.contentWrapper}>
         {/* Climb title - horizontal layout with grade on right */}

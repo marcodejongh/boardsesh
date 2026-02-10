@@ -109,8 +109,8 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
                 overflow: 'hidden',
                 cursor: 'pointer',
                 position: 'relative',
-                bgcolor: themeTokens.neutral[100],
-                border: `1px solid ${themeTokens.neutral[200]}`,
+                bgcolor: 'var(--neutral-100)',
+                border: '1px solid var(--neutral-200)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -133,7 +133,7 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
                   }}
                 />
               ) : (
-                <Instagram sx={{ fontSize: themeTokens.typography.fontSize['2xl'], color: themeTokens.neutral[400] }} />
+                <Instagram sx={{ fontSize: themeTokens.typography.fontSize['2xl'], color: 'var(--neutral-400)' }} />
               )}
               {/* Play overlay */}
               <Box

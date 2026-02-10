@@ -81,7 +81,7 @@ function LedConnectionTab() {
             flexDirection: 'column',
             gap: 1,
             padding: '12px',
-            background: themeTokens.colors.warningBg,
+            background: 'var(--color-warning-bg)',
             border: `1px solid ${themeTokens.colors.warning}`,
             borderRadius: themeTokens.borderRadius.md,
           }}
@@ -137,7 +137,7 @@ function LedConnectionTab() {
               alignItems: 'center',
               gap: 1,
               padding: '12px',
-              background: themeTokens.colors.successBg,
+              background: 'var(--color-success-bg)',
               border: `1px solid ${themeTokens.colors.success}`,
               borderRadius: themeTokens.borderRadius.md,
             }}
@@ -287,7 +287,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
           alignItems: 'center',
           gap: 1,
           padding: '12px',
-          background: themeTokens.colors.successBg,
+          background: 'var(--color-success-bg)',
           border: `1px solid ${themeTokens.colors.success}`,
           borderRadius: themeTokens.borderRadius.md,
         }}
@@ -333,7 +333,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   background:
-                    user.id === currentUserId ? themeTokens.semantic.selected : themeTokens.neutral[100],
+                    user.id === currentUserId ? 'var(--semantic-selected)' : 'var(--neutral-100)',
                   padding: '8px 12px',
                   borderRadius: themeTokens.borderRadius.md,
                   width: '100%',
@@ -361,7 +361,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '12px',
-            background: themeTokens.neutral[100],
+            background: 'var(--neutral-100)',
             borderRadius: themeTokens.borderRadius.md,
           }}
         >
@@ -409,7 +409,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
             alignItems: 'center',
             gap: 1,
             padding: '12px',
-            background: themeTokens.colors.warningBg,
+            background: 'var(--color-warning-bg)',
             border: `1px solid ${themeTokens.colors.warning}`,
             borderRadius: themeTokens.borderRadius.md,
           }}
@@ -506,7 +506,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
             <Box
               sx={{
                 padding: '12px',
-                background: themeTokens.semantic.selected,
+                background: 'var(--semantic-selected)',
                 border: `1px solid ${themeTokens.colors.primary}`,
                 borderRadius: themeTokens.borderRadius.md,
                 mb: '16px',
@@ -566,7 +566,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
                     alignItems: 'center',
                     gap: 1,
                     padding: '12px',
-                    background: themeTokens.colors.errorBg,
+                    background: 'var(--color-error-bg)',
                     border: `1px solid ${themeTokens.colors.error}`,
                     borderRadius: themeTokens.borderRadius.md,
                   }}

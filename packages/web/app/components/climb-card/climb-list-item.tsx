@@ -19,6 +19,7 @@ import { useSwipeActions } from '@/app/hooks/use-swipe-actions';
 import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getSoftGradeColor, getGradeTintColor } from '@/app/lib/grade-colors';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 
 // Maximum swipe distance
 const MAX_SWIPE = 120;
@@ -31,6 +32,8 @@ type ClimbListItemProps = {
 };
 
 const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDetails, selected, onSelect }) => {
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const queueContext = useOptionalQueueContext();
   const addToQueue = queueContext?.addToQueue;
@@ -55,7 +58,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   // Extract V grade for colorized display
   const vGradeMatch = climb.difficulty?.match(/V\d+/i);
   const vGrade = vGradeMatch ? vGradeMatch[0].toUpperCase() : null;
-  const gradeColor = getSoftGradeColor(climb.difficulty);
+  const gradeColor = getSoftGradeColor(climb.difficulty, isDark);
   const hasQuality = climb.quality_average && climb.quality_average !== '0';
 
   // Build exclude list for moonboard
@@ -118,9 +121,9 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[3]}px`,
       gap: themeTokens.spacing[3],
       backgroundColor: selected
-        ? (getGradeTintColor(climb.difficulty, 'light') ?? themeTokens.semantic.selected)
-        : themeTokens.semantic.surface,
-      borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+        ? (getGradeTintColor(climb.difficulty, 'light', isDark) ?? 'var(--semantic-selected)')
+        : 'var(--semantic-surface)',
+      borderBottom: `1px solid var(--neutral-200)`,
       cursor: 'pointer' as const,
       userSelect: 'none' as const,
     }),
@@ -175,7 +178,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       fontSize: themeTokens.typography.fontSize['2xl'],
       fontWeight: themeTokens.typography.fontWeight.bold,
       lineHeight: 1,
-      color: gradeColor ?? themeTokens.neutral[500],
+      color: gradeColor ?? 'var(--neutral-500)',
     }),
     [gradeColor],
   );
@@ -189,7 +192,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   );
 
   const iconButtonStyle = useMemo(
-    () => ({ flexShrink: 0, color: themeTokens.neutral[400] }),
+    () => ({ flexShrink: 0, color: 'var(--neutral-400)' }),
     [],
   );
 

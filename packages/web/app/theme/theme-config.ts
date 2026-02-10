@@ -140,8 +140,54 @@ export const themeTokens = {
   },
 } as const;
 
+// Dark mode overrides — only backgrounds, surfaces, text, neutrals, and status tints change.
+// Brand colors (primary, success, error, warning, purple, amber, pink) stay the same.
+export const darkTokens = {
+  neutral: {
+    50: '#000000',
+    100: '#121212',
+    200: '#1E1E1E',
+    300: '#2C2C2C',
+    400: '#6B7280',
+    500: '#9CA3AF',
+    600: '#D1D5DB',
+    700: '#E5E7EB',
+    800: '#F3F4F6',
+    900: '#F9FAFB',
+  },
+
+  semantic: {
+    selected: 'rgba(140, 74, 82, 0.12)',
+    selectedHover: 'rgba(140, 74, 82, 0.18)',
+    selectedLight: 'rgba(140, 74, 82, 0.08)',
+    selectedBorder: '#8C4A52',
+    background: '#000000',
+    surface: '#0A0A0A',
+    surfaceElevated: '#121212',
+    surfaceOverlay: 'rgba(10, 10, 10, 0.95)',
+    overlayLight: 'rgba(0, 0, 0, 0.4)',
+    overlayDark: 'rgba(0, 0, 0, 0.7)',
+  },
+
+  statusBg: {
+    success: 'rgba(107, 144, 128, 0.12)',
+    error: 'rgba(184, 82, 76, 0.12)',
+    warning: 'rgba(196, 148, 60, 0.12)',
+  },
+
+  shadows: {
+    xs: '0 1px 2px 0 rgba(0, 0, 0, 0.2)',
+    sm: '0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.3)',
+    md: '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3)',
+    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3)',
+    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
+    inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.15)',
+  },
+} as const;
+
 // Type exports for use in components
 export type ThemeTokens = typeof themeTokens;
 export type ColorTokens = typeof themeTokens.colors;
 export type NeutralTokens = typeof themeTokens.neutral;
 export type SyntaxTokens = typeof themeTokens.syntax;
+export type DarkTokens = typeof darkTokens;

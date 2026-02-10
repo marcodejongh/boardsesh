@@ -51,7 +51,7 @@ export default function MoonBoardImportCard({
             {climb.name || 'Unnamed Climb'}
           </Typography>
           {climb.isBenchmark && (
-            <Chip label="B" size="small" sx={{ bgcolor: themeTokens.colors.amber, color: themeTokens.neutral[900] }} className={styles.benchmarkTag} />
+            <Chip label="B" size="small" sx={{ bgcolor: themeTokens.colors.amber, color: 'var(--neutral-900)' }} className={styles.benchmarkTag} />
           )}
         </div>
         <div className={styles.metadata}>

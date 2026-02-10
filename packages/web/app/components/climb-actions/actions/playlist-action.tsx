@@ -159,7 +159,7 @@ export function PlaylistAction({
         right: 0,
         bottom: 0,
         padding: themeTokens.spacing[3],
-        backgroundColor: themeTokens.semantic.surfaceOverlay,
+        backgroundColor: 'var(--semantic-surface-overlay)',
         overflow: 'auto',
         zIndex: themeTokens.zIndex.dropdown,
       }}
@@ -202,7 +202,7 @@ export function PlaylistAction({
                           borderLeft: validColor ? `3px solid ${validColor}` : '3px solid transparent',
                           borderRadius: `${themeTokens.borderRadius.sm}px`,
                           mb: 0.5,
-                          backgroundColor: isInPlaylist ? themeTokens.semantic.selectedLight : undefined,
+                          backgroundColor: isInPlaylist ? 'var(--semantic-selected-light)' : undefined,
                         }}
                       >
                         <Stack direction="row" spacing={1} sx={{ width: '100%', justifyContent: 'space-between' }}>

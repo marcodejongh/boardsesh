@@ -35,8 +35,8 @@ export default function BoardCard({ board, onClick }: BoardCardProps) {
       variant="outlined"
       sx={{
         borderRadius: `${themeTokens.borderRadius.lg}px`,
-        borderColor: themeTokens.neutral[200],
-        '&:hover': { borderColor: themeTokens.neutral[300] },
+        borderColor: 'var(--neutral-200)',
+        '&:hover': { borderColor: 'var(--neutral-300)' },
         transition: themeTokens.transitions.fast,
       }}
     >
@@ -58,7 +58,7 @@ export default function BoardCard({ board, onClick }: BoardCardProps) {
               </MuiTypography>
               {board.locationName && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                  <LocationOnOutlined sx={{ fontSize: 14, color: themeTokens.neutral[400] }} />
+                  <LocationOnOutlined sx={{ fontSize: 14, color: 'var(--neutral-400)' }} />
                   <MuiTypography
                     variant="body2"
                     color="text.secondary"
@@ -95,7 +95,7 @@ export default function BoardCard({ board, onClick }: BoardCardProps) {
 function StatItem({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-      <Box sx={{ color: themeTokens.neutral[400], display: 'flex' }}>{icon}</Box>
+      <Box sx={{ color: 'var(--neutral-400)', display: 'flex' }}>{icon}</Box>
       <MuiTypography variant="body2" sx={{ fontWeight: themeTokens.typography.fontWeight.medium }}>
         {value}
       </MuiTypography>
