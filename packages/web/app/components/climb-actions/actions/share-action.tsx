@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import MuiButton from '@mui/material/Button';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
-import { ActionTooltip } from '../action-tooltip';
 import ShareOutlined from '@mui/icons-material/ShareOutlined';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
@@ -11,7 +9,7 @@ import {
   constructClimbViewUrl,
   constructClimbViewUrlWithSlugs,
 } from '@/app/lib/url-utils';
-import { themeTokens } from '@/app/theme/theme-config';
+import { buildActionResult, computeActionDisplay } from '../action-view-renderer';
 
 export function ShareAction({
   climb,
@@ -25,6 +23,8 @@ export function ShareAction({
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
   const { showMessage } = useSnackbar();
+  const { iconSize } = computeActionDisplay(viewMode, size, showLabel);
+
   const viewUrl = boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
     ? constructClimbViewUrlWithSlugs(
         boardDetails.board_name,
@@ -94,87 +94,19 @@ export function ShareAction({
     }
   }, [climb, viewUrl, boardDetails.board_name, onComplete]);
 
-  const label = 'Share';
-  const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
-  const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
-
   const icon = <ShareOutlined sx={{ fontSize: iconSize }} />;
 
-  // Icon mode - for Card actions
-  const iconElement = (
-    <ActionTooltip title={label}>
-      <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
-        {icon}
-      </span>
-    </ActionTooltip>
-  );
-
-  // Button mode
-  const buttonElement = (
-    <MuiButton
-      variant="outlined"
-      startIcon={icon}
-      onClick={handleClick}
-      size={size === 'large' ? 'large' : 'small'}
-      disabled={disabled}
-      className={className}
-    >
-      {shouldShowLabel && label}
-    </MuiButton>
-  );
-
-  // Menu item for dropdown
-  const menuItem = {
+  return buildActionResult({
     key: 'share',
-    label,
+    label: 'Share',
     icon,
-    onClick: () => handleClick(),
-  };
-
-  // List mode - full-width row for drawer menus
-  const listElement = (
-    <MuiButton
-      variant="text"
-      startIcon={icon}
-      fullWidth
-      onClick={handleClick}
-      disabled={disabled}
-      sx={{
-        height: 48,
-        justifyContent: 'flex-start',
-        paddingLeft: `${themeTokens.spacing[4]}px`,
-        fontSize: themeTokens.typography.fontSize.base,
-      }}
-    >
-      {label}
-    </MuiButton>
-  );
-
-  let element: React.ReactNode;
-  switch (viewMode) {
-    case 'icon':
-      element = iconElement;
-      break;
-    case 'button':
-    case 'compact':
-      element = buttonElement;
-      break;
-    case 'list':
-      element = listElement;
-      break;
-    case 'dropdown':
-      element = null; // Use menuItem instead
-      break;
-    default:
-      element = iconElement;
-  }
-
-  return {
-    element,
-    menuItem,
-    key: 'share',
-    available: true,
-  };
+    onClick: handleClick,
+    viewMode,
+    size,
+    showLabel,
+    disabled,
+    className,
+  });
 }
 
 export default ShareAction;

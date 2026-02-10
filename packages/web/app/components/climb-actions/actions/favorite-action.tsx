@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import MuiButton from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
-import { ActionTooltip } from '../action-tooltip';
 import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
 import Favorite from '@mui/icons-material/Favorite';
 import { track } from '@vercel/analytics';
@@ -11,6 +9,7 @@ import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useFavorite } from '../use-favorite';
 import AuthModal from '../../auth/auth-modal';
 import { themeTokens } from '@/app/theme/theme-config';
+import { buildActionResult, computeActionDisplay } from '../action-view-renderer';
 
 export function FavoriteAction({
   climb,
@@ -24,6 +23,7 @@ export function FavoriteAction({
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const { iconSize } = computeActionDisplay(viewMode, size, showLabel);
 
   const { isFavorited, isLoading, toggleFavorite, isAuthenticated } = useFavorite({
     climbUuid: climb.uuid,
@@ -75,12 +75,9 @@ export function FavoriteAction({
   }, [boardDetails.board_name, climb.uuid, angle]);
 
   const label = isFavorited ? 'Favorited' : 'Favorite';
-  const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
-  const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
-
   const HeartIcon = isFavorited ? Favorite : FavoriteBorderOutlined;
   const iconStyle = isFavorited ? { color: themeTokens.colors.error, fontSize: iconSize } : { fontSize: iconSize };
-  const icon = <HeartIcon sx={iconStyle} />;
+  const icon = isLoading ? <CircularProgress size={16} /> : <HeartIcon sx={iconStyle} />;
 
   const authModalElement = (
     <AuthModal
@@ -92,90 +89,19 @@ export function FavoriteAction({
     />
   );
 
-  // Icon mode - for Card actions
-  const iconElement = (
-    <>
-      <ActionTooltip title={label}>
-        <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
-          {icon}
-        </span>
-      </ActionTooltip>
-      {authModalElement}
-    </>
-  );
-
-  // Button mode
-  const buttonElement = (
-    <>
-      <MuiButton
-        variant="outlined"
-        startIcon={isLoading ? <CircularProgress size={16} /> : icon}
-        onClick={handleClick}
-        disabled={disabled || isLoading}
-        size={size === 'large' ? 'large' : 'small'}
-        className={className}
-      >
-        {shouldShowLabel && label}
-      </MuiButton>
-      {authModalElement}
-    </>
-  );
-
-  // Menu item for dropdown
-  const menuItem = {
+  return buildActionResult({
     key: 'favorite',
     label,
-    icon,
-    onClick: () => handleClick(),
-  };
-
-  // List mode - full-width row for drawer menus
-  const listElement = (
-    <>
-      <MuiButton
-        variant="text"
-        startIcon={isLoading ? <CircularProgress size={16} /> : icon}
-        fullWidth
-        onClick={handleClick}
-        disabled={disabled || isLoading}
-        sx={{
-          height: 48,
-          justifyContent: 'flex-start',
-          paddingLeft: `${themeTokens.spacing[4]}px`,
-          fontSize: themeTokens.typography.fontSize.base,
-        }}
-      >
-        {label}
-      </MuiButton>
-      {authModalElement}
-    </>
-  );
-
-  let element: React.ReactNode;
-  switch (viewMode) {
-    case 'icon':
-      element = iconElement;
-      break;
-    case 'button':
-    case 'compact':
-      element = buttonElement;
-      break;
-    case 'list':
-      element = listElement;
-      break;
-    case 'dropdown':
-      element = authModalElement; // Need to render auth modal even in dropdown mode
-      break;
-    default:
-      element = iconElement;
-  }
-
-  return {
-    element,
-    menuItem,
-    key: 'favorite',
-    available: true,
-  };
+    icon: <HeartIcon sx={iconStyle} />,
+    onClick: handleClick,
+    viewMode,
+    size,
+    showLabel,
+    disabled: disabled || isLoading,
+    className,
+    extraContent: authModalElement,
+    dropdownElementOverride: authModalElement,
+  });
 }
 
 export default FavoriteAction;

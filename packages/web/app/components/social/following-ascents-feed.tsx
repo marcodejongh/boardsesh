@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import Box from '@mui/material/Box';
 import MuiButton from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -15,59 +15,31 @@ import {
 } from '@/app/lib/graphql/operations';
 import type { FollowingAscentFeedItem } from '@boardsesh/shared-schema';
 import SocialFeedItem from '@/app/components/activity-feed/social-feed-item';
+import { usePaginatedFeed } from '@/app/hooks/use-paginated-feed';
 
 interface FollowingAscentsFeedProps {
   onFindClimbers?: () => void;
 }
 
 export default function FollowingAscentsFeed({ onFindClimbers }: FollowingAscentsFeedProps) {
-  const [items, setItems] = useState<FollowingAscentFeedItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
   const { token, isAuthenticated, isLoading: authLoading } = useWsAuthToken();
 
-  const fetchFeed = useCallback(async (offset = 0) => {
-    if (!token) return;
+  const fetchFn = useCallback(async (offset: number) => {
+    if (!token) return { items: [] as FollowingAscentFeedItem[], hasMore: false, totalCount: 0 };
 
-    if (offset === 0) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
+    const client = createGraphQLHttpClient(token);
+    const response = await client.request<
+      GetFollowingAscentsFeedQueryResponse,
+      GetFollowingAscentsFeedQueryVariables
+    >(GET_FOLLOWING_ASCENTS_FEED, { input: { limit: 20, offset } });
 
-    try {
-      const client = createGraphQLHttpClient(token);
-      const response = await client.request<
-        GetFollowingAscentsFeedQueryResponse,
-        GetFollowingAscentsFeedQueryVariables
-      >(GET_FOLLOWING_ASCENTS_FEED, { input: { limit: 20, offset } });
-
-      const { items: newItems, hasMore: more, totalCount: total } = response.followingAscentsFeed;
-
-      if (offset === 0) {
-        setItems(newItems);
-      } else {
-        setItems((prev) => [...prev, ...newItems]);
-      }
-      setHasMore(more);
-      setTotalCount(total);
-    } catch (error) {
-      console.error('Error fetching following feed:', error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
+    return response.followingAscentsFeed;
   }, [token]);
 
-  useEffect(() => {
-    if (isAuthenticated && token) {
-      fetchFeed(0);
-    } else if (!authLoading) {
-      setLoading(false);
-    }
-  }, [isAuthenticated, token, authLoading, fetchFeed]);
+  const { items, loading, loadingMore, hasMore, totalCount, loadMore } = usePaginatedFeed<FollowingAscentFeedItem>({
+    fetchFn,
+    enabled: isAuthenticated && !!token,
+  });
 
   if (authLoading || loading) {
     return (
@@ -100,7 +72,7 @@ export default function FollowingAscentsFeed({ onFindClimbers }: FollowingAscent
       {hasMore && (
         <Box sx={{ py: 2 }}>
           <MuiButton
-            onClick={() => fetchFeed(items.length)}
+            onClick={loadMore}
             disabled={loadingMore}
             variant="outlined"
             fullWidth

@@ -4,6 +4,7 @@ import { matchSetNameToSlugParts } from './slug-matching';
 import { generateSlugFromText, generateDescriptionSlug } from './url-utils';
 import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
 import { eq, and, isNull } from 'drizzle-orm';
+import { BOARD_NAME_PREFIX_REGEX } from '@/app/lib/board-constants';
 
 // Re-export for backwards compatibility
 export { matchSetNameToSlugParts } from './slug-matching';
@@ -38,7 +39,7 @@ export const getLayoutBySlug = async (board_name: BoardName, slug: string): Prom
     const baseSlug = l.name
       .toLowerCase()
       .trim()
-      .replace(/^(kilter|tension)\s+board\s+/i, '') // Remove board name prefix
+      .replace(BOARD_NAME_PREFIX_REGEX, '') // Remove board name prefix
       .replace(/[^\w\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')

@@ -8,6 +8,7 @@ import {
   BoardDetails,
   Angle,
 } from '@/app/lib/types';
+import { BOARD_NAME_PREFIX_REGEX } from '@/app/lib/board-constants';
 import { PAGE_LIMIT } from '../components/board-page/constants';
 
 export function parseBoardRouteParams<T extends BoardRouteParameters>(
@@ -347,7 +348,7 @@ export const generateLayoutSlug = (layoutName: string): string => {
   const baseSlug = layoutName
     .toLowerCase()
     .trim()
-    .replace(/^(kilter|tension)\s+board\s+/i, '') // Remove board name prefix
+    .replace(BOARD_NAME_PREFIX_REGEX, '') // Remove board name prefix
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
