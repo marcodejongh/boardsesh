@@ -29,6 +29,8 @@ import { socialFeedQueries } from './social/feed';
 import { socialCommentQueries, socialCommentMutations } from './social/comments';
 import { socialVoteQueries, socialVoteMutations } from './social/votes';
 import { socialBoardQueries, socialBoardMutations } from './social/boards';
+import { socialNotificationQueries, socialNotificationMutations, socialNotificationSubscriptions } from './social/notifications';
+import { socialCommentSubscriptions } from './social/comment-subscriptions';
 
 export const resolvers = {
   // Scalar types
@@ -51,6 +53,7 @@ export const resolvers = {
     ...socialCommentQueries,
     ...socialVoteQueries,
     ...socialBoardQueries,
+    ...socialNotificationQueries,
   },
 
   Mutation: {
@@ -65,12 +68,15 @@ export const resolvers = {
     ...socialCommentMutations,
     ...socialVoteMutations,
     ...socialBoardMutations,
+    ...socialNotificationMutations,
   },
 
   Subscription: {
     ...sessionSubscriptions,
     ...queueSubscriptions,
     ...controllerSubscriptions,
+    ...socialNotificationSubscriptions,
+    ...socialCommentSubscriptions,
   },
 
   // Field-level resolvers
@@ -80,4 +86,9 @@ export const resolvers = {
   QueueEvent: queueEventResolver,
   SessionEvent: sessionEventResolver,
   ControllerEvent: controllerEventResolver,
+  CommentEvent: {
+    __resolveType(obj: { __typename: string }) {
+      return obj.__typename;
+    },
+  },
 };

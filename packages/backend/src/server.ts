@@ -3,6 +3,9 @@ import type { WebSocketServer } from 'ws';
 import { pubsub } from './pubsub/index';
 import { roomManager } from './services/room-manager';
 import { redisClientManager } from './redis/client';
+import { eventBroker, NotificationWorker } from './events/index';
+import { sql } from 'drizzle-orm';
+import { db } from './db/client';
 import { initCors, applyCorsHeaders } from './handlers/cors';
 import { handleHealthCheck } from './handlers/health';
 import { handleSessionJoin } from './handlers/join';
@@ -29,8 +32,19 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   if (redisClientManager.isRedisConfigured() && redisClientManager.isRedisConnected()) {
     const { publisher } = redisClientManager.getClients();
     await roomManager.initialize(publisher);
+
+    // Initialize EventBroker and NotificationWorker (requires Redis)
+    try {
+      await eventBroker.initialize(publisher);
+      const notificationWorker = new NotificationWorker(eventBroker);
+      notificationWorker.start();
+      console.log('[Server] EventBroker and NotificationWorker started');
+    } catch (error) {
+      console.error('[Server] Failed to initialize EventBroker:', error);
+    }
   } else {
     await roomManager.initialize(); // Postgres-only mode
+    console.log('[Server] No Redis - EventBroker disabled, inline notification fallback active');
   }
 
   const PORT = parseInt(process.env.PORT || '8080', 10);
@@ -156,6 +170,9 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     // Clean up intervals first
     cleanupIntervals();
 
+    // Shutdown EventBroker consumer
+    eventBroker.shutdown();
+
     try {
       // Shutdown RoomManager (flushes writes + cleans up distributed state)
       await roomManager.shutdown();
@@ -184,6 +201,9 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     // Clean up intervals first
     cleanupIntervals();
 
+    // Shutdown EventBroker consumer
+    eventBroker.shutdown();
+
     try {
       await roomManager.shutdown();
       console.log('[Server] RoomManager shutdown complete');
@@ -211,6 +231,16 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     }
   }, 60000);
   intervals.push(flushInterval);
+
+  // Periodic notification cleanup (once per day)
+  const notificationCleanupInterval = setInterval(async () => {
+    try {
+      await db.execute(sql`DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '90 days'`);
+    } catch (error) {
+      console.error('[Server] Notification cleanup error:', error);
+    }
+  }, 24 * 60 * 60 * 1000);
+  intervals.push(notificationCleanupInterval);
 
   // Periodic TTL refresh for active sessions (every 2 minutes)
   const ttlRefreshInterval = setInterval(async () => {

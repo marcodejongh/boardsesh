@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import MuiTypography from '@mui/material/Typography';
 import type { SocialEntityType } from '@boardsesh/shared-schema';
@@ -8,10 +8,14 @@ import { useSession } from 'next-auth/react';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import { createGraphQLClient, subscribe } from '@/app/components/graphql-queue/graphql-client';
 import {
   ADD_COMMENT,
   type AddCommentMutationVariables,
   type AddCommentMutationResponse,
+  COMMENT_UPDATES_SUBSCRIPTION,
+  type CommentUpdatesSubscriptionResponse,
+  type CommentUpdatesSubscriptionVariables,
 } from '@/app/lib/graphql/operations';
 import CommentForm from './comment-form';
 import CommentList from './comment-list';
@@ -28,6 +32,44 @@ export default function CommentSection({ entityType, entityId, title = 'Discussi
   const { token, isAuthenticated } = useWsAuthToken();
   const currentUserId = session?.user?.id ?? null;
   const { showMessage } = useSnackbar();
+  const wsClientRef = useRef<ReturnType<typeof createGraphQLClient> | null>(null);
+
+  // Set up live comment updates subscription
+  useEffect(() => {
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (!wsUrl) return;
+
+    const wsClient = createGraphQLClient({ url: wsUrl, authToken: token });
+    wsClientRef.current = wsClient;
+
+    const unsub = subscribe<CommentUpdatesSubscriptionResponse, CommentUpdatesSubscriptionVariables>(
+      wsClient,
+      {
+        query: COMMENT_UPDATES_SUBSCRIPTION,
+        variables: { entityType, entityId },
+      },
+      {
+        next: (data) => {
+          if (data?.commentUpdates) {
+            // Any comment change triggers a refresh
+            setRefreshKey((prev) => prev + 1);
+          }
+        },
+        error: (err) => {
+          console.error('[CommentSection] Subscription error:', err);
+        },
+        complete: () => {
+          // Subscription ended
+        },
+      },
+    );
+
+    return () => {
+      unsub();
+      wsClient.dispose();
+      wsClientRef.current = null;
+    };
+  }, [entityType, entityId, token]);
 
   const handleAddComment = useCallback(
     async (body: string) => {

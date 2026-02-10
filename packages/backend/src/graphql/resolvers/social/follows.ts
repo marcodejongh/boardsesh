@@ -5,6 +5,7 @@ import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, applyRateLimit, validateInput } from '../shared/helpers';
 import { FollowInputSchema, FollowListInputSchema } from '../../../validation/schemas';
 import { batchEnrichUserProfiles } from './helpers';
+import { publishSocialEvent } from '../../../events/index';
 
 export const socialFollowQueries = {
   /**
@@ -237,13 +238,26 @@ export const socialFollowMutations = {
     }
 
     // Insert follow (ON CONFLICT DO NOTHING for idempotency)
-    await db
+    const result = await db
       .insert(dbSchema.userFollows)
       .values({
         followerId: myUserId,
         followingId: targetUserId,
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning();
+
+    // Only publish event if a new follow was created (not idempotent duplicate)
+    if (result.length > 0) {
+      publishSocialEvent({
+        type: 'follow.created',
+        actorId: myUserId,
+        entityType: 'user',
+        entityId: targetUserId,
+        timestamp: Date.now(),
+        metadata: { followedUserId: targetUserId },
+      }).catch((err) => console.error('[Follows] Failed to publish social event:', err));
+    }
 
     return true;
   },

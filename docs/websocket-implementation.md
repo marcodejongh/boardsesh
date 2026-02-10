@@ -465,6 +465,8 @@ sequenceDiagram
 
 - Queue events: `boardsesh:queue:{sessionId}`
 - Session events: `boardsesh:session:{sessionId}`
+- Notification events: `boardsesh:notifications:{userId}` (per-user, authenticated)
+- Comment live updates: `boardsesh:comments:{entityType}:{entityId}` (per-entity, public)
 
 ### Event Buffer for Delta Sync
 

@@ -1,26 +1,36 @@
-import type { QueueEvent, SessionEvent } from '@boardsesh/shared-schema';
+import type { QueueEvent, SessionEvent, NotificationEvent, CommentEvent } from '@boardsesh/shared-schema';
 import type Redis from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
 
 // Channel naming convention
 const QUEUE_CHANNEL_PREFIX = 'boardsesh:queue:';
 const SESSION_CHANNEL_PREFIX = 'boardsesh:session:';
+const NOTIFICATION_CHANNEL_PREFIX = 'boardsesh:notifications:';
+const COMMENT_CHANNEL_PREFIX = 'boardsesh:comments:';
 
 interface RedisMessage {
   instanceId: string;
-  event: QueueEvent | SessionEvent;
+  event: QueueEvent | SessionEvent | NotificationEvent | CommentEvent;
   timestamp: number;
 }
 
 export interface RedisPubSubAdapter {
   publishQueueEvent(sessionId: string, event: QueueEvent): Promise<void>;
   publishSessionEvent(sessionId: string, event: SessionEvent): Promise<void>;
+  publishNotificationEvent(userId: string, event: NotificationEvent): Promise<void>;
+  publishCommentEvent(entityKey: string, event: CommentEvent): Promise<void>;
   subscribeQueueChannel(sessionId: string): Promise<void>;
   subscribeSessionChannel(sessionId: string): Promise<void>;
+  subscribeNotificationChannel(userId: string): Promise<void>;
+  subscribeCommentChannel(entityKey: string): Promise<void>;
   unsubscribeQueueChannel(sessionId: string): Promise<void>;
   unsubscribeSessionChannel(sessionId: string): Promise<void>;
+  unsubscribeNotificationChannel(userId: string): Promise<void>;
+  unsubscribeCommentChannel(entityKey: string): Promise<void>;
   onQueueMessage(callback: (sessionId: string, event: QueueEvent) => void): void;
   onSessionMessage(callback: (sessionId: string, event: SessionEvent) => void): void;
+  onNotificationMessage(callback: (userId: string, event: NotificationEvent) => void): void;
+  onCommentMessage(callback: (entityKey: string, event: CommentEvent) => void): void;
   getInstanceId(): string;
 }
 
@@ -31,9 +41,13 @@ export function createRedisPubSubAdapter(
   const instanceId = uuidv4();
   const subscribedQueueChannels = new Set<string>();
   const subscribedSessionChannels = new Set<string>();
+  const subscribedNotificationChannels = new Set<string>();
+  const subscribedCommentChannels = new Set<string>();
 
   let queueMessageCallback: ((sessionId: string, event: QueueEvent) => void) | null = null;
   let sessionMessageCallback: ((sessionId: string, event: SessionEvent) => void) | null = null;
+  let notificationMessageCallback: ((userId: string, event: NotificationEvent) => void) | null = null;
+  let commentMessageCallback: ((entityKey: string, event: CommentEvent) => void) | null = null;
 
   // Set up message handler
   subscriber.on('message', (channel: string, message: string) => {
@@ -56,6 +70,16 @@ export function createRedisPubSubAdapter(
         const sessionId = channel.slice(SESSION_CHANNEL_PREFIX.length);
         if (sessionMessageCallback) {
           sessionMessageCallback(sessionId, parsed.event as SessionEvent);
+        }
+      } else if (channel.startsWith(NOTIFICATION_CHANNEL_PREFIX)) {
+        const userId = channel.slice(NOTIFICATION_CHANNEL_PREFIX.length);
+        if (notificationMessageCallback) {
+          notificationMessageCallback(userId, parsed.event as NotificationEvent);
+        }
+      } else if (channel.startsWith(COMMENT_CHANNEL_PREFIX)) {
+        const entityKey = channel.slice(COMMENT_CHANNEL_PREFIX.length);
+        if (commentMessageCallback) {
+          commentMessageCallback(entityKey, parsed.event as CommentEvent);
         }
       }
     } catch (error) {
@@ -83,6 +107,26 @@ export function createRedisPubSubAdapter(
         timestamp: Date.now(),
       };
       console.log(`[Redis] Publishing session event to channel: ${sessionId} (type: ${event.__typename})`);
+      await publisher.publish(channel, JSON.stringify(message));
+    },
+
+    async publishNotificationEvent(userId: string, event: NotificationEvent): Promise<void> {
+      const channel = `${NOTIFICATION_CHANNEL_PREFIX}${userId}`;
+      const message: RedisMessage = {
+        instanceId,
+        event,
+        timestamp: Date.now(),
+      };
+      await publisher.publish(channel, JSON.stringify(message));
+    },
+
+    async publishCommentEvent(entityKey: string, event: CommentEvent): Promise<void> {
+      const channel = `${COMMENT_CHANNEL_PREFIX}${entityKey}`;
+      const message: RedisMessage = {
+        instanceId,
+        event,
+        timestamp: Date.now(),
+      };
       await publisher.publish(channel, JSON.stringify(message));
     },
 
@@ -126,12 +170,56 @@ export function createRedisPubSubAdapter(
       console.log(`[Redis] Unsubscribed from session channel: ${sessionId}`);
     },
 
+    async subscribeNotificationChannel(userId: string): Promise<void> {
+      const channel = `${NOTIFICATION_CHANNEL_PREFIX}${userId}`;
+      if (subscribedNotificationChannels.has(channel)) {
+        return;
+      }
+      await subscriber.subscribe(channel);
+      subscribedNotificationChannels.add(channel);
+    },
+
+    async subscribeCommentChannel(entityKey: string): Promise<void> {
+      const channel = `${COMMENT_CHANNEL_PREFIX}${entityKey}`;
+      if (subscribedCommentChannels.has(channel)) {
+        return;
+      }
+      await subscriber.subscribe(channel);
+      subscribedCommentChannels.add(channel);
+    },
+
+    async unsubscribeNotificationChannel(userId: string): Promise<void> {
+      const channel = `${NOTIFICATION_CHANNEL_PREFIX}${userId}`;
+      if (!subscribedNotificationChannels.has(channel)) {
+        return;
+      }
+      await subscriber.unsubscribe(channel);
+      subscribedNotificationChannels.delete(channel);
+    },
+
+    async unsubscribeCommentChannel(entityKey: string): Promise<void> {
+      const channel = `${COMMENT_CHANNEL_PREFIX}${entityKey}`;
+      if (!subscribedCommentChannels.has(channel)) {
+        return;
+      }
+      await subscriber.unsubscribe(channel);
+      subscribedCommentChannels.delete(channel);
+    },
+
     onQueueMessage(callback: (sessionId: string, event: QueueEvent) => void): void {
       queueMessageCallback = callback;
     },
 
     onSessionMessage(callback: (sessionId: string, event: SessionEvent) => void): void {
       sessionMessageCallback = callback;
+    },
+
+    onNotificationMessage(callback: (userId: string, event: NotificationEvent) => void): void {
+      notificationMessageCallback = callback;
+    },
+
+    onCommentMessage(callback: (entityKey: string, event: CommentEvent) => void): void {
+      commentMessageCallback = callback;
     },
 
     getInstanceId(): string {
