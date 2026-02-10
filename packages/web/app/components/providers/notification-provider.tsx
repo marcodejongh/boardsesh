@@ -88,8 +88,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         GET_UNREAD_NOTIFICATION_COUNT,
       );
       setUnreadCount(data.unreadNotificationCount);
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[Notifications] Failed to refresh unread count:', err);
     }
   }, [token]);
 
@@ -160,7 +160,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         setUnreadCount(data.notifications.unreadCount);
 
         return data.notifications;
-      } catch {
+      } catch (err) {
+        console.error('[Notifications] Failed to fetch notifications:', err);
         return null;
       }
     },
@@ -182,8 +183,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           prev.map((n) => (n.uuid === uuid ? { ...n, isRead: true } : n)),
         );
         setUnreadCount((prev) => Math.max(0, prev - 1));
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[Notifications] Failed to mark notification as read:', err);
       }
     },
     [token],
@@ -198,8 +199,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[Notifications] Failed to mark all as read:', err);
     }
   }, [token]);
 

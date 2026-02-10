@@ -8,7 +8,7 @@ import {
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { users } from '../auth/users';
-import { socialEntityTypeEnum } from './social';
+import { socialEntityTypeEnum, comments } from './social';
 
 export const notificationTypeEnum = pgEnum('notification_type', [
   'new_follower',
@@ -38,7 +38,9 @@ export const notifications = pgTable(
     type: notificationTypeEnum('type').notNull(),
     entityType: socialEntityTypeEnum('entity_type'),
     entityId: text('entity_id'),
-    commentId: bigint('comment_id', { mode: 'number' }),
+    commentId: bigint('comment_id', { mode: 'number' }).references(() => comments.id, {
+      onDelete: 'set null',
+    }),
     readAt: timestamp('read_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },

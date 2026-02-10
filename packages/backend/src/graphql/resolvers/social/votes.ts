@@ -197,7 +197,7 @@ export const socialVoteMutations = {
       )
       .limit(1);
 
-    let isNewVote = false;
+    let isFirstVote = false;
 
     if (existing) {
       if (existing.value === value) {
@@ -206,12 +206,11 @@ export const socialVoteMutations = {
           .delete(dbSchema.votes)
           .where(eq(dbSchema.votes.id, existing.id));
       } else {
-        // Different value — update
+        // Different value — update (direction change, not a new vote)
         await db
           .update(dbSchema.votes)
           .set({ value })
           .where(eq(dbSchema.votes.id, existing.id));
-        isNewVote = true;
       }
     } else {
       // No existing vote — insert
@@ -223,11 +222,11 @@ export const socialVoteMutations = {
           entityId,
           value,
         });
-      isNewVote = true;
+      isFirstVote = true;
     }
 
-    // Publish event only when a new vote is cast (not on toggle-off)
-    if (isNewVote) {
+    // Only notify on first vote, not on direction changes or toggle-off
+    if (isFirstVote) {
       publishSocialEvent({
         type: 'vote.cast',
         actorId: userId,

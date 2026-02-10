@@ -29,6 +29,12 @@ EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "notifications" ADD CONSTRAINT "notifications_comment_id_comments_id_fk" FOREIGN KEY ("comment_id") REFERENCES "public"."comments"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "notifications_recipient_unread_idx" ON "notifications" USING btree ("recipient_id","read_at","created_at");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "notifications_recipient_created_at_idx" ON "notifications" USING btree ("recipient_id","created_at");
