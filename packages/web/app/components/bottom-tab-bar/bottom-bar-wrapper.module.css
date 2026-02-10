@@ -11,3 +11,14 @@
     padding-bottom: 16px;
   }
 }
+
+/* Mobile Safari renders a grey rectangle under the chrome when bottom: 0,
+   so offset with 2dvh. -webkit-touch-callout is only supported by iOS Safari
+   (all iOS browsers use WebKit), and the media query limits to touch devices. */
+@supports (-webkit-touch-callout: none) {
+  @media (hover: none) and (pointer: coarse) {
+    .bottomBarWrapper {
+      bottom: 2dvh;
+    }
+  }
+}
