@@ -196,6 +196,12 @@ export const RESOLVE_PROPOSAL = gql`
   }
 `;
 
+export const DELETE_PROPOSAL = gql`
+  mutation DeleteProposal($input: DeleteProposalInput!) {
+    deleteProposal(input: $input)
+  }
+`;
+
 export const SETTER_OVERRIDE = gql`
   mutation SetterOverrideCommunityStatus($input: SetterOverrideInput!) {
     setterOverrideCommunityStatus(input: $input) {
@@ -395,6 +401,16 @@ export interface ResolveProposalVariables {
 
 export interface ResolveProposalResponse {
   resolveProposal: Proposal;
+}
+
+export interface DeleteProposalVariables {
+  input: {
+    proposalUuid: string;
+  };
+}
+
+export interface DeleteProposalResponse {
+  deleteProposal: boolean;
 }
 
 export interface FreezeClimbVariables {

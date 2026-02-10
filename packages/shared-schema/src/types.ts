@@ -581,7 +581,8 @@ export type SocialEventType =
   | 'proposal.created'
   | 'proposal.voted'
   | 'proposal.approved'
-  | 'proposal.rejected';
+  | 'proposal.rejected'
+  | 'proposal.deleted';
 
 export type SocialEvent = {
   type: SocialEventType;

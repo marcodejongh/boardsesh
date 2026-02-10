@@ -604,6 +604,13 @@ export const ResolveProposalInputSchema = z.object({
 });
 
 /**
+ * Delete proposal input validation schema
+ */
+export const DeleteProposalInputSchema = z.object({
+  proposalUuid: UUIDSchema,
+});
+
+/**
  * Setter override input validation schema
  */
 export const SetterOverrideInputSchema = z.object({

@@ -18,12 +18,18 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
 import Snackbar from '@mui/material/Snackbar';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
-import { VOTE_ON_PROPOSAL, RESOLVE_PROPOSAL } from '@/app/lib/graphql/operations/proposals';
+import { VOTE_ON_PROPOSAL, RESOLVE_PROPOSAL, DELETE_PROPOSAL } from '@/app/lib/graphql/operations/proposals';
 import type { Proposal } from '@boardsesh/shared-schema';
 import ProposalVoteBar from './proposal-vote-bar';
 import CommentSection from './comment-section';
@@ -44,14 +50,16 @@ interface ProposalCardProps {
   proposal: Proposal;
   isAdminOrLeader?: boolean;
   onUpdate?: (updated: Proposal) => void;
+  onDelete?: (proposalUuid: string) => void;
 }
 
-export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate }: ProposalCardProps) {
+export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDelete }: ProposalCardProps) {
   const { token } = useWsAuthToken();
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState('');
   const [localProposal, setLocalProposal] = useState(proposal);
   const [showComments, setShowComments] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleVote = useCallback(async (value: number) => {
     if (!token) {
@@ -89,6 +97,23 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate }: Pr
       setLoading(false);
     }
   }, [token, localProposal.uuid, onUpdate]);
+
+  const handleDelete = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const client = createGraphQLHttpClient(token);
+      await client.request<{ deleteProposal: boolean }>(DELETE_PROPOSAL, {
+        input: { proposalUuid: localProposal.uuid },
+      });
+      setShowDeleteDialog(false);
+      onDelete?.(localProposal.uuid);
+    } catch {
+      setSnackbar('Failed to delete proposal');
+    } finally {
+      setLoading(false);
+    }
+  }, [token, localProposal.uuid, onDelete]);
 
   const typeColor = TYPE_COLORS[localProposal.type] || themeTokens.neutral[500];
 
@@ -227,6 +252,27 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate }: Pr
             </Box>
           )}
 
+          {/* Admin delete for accepted proposals */}
+          {isAdminOrLeader && localProposal.status === 'approved' && (
+            <Box sx={{ mt: 1.5 }}>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<DeleteIcon />}
+                disabled={loading}
+                onClick={() => setShowDeleteDialog(true)}
+                sx={{
+                  color: themeTokens.colors.error,
+                  borderColor: themeTokens.colors.error,
+                  fontSize: 12,
+                  textTransform: 'none',
+                }}
+              >
+                Delete Proposal
+              </Button>
+            </Box>
+          )}
+
           {/* Comments toggle */}
           <Button
             size="small"
@@ -254,6 +300,24 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate }: Pr
           </Typography>
         </CardContent>
       </Card>
+
+      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
+        <DialogTitle>Delete Accepted Proposal</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will revert the effects of this proposal (e.g., grade change, benchmark/classic status)
+            and permanently delete it. This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDialog(false)} disabled={loading}>
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="error" disabled={loading}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={!!snackbar}

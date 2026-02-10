@@ -187,6 +187,14 @@ We are using next.js app router, it's important we try to use server side compon
 - Use Zod for request/response validation
 - Implement both internal and proxy endpoints as needed
 
+### Database Queries: Prefer Drizzle ORM
+
+**Always use Drizzle ORM query builder** (`db.select()`, `db.insert()`, `db.update()`, `db.delete()`) for database operations. Only fall back to raw SQL (`sql` template literals from `drizzle-orm`) when the query genuinely cannot be expressed with the query builder (complex JOINs with type casts, window functions, CTEs, EXISTS subqueries, complex aggregations).
+
+- **Never use the raw Neon `sql` client** (`import { sql } from '@/app/lib/db/db'`) for new code. Use Drizzle's `db` instance instead (`getDb()` or `dbz`), which provides type safety and schema validation.
+- When raw SQL is necessary, use `db.execute(sql`...`)` with Drizzle's `sql` from `drizzle-orm` — not the Neon HTTP client directly.
+- Both are safe from SQL injection (parameterized), but Drizzle gives you type safety and schema awareness.
+
 ### Client-Side Storage: IndexedDB Only
 
 **Never use `localStorage` or `sessionStorage`**. All client-side persistence must use IndexedDB via the `idb` package.

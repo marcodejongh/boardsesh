@@ -1448,6 +1448,10 @@ export const typeDefs = /* GraphQL */ `
     reason: String
   }
 
+  input DeleteProposalInput {
+    proposalUuid: ID!
+  }
+
   input SetterOverrideInput {
     climbUuid: String!
     boardType: String!
@@ -2545,6 +2549,11 @@ export const typeDefs = /* GraphQL */ `
     Resolve a proposal (admin/leader only).
     """
     resolveProposal(input: ResolveProposalInput!): Proposal!
+
+    """
+    Delete an accepted proposal and revert its effects (admin/leader only).
+    """
+    deleteProposal(input: DeleteProposalInput!): Boolean!
 
     """
     Setter override: directly set community status for your own climb.

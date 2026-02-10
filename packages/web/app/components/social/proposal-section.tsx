@@ -106,6 +106,11 @@ export default function ProposalSection({ climbUuid, boardType, angle, currentCl
     }
   }, [fetchData]);
 
+  const handleProposalDeleted = useCallback((proposalUuid: string) => {
+    setAcceptedProposals((prev) => prev.filter((p) => p.uuid !== proposalUuid));
+    fetchData();
+  }, [fetchData]);
+
   if (loading) return null;
 
   const acceptedSummaryParts: string[] = [];
@@ -147,7 +152,7 @@ export default function ProposalSection({ climbUuid, boardType, angle, currentCl
                 angle={angle}
                 isFrozen={communityStatus?.isFrozen}
                 outlierWarning={communityStatus?.outlierAnalysis?.isOutlier}
-                currentClimbDifficulty={currentClimbDifficulty}
+                currentClimbDifficulty={communityStatus?.communityGrade || currentClimbDifficulty}
                 boardName={boardName}
                 onCreated={handleProposalCreated}
               />
@@ -187,7 +192,8 @@ export default function ProposalSection({ climbUuid, boardType, angle, currentCl
             <ProposalCard
               key={proposal.uuid}
               proposal={proposal}
-              isAdminOrLeader={false}
+              isAdminOrLeader={isAdminOrLeader}
+              onDelete={handleProposalDeleted}
             />
           ))}
         </Box>

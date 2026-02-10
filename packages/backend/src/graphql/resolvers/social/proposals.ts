@@ -7,6 +7,7 @@ import {
   CreateProposalInputSchema,
   VoteOnProposalInputSchema,
   ResolveProposalInputSchema,
+  DeleteProposalInputSchema,
   SetterOverrideInputSchema,
   FreezeClimbInputSchema,
   GetClimbProposalsInputSchema,
@@ -176,6 +177,103 @@ async function applyProposalEffect(proposal: typeof dbSchema.climbProposals.$inf
           isClassic: proposal.proposedValue === 'true',
           lastProposalId: proposal.id,
         });
+    }
+  }
+}
+
+/**
+ * Revert the effect of a previously-approved proposal.
+ * Finds the most recent OTHER approved proposal of the same type for the same climb+angle
+ * and reverts to that value (or to the default if none exists).
+ */
+async function revertProposalEffect(proposal: typeof dbSchema.climbProposals.$inferSelect): Promise<void> {
+  if (proposal.type === 'grade' || proposal.type === 'benchmark') {
+    // Find the most recent other approved proposal of the same type for this climb+angle
+    const conditions = [
+      eq(dbSchema.climbProposals.climbUuid, proposal.climbUuid),
+      eq(dbSchema.climbProposals.boardType, proposal.boardType),
+      eq(dbSchema.climbProposals.type, proposal.type),
+      eq(dbSchema.climbProposals.status, 'approved'),
+      sql`${dbSchema.climbProposals.id} != ${proposal.id}`,
+    ];
+    if (proposal.angle != null) {
+      conditions.push(eq(dbSchema.climbProposals.angle, proposal.angle));
+    }
+
+    const [previousProposal] = await db
+      .select()
+      .from(dbSchema.climbProposals)
+      .where(and(...conditions))
+      .orderBy(desc(dbSchema.climbProposals.resolvedAt))
+      .limit(1);
+
+    const [existing] = await db
+      .select()
+      .from(dbSchema.climbCommunityStatus)
+      .where(
+        and(
+          eq(dbSchema.climbCommunityStatus.climbUuid, proposal.climbUuid),
+          eq(dbSchema.climbCommunityStatus.boardType, proposal.boardType),
+          eq(dbSchema.climbCommunityStatus.angle, proposal.angle!),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      const updates: Record<string, unknown> = {
+        updatedAt: new Date(),
+        lastProposalId: previousProposal?.id || null,
+      };
+
+      if (proposal.type === 'grade') {
+        updates.communityGrade = previousProposal?.proposedValue || null;
+      } else if (proposal.type === 'benchmark') {
+        updates.isBenchmark = previousProposal ? previousProposal.proposedValue === 'true' : false;
+      }
+
+      await db
+        .update(dbSchema.climbCommunityStatus)
+        .set(updates)
+        .where(eq(dbSchema.climbCommunityStatus.id, existing.id));
+    }
+  } else if (proposal.type === 'classic') {
+    // Find the most recent other approved classic proposal for this climb
+    const [previousProposal] = await db
+      .select()
+      .from(dbSchema.climbProposals)
+      .where(
+        and(
+          eq(dbSchema.climbProposals.climbUuid, proposal.climbUuid),
+          eq(dbSchema.climbProposals.boardType, proposal.boardType),
+          eq(dbSchema.climbProposals.type, 'classic'),
+          eq(dbSchema.climbProposals.status, 'approved'),
+          sql`${dbSchema.climbProposals.id} != ${proposal.id}`,
+        ),
+      )
+      .orderBy(desc(dbSchema.climbProposals.resolvedAt))
+      .limit(1);
+
+    const [existing] = await db
+      .select()
+      .from(dbSchema.climbClassicStatus)
+      .where(
+        and(
+          eq(dbSchema.climbClassicStatus.climbUuid, proposal.climbUuid),
+          eq(dbSchema.climbClassicStatus.boardType, proposal.boardType),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      const classicUpdates: Record<string, unknown> = {
+        isClassic: previousProposal ? previousProposal.proposedValue === 'true' : false,
+        updatedAt: new Date(),
+        lastProposalId: previousProposal?.id || null,
+      };
+      await db
+        .update(dbSchema.climbClassicStatus)
+        .set(classicUpdates)
+        .where(eq(dbSchema.climbClassicStatus.id, existing.id));
     }
   }
 }
@@ -828,6 +926,48 @@ export const socialProposalMutations = {
     }).catch((err) => console.error(`[Proposals] Failed to publish ${eventType}:`, err));
 
     return enrichProposal(proposal, userId);
+  },
+
+  deleteProposal: async (
+    _: unknown,
+    { input }: { input: unknown },
+    ctx: ConnectionContext,
+  ) => {
+    const validated = validateInput(DeleteProposalInputSchema, input, 'input');
+    const { proposalUuid } = validated;
+
+    // Find proposal
+    const [proposal] = await db
+      .select()
+      .from(dbSchema.climbProposals)
+      .where(eq(dbSchema.climbProposals.uuid, proposalUuid))
+      .limit(1);
+
+    if (!proposal) throw new Error('Proposal not found');
+    if (proposal.status !== 'approved') throw new Error('Can only delete approved proposals');
+
+    await requireAdminOrLeader(ctx, proposal.boardType);
+    const userId = ctx.userId!;
+
+    // Revert the proposal's effect
+    await revertProposalEffect(proposal);
+
+    // Hard-delete the proposal (votes cascade-delete via FK, lastProposalId set to null via FK)
+    await db
+      .delete(dbSchema.climbProposals)
+      .where(eq(dbSchema.climbProposals.id, proposal.id));
+
+    // Publish deleted event
+    publishSocialEvent({
+      type: 'proposal.deleted',
+      actorId: userId,
+      entityType: 'proposal',
+      entityId: proposalUuid,
+      timestamp: Date.now(),
+      metadata: { climbUuid: proposal.climbUuid, boardType: proposal.boardType, proposalType: proposal.type },
+    }).catch((err) => console.error('[Proposals] Failed to publish proposal.deleted:', err));
+
+    return true;
   },
 
   setterOverrideCommunityStatus: async (
