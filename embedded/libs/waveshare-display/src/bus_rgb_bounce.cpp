@@ -504,7 +504,11 @@ namespace lgfx
           _bounce_buf[i] = nullptr;
         }
       }
-      _frame_buffer = nullptr;
+      if (_frame_buffer)
+      {
+        heap_caps_free(_frame_buffer);
+        _frame_buffer = nullptr;
+      }
     }
 
   }

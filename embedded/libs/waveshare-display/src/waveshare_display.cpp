@@ -109,7 +109,15 @@ LGFX_Waveshare7::LGFX_Waveshare7() {
 
 WaveshareDisplay::WaveshareDisplay() : _lastTouchTime(0) {}
 
-WaveshareDisplay::~WaveshareDisplay() {}
+WaveshareDisplay::~WaveshareDisplay() {
+#ifdef ENABLE_BOARD_IMAGE
+    if (_boardImageSprite) {
+        _boardImageSprite->deleteSprite();
+        delete _boardImageSprite;
+        _boardImageSprite = nullptr;
+    }
+#endif
+}
 
 bool WaveshareDisplay::begin() {
     // 1. Initialize I2C for CH422G IO expander
