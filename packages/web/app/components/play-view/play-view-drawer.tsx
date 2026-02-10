@@ -218,7 +218,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       height="100%"
       open={isOpen}
       onClose={handleClose}
-      showCloseButton={false}
       swipeEnabled={!isActionsOpen && !isQueueOpen}
       showDragHandle={true}
       styles={{

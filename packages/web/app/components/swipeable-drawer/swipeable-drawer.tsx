@@ -3,7 +3,12 @@
 import React, { useMemo, useCallback } from 'react';
 import MuiSwipeableDrawer from '@mui/material/SwipeableDrawer';
 import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
+import KeyboardArrowDownOutlined from '@mui/icons-material/KeyboardArrowDownOutlined';
+import KeyboardArrowUpOutlined from '@mui/icons-material/KeyboardArrowUpOutlined';
+import KeyboardArrowLeftOutlined from '@mui/icons-material/KeyboardArrowLeftOutlined';
+import KeyboardArrowRightOutlined from '@mui/icons-material/KeyboardArrowRightOutlined';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './swipeable-drawer.module.css';
 
@@ -140,6 +145,41 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     );
   }, [userTitle, extra, placement, handleInHeader, horizontalDragHandle, userStyles?.header]);
 
+  const closeButton = useMemo(() => {
+    if (showCloseButton === false) return null;
+
+    const iconMap: Record<Placement, React.ReactElement> = {
+      bottom: <KeyboardArrowDownOutlined />,
+      top: <KeyboardArrowUpOutlined />,
+      left: <KeyboardArrowLeftOutlined />,
+      right: <KeyboardArrowRightOutlined />,
+    };
+
+    const positionMap: Record<Placement, Record<string, number | string>> = {
+      bottom: { top: 8, left: 8 },
+      top: { bottom: 8, left: 8 },
+      left: { top: 8, right: 8 },
+      right: { top: 8, left: 8 },
+    };
+
+    return (
+      <IconButton
+        className="drawer-close-btn"
+        size="small"
+        onClick={(e) => onClose?.(e)}
+        sx={{
+          position: 'absolute',
+          zIndex: 2,
+          ...positionMap[placement],
+          backgroundColor: themeTokens.neutral[100],
+          '&:hover': { backgroundColor: themeTokens.neutral[200] },
+        }}
+      >
+        {iconMap[placement]}
+      </IconButton>
+    );
+  }, [showCloseButton, placement, onClose]);
+
   const wrappedChildren = useMemo(() => {
     if (handleInHeader) {
       return children;
@@ -157,7 +197,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
 
   // Compute paper dimensions from height/width/styles.wrapper
   const paperSx = useMemo(() => {
-    const sx: Record<string, unknown> = {};
+    const sx: Record<string, unknown> = { position: 'relative' };
 
     // Apply wrapper styles (styles.wrapper → MUI PaperProps.sx)
     if (userStyles?.wrapper) {
@@ -233,6 +273,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
 
   const bodyContent = (
     <>
+      {closeButton}
       {headerElement}
       <Box
         sx={{

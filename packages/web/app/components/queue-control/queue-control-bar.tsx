@@ -205,29 +205,13 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   };
 
   const handleClimbInfoClick = useCallback(() => {
-    // On desktop list page, no-op (queue is in sidebar)
-    if (isListPage && typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
-      return;
-    }
-
-    // On mobile, open play drawer — only if there's a current climb
-    if (typeof window !== 'undefined' && !window.matchMedia('(min-width: 768px)').matches) {
-      if (!currentClimb) return;
-      setActiveDrawer('play');
-      track('Play Drawer Opened', {
-        boardLayout: boardDetails.layout_name || '',
-        source: 'bar_tap',
-      });
-      return;
-    }
-
-    // On desktop, open queue drawer
-    setActiveDrawer((prev) => prev === 'queue' ? 'none' : 'queue');
-    track('Queue Drawer Toggled', {
-      action: activeDrawer === 'queue' ? 'closed' : 'opened',
+    if (!currentClimb) return;
+    setActiveDrawer('play');
+    track('Play Drawer Opened', {
       boardLayout: boardDetails.layout_name || '',
+      source: 'bar_tap',
     });
-  }, [isListPage, boardDetails, activeDrawer, currentClimb]);
+  }, [currentClimb, boardDetails.layout_name]);
 
   // Transition style shared by current and peek text
   const getTextTransitionStyle = () => {
@@ -421,7 +405,6 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
         <QueueList ref={queueListRef} boardDetails={boardDetails} onClimbNavigate={() => setActiveDrawer('none')} />
       </SwipeableDrawer>
 
-      {/* Play view drawer - mobile only */}
       <PlayViewDrawer
         activeDrawer={activeDrawer}
         setActiveDrawer={setActiveDrawer}
