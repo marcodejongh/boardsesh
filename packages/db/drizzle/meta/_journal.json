@@ -337,6 +337,13 @@
       "when": 1769395200000,
       "tag": "0049_seed_admin_marco",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1769481600000,
+      "tag": "0050_add_proposal_created_notification_type",
+      "breakpoints": true
     }
   ]
 }

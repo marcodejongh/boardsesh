@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import type { NotificationType } from '@boardsesh/db/schema';
@@ -191,6 +191,34 @@ export async function resolveProposalRejectionRecipients(
     recipientId: proposal.proposerId,
     notificationType: 'proposal_rejected',
   }];
+}
+
+/**
+ * Resolve recipients for a proposal.created event.
+ * Notifies users who have logged ascents or attempts on the climb.
+ */
+export async function resolveProposalCreatedRecipients(
+  climbUuid: string,
+  boardType: string,
+  actorId: string,
+): Promise<RecipientInfo[]> {
+  const climbers = await db
+    .select({ userId: dbSchema.boardseshTicks.userId })
+    .from(dbSchema.boardseshTicks)
+    .where(
+      and(
+        eq(dbSchema.boardseshTicks.climbUuid, climbUuid),
+        eq(dbSchema.boardseshTicks.boardType, boardType),
+      ),
+    )
+    .groupBy(dbSchema.boardseshTicks.userId);
+
+  return climbers
+    .filter((c) => c.userId !== actorId)
+    .map((c) => ({
+      recipientId: c.userId,
+      notificationType: 'proposal_created' as NotificationType,
+    }));
 }
 
 /**

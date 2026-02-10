@@ -126,6 +126,10 @@ async function createInlineNotification(event: SocialEvent): Promise<void> {
         }
         break;
       }
+      case 'proposal.created': {
+        // Multi-recipient notification (all climbers) — handled by NotificationWorker only
+        return;
+      }
       case 'ascent.logged': {
         await fanoutFeedItems(event);
         // No notification for ascent.logged - it's feed-only

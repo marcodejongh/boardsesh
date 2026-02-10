@@ -1205,6 +1205,7 @@ export const typeDefs = /* GraphQL */ `
     proposal_approved
     proposal_rejected
     proposal_vote
+    proposal_created
   }
 
   """
