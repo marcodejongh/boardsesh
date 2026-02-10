@@ -10,6 +10,7 @@ import { NavigationLoadingProvider } from './components/providers/navigation-loa
 import PersistentSessionWrapper from './components/providers/persistent-session-wrapper';
 import { SnackbarProvider } from './components/providers/snackbar-provider';
 import { NotificationProvider } from './components/providers/notification-provider';
+import { WsAuthProvider } from './components/providers/ws-auth-provider';
 import './components/index.css';
 import type { Viewport } from 'next';
 
@@ -30,11 +31,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AppRouterCacheProvider>
               <ThemeRegistry>
                 <PersistentSessionWrapper>
-                  <SnackbarProvider>
-                    <NotificationProvider>
-                      <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
-                    </NotificationProvider>
-                  </SnackbarProvider>
+                  <WsAuthProvider>
+                    <SnackbarProvider>
+                      <NotificationProvider>
+                        <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
+                      </NotificationProvider>
+                    </SnackbarProvider>
+                  </WsAuthProvider>
                 </PersistentSessionWrapper>
               </ThemeRegistry>
             </AppRouterCacheProvider>

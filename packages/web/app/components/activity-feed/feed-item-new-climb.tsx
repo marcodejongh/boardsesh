@@ -1,19 +1,24 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import MuiCard from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import MuiTypography from '@mui/material/Typography';
 import MuiAvatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
+import IconButton from '@mui/material/IconButton';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
+import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import type { ActivityFeedItem } from '@boardsesh/shared-schema';
 import AscentThumbnail from './ascent-thumbnail';
 import VoteButton from '@/app/components/social/vote-button';
+import CommentSection from '@/app/components/social/comment-section';
+import { themeTokens } from '@/app/theme/theme-config';
 import styles from './ascents-feed.module.css';
 
 dayjs.extend(relativeTime);
@@ -23,6 +28,7 @@ interface FeedItemNewClimbProps {
 }
 
 export default function FeedItemNewClimb({ item }: FeedItemNewClimbProps) {
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const timeAgo = dayjs(item.createdAt).fromNow();
 
   return (
@@ -89,11 +95,25 @@ export default function FeedItemNewClimb({ item }: FeedItemNewClimbProps) {
               )}
             </Box>
 
-            <Box sx={{ mt: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
               <VoteButton entityType="climb" entityId={item.climbUuid || item.entityId} likeOnly />
+              <IconButton
+                size="small"
+                onClick={() => setCommentsOpen((prev) => !prev)}
+                sx={{ color: commentsOpen ? themeTokens.colors.primary : 'text.secondary' }}
+              >
+                <ChatBubbleOutlineOutlined fontSize="small" />
+              </IconButton>
             </Box>
           </Box>
         </Box>
+
+        {/* Comments */}
+        <Collapse in={commentsOpen} unmountOnExit>
+          <Box sx={{ mt: 1 }}>
+            <CommentSection entityType="climb" entityId={item.climbUuid || item.entityId} title="Comments" />
+          </Box>
+        </Collapse>
       </CardContent>
     </MuiCard>
   );
