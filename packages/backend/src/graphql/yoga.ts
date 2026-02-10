@@ -60,12 +60,12 @@ export function createYogaInstance() {
       : false,
     // Disable CORS - we handle it manually in the request router
     cors: false,
-    // Logging - disable debug in production to reduce noise
+    // Logging - suppress debug entirely (Yoga internals like "Parsing request" are noisy)
     logging: {
-      debug: process.env.NODE_ENV === 'production' ? () => {} : (...args) => console.log('[Yoga Debug]', ...args),
-      info: (...args) => console.log('[Yoga Info]', ...args),
-      warn: (...args) => console.warn('[Yoga Warn]', ...args),
-      error: (...args) => console.error('[Yoga Error]', ...args),
+      debug: () => {},
+      info: (...args: unknown[]) => console.log('[Yoga]', ...args),
+      warn: (...args: unknown[]) => console.warn('[Yoga]', ...args),
+      error: (...args: unknown[]) => console.error('[Yoga]', ...args),
     },
     // In development/test, show all errors
     // In production, errors will be masked by default
