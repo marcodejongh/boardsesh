@@ -344,7 +344,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
           sx={actionSx}
         />
         <BottomNavigationAction
-          label="Alerts"
+          label="Notifications"
           icon={
             <Badge
               badgeContent={notificationUnreadCount}
