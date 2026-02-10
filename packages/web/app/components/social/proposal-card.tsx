@@ -19,7 +19,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import Button from '@mui/material/Button';
 import Snackbar from '@mui/material/Snackbar';
 import { themeTokens } from '@/app/theme/theme-config';
-import { useWsAuthToken } from '@/app/components/auth/ws-auth-provider';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { VOTE_ON_PROPOSAL, RESOLVE_PROPOSAL } from '@/app/lib/graphql/operations/proposals';
 import type { Proposal } from '@boardsesh/shared-schema';

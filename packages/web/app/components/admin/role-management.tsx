@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Table from '@mui/material/Table';
@@ -23,28 +23,41 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Avatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemAvatar from '@mui/material/ListItemAvatar';
+import ListItemText from '@mui/material/ListItemText';
+import CircularProgress from '@mui/material/CircularProgress';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import Snackbar from '@mui/material/Snackbar';
 import { themeTokens } from '@/app/theme/theme-config';
-import { useWsAuthToken } from '@/app/components/auth/ws-auth-provider';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_COMMUNITY_ROLES,
   GRANT_ROLE,
   REVOKE_ROLE,
 } from '@/app/lib/graphql/operations/proposals';
+import { SEARCH_USERS } from '@/app/lib/graphql/operations/social';
 import type { CommunityRoleAssignment, CommunityRoleType } from '@boardsesh/shared-schema';
+import type { SearchUsersQueryResponse, SearchUsersQueryVariables } from '@/app/lib/graphql/operations/social';
+
+type UserResult = SearchUsersQueryResponse['searchUsers']['results'][number]['user'];
 
 export default function RoleManagement() {
   const { token } = useWsAuthToken();
   const [roles, setRoles] = useState<CommunityRoleAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showGrantDialog, setShowGrantDialog] = useState(false);
-  const [grantUserId, setGrantUserId] = useState('');
+  const [selectedUser, setSelectedUser] = useState<UserResult | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<UserResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const [grantRole, setGrantRole] = useState<CommunityRoleType>('community_leader');
   const [grantBoardType, setGrantBoardType] = useState('');
   const [snackbar, setSnackbar] = useState('');
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const fetchRoles = useCallback(async () => {
     if (!token) return;
@@ -63,26 +76,55 @@ export default function RoleManagement() {
     fetchRoles();
   }, [fetchRoles]);
 
+  // Debounced user search
+  useEffect(() => {
+    if (!token || searchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const client = createGraphQLHttpClient(token);
+        const result = await client.request<SearchUsersQueryResponse, SearchUsersQueryVariables>(
+          SEARCH_USERS,
+          { input: { query: searchQuery, limit: 5 } },
+        );
+        setSearchResults(result.searchUsers.results.map((r) => r.user));
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(searchTimeout.current);
+  }, [token, searchQuery]);
+
   const handleGrant = useCallback(async () => {
-    if (!token || !grantUserId) return;
+    if (!token || !selectedUser) return;
     try {
       const client = createGraphQLHttpClient(token);
       await client.request(GRANT_ROLE, {
         input: {
-          userId: grantUserId,
+          userId: selectedUser.id,
           role: grantRole,
           boardType: grantBoardType || null,
         },
       });
       setShowGrantDialog(false);
-      setGrantUserId('');
+      setSelectedUser(null);
+      setSearchQuery('');
+      setSearchResults([]);
       setGrantBoardType('');
       setSnackbar('Role granted');
       fetchRoles();
-    } catch (err) {
+    } catch {
       setSnackbar('Failed to grant role');
     }
-  }, [token, grantUserId, grantRole, grantBoardType, fetchRoles]);
+  }, [token, selectedUser, grantRole, grantBoardType, fetchRoles]);
 
   const handleRevoke = useCallback(async (role: CommunityRoleAssignment) => {
     if (!token) return;
@@ -97,10 +139,17 @@ export default function RoleManagement() {
       });
       setSnackbar('Role revoked');
       fetchRoles();
-    } catch (err) {
+    } catch {
       setSnackbar('Failed to revoke role');
     }
   }, [token, fetchRoles]);
+
+  const handleCloseDialog = useCallback(() => {
+    setShowGrantDialog(false);
+    setSelectedUser(null);
+    setSearchQuery('');
+    setSearchResults([]);
+  }, []);
 
   return (
     <Box>
@@ -185,18 +234,63 @@ export default function RoleManagement() {
       </TableContainer>
 
       {/* Grant Role Dialog */}
-      <Dialog open={showGrantDialog} onClose={() => setShowGrantDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog open={showGrantDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Grant Role</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField
-              label="User ID"
-              value={grantUserId}
-              onChange={(e) => setGrantUserId(e.target.value)}
-              size="small"
-              fullWidth
-              placeholder="Enter user ID"
-            />
+            {/* User search or selected user display */}
+            {selectedUser ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, border: `1px solid ${themeTokens.neutral[200]}`, borderRadius: 1 }}>
+                <Avatar src={selectedUser.avatarUrl || undefined} sx={{ width: 32, height: 32, fontSize: 14 }}>
+                  {selectedUser.displayName?.[0] || 'U'}
+                </Avatar>
+                <Typography variant="body2" sx={{ flex: 1, fontWeight: 500 }}>
+                  {selectedUser.displayName}
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={() => { setSelectedUser(null); setSearchQuery(''); setSearchResults([]); }}
+                  sx={{ textTransform: 'none', fontSize: 12 }}
+                >
+                  Change
+                </Button>
+              </Box>
+            ) : (
+              <Box>
+                <TextField
+                  label="Search user"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  size="small"
+                  fullWidth
+                  placeholder="Type a name to search..."
+                  slotProps={{
+                    input: {
+                      endAdornment: searching ? <CircularProgress size={16} /> : null,
+                    },
+                  }}
+                />
+                {searchResults.length > 0 && (
+                  <Paper variant="outlined" sx={{ mt: 0.5, maxHeight: 200, overflow: 'auto' }}>
+                    <List dense disablePadding>
+                      {searchResults.map((user) => (
+                        <ListItemButton
+                          key={user.id}
+                          onClick={() => { setSelectedUser(user); setSearchResults([]); }}
+                        >
+                          <ListItemAvatar sx={{ minWidth: 40 }}>
+                            <Avatar src={user.avatarUrl || undefined} sx={{ width: 28, height: 28, fontSize: 12 }}>
+                              {user.displayName?.[0] || 'U'}
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText primary={user.displayName} />
+                        </ListItemButton>
+                      ))}
+                    </List>
+                  </Paper>
+                )}
+              </Box>
+            )}
             <FormControl size="small" fullWidth>
               <InputLabel>Role</InputLabel>
               <Select
@@ -223,11 +317,11 @@ export default function RoleManagement() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowGrantDialog(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
+          <Button onClick={handleCloseDialog} sx={{ textTransform: 'none' }}>Cancel</Button>
           <Button
             onClick={handleGrant}
             variant="contained"
-            disabled={!grantUserId}
+            disabled={!selectedUser}
             sx={{
               textTransform: 'none',
               bgcolor: themeTokens.colors.primary,

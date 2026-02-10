@@ -21,7 +21,7 @@ import Typography from '@mui/material/Typography';
 import Snackbar from '@mui/material/Snackbar';
 import AddIcon from '@mui/icons-material/Add';
 import { themeTokens } from '@/app/theme/theme-config';
-import { useWsAuthToken } from '@/app/components/auth/ws-auth-provider';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { CREATE_PROPOSAL } from '@/app/lib/graphql/operations/proposals';
 import type { Proposal, ProposalType } from '@boardsesh/shared-schema';

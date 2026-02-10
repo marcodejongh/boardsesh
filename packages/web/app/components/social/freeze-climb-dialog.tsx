@@ -11,7 +11,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import Snackbar from '@mui/material/Snackbar';
 import { themeTokens } from '@/app/theme/theme-config';
-import { useWsAuthToken } from '@/app/components/auth/ws-auth-provider';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { FREEZE_CLIMB } from '@/app/lib/graphql/operations/proposals';
 

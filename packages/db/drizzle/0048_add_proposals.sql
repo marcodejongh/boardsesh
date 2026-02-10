@@ -22,10 +22,10 @@ END $$;
 -- community_roles
 CREATE TABLE IF NOT EXISTS "community_roles" (
   "id" bigserial PRIMARY KEY NOT NULL,
-  "user_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "role" "community_role_type" NOT NULL,
   "board_type" text,
-  "granted_by" text REFERENCES "user"("id") ON DELETE SET NULL,
+  "granted_by" text REFERENCES "users"("id") ON DELETE SET NULL,
   "created_at" timestamp DEFAULT now() NOT NULL
 );
 
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS "community_settings" (
   "scope_key" text NOT NULL,
   "key" text NOT NULL,
   "value" text NOT NULL,
-  "set_by" text REFERENCES "user"("id") ON DELETE SET NULL,
+  "set_by" text REFERENCES "users"("id") ON DELETE SET NULL,
   "created_at" timestamp DEFAULT now() NOT NULL,
   "updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -53,14 +53,14 @@ CREATE TABLE IF NOT EXISTS "climb_proposals" (
   "climb_uuid" text NOT NULL,
   "board_type" text NOT NULL,
   "angle" integer,
-  "proposer_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "proposer_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "type" "proposal_type" NOT NULL,
   "proposed_value" text NOT NULL,
   "current_value" text NOT NULL,
   "status" "proposal_status" NOT NULL DEFAULT 'open',
   "reason" text,
   "resolved_at" timestamp,
-  "resolved_by" text REFERENCES "user"("id") ON DELETE SET NULL,
+  "resolved_by" text REFERENCES "users"("id") ON DELETE SET NULL,
   "created_at" timestamp DEFAULT now() NOT NULL
 );
 
@@ -74,7 +74,7 @@ CREATE INDEX IF NOT EXISTS "climb_proposals_created_at_idx" ON "climb_proposals"
 CREATE TABLE IF NOT EXISTS "proposal_votes" (
   "id" bigserial PRIMARY KEY NOT NULL,
   "proposal_id" bigint NOT NULL REFERENCES "climb_proposals"("id") ON DELETE CASCADE,
-  "user_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "value" integer NOT NULL,
   "weight" integer NOT NULL DEFAULT 1,
   "created_at" timestamp DEFAULT now() NOT NULL,

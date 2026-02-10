@@ -19,7 +19,7 @@ import InputLabel from '@mui/material/InputLabel';
 import Snackbar from '@mui/material/Snackbar';
 import SaveIcon from '@mui/icons-material/Save';
 import { themeTokens } from '@/app/theme/theme-config';
-import { useWsAuthToken } from '@/app/components/auth/ws-auth-provider';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_COMMUNITY_SETTINGS,
@@ -28,11 +28,11 @@ import {
 import type { CommunitySettingType } from '@boardsesh/shared-schema';
 
 const DEFAULT_SETTINGS = [
-  { key: 'approval_threshold', label: 'Approval Threshold', description: 'Weighted votes needed for auto-approval' },
-  { key: 'outlier_min_ascents', label: 'Outlier Min Ascents', description: 'Min ascents for outlier detection' },
-  { key: 'outlier_grade_diff', label: 'Outlier Grade Diff', description: 'Grade difference threshold for outlier' },
-  { key: 'admin_vote_weight', label: 'Admin Vote Weight', description: 'Vote weight multiplier for admins' },
-  { key: 'leader_vote_weight', label: 'Leader Vote Weight', description: 'Vote weight multiplier for leaders' },
+  { key: 'approval_threshold', label: 'Approval Threshold', description: 'Weighted votes needed for auto-approval', defaultValue: '5' },
+  { key: 'outlier_min_ascents', label: 'Outlier Min Ascents', description: 'Min ascents for outlier detection', defaultValue: '10' },
+  { key: 'outlier_grade_diff', label: 'Outlier Grade Diff', description: 'Grade difference threshold for outlier', defaultValue: '2' },
+  { key: 'admin_vote_weight', label: 'Admin Vote Weight', description: 'Vote weight multiplier for admins', defaultValue: '3' },
+  { key: 'leader_vote_weight', label: 'Leader Vote Weight', description: 'Vote weight multiplier for leaders', defaultValue: '2' },
 ];
 
 export default function CommunitySettingsPanel() {
@@ -41,12 +41,11 @@ export default function CommunitySettingsPanel() {
   const [scopeKey, setScopeKey] = useState('');
   const [settings, setSettings] = useState<CommunitySettingType[]>([]);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState('');
 
   const fetchSettings = useCallback(async () => {
     if (!token) return;
-    setLoading(true);
     try {
       const client = createGraphQLHttpClient(token);
       const result = await client.request<{ communitySettings: CommunitySettingType[] }>(
@@ -54,7 +53,6 @@ export default function CommunitySettingsPanel() {
         { scope, scopeKey: scope === 'global' ? '' : scopeKey },
       );
       setSettings(result.communitySettings);
-      // Initialize edit values from current settings
       const values: Record<string, string> = {};
       for (const s of result.communitySettings) {
         values[s.key] = s.value;
@@ -62,8 +60,6 @@ export default function CommunitySettingsPanel() {
       setEditValues(values);
     } catch (err) {
       console.error('[Settings] Failed to fetch:', err);
-    } finally {
-      setLoading(false);
     }
   }, [token, scope, scopeKey]);
 
@@ -73,24 +69,43 @@ export default function CommunitySettingsPanel() {
     }
   }, [fetchSettings, scope, scopeKey]);
 
-  const handleSave = useCallback(async (key: string) => {
+  const hasChanges = DEFAULT_SETTINGS.some((def) => {
+    const savedValue = settings.find((s) => s.key === def.key)?.value;
+    const editValue = editValues[def.key];
+    // Changed if there's an edit value that differs from the saved value (or from empty if no saved value)
+    return editValue !== undefined && editValue !== '' && editValue !== (savedValue ?? '');
+  });
+
+  const handleSaveAll = useCallback(async () => {
     if (!token) return;
+    setSaving(true);
     try {
       const client = createGraphQLHttpClient(token);
-      await client.request(SET_COMMUNITY_SETTING, {
-        input: {
-          scope,
-          scopeKey: scope === 'global' ? '' : scopeKey,
-          key,
-          value: editValues[key] || '0',
-        },
-      });
-      setSnackbar(`Saved ${key}`);
+      const promises = DEFAULT_SETTINGS
+        .filter((def) => {
+          const savedValue = settings.find((s) => s.key === def.key)?.value;
+          const editValue = editValues[def.key];
+          return editValue !== undefined && editValue !== '' && editValue !== (savedValue ?? '');
+        })
+        .map((def) =>
+          client.request(SET_COMMUNITY_SETTING, {
+            input: {
+              scope,
+              scopeKey: scope === 'global' ? '' : scopeKey,
+              key: def.key,
+              value: editValues[def.key],
+            },
+          }),
+        );
+      await Promise.all(promises);
+      setSnackbar(`Saved ${promises.length} setting${promises.length !== 1 ? 's' : ''}`);
       fetchSettings();
-    } catch (err) {
-      setSnackbar('Failed to save setting');
+    } catch {
+      setSnackbar('Failed to save settings');
+    } finally {
+      setSaving(false);
     }
-  }, [token, scope, scopeKey, editValues, fetchSettings]);
+  }, [token, scope, scopeKey, editValues, settings, fetchSettings]);
 
   return (
     <Box>
@@ -134,7 +149,6 @@ export default function CommunitySettingsPanel() {
               <TableCell>Setting</TableCell>
               <TableCell>Description</TableCell>
               <TableCell>Value</TableCell>
-              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -154,24 +168,30 @@ export default function CommunitySettingsPanel() {
                     onChange={(e) => setEditValues((prev) => ({ ...prev, [def.key]: e.target.value }))}
                     size="small"
                     sx={{ width: 100 }}
-                    placeholder="default"
+                    placeholder={def.defaultValue}
                   />
-                </TableCell>
-                <TableCell align="right">
-                  <Button
-                    size="small"
-                    startIcon={<SaveIcon />}
-                    onClick={() => handleSave(def.key)}
-                    sx={{ textTransform: 'none', fontSize: 12 }}
-                  >
-                    Save
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+        <Button
+          variant="contained"
+          startIcon={<SaveIcon />}
+          onClick={handleSaveAll}
+          disabled={!hasChanges || saving}
+          sx={{
+            textTransform: 'none',
+            bgcolor: themeTokens.colors.primary,
+            '&:hover': { bgcolor: themeTokens.colors.primaryHover },
+          }}
+        >
+          {saving ? 'Saving...' : 'Save All'}
+        </Button>
+      </Box>
 
       <Snackbar
         open={!!snackbar}

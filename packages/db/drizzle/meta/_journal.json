@@ -330,6 +330,13 @@
       "when": 1769308800000,
       "tag": "0048_add_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1769395200000,
+      "tag": "0049_seed_admin_marco",
+      "breakpoints": true
     }
   ]
 }
