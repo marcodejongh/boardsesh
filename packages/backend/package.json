@@ -26,6 +26,8 @@
     "@boardsesh/crypto": "*",
     "@boardsesh/db": "*",
     "@boardsesh/shared-schema": "*",
+    "@escape.tech/graphql-armor-cost-limit": "^2.4.3",
+    "@escape.tech/graphql-armor-max-depth": "^2.4.2",
     "@graphql-tools/schema": "^10.0.30",
     "@panva/hkdf": "^1.2.1",
     "@whatwg-node/fetch": "^0.10.13",

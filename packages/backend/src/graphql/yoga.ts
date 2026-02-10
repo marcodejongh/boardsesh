@@ -1,9 +1,11 @@
 import { createYoga } from 'graphql-yoga';
 import type { IncomingMessage } from 'http';
+import { v4 as uuidv4 } from 'uuid';
 import { schema } from './index';
 import { validateNextAuthToken } from '../middleware/auth';
-import { createContext } from './context';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
+import { maxDepthPlugin } from '@escape.tech/graphql-armor-max-depth';
+import { costLimitPlugin } from '@escape.tech/graphql-armor-cost-limit';
 
 /**
  * Create and configure the GraphQL Yoga instance
@@ -16,7 +18,15 @@ export function createYogaInstance() {
   const yoga = createYoga({
     schema,
     graphqlEndpoint: '/graphql',
+    // Depth/cost limiting for HTTP GraphQL requests.
+    // WebSocket subscriptions are protected separately via onSubscribe in websocket/setup.ts
+    plugins: [
+      maxDepthPlugin({ n: 10 }),
+      costLimitPlugin({ maxCost: 5000 }),
+    ],
     // Context function - extract auth from HTTP requests
+    // HTTP requests are stateless and don't need to be tracked in the connections Map.
+    // Only WebSocket connections are stored there (they have onDisconnect cleanup).
     context: async ({ request }): Promise<ConnectionContext> => {
       // Extract Authorization header
       const authHeader = request.headers.get('authorization');
@@ -26,13 +36,21 @@ export function createYogaInstance() {
         const authResult = await validateNextAuthToken(token);
 
         if (authResult) {
-          // Create authenticated context
-          return createContext(undefined, true, authResult.userId);
+          return {
+            connectionId: `http-${uuidv4()}`,
+            sessionId: undefined,
+            userId: authResult.userId,
+            isAuthenticated: true,
+          };
         }
       }
 
-      // Return unauthenticated context
-      return createContext(undefined, false, undefined);
+      return {
+        connectionId: `http-${uuidv4()}`,
+        sessionId: undefined,
+        userId: undefined,
+        isAuthenticated: false,
+      };
     },
     // Disable GraphiQL in production
     graphiql: process.env.NODE_ENV !== 'production'

@@ -77,9 +77,9 @@ export async function GET(request: Request, props: { params: Promise<SharedSyncR
 
     console.log(`Starting shared sync for ${board_name}`);
 
-    // Basic auth check
+    // Auth check - always require valid CRON_SECRET
     const authHeader = request.headers.get('authorization');
-    if (process.env.VERCEL_ENV !== 'development' && authHeader !== `Bearer ${CRON_SECRET}`) {
+    if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

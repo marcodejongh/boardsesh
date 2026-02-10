@@ -1,9 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 
+const DEBUG = process.env.NODE_ENV === 'development';
+
 /**
  * Module-level map to track connection contexts.
  * This allows us to look up session info by connectionId.
+ * Only WebSocket connections should be stored here — HTTP requests are stateless.
  */
 const connections = new Map<string, ConnectionContext>();
 
@@ -30,7 +33,9 @@ export function createContext(
     controllerMac,
   };
   connections.set(id, context);
-  console.log(`[Context] createContext: ${id} (authenticated: ${isAuthenticated}, userId: ${userId}, controllerId: ${controllerId}, mac: ${controllerMac}). Total connections: ${connections.size}`);
+  if (DEBUG) {
+    console.log(`[Context] createContext: ${id} (authenticated: ${isAuthenticated}, userId: ${userId}, controllerId: ${controllerId}, mac: ${controllerMac}). Total connections: ${connections.size}`);
+  }
   return context;
 }
 
@@ -44,7 +49,7 @@ export function getContext(connectionId: string): ConnectionContext | undefined 
 /**
  * Update an existing connection context.
  * Used when a user joins/leaves a session.
- * Throws an error if the context doesn't exist (prevents silent failures).
+ * Gracefully handles missing connections (expected when WS disconnects mid-operation).
  */
 export function updateContext(
   connectionId: string,
@@ -52,12 +57,13 @@ export function updateContext(
 ): void {
   const context = connections.get(connectionId);
   if (!context) {
-    console.error(`[Context] updateContext FAILED: connection ${connectionId} not found. Map has ${connections.size} entries.`);
-    console.error('[Context] Known connections:', Array.from(connections.keys()));
-    throw new Error(`Cannot update context: connection ${connectionId} not found`);
+    console.warn(`[Context] updateContext: connection ${connectionId} not found (likely disconnected mid-operation). Map has ${connections.size} entries.`);
+    return;
   }
 
-  console.log(`[Context] updateContext: ${connectionId} -> sessionId=${updates.sessionId}, userId=${updates.userId}`);
+  if (DEBUG) {
+    console.log(`[Context] updateContext: ${connectionId} -> sessionId=${updates.sessionId}, userId=${updates.userId}`);
+  }
 
   if (updates.sessionId !== undefined) {
     context.sessionId = updates.sessionId;

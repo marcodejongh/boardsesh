@@ -1,8 +1,16 @@
 import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
 import { createUserBoardMapping, getUserBoardMappings } from "@/app/lib/auth/user-board-mappings";
-import { BoardName } from "@/app/lib/types";
 import { authOptions } from "@/app/lib/auth/auth-options";
+import { z } from "zod";
+
+const userBoardMappingSchema = z.object({
+  boardType: z.enum(["kilter", "tension"], {
+    message: "Board type must be kilter or tension",
+  }),
+  boardUserId: z.number().int().positive("Board user ID must be a positive integer"),
+  boardUsername: z.string().max(100, "Username too long").optional(),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,16 +21,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { boardType, boardUserId, boardUsername } = body;
+    const result = userBoardMappingSchema.safeParse(body);
 
-    if (!boardType || !boardUserId) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!result.success) {
+      return NextResponse.json({ error: "Invalid request data" }, { status: 400 });
     }
+
+    const { boardType, boardUserId, boardUsername } = result.data;
 
     await createUserBoardMapping(
       session.user.id,
-      boardType as BoardName,
-      parseInt(boardUserId),
+      boardType,
+      boardUserId,
       boardUsername
     );
 

@@ -26,7 +26,7 @@ export async function handleStaticAvatar(req: IncomingMessage, res: ServerRespon
   if (!applyCorsHeaders(req, res)) return;
 
   // Security: validate filename to prevent path traversal
-  if (fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+  if (!fileName || fileName !== path.basename(fileName)) {
     res.writeHead(400, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Invalid path' }));
     return;

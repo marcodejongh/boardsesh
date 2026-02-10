@@ -48,7 +48,13 @@ export const SessionNameSchema = z.string().max(100, 'Session name too long').op
 /**
  * Avatar URL validation schema
  */
-export const AvatarUrlSchema = z.string().max(500, 'Avatar URL too long').optional();
+export const AvatarUrlSchema = z.string()
+  .max(500, 'Avatar URL too long')
+  .refine(
+    (url) => url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/'),
+    'Avatar URL must use http(s) or be a relative path'
+  )
+  .optional();
 
 /**
  * Create session input validation schema

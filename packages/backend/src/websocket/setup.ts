@@ -2,13 +2,17 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import type { Server as HttpServer, IncomingMessage } from 'http';
 import { useServer, type Extra as WsExtra } from 'graphql-ws/use/ws';
 import type { Context as GqlWsContext } from 'graphql-ws';
+import { GraphQLError, parse } from 'graphql';
 import { schema } from '../graphql/index';
 import { createContext, removeContext, getContext } from '../graphql/context';
+import { validateQueryDepth } from '../graphql/query-depth';
 import { roomManager } from '../services/room-manager';
 import { pubsub } from '../pubsub/index';
 import { validateNextAuthToken, extractAuthToken, extractControllerApiKey, validateControllerApiKey } from '../middleware/auth';
 import { isOriginAllowed } from '../handlers/cors';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
+
+const DEBUG = process.env.NODE_ENV === 'development';
 
 // Extend Extra type with our custom context
 interface CustomExtra extends WsExtra {
@@ -127,7 +131,9 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
           throw new Error(`Connection context lost for ${extra.context.connectionId}`);
         }
 
-        console.log(`[Context] Retrieved context: ${latestContext.connectionId}, sessionId: ${latestContext.sessionId}`);
+        if (DEBUG) {
+          console.log(`[Context] Retrieved context: ${latestContext.connectionId}, sessionId: ${latestContext.sessionId}`);
+        }
         return latestContext;
       },
       onDisconnect: async (ctx: ServerContext, code?: number) => {
@@ -166,13 +172,26 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
         }
       },
       onSubscribe: (_ctx: ServerContext, _id: string, payload) => {
-        console.log(`Subscription started: ${payload.operationName || 'anonymous'}`);
+        if (DEBUG) {
+          console.log(`Subscription started: ${payload.operationName || 'anonymous'}`);
+        }
+
+        // Validate query depth to prevent DoS via deeply nested subscriptions
+        if (payload.query) {
+          const document = typeof payload.query === 'string' ? parse(payload.query) : payload.query;
+          const depthError = validateQueryDepth(document);
+          if (depthError) {
+            return [new GraphQLError(depthError)];
+          }
+        }
       },
       onError: (_ctx: ServerContext, _id: string, _payload, errors) => {
         console.error('GraphQL error:', errors);
       },
       onComplete: (_ctx: ServerContext, _id: string, payload) => {
-        console.log(`Subscription completed: ${payload.operationName || 'anonymous'}`);
+        if (DEBUG) {
+          console.log(`Subscription completed: ${payload.operationName || 'anonymous'}`);
+        }
       },
     },
     wss,
