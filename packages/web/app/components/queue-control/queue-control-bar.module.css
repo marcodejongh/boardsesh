@@ -1,7 +1,7 @@
 .queueBar {
   flex-shrink: 0;
   width: 100%;
-  background-color: var(--semantic-surface);
+  background-color: transparent;
 }
 
 .card {
@@ -22,6 +22,7 @@
     border-radius: 16px;
     border: 1px solid var(--neutral-200);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
   }
 }
 
@@ -106,6 +107,8 @@
 .swipeContainer {
   touch-action: manipulation;
   transition: background-color 300ms ease;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
 }
 
 /* Clip container for text swipe — hides overflow during slide */
