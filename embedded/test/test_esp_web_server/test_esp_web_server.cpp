@@ -5,6 +5,7 @@
  */
 
 #include <Preferences.h>
+#include <Update.h>
 #include <WebServer.h>
 #include <esp_web_server.h>
 #include <wifi_utils.h>
@@ -26,6 +27,7 @@ void setUp(void) {
     Preferences::resetAll();
     WiFi.mockReset();
     ESP.mockReset();
+    Update.mockReset();
     webServer = new ESPWebServer();
 }
 
@@ -370,6 +372,115 @@ void test_config_partial_update(void) {
 }
 
 // =============================================================================
+// Firmware Version Endpoint Tests
+// =============================================================================
+
+void test_firmware_version_endpoint(void) {
+    webServer->begin();
+    webServer->getServer().mockRequest("/api/firmware/version", HTTP_GET);
+
+    TEST_ASSERT_EQUAL(200, webServer->getServer().getLastResponseCode());
+    const std::string& body = webServer->getServer().getLastResponseBody();
+    TEST_ASSERT_TRUE(body.find("version") != std::string::npos);
+    TEST_ASSERT_TRUE(body.find("build_env") != std::string::npos);
+}
+
+void test_firmware_upload_route_registered(void) {
+    webServer->begin();
+    webServer->getServer().mockRequest("/api/firmware/upload", HTTP_POST);
+
+    // Should get a response (not 404), confirming the route is registered
+    TEST_ASSERT_TRUE(webServer->getServer().getLastResponseCode() != 404);
+}
+
+// =============================================================================
+// Firmware OTA Upload Tests
+// =============================================================================
+
+void test_firmware_upload_success(void) {
+    webServer->begin();
+
+    uint8_t fakeData[] = {0x01, 0x02, 0x03, 0x04};
+    webServer->getServer().mockSimulateUpload(
+        "/api/firmware/upload", "firmware.bin", fakeData, sizeof(fakeData));
+
+    TEST_ASSERT_EQUAL(200, webServer->getServer().getLastResponseCode());
+    TEST_ASSERT_TRUE(Update.wasBeginCalled());
+    TEST_ASSERT_TRUE(Update.wasEndCalled());
+    TEST_ASSERT_FALSE(Update.wasAbortCalled());
+    TEST_ASSERT_EQUAL(sizeof(fakeData), Update.getBytesWritten());
+    TEST_ASSERT_TRUE(ESP.wasRestartCalled());
+}
+
+void test_firmware_upload_begin_failure(void) {
+    webServer->begin();
+    Update.mockSetFailBegin(true);
+
+    uint8_t fakeData[] = {0x01};
+    webServer->getServer().mockSimulateUpload(
+        "/api/firmware/upload", "firmware.bin", fakeData, sizeof(fakeData));
+
+    // Should return error status and not restart
+    TEST_ASSERT_EQUAL(500, webServer->getServer().getLastResponseCode());
+    TEST_ASSERT_FALSE(ESP.wasRestartCalled());
+    // Update.begin was called but failed
+    TEST_ASSERT_TRUE(Update.wasBeginCalled());
+    // Should abort to clean up after failed begin
+    TEST_ASSERT_TRUE(Update.wasAbortCalled());
+}
+
+void test_firmware_upload_write_failure(void) {
+    webServer->begin();
+    Update.mockSetFailWrite(true);
+
+    uint8_t fakeData[] = {0x01, 0x02};
+    webServer->getServer().mockSimulateUpload(
+        "/api/firmware/upload", "firmware.bin", fakeData, sizeof(fakeData));
+
+    TEST_ASSERT_EQUAL(500, webServer->getServer().getLastResponseCode());
+    // Should abort the update to avoid resource leak
+    TEST_ASSERT_TRUE(Update.wasAbortCalled());
+    TEST_ASSERT_FALSE(ESP.wasRestartCalled());
+}
+
+void test_firmware_upload_end_failure(void) {
+    webServer->begin();
+    Update.mockSetFailEnd(true);
+
+    uint8_t fakeData[] = {0x01};
+    webServer->getServer().mockSimulateUpload(
+        "/api/firmware/upload", "firmware.bin", fakeData, sizeof(fakeData));
+
+    TEST_ASSERT_EQUAL(500, webServer->getServer().getLastResponseCode());
+    TEST_ASSERT_TRUE(Update.wasEndCalled());
+    TEST_ASSERT_FALSE(ESP.wasRestartCalled());
+}
+
+void test_firmware_upload_abort(void) {
+    webServer->begin();
+
+    webServer->getServer().mockSimulateUploadAbort(
+        "/api/firmware/upload", "firmware.bin");
+
+    TEST_ASSERT_EQUAL(500, webServer->getServer().getLastResponseCode());
+    TEST_ASSERT_TRUE(Update.wasAbortCalled());
+    TEST_ASSERT_FALSE(ESP.wasRestartCalled());
+}
+
+void test_firmware_upload_rejects_non_bin_file(void) {
+    webServer->begin();
+
+    uint8_t fakeData[] = {0x01};
+    webServer->getServer().mockSimulateUpload(
+        "/api/firmware/upload", "firmware.txt", fakeData, sizeof(fakeData));
+
+    TEST_ASSERT_EQUAL(500, webServer->getServer().getLastResponseCode());
+    // Should not have called Update.begin for invalid file type
+    TEST_ASSERT_FALSE(Update.wasBeginCalled());
+    TEST_ASSERT_FALSE(ESP.wasRestartCalled());
+}
+
+// =============================================================================
 // Port Constant Test
 // =============================================================================
 
@@ -435,6 +546,18 @@ int main(int argc, char** argv) {
     // Config persistence tests
     RUN_TEST(test_config_values_persist);
     RUN_TEST(test_config_partial_update);
+
+    // Firmware endpoint tests
+    RUN_TEST(test_firmware_version_endpoint);
+    RUN_TEST(test_firmware_upload_route_registered);
+
+    // Firmware OTA upload tests
+    RUN_TEST(test_firmware_upload_success);
+    RUN_TEST(test_firmware_upload_begin_failure);
+    RUN_TEST(test_firmware_upload_write_failure);
+    RUN_TEST(test_firmware_upload_end_failure);
+    RUN_TEST(test_firmware_upload_abort);
+    RUN_TEST(test_firmware_upload_rejects_non_bin_file);
 
     // Port constant test
     RUN_TEST(test_web_server_port_constant);

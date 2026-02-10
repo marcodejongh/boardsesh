@@ -19,6 +19,20 @@
 // HTTP methods
 typedef enum { HTTP_ANY, HTTP_GET, HTTP_HEAD, HTTP_POST, HTTP_PUT, HTTP_PATCH, HTTP_DELETE, HTTP_OPTIONS } HTTPMethod;
 
+// Upload status constants
+#define UPLOAD_FILE_START 0
+#define UPLOAD_FILE_WRITE 1
+#define UPLOAD_FILE_END 2
+#define UPLOAD_FILE_ABORTED 3
+
+struct HTTPUpload {
+    int status = 0;
+    const uint8_t* buf = nullptr;
+    size_t currentSize = 0;
+    size_t totalSize = 0;
+    String filename;
+};
+
 class WebServer;
 typedef std::function<void(void)> THandlerFunction;
 
@@ -61,6 +75,11 @@ class WebServer {
         routes_[std::string(uri)][method] = handler;
     }
 
+    void on(const char* uri, HTTPMethod method, THandlerFunction handler, THandlerFunction uploadHandler) {
+        routes_[std::string(uri)][method] = handler;
+        uploadHandlers_[std::string(uri)] = uploadHandler;
+    }
+
     void on(const char* uri, THandlerFunction handler) { on(uri, HTTP_ANY, handler); }
 
     void onNotFound(THandlerFunction handler) { notFoundHandler_ = handler; }
@@ -88,6 +107,8 @@ class WebServer {
     HTTPMethod method() const { return currentMethod_; }
 
     const String& uri() const { return currentUri_; }
+
+    HTTPUpload& upload() { return mockUpload_; }
 
     // Test control methods
     void mockRequest(const char* uri, HTTPMethod method, const std::string& body = "") {
@@ -118,6 +139,72 @@ class WebServer {
         }
     }
 
+    // Simulate a file upload by calling the upload handler then the completion handler
+    void mockSimulateUpload(const char* uri, const std::string& filename,
+                            const uint8_t* data, size_t dataLen) {
+        auto uploadIt = uploadHandlers_.find(uri ? uri : "");
+        auto uriIt = routes_.find(uri ? uri : "");
+        if (uploadIt == uploadHandlers_.end() || uriIt == routes_.end()) return;
+
+        auto methodIt = uriIt->second.find(HTTP_POST);
+        if (methodIt == uriIt->second.end()) return;
+
+        auto& uploadHandler = uploadIt->second;
+        auto& completionHandler = methodIt->second;
+
+        // UPLOAD_FILE_START
+        mockUpload_.status = UPLOAD_FILE_START;
+        mockUpload_.filename = filename.c_str();
+        mockUpload_.currentSize = 0;
+        mockUpload_.totalSize = dataLen;
+        mockUpload_.buf = nullptr;
+        uploadHandler();
+
+        // UPLOAD_FILE_WRITE (single chunk)
+        if (data && dataLen > 0) {
+            mockUpload_.status = UPLOAD_FILE_WRITE;
+            mockUpload_.buf = data;
+            mockUpload_.currentSize = dataLen;
+            uploadHandler();
+        }
+
+        // UPLOAD_FILE_END
+        mockUpload_.status = UPLOAD_FILE_END;
+        mockUpload_.currentSize = 0;
+        uploadHandler();
+
+        // Completion handler (sends the HTTP response)
+        completionHandler();
+    }
+
+    // Simulate an aborted upload
+    void mockSimulateUploadAbort(const char* uri, const std::string& filename) {
+        auto uploadIt = uploadHandlers_.find(uri ? uri : "");
+        auto uriIt = routes_.find(uri ? uri : "");
+        if (uploadIt == uploadHandlers_.end() || uriIt == routes_.end()) return;
+
+        auto methodIt = uriIt->second.find(HTTP_POST);
+        if (methodIt == uriIt->second.end()) return;
+
+        auto& uploadHandler = uploadIt->second;
+        auto& completionHandler = methodIt->second;
+
+        // UPLOAD_FILE_START
+        mockUpload_.status = UPLOAD_FILE_START;
+        mockUpload_.filename = filename.c_str();
+        mockUpload_.currentSize = 0;
+        mockUpload_.totalSize = 0;
+        mockUpload_.buf = nullptr;
+        uploadHandler();
+
+        // UPLOAD_FILE_ABORTED
+        mockUpload_.status = UPLOAD_FILE_ABORTED;
+        uploadHandler();
+
+        // Completion handler
+        completionHandler();
+    }
+
     void mockSetArgs(const std::map<std::string, std::string>& args) { args_ = args; }
 
     void mockClearArgs() { args_.clear(); }
@@ -125,6 +212,7 @@ class WebServer {
     void mockReset() {
         running_ = false;
         routes_.clear();
+        uploadHandlers_.clear();
         args_.clear();
         lastHeaders_.clear();
         responses_.clear();
@@ -133,6 +221,7 @@ class WebServer {
         lastResponseBody_ = "";
         currentUri_ = "";
         notFoundHandler_ = nullptr;
+        mockUpload_ = HTTPUpload();
     }
 
     // Test inspection methods
@@ -155,6 +244,7 @@ class WebServer {
     uint16_t port_;
     bool running_;
     std::map<std::string, std::map<HTTPMethod, THandlerFunction>> routes_;
+    std::map<std::string, THandlerFunction> uploadHandlers_;
     THandlerFunction notFoundHandler_;
     std::map<std::string, std::string> args_;
     std::map<std::string, std::string> lastHeaders_;
@@ -164,6 +254,7 @@ class WebServer {
     std::string lastResponseBody_;
     String currentUri_;
     HTTPMethod currentMethod_ = HTTP_GET;
+    HTTPUpload mockUpload_;
 };
 
 #endif  // WEBSERVER_MOCK_H

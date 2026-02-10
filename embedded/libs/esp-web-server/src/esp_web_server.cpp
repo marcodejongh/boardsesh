@@ -1,5 +1,14 @@
 #include "esp_web_server.h"
 
+// Firmware version macros - provided by build flags or version.h in the project
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION "dev"
+#endif
+
+#ifndef FIRMWARE_BUILD_ENV
+#define FIRMWARE_BUILD_ENV "unknown"
+#endif
+
 ESPWebServer WebConfig;
 
 ESPWebServer::ESPWebServer() : server(WEB_SERVER_PORT), running(false) {}
@@ -56,6 +65,16 @@ void ESPWebServer::setupRoutes() {
     server.on("/api/wifi/connect", HTTP_POST, [this]() { handleWiFiConnect(); });
     server.on("/api/wifi/status", HTTP_GET, [this]() { handleWiFiStatus(); });
     server.on("/api/restart", HTTP_POST, [this]() { handleRestart(); });
+
+    // Firmware version endpoint
+    server.on("/api/firmware/version", HTTP_GET, [this]() { handleFirmwareVersion(); });
+
+    // Firmware upload - uses the two-callback pattern for file upload handling
+    server.on("/api/firmware/upload", HTTP_POST,
+        [this]() { handleFirmwareUploadComplete(); },
+        [this]() { handleFirmwareUploadData(); }
+    );
+
     server.onNotFound([this]() { handleNotFound(); });
 }
 
@@ -110,6 +129,9 @@ void ESPWebServer::handleRoot() {
         .msg { padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; }
         .msg.success { display: block; background: rgba(0, 217, 100, 0.2); border: 1px solid #00d964; }
         .msg.error { display: block; background: rgba(233, 69, 96, 0.2); border: 1px solid #e94560; }
+        .progress-bar { width: 100%; height: 20px; background: #0f3460; border-radius: 10px; overflow: hidden; margin: 10px 0; display: none; }
+        .progress-bar-fill { height: 100%; background: #00d9ff; border-radius: 10px; transition: width 0.3s; width: 0%; }
+        .firmware-info { color: #888; font-size: 0.9em; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -189,6 +211,21 @@ void ESPWebServer::handleRoot() {
                 <input type="text" id="backendPath" placeholder="/graphql">
             </div>
         </div>
+    </div>
+
+    <div class="card">
+        <h2>Firmware Update</h2>
+        <div class="firmware-info">
+            <span>Version: </span><strong id="fwVersion">Loading...</strong><br>
+            <span>Build: </span><strong id="fwBuildEnv">Loading...</strong>
+        </div>
+        <label>Select firmware file (.bin)</label>
+        <input type="file" id="fwFile" accept=".bin">
+        <div class="progress-bar" id="fwProgress">
+            <div class="progress-bar-fill" id="fwProgressFill"></div>
+        </div>
+        <div id="fwStatus" style="margin-bottom: 15px;"></div>
+        <button onclick="uploadFirmware()" id="fwUploadBtn" disabled class="btn-danger">Upload Firmware</button>
     </div>
 
     <div id="message" class="msg"></div>
@@ -319,6 +356,85 @@ void ESPWebServer::handleRoot() {
             setTimeout(() => { el.className = 'msg'; }, 3000);
         }
 
+        async function loadFirmwareInfo() {
+            try {
+                const res = await fetch('/api/firmware/version');
+                const data = await res.json();
+                document.getElementById('fwVersion').textContent = data.version || 'Unknown';
+                document.getElementById('fwBuildEnv').textContent = data.build_env || 'Unknown';
+            } catch (e) {
+                document.getElementById('fwVersion').textContent = 'Error';
+                document.getElementById('fwBuildEnv').textContent = 'Error';
+            }
+        }
+
+        document.getElementById('fwFile').onchange = function() {
+            var btn = document.getElementById('fwUploadBtn');
+            btn.disabled = !this.files.length;
+        };
+
+        function uploadFirmware() {
+            var fileInput = document.getElementById('fwFile');
+            if (!fileInput.files.length) return;
+
+            var file = fileInput.files[0];
+            if (!file.name.endsWith('.bin')) {
+                showMessage('Please select a .bin firmware file', true);
+                return;
+            }
+
+            if (!confirm('Upload firmware "' + file.name + '" (' + Math.round(file.size / 1024) + ' KB)? The device will reboot after upload.')) return;
+
+            var xhr = new XMLHttpRequest();
+            var formData = new FormData();
+            formData.append('firmware', file, file.name);
+
+            var progressBar = document.getElementById('fwProgress');
+            var progressFill = document.getElementById('fwProgressFill');
+            var statusEl = document.getElementById('fwStatus');
+            var uploadBtn = document.getElementById('fwUploadBtn');
+
+            progressBar.style.display = 'block';
+            uploadBtn.disabled = true;
+            statusEl.textContent = 'Uploading...';
+            statusEl.style.color = '#aaa';
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    var pct = Math.round((e.loaded / e.total) * 100);
+                    progressFill.style.width = pct + '%';
+                    statusEl.textContent = 'Uploading: ' + pct + '%';
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    progressFill.style.width = '100%';
+                    statusEl.textContent = 'Upload complete! Rebooting device...';
+                    statusEl.style.color = '#00d964';
+                    setTimeout(function() {
+                        statusEl.textContent = 'Reloading page...';
+                        window.location.reload();
+                    }, 10000);
+                } else {
+                    var msg = 'Upload failed';
+                    try { msg = JSON.parse(xhr.responseText).error || msg; } catch(e) {}
+                    statusEl.textContent = msg;
+                    statusEl.style.color = '#e94560';
+                    uploadBtn.disabled = false;
+                }
+            };
+
+            xhr.onerror = function() {
+                statusEl.textContent = 'Upload failed - connection error';
+                statusEl.style.color = '#e94560';
+                uploadBtn.disabled = false;
+            };
+
+            xhr.open('POST', '/api/firmware/upload');
+            xhr.send(formData);
+        }
+
         document.getElementById('brightness').oninput = function() {
             document.getElementById('brightnessValue').textContent = this.value;
         };
@@ -333,6 +449,7 @@ void ESPWebServer::handleRoot() {
 
         loadConfig();
         loadWifiStatus();
+        loadFirmwareInfo();
         setInterval(loadWifiStatus, 10000);
     </script>
 </body>
@@ -483,5 +600,102 @@ void ESPWebServer::handleRestart() {
     setCorsHeaders();
     sendJson(200, "{\"success\":true,\"message\":\"Restarting...\"}");
     delay(500);
+    ESP.restart();
+}
+
+void ESPWebServer::handleFirmwareVersion() {
+    setCorsHeaders();
+    JsonDocument doc;
+    doc["version"] = FIRMWARE_VERSION;
+    doc["build_env"] = FIRMWARE_BUILD_ENV;
+    sendJson(200, doc);
+}
+
+void ESPWebServer::handleFirmwareUploadData() {
+    HTTPUpload& upload = server.upload();
+
+    switch (upload.status) {
+        case UPLOAD_FILE_START: {
+            Serial.printf("Firmware upload start: %s\n", upload.filename.c_str());
+            _otaInProgress = true;
+            _otaBytesWritten = 0;
+            _otaError = false;
+            _otaErrorMessage = "";
+
+            // Server-side file extension validation
+            String fname = upload.filename;
+            if (fname.length() < 4 || fname.substring(fname.length() - 4) != ".bin") {
+                _otaError = true;
+                _otaErrorMessage = "Invalid file type: firmware must be a .bin file";
+                Serial.println("Firmware upload rejected: not a .bin file");
+                break;
+            }
+
+            if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+                _otaError = true;
+                _otaErrorMessage = "Failed to begin update";
+                Serial.println("Update.begin() failed");
+            }
+            break;
+        }
+
+        case UPLOAD_FILE_WRITE:
+            if (!_otaError) {
+                size_t written = Update.write(upload.buf, upload.currentSize);
+                if (written != upload.currentSize) {
+                    _otaError = true;
+                    _otaErrorMessage = "Write failed";
+                    Serial.printf("Update.write() failed: wrote %u of %u\n",
+                                  (unsigned)written, (unsigned)upload.currentSize);
+                } else {
+                    _otaBytesWritten += written;
+                }
+            }
+            break;
+
+        case UPLOAD_FILE_END:
+            if (!_otaError) {
+                if (Update.end(true)) {
+                    Serial.printf("Firmware upload complete: %u bytes\n", (unsigned)_otaBytesWritten);
+                } else {
+                    _otaError = true;
+                    _otaErrorMessage = "Failed to finalize update";
+                    Serial.println("Update.end() failed");
+                }
+            } else {
+                // Clean up: abort the in-progress update to avoid resource leak
+                Update.abort();
+            }
+            _otaInProgress = false;
+            break;
+
+        case UPLOAD_FILE_ABORTED:
+            Update.abort();
+            _otaError = true;
+            _otaErrorMessage = "Upload aborted";
+            _otaInProgress = false;
+            Serial.println("Firmware upload aborted");
+            break;
+    }
+}
+
+void ESPWebServer::handleFirmwareUploadComplete() {
+    setCorsHeaders();
+
+    if (_otaError) {
+        JsonDocument doc;
+        doc["success"] = false;
+        doc["error"] = _otaErrorMessage;
+        sendJson(500, doc);
+        return;
+    }
+
+    JsonDocument doc;
+    doc["success"] = true;
+    doc["bytes_written"] = (unsigned int)_otaBytesWritten;
+    doc["message"] = "Firmware updated successfully. Rebooting...";
+    sendJson(200, doc);
+
+    delay(1000);
     ESP.restart();
 }
