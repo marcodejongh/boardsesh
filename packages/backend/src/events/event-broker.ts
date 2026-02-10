@@ -10,7 +10,10 @@ const CLAIM_IDLE_MS = 30000;
 const MAX_STREAM_LEN = 10000;
 
 export class EventBroker {
-  private redis: Redis | null = null;
+  /** Used for non-blocking operations: xadd, xack, xgroup */
+  private publisher: Redis | null = null;
+  /** Dedicated connection for blocking operations: xreadgroup, xautoclaim */
+  private consumer: Redis | null = null;
   private consumerName: string;
   private running = false;
   private consumerTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -19,12 +22,13 @@ export class EventBroker {
     this.consumerName = `instance-${uuidv4().slice(0, 8)}`;
   }
 
-  async initialize(redisClient: Redis): Promise<void> {
-    this.redis = redisClient;
+  async initialize(publisher: Redis, consumer: Redis): Promise<void> {
+    this.publisher = publisher;
+    this.consumer = consumer;
 
-    // Create consumer group (idempotent)
+    // Create consumer group (idempotent) - uses publisher (non-blocking)
     try {
-      await this.redis.xgroup('CREATE', STREAM_KEY, CONSUMER_GROUP, '$', 'MKSTREAM');
+      await this.publisher.xgroup('CREATE', STREAM_KEY, CONSUMER_GROUP, '$', 'MKSTREAM');
       console.log(`[EventBroker] Created consumer group "${CONSUMER_GROUP}" on "${STREAM_KEY}"`);
     } catch (error: unknown) {
       // BUSYGROUP means group already exists, which is fine
@@ -39,17 +43,17 @@ export class EventBroker {
   }
 
   isInitialized(): boolean {
-    return this.redis !== null;
+    return this.publisher !== null;
   }
 
   async publish(event: SocialEvent): Promise<void> {
-    if (!this.redis) {
+    if (!this.publisher) {
       console.warn('[EventBroker] Not initialized, skipping publish');
       return;
     }
 
     try {
-      await this.redis.xadd(
+      await this.publisher.xadd(
         STREAM_KEY,
         'MAXLEN', '~', String(MAX_STREAM_LEN),
         '*',
@@ -66,7 +70,7 @@ export class EventBroker {
   }
 
   startConsumer(handler: (event: SocialEvent) => Promise<void>): void {
-    if (!this.redis) {
+    if (!this.publisher || !this.consumer) {
       console.warn('[EventBroker] Not initialized, cannot start consumer');
       return;
     }
@@ -94,10 +98,10 @@ export class EventBroker {
   }
 
   private async reclaimPendingEvents(handler: (event: SocialEvent) => Promise<void>): Promise<void> {
-    if (!this.redis) return;
+    if (!this.consumer || !this.publisher) return;
 
     try {
-      const result = await this.redis.xautoclaim(
+      const result = await this.consumer.xautoclaim(
         STREAM_KEY,
         CONSUMER_GROUP,
         this.consumerName,
@@ -115,14 +119,14 @@ export class EventBroker {
           if (event) {
             try {
               await handler(event);
-              // Only acknowledge after successful processing
-              await this.redis!.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
+              // Only acknowledge after successful processing (non-blocking)
+              await this.publisher.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
             } catch (error) {
               console.error(`[EventBroker] Error processing reclaimed event ${messageId}, will retry:`, error);
             }
           } else {
             // Unparseable event - ack to avoid infinite retry
-            await this.redis!.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
+            await this.publisher.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
           }
         }
       }
@@ -137,9 +141,9 @@ export class EventBroker {
   }
 
   private async readNewEvents(handler: (event: SocialEvent) => Promise<void>): Promise<void> {
-    if (!this.redis) return;
+    if (!this.consumer || !this.publisher) return;
 
-    const result = await this.redis.xreadgroup(
+    const result = await this.consumer.xreadgroup(
       'GROUP', CONSUMER_GROUP, this.consumerName,
       'COUNT', BATCH_SIZE,
       'BLOCK', BLOCK_MS,
@@ -155,14 +159,14 @@ export class EventBroker {
         if (event) {
           try {
             await handler(event);
-            // Only acknowledge after successful processing
-            await this.redis!.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
+            // Only acknowledge after successful processing (non-blocking)
+            await this.publisher.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
           } catch (error) {
             console.error(`[EventBroker] Error processing event ${messageId}, will retry:`, error);
           }
         } else {
           // Unparseable event - ack to avoid infinite retry
-          await this.redis!.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
+          await this.publisher.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
         }
       }
     }
