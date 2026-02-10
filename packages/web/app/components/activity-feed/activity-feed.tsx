@@ -7,6 +7,7 @@ import MuiAlert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined';
 import PublicOutlined from '@mui/icons-material/PublicOutlined';
+import ErrorOutline from '@mui/icons-material/ErrorOutline';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -54,6 +55,7 @@ export default function ActivityFeed({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { token, isLoading: authLoading } = useWsAuthToken();
 
   // Track dependencies for reset
@@ -67,6 +69,7 @@ export default function ActivityFeed({
     }
 
     try {
+      setError(null);
       const client = createGraphQLHttpClient(isAuthenticated ? token : null);
 
       const input = {
@@ -106,8 +109,11 @@ export default function ActivityFeed({
         setCursor(nextCursor ?? null);
         setHasMore(more);
       }
-    } catch (error) {
-      console.error('Error fetching activity feed:', error);
+    } catch (err) {
+      console.error('Error fetching activity feed:', err);
+      if (cursorValue === null) {
+        setError('Failed to load activity feed. Please try again.');
+      }
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -133,6 +139,7 @@ export default function ActivityFeed({
       setItems([]);
       setCursor(null);
       setHasMore(false);
+      setError(null);
     }
 
     fetchFeed(null);
@@ -154,7 +161,18 @@ export default function ActivityFeed({
         </MuiAlert>
       )}
 
-      {items.length === 0 ? (
+      {error && (
+        <EmptyState
+          icon={<ErrorOutline fontSize="inherit" />}
+          description={error}
+        >
+          <MuiButton variant="contained" onClick={() => fetchFeed(null)}>
+            Retry
+          </MuiButton>
+        </EmptyState>
+      )}
+
+      {!error && items.length === 0 ? (
         isAuthenticated ? (
           <EmptyState
             icon={<PersonSearchOutlined fontSize="inherit" />}

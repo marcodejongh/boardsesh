@@ -1,10 +1,28 @@
-import { eq, and, desc, sql, lt, or } from 'drizzle-orm';
+import { eq, and, desc, sql, lt, or, asc } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, validateInput } from '../shared/helpers';
 import { ActivityFeedInputSchema } from '../../../validation/schemas';
 import { encodeCursor, decodeCursor } from '../../../utils/feed-cursor';
+
+/**
+ * Subquery that computes vote score (upvotes - downvotes) for each feed item's entity.
+ * Used by top/controversial/hot sort modes.
+ */
+function voteScoreSubquery() {
+  return db
+    .select({
+      entityId: dbSchema.votes.entityId,
+      entityType: dbSchema.votes.entityType,
+      score: sql<number>`COALESCE(SUM(${dbSchema.votes.value}), 0)`.as('score'),
+      upvotes: sql<number>`COALESCE(SUM(CASE WHEN ${dbSchema.votes.value} = 1 THEN 1 ELSE 0 END), 0)`.as('upvotes'),
+      downvotes: sql<number>`COALESCE(SUM(CASE WHEN ${dbSchema.votes.value} = -1 THEN 1 ELSE 0 END), 0)`.as('downvotes'),
+    })
+    .from(dbSchema.votes)
+    .groupBy(dbSchema.votes.entityId, dbSchema.votes.entityType)
+    .as('vote_scores');
+}
 
 function mapFeedItemToGraphQL(row: typeof dbSchema.feedItems.$inferSelect) {
   const meta = (row.metadata || {}) as Record<string, unknown>;
@@ -95,32 +113,83 @@ export const activityFeedQueries = {
 
     const whereClause = and(...conditions);
 
-    // For 'new' sort, use the indexed (created_at DESC, id DESC) ordering
-    // For other sorts, we'd need to join with votes table — for now, default to 'new'
-    // since vote-based sorting on feed items is a future enhancement
-    const rows = await db
-      .select()
+    if (sortBy === 'new') {
+      // Optimized path: use the indexed (created_at DESC, id DESC) ordering
+      const rows = await db
+        .select()
+        .from(dbSchema.feedItems)
+        .where(whereClause)
+        .orderBy(desc(dbSchema.feedItems.createdAt), desc(dbSchema.feedItems.id))
+        .limit(limit + 1);
+
+      const hasMore = rows.length > limit;
+      const resultRows = hasMore ? rows.slice(0, limit) : rows;
+      const items = resultRows.map(mapFeedItemToGraphQL);
+
+      let nextCursor: string | null = null;
+      if (hasMore && resultRows.length > 0) {
+        const lastRow = resultRows[resultRows.length - 1];
+        nextCursor = encodeCursor(lastRow.createdAt, lastRow.id);
+      }
+
+      return { items, cursor: nextCursor, hasMore };
+    }
+
+    // Vote-based sort modes: LEFT JOIN with votes to compute scores
+    const vs = voteScoreSubquery();
+
+    const scoredRows = await db
+      .select({
+        feedItem: dbSchema.feedItems,
+        score: sql<number>`COALESCE(${vs.score}, 0)`.as('sort_score'),
+        upvotes: sql<number>`COALESCE(${vs.upvotes}, 0)`.as('sort_upvotes'),
+        downvotes: sql<number>`COALESCE(${vs.downvotes}, 0)`.as('sort_downvotes'),
+      })
       .from(dbSchema.feedItems)
+      .leftJoin(
+        vs,
+        and(
+          eq(dbSchema.feedItems.entityId, vs.entityId),
+          eq(dbSchema.feedItems.entityType, vs.entityType),
+        )
+      )
       .where(whereClause)
-      .orderBy(desc(dbSchema.feedItems.createdAt), desc(dbSchema.feedItems.id))
+      .orderBy(
+        sortBy === 'top'
+          // Top: highest net score first
+          ? desc(sql`COALESCE(${vs.score}, 0)`)
+          : sortBy === 'controversial'
+            // Controversial: most total votes with balanced ratio
+            // Wilson score: min(up, down) / (up + down) * log(up + down + 1)
+            ? desc(sql`
+                CASE WHEN COALESCE(${vs.upvotes}, 0) + COALESCE(${vs.downvotes}, 0) = 0 THEN 0
+                ELSE LEAST(COALESCE(${vs.upvotes}, 0), COALESCE(${vs.downvotes}, 0))::float
+                     / (COALESCE(${vs.upvotes}, 0) + COALESCE(${vs.downvotes}, 0))
+                     * LN(COALESCE(${vs.upvotes}, 0) + COALESCE(${vs.downvotes}, 0) + 1)
+                END`)
+            : // Hot: score decayed by age (Reddit-style)
+              // sign(score) * log(max(|score|, 1)) + created_at_epoch / 45000
+              desc(sql`
+                SIGN(COALESCE(${vs.score}, 0))
+                * LN(GREATEST(ABS(COALESCE(${vs.score}, 0)), 1))
+                + EXTRACT(EPOCH FROM ${dbSchema.feedItems.createdAt}) / 45000`),
+        desc(dbSchema.feedItems.createdAt),
+        desc(dbSchema.feedItems.id),
+      )
       .limit(limit + 1);
 
-    const hasMore = rows.length > limit;
-    const resultRows = hasMore ? rows.slice(0, limit) : rows;
+    const hasMore = scoredRows.length > limit;
+    const resultRows = hasMore ? scoredRows.slice(0, limit) : scoredRows;
+    const items = resultRows.map((r) => mapFeedItemToGraphQL(r.feedItem));
 
-    const items = resultRows.map(mapFeedItemToGraphQL);
-
+    // For vote-based sorts, cursor still uses (createdAt, id) for stable pagination
     let nextCursor: string | null = null;
     if (hasMore && resultRows.length > 0) {
-      const lastRow = resultRows[resultRows.length - 1];
+      const lastRow = resultRows[resultRows.length - 1].feedItem;
       nextCursor = encodeCursor(lastRow.createdAt, lastRow.id);
     }
 
-    return {
-      items,
-      cursor: nextCursor,
-      hasMore,
-    };
+    return { items, cursor: nextCursor, hasMore };
   },
 
   /**

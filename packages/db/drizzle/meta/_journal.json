@@ -316,6 +316,13 @@
       "when": 1769136000000,
       "tag": "0048_add_feed_items",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1769222400000,
+      "tag": "0049_fix_feed_items_index_ordering",
+      "breakpoints": true
     }
   ]
 }

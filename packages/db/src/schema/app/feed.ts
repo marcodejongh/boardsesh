@@ -7,6 +7,7 @@ import {
   jsonb,
   pgEnum,
 } from 'drizzle-orm/pg-core';
+import { desc } from 'drizzle-orm';
 import { users } from '../auth/users';
 import { socialEntityTypeEnum } from './social';
 
@@ -36,12 +37,14 @@ export const feedItems = pgTable(
   (table) => ({
     recipientCreatedAtIdx: index('feed_items_recipient_created_at_idx').on(
       table.recipientId,
-      table.createdAt
+      desc(table.createdAt),
+      desc(table.id),
     ),
     recipientBoardCreatedAtIdx: index('feed_items_recipient_board_created_at_idx').on(
       table.recipientId,
       table.boardUuid,
-      table.createdAt
+      desc(table.createdAt),
+      desc(table.id),
     ),
     actorCreatedAtIdx: index('feed_items_actor_created_at_idx').on(
       table.actorId,
