@@ -1003,5 +1003,9 @@ export const useGraphQLQueueContext = (): GraphQLQueueContextType => {
   return context;
 };
 
+export const useOptionalQueueContext = (): GraphQLQueueContextType | null => {
+  return useContext(QueueContext);
+};
+
 // Re-export the hook with the standard name for easier migration
 export { useGraphQLQueueContext as useQueueContext };

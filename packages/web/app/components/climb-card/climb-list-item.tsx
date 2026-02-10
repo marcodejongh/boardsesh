@@ -13,7 +13,7 @@ import ClimbThumbnail from './climb-thumbnail';
 import DrawerClimbHeader from './drawer-climb-header';
 import { AscentStatus } from '../queue-control/queue-list-item';
 import { ClimbActions } from '../climb-actions';
-import { useQueueContext } from '../graphql-queue';
+import { useOptionalQueueContext } from '../graphql-queue';
 import { useFavorite } from '../climb-actions';
 import { useSwipeActions } from '@/app/hooks/use-swipe-actions';
 import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
@@ -32,13 +32,14 @@ type ClimbListItemProps = {
 
 const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDetails, selected, onSelect }) => {
   const [isActionsOpen, setIsActionsOpen] = useState(false);
-  const { addToQueue } = useQueueContext();
+  const queueContext = useOptionalQueueContext();
+  const addToQueue = queueContext?.addToQueue;
   const { isFavorited, toggleFavorite } = useFavorite({ climbUuid: climb.uuid });
   const { ref: doubleTapRef, onDoubleClick: handleDoubleClick } = useDoubleTap(onSelect);
 
   const handleSwipeLeft = useCallback(() => {
     // Swipe left = add to queue
-    addToQueue(climb);
+    addToQueue?.(climb);
   }, [climb, addToQueue]);
 
   const handleSwipeRight = useCallback(() => {

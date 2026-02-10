@@ -7,7 +7,7 @@ import AddCircleOutlined from '@mui/icons-material/AddCircleOutlined';
 import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
-import { useQueueContext } from '../../graphql-queue';
+import { useOptionalQueueContext } from '../../graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
 
 export function QueueAction({
@@ -20,20 +20,20 @@ export function QueueAction({
   className,
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
-  const { addToQueue, queue } = useQueueContext();
+  const queueContext = useOptionalQueueContext();
   const [recentlyAdded, setRecentlyAdded] = useState(false);
 
   const handleClick = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     e?.preventDefault();
 
-    if (!addToQueue || recentlyAdded) return;
+    if (!queueContext?.addToQueue || recentlyAdded) return;
 
-    addToQueue(climb);
+    queueContext.addToQueue(climb);
 
     track('Add to Queue', {
       boardLayout: boardDetails.layout_name || '',
-      queueLength: queue.length + 1,
+      queueLength: (queueContext.queue?.length ?? 0) + 1,
     });
 
     setRecentlyAdded(true);
@@ -42,7 +42,7 @@ export function QueueAction({
     }, 5000);
 
     onComplete?.();
-  }, [addToQueue, recentlyAdded, climb, boardDetails.layout_name, queue.length, onComplete]);
+  }, [queueContext, recentlyAdded, climb, boardDetails.layout_name, onComplete]);
 
   const label = recentlyAdded ? 'Added' : 'Add to Queue';
   const shortLabel = recentlyAdded ? 'Added' : 'Queue';
@@ -133,7 +133,7 @@ export function QueueAction({
     element,
     menuItem,
     key: 'queue',
-    available: true,
+    available: !!queueContext,
   };
 }
 
