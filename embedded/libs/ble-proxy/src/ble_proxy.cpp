@@ -15,6 +15,9 @@
 
 BLEProxy Proxy;
 
+// Delay before retrying scan when no boards found (10 seconds)
+static const unsigned long SCAN_RETRY_DELAY_MS = 10000;
+
 // Static instance pointer for callbacks (required for C-style callback wrappers)
 static BLEProxy* proxyInstance = nullptr;
 
@@ -104,6 +107,14 @@ void BLEProxy::loop() {
         case BLEProxyState::IDLE:
             // Start scanning for boards
             startScan();
+            break;
+
+        case BLEProxyState::SCAN_COMPLETE_NONE:
+            // Retry scanning after delay
+            if (millis() - waitStartTime >= waitDuration) {
+                Logger.logln("BLEProxy: Retrying scan...");
+                setState(BLEProxyState::IDLE);
+            }
             break;
 
         case BLEProxyState::SCANNING:
@@ -257,9 +268,11 @@ void BLEProxy::handleScanComplete(const std::vector<DiscoveredBoard>& boards) {
     }
 
     if (boards.empty()) {
-        Logger.logln("BLEProxy: No boards found (reboot to scan again)");
+        Logger.logln("BLEProxy: No boards found, will retry in %lus", SCAN_RETRY_DELAY_MS / 1000);
         // Reset connection flag so future scans can initiate connections
         connectionInitiated = false;
+        waitStartTime = millis();
+        waitDuration = SCAN_RETRY_DELAY_MS;
         setState(BLEProxyState::SCAN_COMPLETE_NONE);
         return;
     }

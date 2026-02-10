@@ -12,7 +12,7 @@ enum class BLEProxyState {
     PROXY_DISABLED,         // Proxy mode not enabled
     IDLE,                   // Waiting to scan
     SCANNING,               // Scanning for boards
-    SCAN_COMPLETE_NONE,     // Scan completed but no boards found (won't auto-retry)
+    SCAN_COMPLETE_NONE,     // Scan completed but no boards found (will auto-retry after delay)
     WAIT_BEFORE_CONNECT,    // Non-blocking wait after scan before connecting
     CONNECTING,             // Connecting to board
     WAIT_BEFORE_ADVERTISE,  // Non-blocking wait after connect before advertising
