@@ -76,7 +76,7 @@
 
 @media (min-width: 768px) {
   .queueToggle.listPage {
-    cursor: default;
+    cursor: pointer;
   }
 }
 
@@ -106,6 +106,7 @@
 .swipeContainer {
   touch-action: manipulation;
   transition: background-color 300ms ease;
+  cursor: pointer;
 }
 
 /* Clip container for text swipe — hides overflow during slide */
