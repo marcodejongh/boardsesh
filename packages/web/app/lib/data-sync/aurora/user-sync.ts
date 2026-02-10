@@ -1,13 +1,21 @@
 import { getPool } from '@/app/lib/db/db';
 import { userSync } from '../../api-wrappers/aurora/userSync';
 import { SyncOptions, USER_TABLES, UserSyncData, AuroraBoardName } from '../../api-wrappers/aurora/types';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { UNIFIED_TABLES } from '../../db/queries/util/table-select';
 import { boardseshTicks, auroraCredentials, playlists, playlistClimbs, playlistOwnership } from '../../db/schema';
 import { randomUUID } from 'crypto';
 import { convertQuality } from './convert-quality';
+import {
+  validateSyncTimestamp,
+  truncate,
+  truncateOrNull,
+  capRecords,
+  STRING_LIMITS,
+  VALID_USER_SYNC_TABLES,
+} from './sync-validation';
 
 /**
  * Get NextAuth user ID from Aurora user ID
@@ -41,18 +49,19 @@ async function upsertTableData(
     case 'users': {
       const usersSchema = UNIFIED_TABLES.users;
       for (const item of data) {
+        const username = truncate(item.username, STRING_LIMITS.username);
         await db
           .insert(usersSchema)
           .values({
             boardType: boardName,
             id: Number(item.id),
-            username: item.username,
+            username,
             createdAt: item.created_at,
           })
           .onConflictDoUpdate({
             target: [usersSchema.boardType, usersSchema.id],
             set: {
-              username: item.username,
+              username,
             },
           });
       }
@@ -62,32 +71,34 @@ async function upsertTableData(
     case 'walls': {
       const wallsSchema = UNIFIED_TABLES.walls;
       for (const item of data) {
+        const name = truncate(item.name, STRING_LIMITS.name);
+        const serialNumber = truncateOrNull(item.serial_number, STRING_LIMITS.serialNumber);
         await db
           .insert(wallsSchema)
           .values({
             boardType: boardName,
             uuid: item.uuid,
             userId: Number(auroraUserId),
-            name: item.name,
+            name,
             productId: Number(item.product_id),
             isAdjustable: Boolean(item.is_adjustable),
             angle: Number(item.angle),
             layoutId: Number(item.layout_id),
             productSizeId: Number(item.product_size_id),
             hsm: Number(item.hsm),
-            serialNumber: item.serial_number,
+            serialNumber,
             createdAt: item.created_at,
           })
           .onConflictDoUpdate({
             target: [wallsSchema.boardType, wallsSchema.uuid],
             set: {
-              name: item.name,
+              name,
               isAdjustable: Boolean(item.is_adjustable),
               angle: Number(item.angle),
               layoutId: Number(item.layout_id),
               productSizeId: Number(item.product_size_id),
               hsm: Number(item.hsm),
-              serialNumber: item.serial_number,
+              serialNumber,
             },
           });
       }
@@ -97,6 +108,11 @@ async function upsertTableData(
     case 'draft_climbs': {
       const climbsSchema = UNIFIED_TABLES.climbs;
       for (const item of data) {
+        const name = truncate(item.name || 'Untitled Draft', STRING_LIMITS.name);
+        const description = truncate(item.description || '', STRING_LIMITS.description);
+        const setterUsername = truncate(item.setter_username || '', STRING_LIMITS.username);
+        const frames = truncate(item.frames || '', STRING_LIMITS.frames);
+
         await db
           .insert(climbsSchema)
           .values({
@@ -104,9 +120,9 @@ async function upsertTableData(
             boardType: boardName,
             layoutId: Number(item.layout_id),
             setterId: Number(auroraUserId),
-            setterUsername: item.setter_username || '',
-            name: item.name || 'Untitled Draft',
-            description: item.description || '',
+            setterUsername,
+            name,
+            description,
             hsm: Number(item.hsm),
             edgeLeft: Number(item.edge_left),
             edgeRight: Number(item.edge_right),
@@ -115,7 +131,7 @@ async function upsertTableData(
             angle: Number(item.angle),
             framesCount: Number(item.frames_count || 1),
             framesPace: Number(item.frames_pace || 0),
-            frames: item.frames || '',
+            frames,
             isDraft: true,
             isListed: false,
             createdAt: item.created_at || new Date().toISOString(),
@@ -123,22 +139,26 @@ async function upsertTableData(
           .onConflictDoUpdate({
             target: climbsSchema.uuid,
             set: {
-              layoutId: Number(item.layout_id),
-              setterId: Number(auroraUserId),
-              setterUsername: item.setter_username || '',
-              name: item.name || 'Untitled Draft',
-              description: item.description || '',
-              hsm: Number(item.hsm),
-              edgeLeft: Number(item.edge_left),
-              edgeRight: Number(item.edge_right),
-              edgeBottom: Number(item.edge_bottom),
-              edgeTop: Number(item.edge_top),
-              angle: Number(item.angle),
-              framesCount: Number(item.frames_count || 1),
-              framesPace: Number(item.frames_pace || 0),
-              frames: item.frames || '',
-              isDraft: true,
-              isListed: false,
+              // Only update fields if existing climb is still a draft.
+              // Published climbs (isDraft=false) are fully immutable via sync.
+              layoutId: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${Number(item.layout_id)} ELSE ${climbsSchema.layoutId} END`,
+              setterId: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${Number(auroraUserId)} ELSE ${climbsSchema.setterId} END`,
+              setterUsername: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${setterUsername} ELSE ${climbsSchema.setterUsername} END`,
+              name: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${name} ELSE ${climbsSchema.name} END`,
+              description: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${description} ELSE ${climbsSchema.description} END`,
+              hsm: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${Number(item.hsm)} ELSE ${climbsSchema.hsm} END`,
+              edgeLeft: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${Number(item.edge_left)} ELSE ${climbsSchema.edgeLeft} END`,
+              edgeRight: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${Number(item.edge_right)} ELSE ${climbsSchema.edgeRight} END`,
+              edgeBottom: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${Number(item.edge_bottom)} ELSE ${climbsSchema.edgeBottom} END`,
+              edgeTop: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${Number(item.edge_top)} ELSE ${climbsSchema.edgeTop} END`,
+              angle: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${Number(item.angle)} ELSE ${climbsSchema.angle} END`,
+              framesCount: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${Number(item.frames_count || 1)} ELSE ${climbsSchema.framesCount} END`,
+              framesPace: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${Number(item.frames_pace || 0)} ELSE ${climbsSchema.framesPace} END`,
+              frames: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${frames} ELSE ${climbsSchema.frames} END`,
+              // Never unpublish: isDraft stays as-is (draft_climbs always sends isDraft=true,
+              // but we must not flip a published climb back to draft)
+              isDraft: climbsSchema.isDraft,
+              isListed: climbsSchema.isListed,
             },
           });
       }
@@ -150,6 +170,7 @@ async function upsertTableData(
       for (const item of data) {
         const status = Number(item.attempt_id) === 1 ? 'flash' : 'send';
         const convertedQuality = convertQuality(item.quality);
+        const comment = truncate(item.comment || '', STRING_LIMITS.comment);
 
         await db
           .insert(boardseshTicks)
@@ -165,7 +186,7 @@ async function upsertTableData(
             quality: convertedQuality,
             difficulty: item.difficulty ? Number(item.difficulty) : null,
             isBenchmark: Boolean(item.is_benchmark || 0),
-            comment: item.comment || '',
+            comment,
             climbedAt: new Date(item.climbed_at).toISOString(),
             createdAt: item.created_at ? new Date(item.created_at).toISOString() : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -184,7 +205,7 @@ async function upsertTableData(
               quality: convertedQuality,
               difficulty: item.difficulty ? Number(item.difficulty) : null,
               isBenchmark: Boolean(item.is_benchmark || 0),
-              comment: item.comment || '',
+              comment,
               climbedAt: new Date(item.climbed_at).toISOString(),
               updatedAt: new Date().toISOString(),
               auroraSyncedAt: new Date().toISOString(),
@@ -197,6 +218,8 @@ async function upsertTableData(
     case 'bids': {
       // Write directly to boardsesh_ticks (requires NextAuth user ID)
       for (const item of data) {
+        const comment = truncate(item.comment || '', STRING_LIMITS.comment);
+
         await db
           .insert(boardseshTicks)
           .values({
@@ -211,7 +234,7 @@ async function upsertTableData(
             quality: null,
             difficulty: null,
             isBenchmark: false,
-            comment: item.comment || '',
+            comment,
             climbedAt: new Date(item.climbed_at).toISOString(),
             createdAt: new Date(item.created_at).toISOString(),
             updatedAt: new Date().toISOString(),
@@ -226,7 +249,7 @@ async function upsertTableData(
               angle: Number(item.angle),
               isMirror: Boolean(item.is_mirror),
               attemptCount: Number(item.bid_count || 1),
-              comment: item.comment || '',
+              comment,
               climbedAt: new Date(item.climbed_at).toISOString(),
               updatedAt: new Date().toISOString(),
               auroraSyncedAt: new Date().toISOString(),
@@ -239,6 +262,7 @@ async function upsertTableData(
     case 'tags': {
       const tagsSchema = UNIFIED_TABLES.tags;
       for (const item of data) {
+        const tagName = truncate(item.name, STRING_LIMITS.name);
         // First try to update existing record
         const result = await db
           .update(tagsSchema)
@@ -250,7 +274,7 @@ async function upsertTableData(
               eq(tagsSchema.boardType, boardName),
               eq(tagsSchema.entityUuid, item.entity_uuid),
               eq(tagsSchema.userId, Number(auroraUserId)),
-              eq(tagsSchema.name, item.name),
+              eq(tagsSchema.name, tagName),
             ),
           )
           .returning();
@@ -261,7 +285,7 @@ async function upsertTableData(
             boardType: boardName,
             entityUuid: item.entity_uuid,
             userId: Number(auroraUserId),
-            name: item.name,
+            name: tagName,
             isListed: Boolean(item.is_listed),
           });
         }
@@ -272,15 +296,19 @@ async function upsertTableData(
     case 'circuits': {
       const circuitsSchema = UNIFIED_TABLES.circuits;
       for (const item of data) {
+        const circuitName = truncate(item.name, STRING_LIMITS.name);
+        const circuitDescription = truncateOrNull(item.description, STRING_LIMITS.description);
+        const circuitColor = truncateOrNull(item.color, STRING_LIMITS.color);
+
         // 1. Write to unified circuits table
         await db
           .insert(circuitsSchema)
           .values({
             boardType: boardName,
             uuid: item.uuid,
-            name: item.name,
-            description: item.description,
-            color: item.color,
+            name: circuitName,
+            description: circuitDescription,
+            color: circuitColor,
             userId: Number(auroraUserId),
             isPublic: Boolean(item.is_public),
             createdAt: item.created_at,
@@ -289,9 +317,9 @@ async function upsertTableData(
           .onConflictDoUpdate({
             target: [circuitsSchema.boardType, circuitsSchema.uuid],
             set: {
-              name: item.name,
-              description: item.description,
-              color: item.color,
+              name: circuitName,
+              description: circuitDescription,
+              color: circuitColor,
               isPublic: Boolean(item.is_public),
               updatedAt: item.updated_at,
             },
@@ -300,7 +328,7 @@ async function upsertTableData(
         // 2. Dual write to playlists table (only if NextAuth user exists)
         if (nextAuthUserId) {
           // Format color - Aurora uses hex without #, we store with #
-          const formattedColor = item.color ? `#${item.color}` : null;
+          const formattedColor = circuitColor ? `#${circuitColor}` : null;
 
           // Insert/update playlist
           const [playlist] = await db
@@ -309,8 +337,8 @@ async function upsertTableData(
               uuid: item.uuid, // Use same UUID as Aurora circuit
               boardType: boardName,
               layoutId: null, // Nullable for Aurora-synced circuits
-              name: item.name || 'Untitled Circuit',
-              description: item.description || null,
+              name: circuitName || 'Untitled Circuit',
+              description: circuitDescription || null,
               isPublic: Boolean(item.is_public),
               color: formattedColor,
               auroraType: 'circuits',
@@ -322,8 +350,8 @@ async function upsertTableData(
             .onConflictDoUpdate({
               target: playlists.auroraId,
               set: {
-                name: item.name || 'Untitled Circuit',
-                description: item.description || null,
+                name: circuitName || 'Untitled Circuit',
+                description: circuitDescription || null,
                 isPublic: Boolean(item.is_public),
                 color: formattedColor,
                 updatedAt: item.updated_at ? new Date(item.updated_at) : new Date(),
@@ -384,18 +412,31 @@ async function updateUserSyncs(
   const userSyncsSchema = UNIFIED_TABLES.userSyncs;
 
   for (const sync of userSyncs) {
+    // Validate table_name against known list
+    if (!VALID_USER_SYNC_TABLES.has(sync.table_name)) {
+      console.warn(`[sync-validation] Skipping unknown user_sync table_name: ${String(sync.table_name).slice(0, 100)}`);
+      continue;
+    }
+
+    // Validate timestamp
+    const validatedTimestamp = validateSyncTimestamp(sync.last_synchronized_at);
+    if (!validatedTimestamp) {
+      console.warn(`[sync-validation] Skipping user_sync for ${sync.table_name}: invalid timestamp`);
+      continue;
+    }
+
     await tx
       .insert(userSyncsSchema)
       .values({
         boardType: boardName,
         userId: Number(sync.user_id),
         tableName: sync.table_name,
-        lastSynchronizedAt: sync.last_synchronized_at,
+        lastSynchronizedAt: validatedTimestamp,
       })
       .onConflictDoUpdate({
         target: [userSyncsSchema.boardType, userSyncsSchema.userId, userSyncsSchema.tableName],
         set: {
-          lastSynchronizedAt: sync.last_synchronized_at,
+          lastSynchronizedAt: validatedTimestamp,
         },
       });
   }
@@ -507,7 +548,7 @@ export async function syncUserData(
         for (const tableName of tables) {
           console.log(`Syncing ${tableName} for user ${userId} (batch ${syncAttempts})`);
           if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
-            const data = syncResults[tableName];
+            const data = capRecords(syncResults[tableName], tableName);
 
             // Skip ascents/bids if no NextAuth user (can't dual write)
             if ((tableName === 'ascents' || tableName === 'bids') && !nextAuthUserId) {

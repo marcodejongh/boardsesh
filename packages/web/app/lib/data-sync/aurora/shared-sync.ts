@@ -7,6 +7,17 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { Attempt, BetaLink, Climb, ClimbStats, SharedSync, SyncPutFields } from '../../api-wrappers/sync-api-types';
 import { UNIFIED_TABLES } from '../../db/queries/util/table-select';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
+import {
+  sanitizeNumber,
+  validateSyncTimestamp,
+  isValidHttpUrl,
+  truncate,
+  truncateOrNull,
+  capRecords,
+  CLIMB_STATS_BOUNDS,
+  STRING_LIMITS,
+  VALID_SHARED_SYNC_TABLES,
+} from './sync-validation';
 
 // Define shared sync tables in correct dependency order
 // Order matches what the Android app sends - keep full list to remain indistinguishable
@@ -41,7 +52,7 @@ const upsertAttempts = (db: NeonDatabase<Record<string, never>>, board: AuroraBo
           boardType: board,
           id: Number(item.id),
           position: Number(item.position),
-          name: item.name,
+          name: truncate(item.name, STRING_LIMITS.name),
         })
         .onConflictDoUpdate({
           target: [attemptsSchema.boardType, attemptsSchema.id],
@@ -49,7 +60,7 @@ const upsertAttempts = (db: NeonDatabase<Record<string, never>>, board: AuroraBo
             // Only allow position updates if they're reasonable (0-100)
             position: sql`CASE WHEN ${Number(item.position)} >= 0 AND ${Number(item.position)} <= 100 THEN ${Number(item.position)} ELSE ${attemptsSchema.position} END`,
             // Allow name updates for display purposes
-            name: item.name,
+            name: truncate(item.name, STRING_LIMITS.name),
           },
         });
     }),
@@ -61,6 +72,20 @@ async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: 
 
   await Promise.all(
     data.map((item) => {
+      const diffAvg = sanitizeNumber(item.difficulty_average, CLIMB_STATS_BOUNDS.difficultyAverage.min, CLIMB_STATS_BOUNDS.difficultyAverage.max);
+      const displayDiff = sanitizeNumber(item.display_difficulty, CLIMB_STATS_BOUNDS.displayDifficulty.min, CLIMB_STATS_BOUNDS.displayDifficulty.max) ?? diffAvg;
+      const benchDiff = sanitizeNumber(item.benchmark_difficulty, CLIMB_STATS_BOUNDS.benchmarkDifficulty.min, CLIMB_STATS_BOUNDS.benchmarkDifficulty.max);
+      const ascCount = sanitizeNumber(item.ascensionist_count, CLIMB_STATS_BOUNDS.ascensionistCount.min, CLIMB_STATS_BOUNDS.ascensionistCount.max);
+      const qualAvg = sanitizeNumber(item.quality_average, CLIMB_STATS_BOUNDS.qualityAverage.min, CLIMB_STATS_BOUNDS.qualityAverage.max);
+      const faUsername = truncateOrNull(item.fa_username, STRING_LIMITS.username);
+
+      // Skip entirely if all numeric values are invalid
+      const hasAnyValidNumeric = displayDiff != null || diffAvg != null || benchDiff != null || ascCount != null || qualAvg != null;
+      if (!hasAnyValidNumeric) {
+        console.warn(`[sync-validation] Skipping climb_stats for ${item.climb_uuid} angle ${item.angle}: all numeric values invalid`);
+        return Promise.resolve();
+      }
+
       return Promise.all([
         // Update current stats
         db
@@ -69,23 +94,24 @@ async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: 
             boardType: board,
             climbUuid: item.climb_uuid,
             angle: Number(item.angle),
-            displayDifficulty: Number(item.display_difficulty || item.difficulty_average),
-            benchmarkDifficulty: Number(item.benchmark_difficulty),
-            ascensionistCount: Number(item.ascensionist_count),
-            difficultyAverage: Number(item.difficulty_average),
-            qualityAverage: Number(item.quality_average),
-            faUsername: item.fa_username,
+            displayDifficulty: displayDiff,
+            benchmarkDifficulty: benchDiff,
+            ascensionistCount: ascCount,
+            difficultyAverage: diffAvg,
+            qualityAverage: qualAvg,
+            faUsername,
             faAt: item.fa_at,
           })
           .onConflictDoUpdate({
             target: [climbStatsSchema.boardType, climbStatsSchema.climbUuid, climbStatsSchema.angle],
             set: {
-              displayDifficulty: Number(item.display_difficulty || item.difficulty_average),
-              benchmarkDifficulty: Number(item.benchmark_difficulty),
-              ascensionistCount: Number(item.ascensionist_count),
-              difficultyAverage: Number(item.difficulty_average),
-              qualityAverage: Number(item.quality_average),
-              faUsername: item.fa_username,
+              // Use CASE to preserve existing DB value when incoming is null (invalid)
+              displayDifficulty: displayDiff != null ? displayDiff : sql`${climbStatsSchema.displayDifficulty}`,
+              benchmarkDifficulty: benchDiff != null ? benchDiff : sql`${climbStatsSchema.benchmarkDifficulty}`,
+              ascensionistCount: ascCount != null ? ascCount : sql`${climbStatsSchema.ascensionistCount}`,
+              difficultyAverage: diffAvg != null ? diffAvg : sql`${climbStatsSchema.difficultyAverage}`,
+              qualityAverage: qualAvg != null ? qualAvg : sql`${climbStatsSchema.qualityAverage}`,
+              faUsername,
               faAt: item.fa_at,
             },
           }),
@@ -95,12 +121,12 @@ async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: 
           boardType: board,
           climbUuid: item.climb_uuid,
           angle: Number(item.angle),
-          displayDifficulty: Number(item.display_difficulty || item.difficulty_average),
-          benchmarkDifficulty: Number(item.benchmark_difficulty),
-          ascensionistCount: Number(item.ascensionist_count),
-          difficultyAverage: Number(item.difficulty_average),
-          qualityAverage: Number(item.quality_average),
-          faUsername: item.fa_username,
+          displayDifficulty: displayDiff,
+          benchmarkDifficulty: benchDiff,
+          ascensionistCount: ascCount,
+          difficultyAverage: diffAvg,
+          qualityAverage: qualAvg,
+          faUsername,
           faAt: item.fa_at,
         }),
       ]);
@@ -111,26 +137,38 @@ async function upsertClimbStats(db: NeonDatabase<Record<string, never>>, board: 
 async function upsertBetaLinks(db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: BetaLink[]) {
   const betaLinksSchema = UNIFIED_TABLES.betaLinks;
 
+  // Filter out records with invalid link URLs
+  const validData = data.filter((item) => {
+    if (!isValidHttpUrl(item.link)) {
+      console.warn(`[sync-validation] Skipping beta_link with invalid URL: ${String(item.link).slice(0, 100)}`);
+      return false;
+    }
+    return true;
+  });
+
   await Promise.all(
-    data.map((item) => {
+    validData.map((item) => {
+      // Null out invalid thumbnail URLs but keep the record
+      const thumbnail = isValidHttpUrl(item.thumbnail) ? truncateOrNull(item.thumbnail, STRING_LIMITS.url) : null;
+
       return db
         .insert(betaLinksSchema)
         .values({
           boardType: board,
           climbUuid: item.climb_uuid,
-          link: item.link,
-          foreignUsername: item.foreign_username,
+          link: truncate(item.link, STRING_LIMITS.url),
+          foreignUsername: truncateOrNull(item.foreign_username, STRING_LIMITS.username),
           angle: item.angle,
-          thumbnail: item.thumbnail,
+          thumbnail,
           isListed: item.is_listed,
           createdAt: item.created_at,
         })
         .onConflictDoUpdate({
           target: [betaLinksSchema.boardType, betaLinksSchema.climbUuid, betaLinksSchema.link],
           set: {
-            foreignUsername: item.foreign_username,
+            foreignUsername: truncateOrNull(item.foreign_username, STRING_LIMITS.username),
             angle: item.angle,
-            thumbnail: item.thumbnail,
+            thumbnail,
             isListed: item.is_listed,
             createdAt: item.created_at,
           },
@@ -145,14 +183,19 @@ async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: Auro
 
   await Promise.all(
     data.map(async (item: Climb) => {
+      const name = truncate(item.name, STRING_LIMITS.name);
+      const description = truncate(item.description, STRING_LIMITS.description);
+      const frames = truncate(item.frames, STRING_LIMITS.frames);
+      const setterUsername = truncate(item.setter_username, STRING_LIMITS.username);
+
       // Insert or update the climb
       await db
         .insert(climbsSchema)
         .values({
           uuid: item.uuid,
           boardType: board,
-          name: item.name,
-          description: item.description,
+          name,
+          description,
           hsm: item.hsm,
           edgeLeft: item.edge_left,
           edgeRight: item.edge_right,
@@ -160,9 +203,9 @@ async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: Auro
           edgeTop: item.edge_top,
           framesCount: item.frames_count,
           framesPace: item.frames_pace,
-          frames: item.frames,
+          frames,
           setterId: item.setter_id,
-          setterUsername: item.setter_username,
+          setterUsername,
           layoutId: item.layout_id,
           isDraft: item.is_draft,
           isListed: item.is_listed,
@@ -172,14 +215,15 @@ async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: Auro
         .onConflictDoUpdate({
           target: [climbsSchema.uuid],
           set: {
-            // Only allow isDraft to change from false to true (publishing)
-            isDraft: sql`CASE WHEN ${climbsSchema.isDraft} = false AND ${item.is_draft} = true THEN true ELSE ${climbsSchema.isDraft} END`,
-            // Only allow isListed to change from false to true (making public)
-            isListed: sql`CASE WHEN ${climbsSchema.isListed} = false AND ${item.is_listed} = true THEN true ELSE ${climbsSchema.isListed} END`,
-            // Allow updates to descriptive fields
-            name: item.name,
-            description: item.description,
-            // Preserve all core climb data - never allow hostile updates to these critical fields
+            // Only allow isDraft to transition from true to false (publishing).
+            // Never allow unpublishing (false -> true).
+            isDraft: sql`CASE WHEN ${climbsSchema.isDraft} = true AND ${item.is_draft} = false THEN false ELSE ${climbsSchema.isDraft} END`,
+            // Only update isListed while still a draft
+            isListed: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${item.is_listed} ELSE ${climbsSchema.isListed} END`,
+            // Only update descriptive fields while still a draft
+            name: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${name} ELSE ${climbsSchema.name} END`,
+            description: sql`CASE WHEN ${climbsSchema.isDraft} = true THEN ${description} ELSE ${climbsSchema.description} END`,
+            // Preserve all core climb data - never allow updates to these critical fields
             hsm: climbsSchema.hsm,
             edgeLeft: climbsSchema.edgeLeft,
             edgeRight: climbsSchema.edgeRight,
@@ -248,17 +292,30 @@ async function updateSharedSyncs(
   const sharedSyncsSchema = UNIFIED_TABLES.sharedSyncs;
 
   for (const sync of sharedSyncs) {
+    // Validate table_name against known list
+    if (!VALID_SHARED_SYNC_TABLES.has(sync.table_name)) {
+      console.warn(`[sync-validation] Skipping unknown shared_sync table_name: ${String(sync.table_name).slice(0, 100)}`);
+      continue;
+    }
+
+    // Validate timestamp
+    const validatedTimestamp = validateSyncTimestamp(sync.last_synchronized_at);
+    if (!validatedTimestamp) {
+      console.warn(`[sync-validation] Skipping shared_sync for ${sync.table_name}: invalid timestamp`);
+      continue;
+    }
+
     await tx
       .insert(sharedSyncsSchema)
       .values({
         boardType: boardName,
         tableName: sync.table_name,
-        lastSynchronizedAt: sync.last_synchronized_at,
+        lastSynchronizedAt: validatedTimestamp,
       })
       .onConflictDoUpdate({
         target: [sharedSyncsSchema.boardType, sharedSyncsSchema.tableName],
         set: {
-          lastSynchronizedAt: sync.last_synchronized_at,
+          lastSynchronizedAt: validatedTimestamp,
         },
       });
   }
@@ -332,7 +389,7 @@ export async function syncSharedData(
       // Process each table - data is directly under table names
       for (const tableName of SHARED_SYNC_TABLES) {
         if (syncResults[tableName] && Array.isArray(syncResults[tableName])) {
-          const data = syncResults[tableName];
+          const data = capRecords(syncResults[tableName], tableName);
 
           // Only process tables we actually care about
           if (TABLES_TO_PROCESS.has(tableName)) {
