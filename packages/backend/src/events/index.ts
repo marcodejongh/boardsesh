@@ -65,6 +65,43 @@ async function createInlineNotification(event: SocialEvent): Promise<void> {
         }
         break;
       }
+      case 'proposal.voted': {
+        // Notify proposer about the vote
+        const [votedProposal] = await db
+          .select({ proposerId: dbSchema.climbProposals.proposerId })
+          .from(dbSchema.climbProposals)
+          .where(eq(dbSchema.climbProposals.uuid, event.entityId))
+          .limit(1);
+        if (votedProposal) {
+          recipientId = votedProposal.proposerId;
+          notificationType = 'proposal_vote';
+        }
+        break;
+      }
+      case 'proposal.approved': {
+        const [approvedProposal] = await db
+          .select({ proposerId: dbSchema.climbProposals.proposerId })
+          .from(dbSchema.climbProposals)
+          .where(eq(dbSchema.climbProposals.uuid, event.entityId))
+          .limit(1);
+        if (approvedProposal) {
+          recipientId = approvedProposal.proposerId;
+          notificationType = 'proposal_approved';
+        }
+        break;
+      }
+      case 'proposal.rejected': {
+        const [rejectedProposal] = await db
+          .select({ proposerId: dbSchema.climbProposals.proposerId })
+          .from(dbSchema.climbProposals)
+          .where(eq(dbSchema.climbProposals.uuid, event.entityId))
+          .limit(1);
+        if (rejectedProposal) {
+          recipientId = rejectedProposal.proposerId;
+          notificationType = 'proposal_rejected';
+        }
+        break;
+      }
       case 'vote.cast': {
         if (event.entityType === 'tick') {
           const [tick] = await db

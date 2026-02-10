@@ -2846,7 +2846,7 @@ Each milestone creates only the DB tables and types it needs, and delivers testa
 - Switch sort mode → items re-sort
 - Unauthenticated: see trending content
 
-### Milestone 6: Community Proposals + Admin Roles
+### Milestone 6: Community Proposals + Admin Roles [COMPLETED]
 
 **User value**: "I can propose grade changes and vote on them. Admins can manage the community."
 

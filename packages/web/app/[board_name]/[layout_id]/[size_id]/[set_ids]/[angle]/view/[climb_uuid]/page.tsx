@@ -211,7 +211,7 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
               <LogbookSection climb={climbWithProcessedData} />
             </div>
             <div className={styles.logbookSection}>
-              <ClimbSocialSection climbUuid={parsedParams.climb_uuid} />
+              <ClimbSocialSection climbUuid={parsedParams.climb_uuid} boardType={parsedParams.board_name} angle={parsedParams.angle} />
             </div>
           </div>
         </div>

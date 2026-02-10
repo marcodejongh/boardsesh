@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db } from '../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import type { NotificationType } from '@boardsesh/db/schema';
@@ -101,6 +101,96 @@ export async function resolveVoteRecipients(
   }
 
   return [];
+}
+
+/**
+ * Resolve recipients for a proposal vote event.
+ * Notifies the proposer.
+ */
+export async function resolveProposalVoteRecipients(
+  proposalUuid: string,
+): Promise<RecipientInfo[]> {
+  const [proposal] = await db
+    .select({ proposerId: dbSchema.climbProposals.proposerId })
+    .from(dbSchema.climbProposals)
+    .where(eq(dbSchema.climbProposals.uuid, proposalUuid))
+    .limit(1);
+
+  if (!proposal) return [];
+
+  return [{
+    recipientId: proposal.proposerId,
+    notificationType: 'proposal_vote',
+  }];
+}
+
+/**
+ * Resolve recipients for a proposal approval event.
+ * Notifies the proposer and all upvoters.
+ */
+export async function resolveProposalApprovalRecipients(
+  proposalUuid: string,
+): Promise<RecipientInfo[]> {
+  const [proposal] = await db
+    .select({
+      id: dbSchema.climbProposals.id,
+      proposerId: dbSchema.climbProposals.proposerId,
+    })
+    .from(dbSchema.climbProposals)
+    .where(eq(dbSchema.climbProposals.uuid, proposalUuid))
+    .limit(1);
+
+  if (!proposal) return [];
+
+  const recipients: RecipientInfo[] = [{
+    recipientId: proposal.proposerId,
+    notificationType: 'proposal_approved',
+  }];
+
+  // Also notify upvoters
+  const upvoters = await db
+    .select({ userId: dbSchema.proposalVotes.userId })
+    .from(dbSchema.proposalVotes)
+    .where(
+      and(
+        eq(dbSchema.proposalVotes.proposalId, proposal.id),
+        eq(dbSchema.proposalVotes.value, 1),
+      ),
+    );
+
+  const seen = new Set<string>([proposal.proposerId]);
+  for (const v of upvoters) {
+    if (!seen.has(v.userId)) {
+      seen.add(v.userId);
+      recipients.push({
+        recipientId: v.userId,
+        notificationType: 'proposal_approved',
+      });
+    }
+  }
+
+  return recipients;
+}
+
+/**
+ * Resolve recipients for a proposal rejection event.
+ * Notifies the proposer.
+ */
+export async function resolveProposalRejectionRecipients(
+  proposalUuid: string,
+): Promise<RecipientInfo[]> {
+  const [proposal] = await db
+    .select({ proposerId: dbSchema.climbProposals.proposerId })
+    .from(dbSchema.climbProposals)
+    .where(eq(dbSchema.climbProposals.uuid, proposalUuid))
+    .limit(1);
+
+  if (!proposal) return [];
+
+  return [{
+    recipientId: proposal.proposerId,
+    notificationType: 'proposal_rejected',
+  }];
 }
 
 /**

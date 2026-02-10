@@ -1295,6 +1295,211 @@ export const typeDefs = /* GraphQL */ `
   union CommentEvent = CommentAdded | CommentUpdated | CommentDeleted
 
   # ============================================
+  # Community Proposals + Admin Roles
+  # ============================================
+
+  enum ProposalType {
+    grade
+    classic
+    benchmark
+  }
+
+  enum ProposalStatus {
+    open
+    approved
+    rejected
+    superseded
+  }
+
+  enum CommunityRoleType {
+    admin
+    community_leader
+  }
+
+  """
+  A community proposal for changing a climb's grade, classic status, or benchmark status.
+  """
+  type Proposal {
+    uuid: ID!
+    climbUuid: String!
+    boardType: String!
+    angle: Int
+    proposerId: ID!
+    proposerDisplayName: String
+    proposerAvatarUrl: String
+    type: ProposalType!
+    proposedValue: String!
+    currentValue: String!
+    status: ProposalStatus!
+    reason: String
+    resolvedAt: String
+    resolvedBy: String
+    createdAt: String!
+    weightedUpvotes: Int!
+    weightedDownvotes: Int!
+    requiredUpvotes: Int!
+    userVote: Int!
+  }
+
+  """
+  Paginated list of proposals.
+  """
+  type ProposalConnection {
+    proposals: [Proposal!]!
+    totalCount: Int!
+    hasMore: Boolean!
+  }
+
+  """
+  Vote tally for a proposal.
+  """
+  type ProposalVoteSummary {
+    weightedUpvotes: Int!
+    weightedDownvotes: Int!
+    requiredUpvotes: Int!
+    isApproved: Boolean!
+  }
+
+  """
+  Analysis of whether a climb's grade is an outlier compared to adjacent angles.
+  """
+  type OutlierAnalysis {
+    isOutlier: Boolean!
+    currentGrade: Float!
+    neighborAverage: Float!
+    neighborCount: Int!
+    gradeDifference: Float!
+  }
+
+  """
+  Community status for a climb at a specific angle.
+  """
+  type ClimbCommunityStatus {
+    climbUuid: String!
+    boardType: String!
+    angle: Int!
+    communityGrade: String
+    isBenchmark: Boolean!
+    isClassic: Boolean!
+    isFrozen: Boolean!
+    freezeReason: String
+    openProposalCount: Int!
+    outlierAnalysis: OutlierAnalysis
+    updatedAt: String
+  }
+
+  """
+  Classic status for a climb (angle-independent).
+  """
+  type ClimbClassicStatus {
+    climbUuid: String!
+    boardType: String!
+    isClassic: Boolean!
+    updatedAt: String
+  }
+
+  """
+  A community role assignment for a user.
+  """
+  type CommunityRoleAssignment {
+    id: Int!
+    userId: ID!
+    userDisplayName: String
+    userAvatarUrl: String
+    role: CommunityRoleType!
+    boardType: String
+    grantedBy: String
+    grantedByDisplayName: String
+    createdAt: String!
+  }
+
+  """
+  A community setting key-value pair.
+  """
+  type CommunitySetting {
+    id: Int!
+    scope: String!
+    scopeKey: String!
+    key: String!
+    value: String!
+    setBy: String
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  input CreateProposalInput {
+    climbUuid: String!
+    boardType: String!
+    angle: Int
+    type: ProposalType!
+    proposedValue: String!
+    reason: String
+  }
+
+  input VoteOnProposalInput {
+    proposalUuid: ID!
+    value: Int!
+  }
+
+  input ResolveProposalInput {
+    proposalUuid: ID!
+    status: ProposalStatus!
+    reason: String
+  }
+
+  input SetterOverrideInput {
+    climbUuid: String!
+    boardType: String!
+    angle: Int!
+    communityGrade: String
+    isBenchmark: Boolean
+  }
+
+  input FreezeClimbInput {
+    climbUuid: String!
+    boardType: String!
+    frozen: Boolean!
+    reason: String
+  }
+
+  input GrantRoleInput {
+    userId: ID!
+    role: CommunityRoleType!
+    boardType: String
+  }
+
+  input RevokeRoleInput {
+    userId: ID!
+    role: CommunityRoleType!
+    boardType: String
+  }
+
+  input SetCommunitySettingInput {
+    scope: String!
+    scopeKey: String!
+    key: String!
+    value: String!
+  }
+
+  input GetClimbProposalsInput {
+    climbUuid: String!
+    boardType: String!
+    angle: Int
+    type: ProposalType
+    status: ProposalStatus
+    limit: Int
+    offset: Int
+  }
+
+  input BrowseProposalsInput {
+    boardType: String
+    type: ProposalType
+    status: ProposalStatus
+    limit: Int
+    offset: Int
+  }
+
+  # ============================================
   # Social Enums
   # ============================================
 
@@ -2023,6 +2228,50 @@ export const typeDefs = /* GraphQL */ `
     unreadNotificationCount: Int!
 
     # ============================================
+    # Community Proposals Queries
+    # ============================================
+
+    """
+    Get proposals for a specific climb.
+    """
+    climbProposals(input: GetClimbProposalsInput!): ProposalConnection!
+
+    """
+    Browse proposals across all climbs with filters.
+    """
+    browseProposals(input: BrowseProposalsInput!): ProposalConnection!
+
+    """
+    Get community status for a specific climb at an angle.
+    """
+    climbCommunityStatus(climbUuid: String!, boardType: String!, angle: Int!): ClimbCommunityStatus!
+
+    """
+    Get community status for multiple climbs (batch).
+    """
+    bulkClimbCommunityStatus(climbUuids: [String!]!, boardType: String!, angle: Int!): [ClimbCommunityStatus!]!
+
+    """
+    Get classic status for a climb (angle-independent).
+    """
+    climbClassicStatus(climbUuid: String!, boardType: String!): ClimbClassicStatus!
+
+    """
+    Get community settings for a scope.
+    """
+    communitySettings(scope: String!, scopeKey: String!): [CommunitySetting!]!
+
+    """
+    Get all community role assignments.
+    """
+    communityRoles(boardType: String): [CommunityRoleAssignment!]!
+
+    """
+    Get the current user's community roles.
+    """
+    myRoles: [CommunityRoleAssignment!]!
+
+    # ============================================
     # Comments & Votes Queries
     # ============================================
 
@@ -2276,6 +2525,50 @@ export const typeDefs = /* GraphQL */ `
     Vote on an entity. Same value toggles (removes vote).
     """
     vote(input: VoteInput!): VoteSummary!
+
+    # ============================================
+    # Community Proposals Mutations (require auth)
+    # ============================================
+
+    """
+    Create a proposal for a climb grade/classic/benchmark change.
+    """
+    createProposal(input: CreateProposalInput!): Proposal!
+
+    """
+    Vote on an open proposal.
+    """
+    voteOnProposal(input: VoteOnProposalInput!): Proposal!
+
+    """
+    Resolve a proposal (admin/leader only).
+    """
+    resolveProposal(input: ResolveProposalInput!): Proposal!
+
+    """
+    Setter override: directly set community status for your own climb.
+    """
+    setterOverrideCommunityStatus(input: SetterOverrideInput!): ClimbCommunityStatus!
+
+    """
+    Freeze or unfreeze a climb from receiving proposals (admin/leader only).
+    """
+    freezeClimb(input: FreezeClimbInput!): Boolean!
+
+    """
+    Set a community setting (admin/leader only).
+    """
+    setCommunitySettings(input: SetCommunitySettingInput!): CommunitySetting!
+
+    """
+    Grant a community role to a user (admin only).
+    """
+    grantRole(input: GrantRoleInput!): CommunityRoleAssignment!
+
+    """
+    Revoke a community role from a user (admin only).
+    """
+    revokeRole(input: RevokeRoleInput!): Boolean!
 
     # ESP32 sends LED positions from official app Bluetooth
     # frames: Pre-built frames string from ESP32 (preferred)
