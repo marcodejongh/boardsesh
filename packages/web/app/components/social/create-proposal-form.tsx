@@ -187,6 +187,7 @@ export default function CreateProposalForm({
                 value={selectedAngle}
                 label="Angle"
                 onChange={(e) => setSelectedAngle(e.target.value as number | 'all')}
+                MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}
               >
                 {type !== 'grade' && (
                   <MenuItem value="all">All angles</MenuItem>
@@ -207,6 +208,7 @@ export default function CreateProposalForm({
                 label="Proposed Grade"
                 onChange={(e) => setProposedValue(e.target.value)}
                 sx={gradeBackground ? { bgcolor: gradeBackground } : undefined}
+                MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}
               >
                 {BOULDER_GRADES.map((grade) => (
                   <MenuItem key={grade.difficulty_id} value={grade.difficulty_name}>

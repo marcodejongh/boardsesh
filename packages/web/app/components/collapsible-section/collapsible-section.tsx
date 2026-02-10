@@ -23,7 +23,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   sections,
   defaultActiveKey,
 }) => {
-  const [activeKey, setActiveKey] = useState<string>(defaultActiveKey || sections[0]?.key || '');
+  const [activeKey, setActiveKey] = useState<string | null>(defaultActiveKey ?? null);
 
   return (
     <div className={styles.steppedContainer}>

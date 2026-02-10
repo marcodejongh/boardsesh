@@ -63,12 +63,9 @@ export default function ClimbViewSidebar({
     },
   ];
 
-  // Pick a sensible default: logbook if the user has entries, otherwise beta if there are videos
-  const defaultKey = logbookSummary ? 'logbook' : betaLinks.length > 0 ? 'beta' : 'logbook';
-
   return (
     <>
-      <CollapsibleSection sections={sections} defaultActiveKey={defaultKey} />
+      <CollapsibleSection sections={sections} />
       <ClimbSocialSection
         climbUuid={climbUuid}
         boardType={boardType}
