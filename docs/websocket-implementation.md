@@ -77,9 +77,15 @@ The party session system uses a GraphQL-over-WebSocket architecture with the fol
 | WebSocket Protocol | `graphql-ws` | GraphQL subscriptions over WebSocket |
 | Backend Framework | GraphQL Yoga | HTTP + WS GraphQL server |
 | Frontend Client | `graphql-ws` client | Connection management |
-| Pub/Sub | Redis | Multi-instance event distribution |
-| Hot Cache | Redis | Real-time session state (4h TTL) |
+| Pub/Sub | Redis (subscriber connection) | Multi-instance event distribution |
+| Hot Cache | Redis (publisher connection) | Real-time session state (4h TTL) |
+| Stream Consumer | Redis (streamConsumer connection) | Dedicated connection for blocking `XREADGROUP` in EventBroker |
 | Persistent Storage | PostgreSQL | Durable session & queue history |
+
+**Redis Connection Architecture:** The backend maintains 3 Redis connections:
+1. **Publisher** — shared by RoomManager, RedisSessionStore, DistributedState, EventBroker (non-blocking ops like `xadd`, `xack`)
+2. **Subscriber** — dedicated to ioredis pub/sub mode (enters special subscribe-only mode)
+3. **Stream Consumer** — dedicated to EventBroker's blocking `XREADGROUP BLOCK 5000` loop, preventing it from starving the publisher connection
 
 ---
 
@@ -248,24 +254,39 @@ This ensures `BoardSessionBridge` only calls `activateSession()` when the actual
     │  - Users connected                            │
     │  - Real-time sync enabled                     │
     │  - Redis cache hot                            │
+    │  - In-memory session state                    │
     └──────────────────────────┬───────────────────┘
                                │ Last user leaves
                                ▼
     ┌──────────────────────────────────────────────┐
-    │                  INACTIVE                     │
+    │              GRACE PERIOD (60s)               │
     │  - No connected users                         │
-    │  - Redis cache retained (4h TTL)              │
-    │  - Can be restored                            │
-    └──────────────────────────┬───────────────────┘
-                               │ TTL expires OR explicit end
-                               ▼
-    ┌──────────────────────────────────────────────┐
-    │                   ENDED                       │
-    │  - Removed from Redis                         │
-    │  - Postgres record kept for history           │
-    │  - Cannot be rejoined                         │
-    └──────────────────────────────────────────────┘
+    │  - In-memory session state RETAINED           │
+    │  - Redis marked inactive, 4h TTL starts       │
+    │  - Postgres set to 'inactive'                 │
+    │  - If user rejoins: skip restoration, instant │
+    └────────────┬─────────────────────┬───────────┘
+                 │ User rejoins         │ 60s expires
+                 │ within grace         │
+                 ▼                      ▼
+    ┌────────────────────┐   ┌─────────────────────────────┐
+    │  Back to ACTIVE    │   │          INACTIVE            │
+    │  (no restoration   │   │  - In-memory state deleted   │
+    │   needed)          │   │  - Redis cache retained (4h) │
+    └────────────────────┘   │  - Restoration needed on     │
+                             │    next join (lock + fetch)   │
+                             └──────────────┬──────────────┘
+                                            │ TTL expires OR explicit end
+                                            ▼
+                             ┌──────────────────────────────┐
+                             │            ENDED              │
+                             │  - Removed from Redis         │
+                             │  - Postgres record kept       │
+                             │  - Cannot be rejoined         │
+                             └──────────────────────────────┘
 ```
+
+**Grace Period:** When the last user disconnects, the session enters a 60-second grace period where in-memory state is preserved. If a client reconnects within this window (common during network flaps or page refreshes), the session is instantly available without the expensive lock + Redis/Postgres restoration cycle. The grace period duration is controlled by `SESSION_GRACE_PERIOD_MS` in `RoomManager`.
 
 ### Leader Election
 
@@ -1085,6 +1106,7 @@ Requires user authentication and controller ownership.
 | Instance heartbeat | 30s | Heartbeat update interval |
 | Instance heartbeat TTL | 60s | Dead instance detection |
 | Session members TTL | 4 hours | Matches session TTL |
+| Session grace period | 60s | In-memory retention after last disconnect |
 
 ---
 

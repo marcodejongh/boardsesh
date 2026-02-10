@@ -63,6 +63,8 @@ class RoomManager {
   private distributedState: DistributedStateManager | null = null;
   private postgresWriteTimers: Map<string, NodeJS.Timeout> = new Map();
   private pendingWrites: Map<string, { queue: ClimbQueueItem[]; currentClimbQueueItem: ClimbQueueItem | null; version: number; sequence: number }> = new Map();
+  private sessionGraceTimers: Map<string, NodeJS.Timeout> = new Map();
+  private readonly SESSION_GRACE_PERIOD_MS = 60_000; // 60 seconds before removing empty sessions from memory
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_BASE_DELAY = 1000; // 1 second
   private writeRetryAttempts: Map<string, number> = new Map();
@@ -189,6 +191,14 @@ class RoomManager {
 
     // Track if this is a new session
     let isNewSession = false;
+
+    // Cancel grace timer if session exists locally (client reconnecting during grace period)
+    const graceTimer = this.sessionGraceTimers.get(sessionId);
+    if (graceTimer) {
+      clearTimeout(graceTimer);
+      this.sessionGraceTimers.delete(sessionId);
+      console.log(`[RoomManager] Cancelled grace timer for session ${sessionId} (client reconnecting)`);
+    }
 
     // Create or get session in memory - with lazy restore
     if (!this.sessions.has(sessionId)) {
@@ -334,15 +344,13 @@ class RoomManager {
     client.isLeader = isLeader;
     sessionClientIds.add(connectionId);
 
-    // Persist to database (update session metadata, not user list)
-    // Only pass sessionName for new sessions (ignored for existing sessions)
-    await this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined);
-
-    // Update Postgres session status to 'active' and lastActivity
-    await db
-      .update(sessions)
-      .set({ status: 'active', lastActivity: new Date() })
-      .where(eq(sessions.id, sessionId));
+    // Fire-and-forget Postgres metadata writes - Redis is the source of truth.
+    // These don't affect the return value and shouldn't block the join response.
+    // Failures are logged at warn level since Postgres will be inconsistent until next write.
+    Promise.all([
+      this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined),
+      db.update(sessions).set({ status: 'active', lastActivity: new Date() }).where(eq(sessions.id, sessionId)),
+    ]).catch(err => console.warn(`[RoomManager] Background Postgres persist failed for session ${sessionId} (Redis is source of truth):`, err));
 
     // Initialize queue state for new sessions with provided initial queue
     if (isNewSession && initialQueue && initialQueue.length > 0) {
@@ -355,10 +363,12 @@ class RoomManager {
       );
     }
 
-    // Update Redis session state
+    // Update Redis session state - markActive and refreshTTL are independent
     if (this.redisStore) {
-      await this.redisStore.markActive(sessionId);
-      await this.redisStore.refreshTTL(sessionId);
+      await Promise.all([
+        this.redisStore.markActive(sessionId),
+        this.redisStore.refreshTTL(sessionId),
+      ]);
 
       // Only save users to Redis store if NOT using distributed state
       // (distributed state handles user list separately)
@@ -368,12 +378,12 @@ class RoomManager {
       }
     }
 
-    // Get current session state
-    const users = await this.getSessionUsers(sessionId);
-    const queueState = await this.getQueueState(sessionId);
-
-    // Get session name from database
-    const sessionData = await this.getSessionById(sessionId);
+    // Get current session state - these are independent reads, run in parallel
+    const [users, queueState, sessionData] = await Promise.all([
+      this.getSessionUsers(sessionId),
+      this.getQueueState(sessionId),
+      this.getSessionById(sessionId),
+    ]);
     const resolvedSessionName = sessionData?.name || null;
 
     return {
@@ -404,7 +414,21 @@ class RoomManager {
 
       // Keep session alive when last user leaves (for hybrid persistence)
       if (sessionClientIds.size === 0) {
-        this.sessions.delete(sessionId);
+        // Start grace period instead of immediate deletion.
+        // This avoids expensive session restoration if a client reconnects quickly.
+        const existingGraceTimer = this.sessionGraceTimers.get(sessionId);
+        if (existingGraceTimer) clearTimeout(existingGraceTimer);
+
+        const timer = setTimeout(() => {
+          // Only delete if still empty after grace period
+          const currentClients = this.sessions.get(sessionId);
+          if (currentClients && currentClients.size === 0) {
+            this.sessions.delete(sessionId);
+            console.log(`[RoomManager] Session ${sessionId} removed from memory after grace period`);
+          }
+          this.sessionGraceTimers.delete(sessionId);
+        }, this.SESSION_GRACE_PERIOD_MS);
+        this.sessionGraceTimers.set(sessionId, timer);
 
         // Cancel any pending writes since session is now inactive
         this.cancelPendingWrites(sessionId);
@@ -417,7 +441,7 @@ class RoomManager {
           if (!this.distributedState) {
             await this.redisStore.saveUsers(sessionId, []);
           }
-          console.log(`[RoomManager] Session ${sessionId} marked inactive - will expire from Redis in 4 hours`);
+          console.log(`[RoomManager] Session ${sessionId} marked inactive - grace period started (60s)`);
         }
 
         // Update Postgres status to 'inactive' (keep queue state for recovery)
@@ -425,8 +449,6 @@ class RoomManager {
           .update(sessions)
           .set({ status: 'inactive', lastActivity: new Date() })
           .where(eq(sessions.id, sessionId));
-
-        // DON'T call cleanupSessionQueue anymore - we keep the queue for later restoration
       }
     }
 
@@ -1305,6 +1327,12 @@ class RoomManager {
     this.retryTimers.clear();
     this.writeRetryAttempts.clear();
 
+    // Clear grace timers
+    for (const timer of this.sessionGraceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.sessionGraceTimers.clear();
+
     console.log('[RoomManager] All pending writes flushed');
   }
 
@@ -1317,6 +1345,13 @@ class RoomManager {
   async endSession(sessionId: string): Promise<void> {
     // Cancel any pending writes to prevent FK violations after session ends
     this.cancelPendingWrites(sessionId);
+
+    // Clear grace timer if one exists
+    const graceTimer = this.sessionGraceTimers.get(sessionId);
+    if (graceTimer) {
+      clearTimeout(graceTimer);
+      this.sessionGraceTimers.delete(sessionId);
+    }
 
     // Remove from Redis
     if (this.redisStore) {

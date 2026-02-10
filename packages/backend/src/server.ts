@@ -30,12 +30,12 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
 
   // Initialize RoomManager with Redis for session persistence
   if (redisClientManager.isRedisConfigured() && redisClientManager.isRedisConnected()) {
-    const { publisher } = redisClientManager.getClients();
+    const { publisher, streamConsumer } = redisClientManager.getClients();
     await roomManager.initialize(publisher);
 
     // Initialize EventBroker and NotificationWorker (requires Redis)
     try {
-      await eventBroker.initialize(publisher);
+      await eventBroker.initialize(publisher, streamConsumer);
       const notificationWorker = new NotificationWorker(eventBroker);
       notificationWorker.start();
       console.log('[Server] EventBroker and NotificationWorker started');
