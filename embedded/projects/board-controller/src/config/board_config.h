@@ -1,9 +1,10 @@
 #ifndef BOARD_CONFIG_H
 #define BOARD_CONFIG_H
 
+#include "version.h"
+
 // Device identification
 #define DEVICE_NAME "Boardsesh Controller"
-#define FIRMWARE_VERSION "1.0.0"
 
 // LED configuration
 // Note: GPIO 5 conflicts with LCD_RST on T-Display-S3

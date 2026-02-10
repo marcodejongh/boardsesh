@@ -370,6 +370,28 @@ void test_config_partial_update(void) {
 }
 
 // =============================================================================
+// Firmware Version Endpoint Tests
+// =============================================================================
+
+void test_firmware_version_endpoint(void) {
+    webServer->begin();
+    webServer->getServer().mockRequest("/api/firmware/version", HTTP_GET);
+
+    TEST_ASSERT_EQUAL(200, webServer->getServer().getLastResponseCode());
+    const std::string& body = webServer->getServer().getLastResponseBody();
+    TEST_ASSERT_TRUE(body.find("version") != std::string::npos);
+    TEST_ASSERT_TRUE(body.find("build_env") != std::string::npos);
+}
+
+void test_firmware_upload_route_registered(void) {
+    webServer->begin();
+    webServer->getServer().mockRequest("/api/firmware/upload", HTTP_POST);
+
+    // Should get a response (not 404), confirming the route is registered
+    TEST_ASSERT_TRUE(webServer->getServer().getLastResponseCode() != 404);
+}
+
+// =============================================================================
 // Port Constant Test
 // =============================================================================
 
@@ -435,6 +457,10 @@ int main(int argc, char** argv) {
     // Config persistence tests
     RUN_TEST(test_config_values_persist);
     RUN_TEST(test_config_partial_update);
+
+    // Firmware endpoint tests
+    RUN_TEST(test_firmware_version_endpoint);
+    RUN_TEST(test_firmware_upload_route_registered);
 
     // Port constant test
     RUN_TEST(test_web_server_port_constant);

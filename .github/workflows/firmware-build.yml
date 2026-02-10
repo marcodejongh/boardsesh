@@ -1,0 +1,117 @@
+name: Firmware Build & Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'embedded/**'
+      - '.github/workflows/firmware-build.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - env: esp32s3dev
+            name: esp32s3-led
+          - env: esp32s3dev-proxy
+            name: esp32s3-proxy
+          - env: tdisplay-s3
+            name: tdisplay-s3
+          - env: waveshare-7inch
+            name: waveshare-7inch
+          - env: esp32dev
+            name: esp32-legacy
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Determine version
+        id: version
+        run: |
+          echo "version=main-${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+
+      - name: Build firmware
+        working-directory: embedded/projects/board-controller
+        run: |
+          pio run -e ${{ matrix.env }}
+        env:
+          PLATFORMIO_BUILD_FLAGS: >-
+            -DFIRMWARE_VERSION=\"${{ steps.version.outputs.version }}\"
+            -DFIRMWARE_BUILD_ENV=\"${{ matrix.env }}\"
+
+      - name: Rename binary
+        run: |
+          cp embedded/projects/board-controller/.pio/build/${{ matrix.env }}/firmware.bin \
+             firmware-${{ matrix.name }}.bin
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.name }}
+          path: firmware-${{ matrix.name }}.bin
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: firmware-artifacts
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="main-${GITHUB_SHA:0:7}"
+          TAG="firmware/${VERSION}"
+
+          gh release delete "${TAG}" --yes 2>/dev/null || true
+          git push origin --delete "${TAG}" 2>/dev/null || true
+
+          gh release create "${TAG}" \
+            --title "Firmware: ${VERSION}" \
+            --notes "$(cat <<'NOTES'
+          ## Firmware Build
+
+          | Binary | Hardware |
+          |--------|----------|
+          | firmware-esp32s3-led.bin | ESP32-S3 LED controller |
+          | firmware-esp32s3-proxy.bin | ESP32-S3 with BLE proxy |
+          | firmware-tdisplay-s3.bin | LilyGo T-Display S3 |
+          | firmware-waveshare-7inch.bin | Waveshare 7" touch display |
+          | firmware-esp32-legacy.bin | Legacy ESP32 |
+
+          ### How to Flash via OTA
+          1. Download the .bin file matching your hardware
+          2. Navigate to your ESP32's web UI (http://<device-ip>)
+          3. Scroll to **Firmware Update** section
+          4. Select the .bin file and click **Upload Firmware**
+          5. Wait for upload + automatic reboot
+          NOTES
+          )" \
+            --prerelease \
+            firmware-artifacts/*.bin

@@ -6,6 +6,8 @@
 #include <WebServer.h>
 #include <wifi_utils.h>
 
+#include <Update.h>
+
 #include <config_manager.h>
 
 #define WEB_SERVER_PORT 80
@@ -46,6 +48,17 @@ class ESPWebServer {
     void handleWiFiConnect();
     void handleWiFiStatus();
     void handleRestart();
+
+    // OTA firmware update handlers
+    void handleFirmwareVersion();
+    void handleFirmwareUploadComplete();
+    void handleFirmwareUploadData();
+
+    // OTA state
+    bool _otaInProgress = false;
+    size_t _otaBytesWritten = 0;
+    bool _otaError = false;
+    String _otaErrorMessage;
 
     void setupRoutes();
     void setCorsHeaders();

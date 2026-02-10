@@ -19,6 +19,20 @@
 // HTTP methods
 typedef enum { HTTP_ANY, HTTP_GET, HTTP_HEAD, HTTP_POST, HTTP_PUT, HTTP_PATCH, HTTP_DELETE, HTTP_OPTIONS } HTTPMethod;
 
+// Upload status constants
+#define UPLOAD_FILE_START 0
+#define UPLOAD_FILE_WRITE 1
+#define UPLOAD_FILE_END 2
+#define UPLOAD_FILE_ABORTED 3
+
+struct HTTPUpload {
+    int status = 0;
+    const uint8_t* buf = nullptr;
+    size_t currentSize = 0;
+    size_t totalSize = 0;
+    String filename;
+};
+
 class WebServer;
 typedef std::function<void(void)> THandlerFunction;
 
@@ -61,6 +75,11 @@ class WebServer {
         routes_[std::string(uri)][method] = handler;
     }
 
+    void on(const char* uri, HTTPMethod method, THandlerFunction handler, THandlerFunction uploadHandler) {
+        routes_[std::string(uri)][method] = handler;
+        uploadHandlers_[std::string(uri)] = uploadHandler;
+    }
+
     void on(const char* uri, THandlerFunction handler) { on(uri, HTTP_ANY, handler); }
 
     void onNotFound(THandlerFunction handler) { notFoundHandler_ = handler; }
@@ -88,6 +107,8 @@ class WebServer {
     HTTPMethod method() const { return currentMethod_; }
 
     const String& uri() const { return currentUri_; }
+
+    HTTPUpload& upload() { return mockUpload_; }
 
     // Test control methods
     void mockRequest(const char* uri, HTTPMethod method, const std::string& body = "") {
@@ -125,6 +146,7 @@ class WebServer {
     void mockReset() {
         running_ = false;
         routes_.clear();
+        uploadHandlers_.clear();
         args_.clear();
         lastHeaders_.clear();
         responses_.clear();
@@ -133,6 +155,7 @@ class WebServer {
         lastResponseBody_ = "";
         currentUri_ = "";
         notFoundHandler_ = nullptr;
+        mockUpload_ = HTTPUpload();
     }
 
     // Test inspection methods
@@ -155,6 +178,7 @@ class WebServer {
     uint16_t port_;
     bool running_;
     std::map<std::string, std::map<HTTPMethod, THandlerFunction>> routes_;
+    std::map<std::string, THandlerFunction> uploadHandlers_;
     THandlerFunction notFoundHandler_;
     std::map<std::string, std::string> args_;
     std::map<std::string, std::string> lastHeaders_;
@@ -164,6 +188,7 @@ class WebServer {
     std::string lastResponseBody_;
     String currentUri_;
     HTTPMethod currentMethod_ = HTTP_GET;
+    HTTPUpload mockUpload_;
 };
 
 #endif  // WEBSERVER_MOCK_H
