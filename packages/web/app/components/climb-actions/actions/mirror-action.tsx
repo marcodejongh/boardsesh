@@ -8,6 +8,7 @@ import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import { useOptionalQueueContext } from '../../graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
+import { buildActionResult, computeActionDisplay, ActionListElement } from '../action-view-renderer';
 
 export function MirrorAction({
   climb,
@@ -20,6 +21,7 @@ export function MirrorAction({
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
   const queueContext = useOptionalQueueContext();
+  const { iconSize, shouldShowLabel } = computeActionDisplay(viewMode, size, showLabel);
 
   const canMirror = boardDetails.supportsMirroring === true && !!queueContext;
   const isMirrored = queueContext?.currentClimb?.mirrored ?? climb.mirrored ?? false;
@@ -42,90 +44,53 @@ export function MirrorAction({
   }, [canMirror, queueContext, boardDetails.board_name, climb.uuid, isMirrored, onComplete]);
 
   const label = isMirrored ? 'Mirrored' : 'Mirror';
-  const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
-  const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
-
   const iconStyle = isMirrored
     ? { color: themeTokens.colors.purple, fontSize: iconSize }
     : { fontSize: iconSize };
   const icon = <SwapHorizOutlined sx={iconStyle} />;
 
-  // Icon mode - for Card actions
-  const iconElement = canMirror ? (
-    <ActionTooltip title={isMirrored ? 'Mirrored (click to reset)' : 'Mirror climb'}>
-      <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
-        {icon}
-      </span>
-    </ActionTooltip>
-  ) : null;
-
-  // Button mode
-  const buttonElement = canMirror ? (
-    <MuiButton
-      variant={isMirrored ? 'contained' : 'outlined'}
-      startIcon={icon}
-      onClick={handleClick}
-      size={size === 'large' ? 'large' : 'small'}
-      disabled={disabled}
-      className={className}
-    >
-      {shouldShowLabel && label}
-    </MuiButton>
-  ) : null;
-
-  // Menu item for dropdown
-  const menuItem = {
+  // Mirror has custom rendering when unavailable (returns null elements)
+  return buildActionResult({
     key: 'mirror',
     label,
     icon,
-    onClick: () => handleClick(),
-    disabled: !canMirror,
-  };
-
-  // List mode - full-width row for drawer menus
-  const listElement = canMirror ? (
-    <MuiButton
-      variant="text"
-      startIcon={icon}
-      fullWidth
-      onClick={handleClick}
-      disabled={disabled}
-      sx={{
-        height: 48,
-        justifyContent: 'flex-start',
-        paddingLeft: `${themeTokens.spacing[4]}px`,
-        fontSize: themeTokens.typography.fontSize.base,
-      }}
-    >
-      {label}
-    </MuiButton>
-  ) : null;
-
-  let element: React.ReactNode;
-  switch (viewMode) {
-    case 'icon':
-      element = iconElement;
-      break;
-    case 'button':
-    case 'compact':
-      element = buttonElement;
-      break;
-    case 'list':
-      element = listElement;
-      break;
-    case 'dropdown':
-      element = null; // Use menuItem instead
-      break;
-    default:
-      element = iconElement;
-  }
-
-  return {
-    element,
-    menuItem,
-    key: 'mirror',
+    onClick: handleClick,
+    viewMode,
+    size,
+    showLabel,
+    disabled,
+    className,
     available: canMirror,
-  };
+    iconElementOverride: canMirror ? (
+      <ActionTooltip title={isMirrored ? 'Mirrored (click to reset)' : 'Mirror climb'}>
+        <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
+          {icon}
+        </span>
+      </ActionTooltip>
+    ) : null,
+    buttonElementOverride: canMirror ? (
+      <MuiButton
+        variant={isMirrored ? 'contained' : 'outlined'}
+        startIcon={icon}
+        onClick={handleClick}
+        size={size === 'large' ? 'large' : 'small'}
+        disabled={disabled}
+        className={className}
+      >
+        {shouldShowLabel && label}
+      </MuiButton>
+    ) : null,
+    listElementOverride: canMirror ? (
+      <ActionListElement icon={icon} label={label} onClick={handleClick} disabled={disabled} />
+    ) : null,
+    menuItem: {
+      key: 'mirror',
+      label,
+      icon,
+      onClick: () => handleClick(),
+      disabled: !canMirror,
+    },
+  });
 }
 
 export default MirrorAction;

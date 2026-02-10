@@ -76,27 +76,21 @@ export function getUnifiedTable<K extends keyof UnifiedTableSet>(
 }
 
 /**
- * Helper function to check if a board name is valid
- * @param boardName The name to check
- * @returns True if the board name is valid
- */
-export function isValidBoardName(boardName: string): boardName is BoardName {
-  return boardName === 'kilter' || boardName === 'tension' || boardName === 'moonboard';
-}
-
-/**
- * Extended board name type that includes moonboard for unified tables
+ * Board name type that includes all supported boards (kilter, tension, moonboard)
  */
 export type UnifiedBoardName = BoardName | 'moonboard';
 
 /**
- * Check if a board name is valid for unified tables (includes moonboard)
+ * Check if a board name is valid (includes all supported boards)
  * @param boardName The name to check
- * @returns True if the board name is valid for unified tables
+ * @returns True if the board name is valid
  */
-export function isValidUnifiedBoardName(boardName: string): boardName is UnifiedBoardName {
+export function isValidBoardName(boardName: string): boardName is UnifiedBoardName {
   return boardName === 'kilter' || boardName === 'tension' || boardName === 'moonboard';
 }
+
+/** @deprecated Use isValidBoardName instead */
+export const isValidUnifiedBoardName = isValidBoardName;
 
 const tableSelectUtils = {
   getUnifiedTable,

@@ -3,6 +3,7 @@ import { ParsedBoardRouteParameters, SearchRequestPagination } from '@/app/lib/t
 import { UNIFIED_TABLES } from '@/lib/db/queries/util/table-select';
 import { SizeEdges } from '@/app/lib/__generated__/product-sizes-data';
 import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
+import { KILTER_HOMEWALL_LAYOUT_ID, KILTER_HOMEWALL_PRODUCT_ID } from '@/app/lib/board-constants';
 import { boardseshTicks } from '@/app/lib/db/schema';
 
 // Type for unified tables used by filters
@@ -129,8 +130,6 @@ export const createClimbFilters = (
   // Only applies for Kilter Homewall (layout_id = 8) on the largest size
   // A "tall climb" is one that uses holds in the bottom rows that are only available on the largest size
   const tallClimbsConditions: SQL[] = [];
-  const KILTER_HOMEWALL_LAYOUT_ID = 8;
-  const KILTER_HOMEWALL_PRODUCT_ID = 7;
 
   if (searchParams.onlyTallClimbs && params.board_name === 'kilter' && params.layout_id === KILTER_HOMEWALL_LAYOUT_ID) {
     // Find the maximum edge_bottom of all sizes smaller than the current size

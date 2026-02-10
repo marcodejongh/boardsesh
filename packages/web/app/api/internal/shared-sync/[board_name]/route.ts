@@ -2,8 +2,7 @@
 import { NextResponse } from 'next/server';
 import { syncSharedData as syncSharedDataFunction } from '@/lib/data-sync/aurora/shared-sync';
 import { BoardName as AuroraBoardName } from '@/app/lib/api-wrappers/aurora-rest-client/types';
-
-const VALID_BOARD_NAMES: AuroraBoardName[] = ['kilter', 'tension'];
+import { AURORA_BOARD_NAMES } from '@/app/lib/board-constants';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -70,7 +69,7 @@ export async function GET(request: Request, props: { params: Promise<SharedSyncR
     const { board_name: boardNameParam } = params;
 
     // Validate board_name is a valid AuroraBoardName
-    if (!VALID_BOARD_NAMES.includes(boardNameParam as AuroraBoardName)) {
+    if (!AURORA_BOARD_NAMES.includes(boardNameParam as AuroraBoardName)) {
       return NextResponse.json({ error: `Invalid board name: ${boardNameParam}` }, { status: 400 });
     }
     const board_name = boardNameParam as AuroraBoardName;

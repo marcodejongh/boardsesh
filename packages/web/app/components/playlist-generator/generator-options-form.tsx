@@ -29,8 +29,7 @@ import {
 import styles from './generator-options-form.module.css';
 
 
-// Kilter Homewall layout ID
-const KILTER_HOMEWALL_LAYOUT_ID = 8;
+import { KILTER_HOMEWALL_LAYOUT_ID } from '@/app/lib/board-constants';
 
 interface GeneratorOptionsFormProps {
   workoutType: WorkoutType;

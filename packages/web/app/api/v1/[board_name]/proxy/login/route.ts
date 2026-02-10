@@ -8,6 +8,7 @@ import { BoardOnlyRouteParameters } from '@/app/lib/types';
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
 import { Session, BoardName as AuroraBoardName } from '@/app/lib/api-wrappers/aurora-rest-client/types';
 import { getSession } from '@/app/lib/session';
+import { isAuroraBoardName } from '@/app/lib/board-constants';
 
 // Input validation schema
 const loginSchema = z.object({
@@ -73,8 +74,7 @@ export async function POST(request: Request, props: { params: Promise<BoardOnlyR
   const params = await props.params;
 
   // Only kilter and tension use Aurora APIs
-  const VALID_AURORA_BOARDS: AuroraBoardName[] = ['kilter', 'tension'];
-  if (!VALID_AURORA_BOARDS.includes(params.board_name as AuroraBoardName)) {
+  if (!isAuroraBoardName(params.board_name)) {
     return NextResponse.json({ error: 'Unsupported board for this endpoint' }, { status: 400 });
   }
 

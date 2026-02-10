@@ -12,6 +12,7 @@ import {
   constructClimbViewUrlWithSlugs,
 } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
+import { buildActionResult, computeActionDisplay } from '../action-view-renderer';
 
 const linkResetStyle: React.CSSProperties = { color: 'inherit', textDecoration: 'none' };
 
@@ -26,6 +27,8 @@ export function ViewDetailsAction({
   className,
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
+  const { iconSize, shouldShowLabel } = computeActionDisplay(viewMode, size, showLabel);
+
   const url = boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
     ? constructClimbViewUrlWithSlugs(
         boardDetails.board_name,
@@ -58,91 +61,67 @@ export function ViewDetailsAction({
   };
 
   const label = 'View Details';
-  const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
-  const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
-
   const icon = <InfoOutlined sx={{ fontSize: iconSize }} />;
 
-  // Icon mode - for Card actions
-  const iconElement = (
-    <ActionTooltip title={label}>
-      <Link href={url} onClick={handleClick} className={className} style={linkResetStyle}>
-        {icon}
-      </Link>
-    </ActionTooltip>
-  );
-
-  // Button mode
-  const buttonElement = (
-    <Link href={url} onClick={handleClick} style={linkResetStyle}>
-      <MuiButton
-        variant="outlined"
-        startIcon={icon}
-        size={size === 'large' ? 'large' : 'small'}
-        disabled={disabled}
-        className={className}
-      >
-        {shouldShowLabel && label}
-      </MuiButton>
-    </Link>
-  );
-
-  // Menu item for dropdown
-  const menuItem = {
+  // Link-based actions need custom elements since they wrap with Next.js Link
+  return buildActionResult({
     key: 'viewDetails',
-    label: (
+    label,
+    icon,
+    onClick: handleClick,
+    viewMode,
+    size,
+    showLabel,
+    disabled,
+    className,
+    iconElementOverride: (
+      <ActionTooltip title={label}>
+        <Link href={url} onClick={handleClick} className={className} style={linkResetStyle}>
+          {icon}
+        </Link>
+      </ActionTooltip>
+    ),
+    buttonElementOverride: (
       <Link href={url} onClick={handleClick} style={linkResetStyle}>
-        {label}
+        <MuiButton
+          variant="outlined"
+          startIcon={icon}
+          size={size === 'large' ? 'large' : 'small'}
+          disabled={disabled}
+          className={className}
+        >
+          {shouldShowLabel && label}
+        </MuiButton>
       </Link>
     ),
-    icon,
-  };
-
-  // List mode - full-width row for drawer menus
-  const listElement = (
-    <Link href={url} onClick={handleClick} style={linkResetStyle}>
-      <MuiButton
-        variant="text"
-        startIcon={icon}
-        fullWidth
-        disabled={disabled}
-        sx={{
-          height: 48,
-          justifyContent: 'flex-start',
-          paddingLeft: `${themeTokens.spacing[4]}px`,
-          fontSize: themeTokens.typography.fontSize.base,
-        }}
-      >
-        {label}
-      </MuiButton>
-    </Link>
-  );
-
-  let element: React.ReactNode;
-  switch (viewMode) {
-    case 'icon':
-      element = iconElement;
-      break;
-    case 'button':
-    case 'compact':
-      element = buttonElement;
-      break;
-    case 'list':
-      element = listElement;
-      break;
-    case 'dropdown':
-      element = null; // Use menuItem instead
-      break;
-    default:
-      element = iconElement;
-  }
-
-  return {
-    element,
-    menuItem,
-    key: 'viewDetails',
-    available: true,
-  };
+    listElementOverride: (
+      <Link href={url} onClick={handleClick} style={linkResetStyle}>
+        <MuiButton
+          variant="text"
+          startIcon={icon}
+          fullWidth
+          disabled={disabled}
+          sx={{
+            height: 48,
+            justifyContent: 'flex-start',
+            paddingLeft: `${themeTokens.spacing[4]}px`,
+            fontSize: themeTokens.typography.fontSize.base,
+          }}
+        >
+          {label}
+        </MuiButton>
+      </Link>
+    ),
+    menuItem: {
+      key: 'viewDetails',
+      label: (
+        <Link href={url} onClick={handleClick} style={linkResetStyle}>
+          {label}
+        </Link>
+      ),
+      icon,
+    },
+  });
 }
 
 export default ViewDetailsAction;

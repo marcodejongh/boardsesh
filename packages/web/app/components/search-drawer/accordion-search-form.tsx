@@ -29,8 +29,7 @@ import {
 import styles from './accordion-search-form.module.css';
 
 
-// Kilter Homewall layout ID
-const KILTER_HOMEWALL_LAYOUT_ID = 8;
+import { KILTER_HOMEWALL_LAYOUT_ID } from '@/app/lib/board-constants';
 
 interface AccordionSearchFormProps {
   boardDetails: BoardDetails;
