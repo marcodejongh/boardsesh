@@ -10,11 +10,7 @@ import searchPillStyles from '@/app/components/search-drawer/search-pill.module.
 import UserSearchDrawer from '@/app/components/social/user-search-drawer';
 import UserDrawer from '@/app/components/user-drawer/user-drawer';
 import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
-import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
-import { usePersistentSession } from '@/app/components/persistent-session';
-import { PersistentQueueProvider } from '@/app/components/queue-control/persistent-queue-provider';
-import { BoardProvider } from '@/app/components/board-provider/board-provider-context';
-import { BluetoothProvider } from '@/app/components/board-bluetooth-control/bluetooth-context';
+import PersistentQueueControlBar from '@/app/components/queue-control/persistent-queue-control-bar';
 import { useSession } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
@@ -33,12 +29,6 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedBoardUuid, setSelectedBoardUuid] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortMode>('new');
-  const {
-    activeSession,
-    localQueue,
-    localCurrentClimbQueueItem,
-    localBoardDetails,
-  } = usePersistentSession();
 
   const isAuthenticated = status === 'authenticated' && !!session?.user;
 
@@ -57,14 +47,6 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
   const handleBoardFilter = useCallback((boardUuid: string | null) => {
     setSelectedBoardUuid(boardUuid);
   }, []);
-
-  // Determine if there's an active queue to show the QueueControlBar
-  const isPartyMode = !!activeSession;
-  const queueBoardDetails = isPartyMode ? activeSession.boardDetails : localBoardDetails;
-  const queueAngle = isPartyMode
-    ? activeSession.parsedParams.angle
-    : (localCurrentClimbQueueItem?.climb?.angle ?? 0);
-  const hasActiveQueue = (localQueue.length > 0 || !!localCurrentClimbQueueItem || !!activeSession) && !!queueBoardDetails;
 
   return (
     <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', pb: '60px' }}>
@@ -118,17 +100,9 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
 
       {/* Bottom Bar: QueueControlBar (if active) + BottomTabBar */}
       <div className={bottomBarStyles.bottomBarWrapper}>
-        {hasActiveQueue && queueBoardDetails && (
-          <ErrorBoundary>
-            <BoardProvider boardName={queueBoardDetails.board_name}>
-              <PersistentQueueProvider boardDetails={queueBoardDetails} angle={queueAngle}>
-                <BluetoothProvider boardDetails={queueBoardDetails}>
-                  <QueueControlBar boardDetails={queueBoardDetails} angle={queueAngle} />
-                </BluetoothProvider>
-              </PersistentQueueProvider>
-            </BoardProvider>
-          </ErrorBoundary>
-        )}
+        <ErrorBoundary>
+          <PersistentQueueControlBar />
+        </ErrorBoundary>
         <BottomTabBar boardConfigs={boardConfigs} />
       </div>
 
