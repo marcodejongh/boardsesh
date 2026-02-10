@@ -4,6 +4,8 @@ import { schema } from './index';
 import { validateNextAuthToken } from '../middleware/auth';
 import { createContext } from './context';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
+import { maxDepthPlugin } from '@escape.tech/graphql-armor-max-depth';
+import { costLimitPlugin } from '@escape.tech/graphql-armor-cost-limit';
 
 /**
  * Create and configure the GraphQL Yoga instance
@@ -16,6 +18,10 @@ export function createYogaInstance() {
   const yoga = createYoga({
     schema,
     graphqlEndpoint: '/graphql',
+    plugins: [
+      maxDepthPlugin({ n: 10 }),
+      costLimitPlugin({ maxCost: 5000 }),
+    ],
     // Context function - extract auth from HTTP requests
     context: async ({ request }): Promise<ConnectionContext> => {
       // Extract Authorization header

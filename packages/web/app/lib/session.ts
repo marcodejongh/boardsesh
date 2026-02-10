@@ -41,7 +41,6 @@ interface CookieStore {
 interface BoardSessionData {
   token: string;
   username: string;
-  password: string;
   userId: number;
 }
 
@@ -53,5 +52,10 @@ export const getSession = async (cookies: CookieStore, boardName: BoardName) => 
   return getIronSession<BoardSessionData>(cookies, {
     password,
     cookieName: `${boardName}_session`,
+    cookieOptions: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+    },
   });
 };
