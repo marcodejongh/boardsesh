@@ -3,11 +3,9 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import { PartyProfileProvider } from '../party-manager/party-profile-context';
-import { PersistentSessionProvider, usePersistentSession, useIsOnBoardRoute } from '../persistent-session';
-import { PersistentQueueProvider } from '../queue-control/persistent-queue-provider';
-import { BoardProvider } from '../board-provider/board-provider-context';
-import { BluetoothProvider } from '../board-bluetooth-control/bluetooth-context';
-import QueueControlBar from '../queue-control/queue-control-bar';
+import { PersistentSessionProvider, useIsOnBoardRoute } from '../persistent-session';
+import PersistentQueueControlBar from '../queue-control/persistent-queue-control-bar';
+import styles from '../queue-control/persistent-queue-control-bar.module.css';
 
 interface PersistentSessionWrapperProps {
   children: React.ReactNode;
@@ -31,9 +29,9 @@ export default function PersistentSessionWrapper({ children }: PersistentSession
 }
 
 /**
- * Renders the same QueueControlBar used on board pages, but wrapped in a
- * PersistentQueueProvider bridge so it works off board routes (settings, profile, etc.).
- * Only visible when there is an active queue or party session and the user is NOT on a board route.
+ * Shows the QueueControlBar when the user is NOT on a board route and NOT on
+ * a page that renders its own bottom bar (home, my-library, notifications).
+ * The PersistentQueueControlBar handles queue-state checks and provider wrapping internally.
  */
 function OffBoardQueueBar() {
   const isOnBoardRoute = useIsOnBoardRoute();
@@ -41,43 +39,10 @@ function OffBoardQueueBar() {
   const isHomePage = pathname === '/';
   // Pages with their own layout that includes BottomBarWithQueue handle the queue bar themselves
   const hasOwnBottomBar = pathname.startsWith('/my-library') || pathname.startsWith('/notifications');
-  const {
-    activeSession,
-    localQueue,
-    localCurrentClimbQueueItem,
-    localBoardDetails,
-  } = usePersistentSession();
 
-  const isPartyMode = !!activeSession;
-  const boardDetails = isPartyMode ? activeSession.boardDetails : localBoardDetails;
-  const angle = isPartyMode
-    ? activeSession.parsedParams.angle
-    : (localCurrentClimbQueueItem?.climb?.angle ?? 0);
-
-  // Only show when off board routes and there's something to show
-  // Home page and pages with BottomBarWithQueue handle their own QueueControlBar integration
-  const hasContent = localQueue.length > 0 || !!localCurrentClimbQueueItem || !!activeSession;
-  if (!hasContent || isOnBoardRoute || isHomePage || hasOwnBottomBar || !boardDetails) {
+  if (isOnBoardRoute || isHomePage || hasOwnBottomBar) {
     return null;
   }
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        width: '100%',
-        zIndex: 999,
-      }}
-    >
-      <BoardProvider boardName={boardDetails.board_name}>
-        <PersistentQueueProvider boardDetails={boardDetails} angle={angle}>
-          <BluetoothProvider boardDetails={boardDetails}>
-            <QueueControlBar boardDetails={boardDetails} angle={angle} />
-          </BluetoothProvider>
-        </PersistentQueueProvider>
-      </BoardProvider>
-    </div>
-  );
+  return <PersistentQueueControlBar className={styles.fixedBottom} />;
 }
