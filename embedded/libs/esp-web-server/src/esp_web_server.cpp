@@ -615,12 +615,21 @@ void ESPWebServer::handleFirmwareUploadData() {
     HTTPUpload& upload = server.upload();
 
     switch (upload.status) {
-        case UPLOAD_FILE_START:
+        case UPLOAD_FILE_START: {
             Serial.printf("Firmware upload start: %s\n", upload.filename.c_str());
             _otaInProgress = true;
             _otaBytesWritten = 0;
             _otaError = false;
             _otaErrorMessage = "";
+
+            // Server-side file extension validation
+            String fname = upload.filename;
+            if (fname.length() < 4 || fname.substring(fname.length() - 4) != ".bin") {
+                _otaError = true;
+                _otaErrorMessage = "Invalid file type: firmware must be a .bin file";
+                Serial.println("Firmware upload rejected: not a .bin file");
+                break;
+            }
 
             if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
                 _otaError = true;
@@ -628,6 +637,7 @@ void ESPWebServer::handleFirmwareUploadData() {
                 Serial.println("Update.begin() failed");
             }
             break;
+        }
 
         case UPLOAD_FILE_WRITE:
             if (!_otaError) {
@@ -652,6 +662,9 @@ void ESPWebServer::handleFirmwareUploadData() {
                     _otaErrorMessage = "Failed to finalize update";
                     Serial.println("Update.end() failed");
                 }
+            } else {
+                // Clean up: abort the in-progress update to avoid resource leak
+                Update.abort();
             }
             _otaInProgress = false;
             break;

@@ -139,6 +139,72 @@ class WebServer {
         }
     }
 
+    // Simulate a file upload by calling the upload handler then the completion handler
+    void mockSimulateUpload(const char* uri, const std::string& filename,
+                            const uint8_t* data, size_t dataLen) {
+        auto uploadIt = uploadHandlers_.find(uri ? uri : "");
+        auto uriIt = routes_.find(uri ? uri : "");
+        if (uploadIt == uploadHandlers_.end() || uriIt == routes_.end()) return;
+
+        auto methodIt = uriIt->second.find(HTTP_POST);
+        if (methodIt == uriIt->second.end()) return;
+
+        auto& uploadHandler = uploadIt->second;
+        auto& completionHandler = methodIt->second;
+
+        // UPLOAD_FILE_START
+        mockUpload_.status = UPLOAD_FILE_START;
+        mockUpload_.filename = filename.c_str();
+        mockUpload_.currentSize = 0;
+        mockUpload_.totalSize = dataLen;
+        mockUpload_.buf = nullptr;
+        uploadHandler();
+
+        // UPLOAD_FILE_WRITE (single chunk)
+        if (data && dataLen > 0) {
+            mockUpload_.status = UPLOAD_FILE_WRITE;
+            mockUpload_.buf = data;
+            mockUpload_.currentSize = dataLen;
+            uploadHandler();
+        }
+
+        // UPLOAD_FILE_END
+        mockUpload_.status = UPLOAD_FILE_END;
+        mockUpload_.currentSize = 0;
+        uploadHandler();
+
+        // Completion handler (sends the HTTP response)
+        completionHandler();
+    }
+
+    // Simulate an aborted upload
+    void mockSimulateUploadAbort(const char* uri, const std::string& filename) {
+        auto uploadIt = uploadHandlers_.find(uri ? uri : "");
+        auto uriIt = routes_.find(uri ? uri : "");
+        if (uploadIt == uploadHandlers_.end() || uriIt == routes_.end()) return;
+
+        auto methodIt = uriIt->second.find(HTTP_POST);
+        if (methodIt == uriIt->second.end()) return;
+
+        auto& uploadHandler = uploadIt->second;
+        auto& completionHandler = methodIt->second;
+
+        // UPLOAD_FILE_START
+        mockUpload_.status = UPLOAD_FILE_START;
+        mockUpload_.filename = filename.c_str();
+        mockUpload_.currentSize = 0;
+        mockUpload_.totalSize = 0;
+        mockUpload_.buf = nullptr;
+        uploadHandler();
+
+        // UPLOAD_FILE_ABORTED
+        mockUpload_.status = UPLOAD_FILE_ABORTED;
+        uploadHandler();
+
+        // Completion handler
+        completionHandler();
+    }
+
     void mockSetArgs(const std::map<std::string, std::string>& args) { args_ = args; }
 
     void mockClearArgs() { args_.clear(); }
