@@ -54,7 +54,13 @@ export async function resolveCommentRecipients(
   // For climb comments, we don't have a single owner to notify
   // (climbs are set by Aurora users, not boardsesh users)
 
-  return recipients;
+  // Deduplicate: if the parent comment author IS the tick owner, only send one notification
+  const seen = new Set<string>();
+  return recipients.filter((r) => {
+    if (seen.has(r.recipientId)) return false;
+    seen.add(r.recipientId);
+    return true;
+  });
 }
 
 /**

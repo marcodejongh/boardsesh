@@ -58,6 +58,9 @@ export const notifications = pgTable(
       table.type,
       table.entityId,
     ),
+    createdAtIdx: index('notifications_created_at_idx').on(
+      table.createdAt,
+    ),
   }),
 );
 

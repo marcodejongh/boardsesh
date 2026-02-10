@@ -34,3 +34,5 @@ CREATE INDEX IF NOT EXISTS "notifications_recipient_unread_idx" ON "notification
 CREATE INDEX IF NOT EXISTS "notifications_recipient_created_at_idx" ON "notifications" USING btree ("recipient_id","created_at");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "notifications_dedup_idx" ON "notifications" USING btree ("actor_id","recipient_id","type","entity_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "notifications_created_at_idx" ON "notifications" USING btree ("created_at");

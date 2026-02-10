@@ -3,7 +3,7 @@ import { EventBroker } from './event-broker';
 import { pubsub } from '../pubsub/index';
 import { db } from '../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 
 export const eventBroker = new EventBroker();
@@ -91,6 +91,22 @@ async function createInlineNotification(event: SocialEvent): Promise<void> {
     }
 
     if (!recipientId || !notificationType || recipientId === event.actorId) return;
+
+    // Deduplicate: check if a similar notification already exists recently
+    const [existing] = await db
+      .select({ id: dbSchema.notifications.id })
+      .from(dbSchema.notifications)
+      .where(
+        and(
+          eq(dbSchema.notifications.actorId, event.actorId),
+          eq(dbSchema.notifications.recipientId, recipientId),
+          eq(dbSchema.notifications.type, notificationType),
+          eq(dbSchema.notifications.entityId, event.entityId),
+          sql`${dbSchema.notifications.createdAt} > NOW() - INTERVAL '1 hour'`,
+        ),
+      )
+      .limit(1);
+    if (existing) return;
 
     const uuid = crypto.randomUUID();
     await db

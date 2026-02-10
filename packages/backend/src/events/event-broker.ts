@@ -115,9 +115,13 @@ export class EventBroker {
           if (event) {
             try {
               await handler(event);
+              // Only acknowledge after successful processing
+              await this.redis!.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
             } catch (error) {
-              console.error(`[EventBroker] Error processing reclaimed event ${messageId}:`, error);
+              console.error(`[EventBroker] Error processing reclaimed event ${messageId}, will retry:`, error);
             }
+          } else {
+            // Unparseable event - ack to avoid infinite retry
             await this.redis!.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
           }
         }
@@ -151,11 +155,15 @@ export class EventBroker {
         if (event) {
           try {
             await handler(event);
+            // Only acknowledge after successful processing
+            await this.redis!.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
           } catch (error) {
-            console.error(`[EventBroker] Error processing event ${messageId}:`, error);
+            console.error(`[EventBroker] Error processing event ${messageId}, will retry:`, error);
           }
+        } else {
+          // Unparseable event - ack to avoid infinite retry
+          await this.redis!.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
         }
-        await this.redis!.xack(STREAM_KEY, CONSUMER_GROUP, messageId);
       }
     }
   }

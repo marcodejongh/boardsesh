@@ -79,6 +79,20 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     fetchCount();
   }, [isAuthenticated, token]);
 
+  // Re-fetch unread count (used on reconnect to catch missed notifications)
+  const refreshUnreadCount = useCallback(async () => {
+    if (!token) return;
+    try {
+      const client = createGraphQLHttpClient(token);
+      const data = await client.request<GetUnreadNotificationCountQueryResponse>(
+        GET_UNREAD_NOTIFICATION_COUNT,
+      );
+      setUnreadCount(data.unreadNotificationCount);
+    } catch {
+      // Silently fail
+    }
+  }, [token]);
+
   // Set up WebSocket subscription for real-time notifications
   useEffect(() => {
     if (!isAuthenticated || !token) return;
@@ -86,7 +100,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
     if (!wsUrl) return;
 
-    const wsClient = createGraphQLClient({ url: wsUrl, authToken: token });
+    const wsClient = createGraphQLClient({
+      url: wsUrl,
+      authToken: token,
+      onReconnect: () => {
+        // Re-fetch count to catch any notifications missed during disconnection
+        refreshUnreadCount();
+      },
+    });
     clientRef.current = wsClient;
 
     const unsub = subscribe<NotificationReceivedSubscriptionResponse>(
@@ -118,7 +139,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       clientRef.current = null;
       unsubscribeRef.current = null;
     };
-  }, [isAuthenticated, token, showMessage]);
+  }, [isAuthenticated, token, showMessage, refreshUnreadCount]);
 
   const fetchNotifications = useCallback(
     async (unreadOnly?: boolean, limit = 20, offset = 0) => {

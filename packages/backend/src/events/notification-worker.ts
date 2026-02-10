@@ -98,7 +98,7 @@ export class NotificationWorker {
         recipient.recipientId,
         recipient.notificationType,
         event.entityId,
-        '1 hour',
+        60,
       );
       if (isDuplicate) continue;
 
@@ -122,7 +122,7 @@ export class NotificationWorker {
       recipient.recipientId,
       recipient.notificationType,
       event.entityId,
-      '24 hours',
+      1440,
     );
     if (isDuplicate) return;
 
@@ -140,7 +140,7 @@ export class NotificationWorker {
     recipientId: string,
     type: NotificationType,
     entityId: string,
-    interval: string,
+    intervalMinutes: number,
   ): Promise<boolean> {
     const result = await db.execute(sql`
       SELECT 1 FROM notifications
@@ -148,7 +148,7 @@ export class NotificationWorker {
         AND recipient_id = ${recipientId}
         AND type = ${type}
         AND entity_id = ${entityId}
-        AND created_at > NOW() - INTERVAL '${sql.raw(interval)}'
+        AND created_at > NOW() - make_interval(mins => ${intervalMinutes})
       LIMIT 1
     `);
     const rows = (result as unknown as { rows: unknown[] }).rows;
