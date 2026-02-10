@@ -6,8 +6,20 @@ import { QueueContext, type GraphQLQueueContextType } from '../graphql-queue/Que
 import { usePersistentSession } from '../persistent-session';
 import { FavoritesProvider } from '../climb-actions/favorites-batch-context';
 import { PlaylistsProvider } from '../climb-actions/playlists-batch-context';
+import type { Playlist } from '../climb-actions/playlists-batch-context';
 import type { ClimbQueueItem } from './types';
 import type { Climb, BoardDetails, Angle, ParsedBoardRouteParameters } from '@/app/lib/types';
+
+// Module-level constants to avoid defeating memoization with new references each render
+const EMPTY_FAVORITES = new Set<string>();
+const EMPTY_PLAYLISTS: Playlist[] = [];
+const EMPTY_MEMBERSHIPS = new Map<string, Set<string>>();
+const NOOP_IS_FAVORITED = () => false;
+const NOOP_TOGGLE_FAVORITE = async () => false;
+const NOOP_ADD_TO_PLAYLIST = async () => {};
+const NOOP_REMOVE_FROM_PLAYLIST = async () => {};
+const NOOP_CREATE_PLAYLIST = async (): Promise<Playlist> => { throw new Error('Not available'); };
+const NOOP_REFRESH_PLAYLISTS = async () => {};
 
 interface PersistentQueueProviderProps {
   boardDetails: BoardDetails;
@@ -238,21 +250,21 @@ export const PersistentQueueProvider: React.FC<PersistentQueueProviderProps> = (
   return (
     <QueueContext.Provider value={contextValue}>
       <FavoritesProvider
-        favorites={new Set<string>()}
-        isFavorited={() => false}
-        toggleFavorite={async () => false}
+        favorites={EMPTY_FAVORITES}
+        isFavorited={NOOP_IS_FAVORITED}
+        toggleFavorite={NOOP_TOGGLE_FAVORITE}
         isLoading={false}
         isAuthenticated={false}
       >
         <PlaylistsProvider
-          playlists={[]}
-          playlistMemberships={new Map()}
-          addToPlaylist={async () => {}}
-          removeFromPlaylist={async () => {}}
-          createPlaylist={async () => { throw new Error('Not available'); }}
+          playlists={EMPTY_PLAYLISTS}
+          playlistMemberships={EMPTY_MEMBERSHIPS}
+          addToPlaylist={NOOP_ADD_TO_PLAYLIST}
+          removeFromPlaylist={NOOP_REMOVE_FROM_PLAYLIST}
+          createPlaylist={NOOP_CREATE_PLAYLIST}
           isLoading={false}
           isAuthenticated={false}
-          refreshPlaylists={async () => {}}
+          refreshPlaylists={NOOP_REFRESH_PLAYLISTS}
         >
           {children}
         </PlaylistsProvider>

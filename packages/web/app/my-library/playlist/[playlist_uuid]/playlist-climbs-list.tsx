@@ -128,14 +128,23 @@ export default function PlaylistClimbsList({
     return { visibleClimbs: visible, hiddenCount: hidden };
   }, [allClimbs, boardDetails.layout_id, angle]);
 
+  // Refs for observer callback values — prevents observer recreation on every page load
+  const fetchNextPageRef = useRef(fetchNextPage);
+  const hasNextPageRef = useRef(hasNextPage);
+  const isFetchingNextPageRef = useRef(isFetchingNextPage);
+  fetchNextPageRef.current = fetchNextPage;
+  hasNextPageRef.current = hasNextPage;
+  isFetchingNextPageRef.current = isFetchingNextPage;
+
+  // Intersection Observer callback for infinite scroll — stable ref, never recreated
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
-      if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
+      if (target.isIntersecting && hasNextPageRef.current && !isFetchingNextPageRef.current) {
+        fetchNextPageRef.current();
       }
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage],
+    [],
   );
 
   useEffect(() => {

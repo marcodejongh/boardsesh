@@ -122,18 +122,29 @@ export default function LikedClimbsList({
     return allClimbs.map((climb) => ({ ...climb, angle }));
   }, [allClimbs, angle]);
 
+  // Refs for observer callback values — prevents observer recreation on every page load
+  const fetchNextPageRef = useRef(fetchNextPage);
+  const hasNextPageRef = useRef(hasNextPage);
+  const isFetchingNextPageRef = useRef(isFetchingNextPage);
+  const allClimbsLengthRef = useRef(allClimbs.length);
+  fetchNextPageRef.current = fetchNextPage;
+  hasNextPageRef.current = hasNextPage;
+  isFetchingNextPageRef.current = isFetchingNextPage;
+  allClimbsLengthRef.current = allClimbs.length;
+
+  // Intersection Observer callback for infinite scroll — stable ref, never recreated
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
-      if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+      if (target.isIntersecting && hasNextPageRef.current && !isFetchingNextPageRef.current) {
         track('Liked Climbs Infinite Scroll Load More', {
-          currentCount: allClimbs.length,
-          hasMore: hasNextPage,
+          currentCount: allClimbsLengthRef.current,
+          hasMore: hasNextPageRef.current,
         });
-        fetchNextPage();
+        fetchNextPageRef.current();
       }
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage, allClimbs.length],
+    [],
   );
 
   useEffect(() => {

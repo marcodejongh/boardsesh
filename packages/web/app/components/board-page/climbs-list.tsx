@@ -84,25 +84,33 @@ const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_i
   // Ref for the intersection observer sentinel element
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
+  // Refs for observer callback values — prevents observer recreation on every page load
+  const fetchMoreClimbsRef = useRef(fetchMoreClimbs);
+  const hasMoreResultsRef = useRef(hasMoreResults);
+  const climbsCountRef = useRef(climbs.length);
+  fetchMoreClimbsRef.current = fetchMoreClimbs;
+  hasMoreResultsRef.current = hasMoreResults;
+  climbsCountRef.current = climbs.length;
+
   useEffect(() => {
     if (page === '0' && hasDoneFirstFetch && isFetchingClimbs) {
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, [page, hasDoneFirstFetch, isFetchingClimbs]);
 
-  // Intersection Observer callback for infinite scroll
+  // Intersection Observer callback for infinite scroll — stable ref, never recreated
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
-      if (target.isIntersecting && hasMoreResults) {
+      if (target.isIntersecting && hasMoreResultsRef.current) {
         track('Infinite Scroll Load More', {
-          currentCount: climbs.length,
-          hasMore: hasMoreResults,
+          currentCount: climbsCountRef.current,
+          hasMore: hasMoreResultsRef.current,
         });
-        fetchMoreClimbs();
+        fetchMoreClimbsRef.current();
       }
     },
-    [hasMoreResults, fetchMoreClimbs, climbs.length],
+    [],
   );
 
   // Memoized handler for climb card double-click
