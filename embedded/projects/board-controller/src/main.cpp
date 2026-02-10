@@ -199,13 +199,7 @@ void initializeBLE() {
     }
 
     Logger.logln("Initializing BLE as '%s'...", BLE_DEVICE_NAME);
-#ifdef ENABLE_BLE_PROXY
-    // When proxy is enabled, don't advertise yet - connect to board first
-    // Advertising will start after successful connection to real board
-    BLE.begin(BLE_DEVICE_NAME, false);
-#else
     BLE.begin(BLE_DEVICE_NAME, true);
-#endif
     BLE.setConnectCallback(onBLEConnect);
     BLE.setDataCallback(onBLEData);
     BLE.setLedDataCallback(onBLELedData);
