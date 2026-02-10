@@ -33,7 +33,7 @@
 #define BLE_DEVICE_NAME "Kilter Boardsesh"
 
 // Backend configuration (defaults)
-#define DEFAULT_BACKEND_HOST "boardsesh.com"
+#define DEFAULT_BACKEND_HOST "ws.boardsesh.com"
 #define DEFAULT_BACKEND_PORT 443
 #define DEFAULT_BACKEND_PATH "/graphql"
 

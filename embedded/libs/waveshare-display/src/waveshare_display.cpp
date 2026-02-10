@@ -8,7 +8,7 @@
 WaveshareDisplay Display;
 
 // ============================================
-// LGFX_Waveshare7 Implementation (RGB bus)
+// LGFX_Waveshare7 Implementation (RGB bus with bounce buffers)
 // ============================================
 
 LGFX_Waveshare7::LGFX_Waveshare7() {
@@ -605,6 +605,10 @@ void WaveshareDisplay::drawNavButtons() {
 
 #ifdef ENABLE_BOARD_IMAGE
 void WaveshareDisplay::setBoardConfig(const BoardConfig* config) {
+    if (_currentBoardConfig != config) {
+        // Invalidate cached sprite when board config changes
+        _cachedBoardConfig = nullptr;
+    }
     _currentBoardConfig = config;
     _hasBoardImage = (config != nullptr);
 }
@@ -625,10 +629,40 @@ void WaveshareDisplay::drawBoardImageWithHolds() {
     int offsetX = (SCREEN_WIDTH - cfg->imageWidth) / 2;
     int offsetY = WS_BOARD_IMAGE_Y;
 
-    // Draw JPEG from PROGMEM to display
-    _display.drawJpg(cfg->imageData, cfg->imageSize,
-                     offsetX, offsetY,
-                     cfg->imageWidth, cfg->imageHeight);
+    // Cache the decoded JPEG in a PSRAM sprite so subsequent refreshes
+    // (when only hold circles change) don't re-decode the entire JPEG.
+    if (_cachedBoardConfig != cfg) {
+        // Board config changed - rebuild the cache
+        if (_boardImageSprite) {
+            _boardImageSprite->deleteSprite();
+            delete _boardImageSprite;
+            _boardImageSprite = nullptr;
+        }
+
+        _boardImageSprite = new LGFX_Sprite(&_display);
+        _boardImageSprite->setPsram(true);
+        if (_boardImageSprite->createSprite(cfg->imageWidth, cfg->imageHeight)) {
+            // Decode JPEG into the sprite (one-time cost)
+            _boardImageSprite->drawJpg(cfg->imageData, cfg->imageSize,
+                                        0, 0, cfg->imageWidth, cfg->imageHeight);
+            _cachedBoardConfig = cfg;
+        } else {
+            // PSRAM allocation failed - fall back to direct decode each time
+            delete _boardImageSprite;
+            _boardImageSprite = nullptr;
+            _cachedBoardConfig = nullptr;
+        }
+    }
+
+    // Blit the cached image to screen (fast memcpy vs slow JPEG decode)
+    if (_boardImageSprite) {
+        _boardImageSprite->pushSprite(&_display, offsetX, offsetY);
+    } else {
+        // Fallback: decode JPEG directly (slow path)
+        _display.drawJpg(cfg->imageData, cfg->imageSize,
+                         offsetX, offsetY,
+                         cfg->imageWidth, cfg->imageHeight);
+    }
 
     // Overlay hold circles for each active LED command.
     // holdMap is sorted by ledPosition (at code generation time),

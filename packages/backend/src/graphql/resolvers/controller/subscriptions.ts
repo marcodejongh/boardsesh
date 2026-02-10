@@ -6,7 +6,7 @@ import { pubsub } from '../../../pubsub/index';
 import { roomManager } from '../../../services/room-manager';
 import { createAsyncIterator } from '../shared/async-iterators';
 import { getLedPlacements } from '../../../db/queries/util/led-placements-data';
-import { requireControllerAuthorizedForSession } from '../shared/helpers';
+import { requireControllerAuth } from '../shared/helpers';
 import { getGradeColor } from './grade-colors';
 import { buildNavigationContext, findClimbIndex } from './navigation-helpers';
 
@@ -96,26 +96,19 @@ export const controllerSubscriptions = {
       { sessionId }: { sessionId: string },
       ctx: ConnectionContext
     ): AsyncGenerator<{ controllerEvents: ControllerEvent }> {
-      // Validate API key from context and verify session authorization
-      // This throws if the controller is not authorized
-      await requireControllerAuthorizedForSession(ctx, sessionId);
+      // Validate API key from context
+      const { controllerId } = requireControllerAuth(ctx);
 
-      // Get controller details using the controllerId from context (validated above)
+      // Single DB query: fetch controller and update lastSeenAt + authorizedSessionId
       const [controller] = await db
-        .select()
-        .from(esp32Controllers)
-        .where(eq(esp32Controllers.id, ctx.controllerId!))
-        .limit(1);
+        .update(esp32Controllers)
+        .set({ lastSeenAt: new Date(), authorizedSessionId: sessionId })
+        .where(eq(esp32Controllers.id, controllerId))
+        .returning();
 
       if (!controller) {
         throw new Error('Controller not registered. Register via web UI first.');
       }
-
-      // Update lastSeenAt on connection
-      await db
-        .update(esp32Controllers)
-        .set({ lastSeenAt: new Date() })
-        .where(eq(esp32Controllers.id, controller.id));
 
       // Build numeric boardPath from controller's registered config
       // Format: "board_name/layout_id/size_id/set_ids" (e.g., "kilter/8/17/26,27")
@@ -258,12 +251,20 @@ export const controllerSubscriptions = {
       yield { controllerEvents: initialLedUpdate };
 
       // Yield events from subscription
+      // Throttle lastSeenAt updates to once per minute (non-blocking)
+      let lastSeenUpdate = Date.now();
+      const LAST_SEEN_INTERVAL_MS = 60_000;
+
       for await (const event of asyncIterator) {
-        // Update lastSeenAt periodically (on each event)
-        await db
-          .update(esp32Controllers)
-          .set({ lastSeenAt: new Date() })
-          .where(eq(esp32Controllers.id, controller.id));
+        // Update lastSeenAt periodically (fire-and-forget, non-blocking)
+        const now = Date.now();
+        if (now - lastSeenUpdate > LAST_SEEN_INTERVAL_MS) {
+          lastSeenUpdate = now;
+          db.update(esp32Controllers)
+            .set({ lastSeenAt: new Date() })
+            .where(eq(esp32Controllers.id, controller.id))
+            .catch((err) => console.error('[Controller] lastSeenAt update failed:', err));
+        }
 
         yield { controllerEvents: event };
       }
