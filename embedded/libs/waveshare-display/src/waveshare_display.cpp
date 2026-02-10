@@ -8,7 +8,7 @@
 WaveshareDisplay Display;
 
 // ============================================
-// LGFX_Waveshare7 Implementation (RGB bus)
+// LGFX_Waveshare7 Implementation (RGB bus with bounce buffers)
 // ============================================
 
 LGFX_Waveshare7::LGFX_Waveshare7() {
@@ -109,7 +109,15 @@ LGFX_Waveshare7::LGFX_Waveshare7() {
 
 WaveshareDisplay::WaveshareDisplay() : _lastTouchTime(0) {}
 
-WaveshareDisplay::~WaveshareDisplay() {}
+WaveshareDisplay::~WaveshareDisplay() {
+#ifdef ENABLE_BOARD_IMAGE
+    if (_boardImageSprite) {
+        _boardImageSprite->deleteSprite();
+        delete _boardImageSprite;
+        _boardImageSprite = nullptr;
+    }
+#endif
+}
 
 bool WaveshareDisplay::begin() {
     // 1. Initialize I2C for CH422G IO expander
@@ -283,26 +291,49 @@ void WaveshareDisplay::onStatusChanged() {
 }
 
 void WaveshareDisplay::refresh() {
-    _display.fillScreen(COLOR_BACKGROUND);
     drawStatusBar();
 
 #ifdef ENABLE_BOARD_IMAGE
     if (_hasBoardImage && _currentBoardConfig) {
+        // Clear margins around the board image instead of full fillScreen
+        int offsetX = (SCREEN_WIDTH - _currentBoardConfig->imageWidth) / 2;
+        if (offsetX > 0) {
+            _display.fillRect(0, WS_BOARD_IMAGE_Y, offsetX, _currentBoardConfig->imageHeight, COLOR_BACKGROUND);
+            _display.fillRect(offsetX + _currentBoardConfig->imageWidth, WS_BOARD_IMAGE_Y, offsetX, _currentBoardConfig->imageHeight, COLOR_BACKGROUND);
+        }
         drawBoardImageWithHolds();
         drawClimbInfoCompact();
     } else {
+        _display.fillScreen(COLOR_BACKGROUND);
+        drawStatusBar();
         drawCurrentClimb();
         drawQRCode();
         drawNextClimbIndicator();
         drawHistory();
     }
 #else
+    _display.fillScreen(COLOR_BACKGROUND);
+    drawStatusBar();
     drawCurrentClimb();
     drawQRCode();
     drawNextClimbIndicator();
     drawHistory();
 #endif
 
+    drawNavButtons();
+}
+
+void WaveshareDisplay::refreshInfoOnly() {
+    drawStatusBar();
+#ifdef ENABLE_BOARD_IMAGE
+    if (_hasBoardImage && _currentBoardConfig) {
+        drawClimbInfoCompact();
+    } else {
+        drawCurrentClimb();
+    }
+#else
+    drawCurrentClimb();
+#endif
     drawNavButtons();
 }
 
@@ -582,6 +613,10 @@ void WaveshareDisplay::drawNavButtons() {
 
 #ifdef ENABLE_BOARD_IMAGE
 void WaveshareDisplay::setBoardConfig(const BoardConfig* config) {
+    if (_currentBoardConfig != config) {
+        // Invalidate cached sprite when board config changes
+        _cachedBoardConfig = nullptr;
+    }
     _currentBoardConfig = config;
     _hasBoardImage = (config != nullptr);
 }
@@ -602,10 +637,40 @@ void WaveshareDisplay::drawBoardImageWithHolds() {
     int offsetX = (SCREEN_WIDTH - cfg->imageWidth) / 2;
     int offsetY = WS_BOARD_IMAGE_Y;
 
-    // Draw JPEG from PROGMEM to display
-    _display.drawJpg(cfg->imageData, cfg->imageSize,
-                     offsetX, offsetY,
-                     cfg->imageWidth, cfg->imageHeight);
+    // Cache the decoded JPEG in a PSRAM sprite so subsequent refreshes
+    // (when only hold circles change) don't re-decode the entire JPEG.
+    if (_cachedBoardConfig != cfg) {
+        // Board config changed - rebuild the cache
+        if (_boardImageSprite) {
+            _boardImageSprite->deleteSprite();
+            delete _boardImageSprite;
+            _boardImageSprite = nullptr;
+        }
+
+        _boardImageSprite = new LGFX_Sprite(&_display);
+        _boardImageSprite->setPsram(true);
+        if (_boardImageSprite->createSprite(cfg->imageWidth, cfg->imageHeight)) {
+            // Decode JPEG into the sprite (one-time cost)
+            _boardImageSprite->drawJpg(cfg->imageData, cfg->imageSize,
+                                        0, 0, cfg->imageWidth, cfg->imageHeight);
+            _cachedBoardConfig = cfg;
+        } else {
+            // PSRAM allocation failed - fall back to direct decode each time
+            delete _boardImageSprite;
+            _boardImageSprite = nullptr;
+            _cachedBoardConfig = nullptr;
+        }
+    }
+
+    // Blit the cached image to screen (fast memcpy vs slow JPEG decode)
+    if (_boardImageSprite) {
+        _boardImageSprite->pushSprite(&_display, offsetX, offsetY);
+    } else {
+        // Fallback: decode JPEG directly (slow path)
+        _display.drawJpg(cfg->imageData, cfg->imageSize,
+                         offsetX, offsetY,
+                         cfg->imageWidth, cfg->imageHeight);
+    }
 
     // Overlay hold circles for each active LED command.
     // holdMap is sorted by ledPosition (at code generation time),
@@ -622,9 +687,10 @@ void WaveshareDisplay::drawBoardImageWithHolds() {
                 int dx = offsetX + cfg->holdMap[mid].cx;
                 int dy = offsetY + cfg->holdMap[mid].cy;
                 int dr = cfg->holdMap[mid].radius;
-                // 2px stroke circle (matching web renderer style)
-                _display.drawCircle(dx, dy, dr, color);
-                _display.drawCircle(dx, dy, dr - 1, color);
+                // Anti-aliased ring using fillArc (full 360° sweep)
+                int strokeWidth = 3;
+                int innerR = max(1, dr - strokeWidth);
+                _display.fillArc(dx, dy, dr, innerR, 0.0f, 360.0f, color);
                 break;
             } else if (midPos < target) {
                 lo = mid + 1;

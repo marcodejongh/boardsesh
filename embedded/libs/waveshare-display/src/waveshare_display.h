@@ -6,8 +6,9 @@
 #define LGFX_USE_V1
 #include <LovyanGFX.hpp>
 #include <lgfx/v1/platforms/esp32s3/Panel_RGB.hpp>
-#include <lgfx/v1/platforms/esp32s3/Bus_RGB.hpp>
 #include <display_base.h>
+
+#include "bus_rgb_bounce.h"
 
 // Board image data is only available when explicitly enabled
 #ifdef ENABLE_BOARD_IMAGE
@@ -139,7 +140,7 @@ struct TouchEvent {
 
 class LGFX_Waveshare7 : public lgfx::LGFX_Device {
     lgfx::Panel_RGB _panel_instance;
-    lgfx::Bus_RGB _bus_instance;
+    lgfx::Bus_RGB_Bounce _bus_instance;
     lgfx::Touch_GT911 _touch_instance;
 
   public:
@@ -162,6 +163,7 @@ class WaveshareDisplay : public DisplayBase {
     void showConfigPortal(const char* apName, const char* ip) override;
     void showSetupScreen(const char* apName) override;
     void refresh() override;
+    void refreshInfoOnly() override;
 
     // Touch handling
     TouchEvent pollTouch();
@@ -209,6 +211,10 @@ class WaveshareDisplay : public DisplayBase {
     // Board image state
     bool _hasBoardImage = false;
     const BoardConfig* _currentBoardConfig = nullptr;
+
+    // Cached decoded board image (PSRAM sprite avoids re-decoding JPEG each refresh)
+    LGFX_Sprite* _boardImageSprite = nullptr;
+    const BoardConfig* _cachedBoardConfig = nullptr;
 
     // Current LED commands for hold overlay
     LedCmd _ledCommands[MAX_LED_COMMANDS];
