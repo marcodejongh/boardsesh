@@ -10,7 +10,6 @@ import MuiList from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import MuiBadge from '@mui/material/Badge';
 import Stack from '@mui/material/Stack';
-import { ActionTooltip } from '../action-tooltip';
 import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import CheckOutlined from '@mui/icons-material/CheckOutlined';
@@ -22,6 +21,7 @@ import AuthModal from '../../auth/auth-modal';
 import type { Playlist } from '../playlists-batch-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useSnackbar } from '../../providers/snackbar-provider';
+import { buildActionResult, computeActionDisplay } from '../action-view-renderer';
 
 // Validate hex color format to prevent CSS injection
 const isValidHexColor = (color: string): boolean => {
@@ -302,8 +302,7 @@ export function PlaylistAction({
   );
 
   const label = 'Add to Playlist';
-  const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
-  const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
+  const { iconSize } = computeActionDisplay(viewMode, size, showLabel);
 
   const inPlaylistCount = playlistsContainingClimb.size;
   const icon = popoverOpen ? (
@@ -326,94 +325,29 @@ export function PlaylistAction({
     />
   );
 
-  // Icon mode - for Card actions (renders inline content below when expanded)
-  const iconElement = (
-    <>
-      <ActionTooltip title={label}>
-        <span onClick={handleClick} style={{ cursor: 'pointer' }} className={className}>
-          {icon}
-        </span>
-      </ActionTooltip>
-      {authModalElement}
-    </>
-  );
+  const displayLabel = inPlaylistCount > 0 ? `${label} (${inPlaylistCount})` : label;
 
-  // Button mode
-  const buttonElement = (
-    <>
-      <MuiButton
-        variant="outlined"
-        startIcon={icon}
-        onClick={handleClick}
-        size={size === 'large' ? 'large' : 'small'}
-        disabled={disabled}
-        className={className}
-      >
-        {shouldShowLabel && label}
-      </MuiButton>
-      {authModalElement}
-    </>
-  );
-
-  // Menu item for dropdown
-  const menuItem = {
+  return buildActionResult({
     key: 'playlist',
-    label: inPlaylistCount > 0 ? `${label} (${inPlaylistCount})` : label,
-    icon: <LocalOfferOutlined />,
-    onClick: () => handleClick(),
-  };
-
-  // Inline expandable content for card mode
-  const expandedContent = popoverOpen ? inlineContent : null;
-
-  // List mode - full-width row for drawer menus
-  const listElement = (
-    <>
-      <MuiButton
-        variant="text"
-        startIcon={icon}
-        fullWidth
-        onClick={handleClick}
-        disabled={disabled}
-        sx={{
-          height: 48,
-          justifyContent: 'flex-start',
-          paddingLeft: `${themeTokens.spacing[4]}px`,
-          fontSize: themeTokens.typography.fontSize.base,
-        }}
-      >
-        {inPlaylistCount > 0 ? `${label} (${inPlaylistCount})` : label}
-      </MuiButton>
-      {authModalElement}
-    </>
-  );
-
-  let element: React.ReactNode;
-  switch (viewMode) {
-    case 'icon':
-      element = iconElement;
-      break;
-    case 'button':
-    case 'compact':
-      element = buttonElement;
-      break;
-    case 'list':
-      element = listElement;
-      break;
-    case 'dropdown':
-      element = authModalElement; // Need to render modals even in dropdown mode
-      break;
-    default:
-      element = iconElement;
-  }
-
-  return {
-    element,
-    expandedContent,
-    menuItem,
-    key: 'playlist',
+    label: displayLabel,
+    icon,
+    onClick: handleClick,
+    viewMode,
+    size,
+    showLabel,
+    disabled,
+    className,
     available: !isMoonboard,
-  };
+    extraContent: authModalElement,
+    dropdownElementOverride: authModalElement,
+    expandedContent: popoverOpen ? inlineContent : undefined,
+    menuItem: {
+      key: 'playlist',
+      label: displayLabel,
+      icon: <LocalOfferOutlined />,
+      onClick: () => handleClick(),
+    },
+  });
 }
 
 export default PlaylistAction;

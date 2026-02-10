@@ -19,6 +19,7 @@ import { track } from '@vercel/analytics';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useAlwaysTickInApp } from '@/app/hooks/use-always-tick-in-app';
+import { buildActionResult, ActionButtonElement, ActionListElement, computeActionDisplay } from '../action-view-renderer';
 
 export function TickAction({
   climb,
@@ -111,12 +112,13 @@ export function TickAction({
     </Stack>
   );
 
+  const { iconSize } = computeActionDisplay(viewMode, size, showLabel);
   const label = 'Tick';
-  const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
-  const iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
+  const badgeLabel = badgeCount > 0 ? `${label} (${badgeCount})` : label;
 
   const icon = <CheckOutlined sx={{ fontSize: iconSize }} />;
   const badgeColor = hasSuccessfulAscent ? themeTokens.colors.success : themeTokens.colors.error;
+  const badgeSx = { '& .MuiBadge-badge': { backgroundColor: badgeColor, color: 'common.white' } };
 
   const drawers = (
     <>
@@ -147,94 +149,63 @@ export function TickAction({
     </>
   );
 
-  // Icon mode - for Card actions
-  const iconElement = (
-    <>
-      <ActionTooltip title={label}>
-        <MuiBadge badgeContent={badgeCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: badgeColor, color: 'common.white' } }}>
-          <Box component="span" onClick={handleClick} sx={{ cursor: 'pointer' }} className={className}>
-            {icon}
-          </Box>
-        </MuiBadge>
-      </ActionTooltip>
-      {drawers}
-    </>
-  );
-
-  // Button mode
-  const buttonElement = (
-    <>
-      <MuiBadge badgeContent={badgeCount} max={99} sx={{ '& .MuiBadge-badge': { backgroundColor: badgeColor, color: 'common.white' } }}>
-        <MuiButton
-          variant="outlined"
-          startIcon={icon}
-          onClick={handleClick}
-          size={size === 'large' ? 'large' : 'small'}
-          disabled={disabled}
-          className={className}
-        >
-          {shouldShowLabel && label}
-        </MuiButton>
-      </MuiBadge>
-      {drawers}
-    </>
-  );
-
-  // Menu item for dropdown
-  const menuItem = {
+  return buildActionResult({
     key: 'tick',
-    label: badgeCount > 0 ? `${label} (${badgeCount})` : label,
+    label: badgeLabel,
     icon,
-    onClick: () => handleClick(),
-  };
-
-  // List mode - full-width row for drawer menus
-  const listElement = (
-    <>
-      <MuiButton
-        variant="text"
-        startIcon={icon}
-        fullWidth
-        onClick={handleClick}
-        disabled={disabled}
-        sx={{
-          height: 48,
-          justifyContent: 'flex-start',
-          paddingLeft: `${themeTokens.spacing[4]}px`,
-          fontSize: themeTokens.typography.fontSize.base,
-        }}
-      >
-        {badgeCount > 0 ? `${label} (${badgeCount})` : label}
-      </MuiButton>
-      {drawers}
-    </>
-  );
-
-  let element: React.ReactNode;
-  switch (viewMode) {
-    case 'icon':
-      element = iconElement;
-      break;
-    case 'button':
-    case 'compact':
-      element = buttonElement;
-      break;
-    case 'list':
-      element = listElement;
-      break;
-    case 'dropdown':
-      element = drawers; // Need to render drawers even in dropdown mode
-      break;
-    default:
-      element = iconElement;
-  }
-
-  return {
-    element,
-    menuItem,
-    key: 'tick',
-    available: true,
-  };
+    onClick: handleClick,
+    viewMode,
+    size,
+    showLabel,
+    disabled,
+    className,
+    dropdownElementOverride: drawers,
+    menuItem: {
+      key: 'tick',
+      label: badgeLabel,
+      icon,
+      onClick: () => handleClick(),
+    },
+    iconElementOverride: (
+      <>
+        <ActionTooltip title={label}>
+          <MuiBadge badgeContent={badgeCount} max={99} sx={badgeSx}>
+            <Box component="span" onClick={handleClick} sx={{ cursor: 'pointer' }} className={className}>
+              {icon}
+            </Box>
+          </MuiBadge>
+        </ActionTooltip>
+        {drawers}
+      </>
+    ),
+    buttonElementOverride: (
+      <>
+        <MuiBadge badgeContent={badgeCount} max={99} sx={badgeSx}>
+          <ActionButtonElement
+            icon={icon}
+            label={label}
+            showLabel={showLabel ?? (viewMode === 'button' || viewMode === 'dropdown')}
+            onClick={handleClick}
+            disabled={disabled}
+            size={size}
+            className={className}
+          />
+        </MuiBadge>
+        {drawers}
+      </>
+    ),
+    listElementOverride: (
+      <>
+        <ActionListElement
+          icon={icon}
+          label={badgeLabel}
+          onClick={handleClick}
+          disabled={disabled}
+        />
+        {drawers}
+      </>
+    ),
+  });
 }
 
 export default TickAction;

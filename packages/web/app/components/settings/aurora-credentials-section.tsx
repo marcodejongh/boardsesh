@@ -27,6 +27,8 @@ import SyncOutlined from '@mui/icons-material/SyncOutlined';
 import WarningOutlined from '@mui/icons-material/WarningOutlined';
 import type { AuroraCredentialStatus } from '@/app/api/internal/aurora-credentials/route';
 import type { UnsyncedCounts } from '@/app/api/internal/aurora-credentials/unsynced/route';
+import { AURORA_BOARD_NAMES } from '@/app/lib/board-constants';
+import type { AuroraBoardName } from '@/app/lib/api-wrappers/aurora/types';
 import styles from './aurora-credentials-section.module.css';
 
 interface BoardUnsyncedCounts {
@@ -35,7 +37,7 @@ interface BoardUnsyncedCounts {
 }
 
 interface BoardCredentialCardProps {
-  boardType: 'kilter' | 'tension';
+  boardType: AuroraBoardName;
   credential: AuroraCredentialStatus | null;
   unsyncedCounts: BoardUnsyncedCounts;
   onAdd: () => void;
@@ -165,7 +167,7 @@ export default function AuroraCredentialsSection() {
   const [unsyncedCounts, setUnsyncedCounts] = useState<UnsyncedCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedBoard, setSelectedBoard] = useState<'kilter' | 'tension'>('kilter');
+  const [selectedBoard, setSelectedBoard] = useState<AuroraBoardName>('kilter');
   const [isSaving, setIsSaving] = useState(false);
   const [removingBoard, setRemovingBoard] = useState<string | null>(null);
   const [formValues, setFormValues] = useState({ username: '', password: '' });
@@ -201,7 +203,7 @@ export default function AuroraCredentialsSection() {
     fetchUnsyncedCounts();
   }, []);
 
-  const handleAddClick = (boardType: 'kilter' | 'tension') => {
+  const handleAddClick = (boardType: AuroraBoardName) => {
     setSelectedBoard(boardType);
     setFormValues({ username: '', password: '' });
     setIsModalOpen(true);
@@ -241,7 +243,7 @@ export default function AuroraCredentialsSection() {
     }
   };
 
-  const handleRemove = async (boardType: 'kilter' | 'tension') => {
+  const handleRemove = async (boardType: AuroraBoardName) => {
     setRemovingBoard(boardType);
     try {
       const response = await fetch('/api/internal/aurora-credentials', {
@@ -264,7 +266,7 @@ export default function AuroraCredentialsSection() {
     }
   };
 
-  const getCredentialForBoard = (boardType: 'kilter' | 'tension') => {
+  const getCredentialForBoard = (boardType: AuroraBoardName) => {
     return credentials.find((c) => c.boardType === boardType) || null;
   };
 
@@ -292,22 +294,17 @@ export default function AuroraCredentialsSection() {
           </Typography>
 
           <Stack spacing={2} className={styles.cardsContainer}>
-            <BoardCredentialCard
-              boardType="kilter"
-              credential={getCredentialForBoard('kilter')}
-              unsyncedCounts={unsyncedCounts?.kilter ?? { ascents: 0, climbs: 0 }}
-              onAdd={() => handleAddClick('kilter')}
-              onRemove={() => handleRemove('kilter')}
-              isRemoving={removingBoard === 'kilter'}
-            />
-            <BoardCredentialCard
-              boardType="tension"
-              credential={getCredentialForBoard('tension')}
-              unsyncedCounts={unsyncedCounts?.tension ?? { ascents: 0, climbs: 0 }}
-              onAdd={() => handleAddClick('tension')}
-              onRemove={() => handleRemove('tension')}
-              isRemoving={removingBoard === 'tension'}
-            />
+            {AURORA_BOARD_NAMES.map((boardType) => (
+              <BoardCredentialCard
+                key={boardType}
+                boardType={boardType}
+                credential={getCredentialForBoard(boardType)}
+                unsyncedCounts={unsyncedCounts?.[boardType] ?? { ascents: 0, climbs: 0 }}
+                onAdd={() => handleAddClick(boardType)}
+                onRemove={() => handleRemove(boardType)}
+                isRemoving={removingBoard === boardType}
+              />
+            ))}
           </Stack>
         </CardContent>
       </Card>
