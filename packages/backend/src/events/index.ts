@@ -4,6 +4,7 @@ import { pubsub } from '../pubsub/index';
 import { db } from '../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { fanoutFeedItems } from './feed-fanout';
 import crypto from 'crypto';
 
 export const eventBroker = new EventBroker();
@@ -87,6 +88,11 @@ async function createInlineNotification(event: SocialEvent): Promise<void> {
           }
         }
         break;
+      }
+      case 'ascent.logged': {
+        await fanoutFeedItems(event);
+        // No notification for ascent.logged - it's feed-only
+        return;
       }
     }
 

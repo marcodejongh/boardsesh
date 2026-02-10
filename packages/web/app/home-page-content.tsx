@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import SearchOutlined from '@mui/icons-material/SearchOutlined';
-import FollowingAscentsFeed from '@/app/components/social/following-ascents-feed';
-import GlobalAscentsFeed from '@/app/components/social/global-ascents-feed';
+import ActivityFeed from '@/app/components/activity-feed/activity-feed';
+import FeedSortSelector from '@/app/components/activity-feed/feed-sort-selector';
 import searchPillStyles from '@/app/components/search-drawer/search-pill.module.css';
 import UserSearchDrawer from '@/app/components/social/user-search-drawer';
 import UserDrawer from '@/app/components/user-drawer/user-drawer';
@@ -20,10 +20,9 @@ import { themeTokens } from '@/app/theme/theme-config';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import ErrorBoundary from '@/app/components/error-boundary';
 import BoardSelectorPills from '@/app/components/board-entity/board-selector-pills';
-import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
-import { useRouter } from 'next/navigation';
-import type { UserBoard } from '@boardsesh/shared-schema';
+import type { SortMode } from '@boardsesh/shared-schema';
 import bottomBarStyles from '@/app/components/bottom-tab-bar/bottom-bar-wrapper.module.css';
+import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
 
 interface HomePageContentProps {
   boardConfigs: BoardConfigData;
@@ -32,6 +31,8 @@ interface HomePageContentProps {
 export default function HomePageContent({ boardConfigs }: HomePageContentProps) {
   const { data: session, status } = useSession();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedBoardUuid, setSelectedBoardUuid] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortMode>('new');
   const {
     activeSession,
     localQueue,
@@ -40,12 +41,22 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
   } = usePersistentSession();
 
   const isAuthenticated = status === 'authenticated' && !!session?.user;
-  const router = useRouter();
 
-  const handleBoardSelect = useCallback((board: UserBoard) => {
-    // Default angle 40 — boards don't store a preferred angle yet
-    router.push(constructBoardSlugListUrl(board.slug, 40));
-  }, [router]);
+  // Load persisted sort mode
+  useEffect(() => {
+    getPreference<SortMode>('activityFeedSortMode').then((saved) => {
+      if (saved) setSortBy(saved);
+    });
+  }, []);
+
+  const handleSortChange = useCallback((newSort: SortMode) => {
+    setSortBy(newSort);
+    setPreference('activityFeedSortMode', newSort);
+  }, []);
+
+  const handleBoardFilter = useCallback((boardUuid: string | null) => {
+    setSelectedBoardUuid(boardUuid);
+  }, []);
 
   // Determine if there's an active queue to show the QueueControlBar
   const isPartyMode = !!activeSession;
@@ -85,16 +96,24 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
       {/* Feed */}
       <Box component="main" sx={{ flex: 1, px: 2, py: 2 }}>
         {isAuthenticated && (
-          <BoardSelectorPills onBoardSelect={handleBoardSelect} />
+          <BoardSelectorPills
+            mode="filter"
+            onBoardFilter={handleBoardFilter}
+            includeAllPill
+          />
         )}
-        <Typography variant="h6" component="h1" sx={{ mb: 2 }}>
-          Activity
-        </Typography>
-        {isAuthenticated ? (
-          <FollowingAscentsFeed onFindClimbers={() => setSearchOpen(true)} />
-        ) : (
-          <GlobalAscentsFeed />
-        )}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" component="h1">
+            Activity
+          </Typography>
+          <FeedSortSelector sortBy={sortBy} onChange={handleSortChange} />
+        </Box>
+        <ActivityFeed
+          isAuthenticated={isAuthenticated}
+          boardUuid={selectedBoardUuid}
+          sortBy={sortBy}
+          onFindClimbers={() => setSearchOpen(true)}
+        />
       </Box>
 
       {/* Bottom Bar: QueueControlBar (if active) + BottomTabBar */}

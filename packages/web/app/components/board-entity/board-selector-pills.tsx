@@ -14,10 +14,18 @@ import {
 import { themeTokens } from '@/app/theme/theme-config';
 
 interface BoardSelectorPillsProps {
+  mode?: 'navigate' | 'filter';
   onBoardSelect?: (board: UserBoard) => void;
+  onBoardFilter?: (boardUuid: string | null) => void;
+  includeAllPill?: boolean;
 }
 
-export default function BoardSelectorPills({ onBoardSelect }: BoardSelectorPillsProps) {
+export default function BoardSelectorPills({
+  mode = 'navigate',
+  onBoardSelect,
+  onBoardFilter,
+  includeAllPill = false,
+}: BoardSelectorPillsProps) {
   const [boards, setBoards] = useState<UserBoard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
@@ -60,8 +68,20 @@ export default function BoardSelectorPills({ onBoardSelect }: BoardSelectorPills
 
   const handleSelect = (board: UserBoard) => {
     setSelectedUuid(board.uuid);
-    onBoardSelect?.(board);
+    if (mode === 'filter') {
+      onBoardFilter?.(board.uuid);
+    } else {
+      onBoardSelect?.(board);
+    }
   };
+
+  const handleAllClick = () => {
+    setSelectedUuid(null);
+    onBoardFilter?.(null);
+  };
+
+  // In filter mode with no selection, "All" is selected
+  const isAllSelected = mode === 'filter' && selectedUuid === null;
 
   return (
     <Box
@@ -75,6 +95,21 @@ export default function BoardSelectorPills({ onBoardSelect }: BoardSelectorPills
         '&::-webkit-scrollbar': { display: 'none' },
       }}
     >
+      {mode === 'filter' && includeAllPill && (
+        <Chip
+          label="All"
+          size="small"
+          variant={isAllSelected ? 'filled' : 'outlined'}
+          color={isAllSelected ? 'primary' : 'default'}
+          onClick={handleAllClick}
+          sx={{
+            flexShrink: 0,
+            fontWeight: isAllSelected
+              ? themeTokens.typography.fontWeight.semibold
+              : themeTokens.typography.fontWeight.normal,
+          }}
+        />
+      )}
       {boards.map((board) => (
         <Chip
           key={board.uuid}

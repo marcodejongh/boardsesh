@@ -10,6 +10,7 @@ import {
   resolveVoteRecipients,
   resolveFollowRecipient,
 } from './recipient-resolution';
+import { fanoutFeedItems } from './feed-fanout';
 import crypto from 'crypto';
 
 export class NotificationWorker {
@@ -38,6 +39,9 @@ export class NotificationWorker {
           break;
         case 'follow.created':
           await this.handleFollowCreated(event);
+          break;
+        case 'ascent.logged':
+          await this.handleAscentLogged(event);
           break;
         // Future event types (climb.created, proposal.*) are skipped for now
         default:
@@ -133,6 +137,10 @@ export class NotificationWorker {
       'user',
       event.entityId,
     );
+  }
+
+  private async handleAscentLogged(event: SocialEvent): Promise<void> {
+    await fanoutFeedItems(event);
   }
 
   private async isDuplicate(
