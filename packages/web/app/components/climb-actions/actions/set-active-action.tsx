@@ -6,7 +6,7 @@ import { ActionTooltip } from '../action-tooltip';
 import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
-import { useQueueContext } from '../../graphql-queue';
+import { useOptionalQueueContext } from '../../graphql-queue';
 import { themeTokens } from '@/app/theme/theme-config';
 
 export function SetActiveAction({
@@ -19,17 +19,17 @@ export function SetActiveAction({
   className,
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
-  const { setCurrentClimb, currentClimb } = useQueueContext();
+  const queueContext = useOptionalQueueContext();
 
-  const isCurrentClimb = currentClimb?.uuid === climb.uuid;
+  const isCurrentClimb = queueContext?.currentClimb?.uuid === climb.uuid;
 
   const handleClick = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     e?.preventDefault();
 
-    if (isCurrentClimb) return;
+    if (!queueContext || isCurrentClimb) return;
 
-    setCurrentClimb(climb);
+    queueContext.setCurrentClimb(climb);
 
     track('Set Active Climb', {
       boardLayout: boardDetails.layout_name || '',
@@ -37,7 +37,7 @@ export function SetActiveAction({
     });
 
     onComplete?.();
-  }, [isCurrentClimb, setCurrentClimb, climb, boardDetails.layout_name, onComplete]);
+  }, [queueContext, isCurrentClimb, climb, boardDetails.layout_name, onComplete]);
 
   const label = isCurrentClimb ? 'Active' : 'Set Active';
   const shouldShowLabel = showLabel ?? (viewMode === 'button' || viewMode === 'dropdown');
@@ -126,7 +126,7 @@ export function SetActiveAction({
     element,
     menuItem,
     key: 'setActive',
-    available: true,
+    available: !!queueContext,
   };
 }
 
