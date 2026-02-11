@@ -175,6 +175,11 @@ void ESPWebServer::handleRoot() {
             <input type="range" id="displayBrightness" min="0" max="255" value="128">
             <span class="slider-value" id="displayBrightnessValue">128</span>
         </div>
+        <label>Display Mode</label>
+        <select id="displayMode">
+            <option value="0">Portrait (480x800)</option>
+            <option value="1">Landscape (800x480)</option>
+        </select>
     </div>
 
     <div class="card">
@@ -253,6 +258,7 @@ void ESPWebServer::handleRoot() {
                 document.getElementById('brightnessValue').textContent = cfg.brightness || 128;
                 document.getElementById('displayBrightness').value = cfg.display_brightness || 128;
                 document.getElementById('displayBrightnessValue').textContent = cfg.display_brightness || 128;
+                document.getElementById('displayMode').value = cfg.display_mode || 0;
                 document.getElementById('sessionId').value = cfg.session_id || '';
                 document.getElementById('apiKey').value = cfg.api_key || '';
                 document.getElementById('backendHost').value = cfg.backend_host || '';
@@ -330,6 +336,7 @@ void ESPWebServer::handleRoot() {
                 device_name: document.getElementById('deviceName').value,
                 brightness: parseInt(document.getElementById('brightness').value),
                 display_brightness: parseInt(document.getElementById('displayBrightness').value),
+                display_mode: parseInt(document.getElementById('displayMode').value),
                 session_id: document.getElementById('sessionId').value,
                 api_key: document.getElementById('apiKey').value,
                 backend_host: document.getElementById('backendHost').value,
@@ -492,6 +499,7 @@ void ESPWebServer::handleGetConfig() {
     doc["device_name"] = Config.getString("device_name", "Boardsesh Controller");
     doc["brightness"] = Config.getInt("brightness", 128);
     doc["display_brightness"] = Config.getInt("disp_br", 128);
+    doc["display_mode"] = Config.getInt("disp_mode", 0);
     doc["session_id"] = Config.getString("session_id");
     doc["api_key"] = Config.getString("api_key");
     doc["proxy_enabled"] = Config.getBool("proxy_en", false);
@@ -539,6 +547,9 @@ void ESPWebServer::handleSetConfig() {
     }
     if (doc["display_brightness"].is<int>()) {
         Config.setInt("disp_br", doc["display_brightness"]);
+    }
+    if (doc["display_mode"].is<int>()) {
+        Config.setInt("disp_mode", doc["display_mode"]);
     }
     if (doc["proxy_enabled"].is<bool>()) {
         Config.setBool("proxy_en", doc["proxy_enabled"].as<bool>());

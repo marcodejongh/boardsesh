@@ -173,6 +173,7 @@ void handleLedUpdateExtended(JsonObject& data);
 void onQueueSync(const ControllerQueueSyncData& data);
 void navigatePrevious();
 void navigateNext();
+void navigateToIndex(int index);
 void sendNavigationMutation(const char* queueItemUuid);
 #endif
 void startupAnimation();
@@ -417,6 +418,28 @@ void loop() {
             Display.showSettingsScreen();
             break;
         }
+        case TouchAction::SETTINGS_TOGGLE_DISPLAY_MODE: {
+            Logger.logln("Touch: toggle display mode");
+            int currentMode = Config.getInt("disp_mode", 0);
+            int newMode = (currentMode == 0) ? 1 : 0;
+            Config.setInt("disp_mode", newMode);
+            // Clear settings state and show restarting message
+            Display.hideSettingsScreen();
+            Display.getDisplay().fillScreen(COLOR_BACKGROUND);
+            Display.getDisplay().setFont(&fonts::FreeSansBold18pt7b);
+            Display.getDisplay().setTextColor(COLOR_TEXT);
+            Display.getDisplay().setTextDatum(lgfx::middle_center);
+            Display.getDisplay().drawString("Restarting...",
+                Display.screenWidth() / 2, Display.screenHeight() / 2);
+            Display.getDisplay().setTextDatum(lgfx::top_left);
+            delay(1000);
+            esp_restart();
+            break;
+        }
+        case TouchAction::NAVIGATE_TO_INDEX:
+            Logger.logln("Touch: navigate to index %d", touchEvent.targetIndex);
+            navigateToIndex(touchEvent.targetIndex);
+            break;
         case TouchAction::NONE:
         default:
             break;
@@ -1087,6 +1110,45 @@ void navigateNext() {
 
             // Schedule debounced mutation (will be sent after MUTATION_DEBOUNCE_MS of inactivity)
             // Store the UUID so it persists even if Display state changes from incoming updates
+            strncpy(g_pendingMutationUuid, newCurrent->uuid, sizeof(g_pendingMutationUuid) - 1);
+            g_pendingMutationUuid[sizeof(g_pendingMutationUuid) - 1] = '\0';
+            g_pendingMutationTime = millis() + G_MUTATION_DEBOUNCE_MS;
+            g_mutationPending = true;
+        }
+    }
+}
+
+/**
+ * Navigate to a specific index in the queue
+ * Used by landscape mode queue list tap
+ */
+void navigateToIndex(int index) {
+    if (!backendConnected) {
+        Logger.logln("Navigation: Cannot navigate - not connected to backend");
+        return;
+    }
+
+    if (Display.getQueueCount() == 0) {
+        Logger.logln("Navigation: No queue state - cannot navigate");
+        return;
+    }
+
+    if (!Display.canNavigateToIndex(index)) {
+        Logger.logln("Navigation: Invalid index %d", index);
+        return;
+    }
+
+    if (Display.navigateToIndex(index)) {
+        const LocalQueueItem* newCurrent = Display.getCurrentQueueItem();
+        if (newCurrent) {
+            Logger.logln("Navigation: Optimistic update to index %d - %s (uuid: %s)",
+                         index, newCurrent->name, newCurrent->uuid);
+
+#if defined(ENABLE_WAVESHARE_DISPLAY) && defined(ENABLE_BOARD_IMAGE)
+            Display.setLedCommands(nullptr, 0);
+#endif
+            Display.showClimbInfoOnly(newCurrent->name, newCurrent->grade, "", 0, newCurrent->climbUuid, boardType.c_str());
+
             strncpy(g_pendingMutationUuid, newCurrent->uuid, sizeof(g_pendingMutationUuid) - 1);
             g_pendingMutationUuid[sizeof(g_pendingMutationUuid) - 1] = '\0';
             g_pendingMutationTime = millis() + G_MUTATION_DEBOUNCE_MS;

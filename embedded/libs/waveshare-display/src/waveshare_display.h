@@ -60,15 +60,72 @@
 #define WS_I2C_SCL  9
 
 // ============================================
-// Display Settings (native 800x480, portrait 480x800)
+// Display Settings (native 800x480)
 // ============================================
 
 #define WS_SCREEN_WIDTH_NATIVE  800
 #define WS_SCREEN_HEIGHT_NATIVE 480
 
-// After rotation to portrait
+// Portrait mode (after rotation)
 #define WS_SCREEN_WIDTH  480
 #define WS_SCREEN_HEIGHT 800
+
+// ============================================
+// Display Mode
+// ============================================
+
+enum class WsDisplayMode : uint8_t { PORTRAIT = 0, LANDSCAPE = 1 };
+
+// ============================================
+// Landscape Layout Constants (800x480)
+// ============================================
+
+#define WS_L_SCREEN_WIDTH  800
+#define WS_L_SCREEN_HEIGHT 480
+
+// Status bar at top (full width)
+#define WS_L_STATUS_BAR_HEIGHT 40
+#define WS_L_STATUS_BAR_Y 0
+
+// Left panel - board preview
+#define WS_L_LEFT_PANEL_X 0
+#define WS_L_LEFT_PANEL_W 533
+#define WS_L_LEFT_PANEL_Y WS_L_STATUS_BAR_HEIGHT
+#define WS_L_LEFT_PANEL_H (WS_L_SCREEN_HEIGHT - WS_L_STATUS_BAR_HEIGHT)
+
+// Right panel - queue list
+#define WS_L_RIGHT_PANEL_X 533
+#define WS_L_RIGHT_PANEL_W 267
+#define WS_L_RIGHT_PANEL_Y WS_L_STATUS_BAR_HEIGHT
+#define WS_L_RIGHT_PANEL_H (WS_L_SCREEN_HEIGHT - WS_L_STATUS_BAR_HEIGHT)
+
+// Queue item dimensions
+#define WS_L_QUEUE_ITEM_HEIGHT 48
+#define WS_L_QUEUE_VISIBLE_ITEMS 9
+
+// Climb info compact below board image in left panel
+#define WS_L_CLIMB_INFO_HEIGHT 60
+
+// QR code in bottom-left corner of left panel
+#define WS_L_QR_SIZE 80
+#define WS_L_QR_MARGIN 6
+
+// Settings button (top-right, landscape-aware)
+#define WS_L_SETTINGS_BUTTON_X (WS_L_SCREEN_WIDTH - 50)
+#define WS_L_SETTINGS_BUTTON_Y 0
+#define WS_L_SETTINGS_BUTTON_W 50
+#define WS_L_SETTINGS_BUTTON_H 40
+
+// Settings screen layout (landscape - more compact for 480px height)
+#define WS_L_SETTINGS_TITLE_Y 20
+#define WS_L_SETTINGS_INFO_Y 80
+#define WS_L_SETTINGS_BTN_W 360
+#define WS_L_SETTINGS_BTN_H 55
+#define WS_L_SETTINGS_BTN_X ((WS_L_SCREEN_WIDTH - WS_L_SETTINGS_BTN_W) / 2)
+#define WS_L_SETTINGS_RESET_BTN_Y 220
+#define WS_L_SETTINGS_PROXY_BTN_Y 290
+#define WS_L_SETTINGS_DISPMODE_BTN_Y 360
+#define WS_L_SETTINGS_BACK_BTN_Y 420
 
 // ============================================
 // UI Layout (480x800 Portrait) - Scaled from LilyGo 170x320
@@ -134,24 +191,28 @@
 #define WS_SETTINGS_BTN_X ((WS_SCREEN_WIDTH - WS_SETTINGS_BTN_W) / 2)
 #define WS_SETTINGS_RESET_BTN_Y 350
 #define WS_SETTINGS_PROXY_BTN_Y 450
-#define WS_SETTINGS_BACK_BTN_Y 580
+#define WS_SETTINGS_DISPMODE_BTN_Y 550
+#define WS_SETTINGS_BACK_BTN_Y 650
 
 enum class TouchAction {
     NONE,
     NAVIGATE_PREVIOUS,
     NAVIGATE_NEXT,
+    NAVIGATE_TO_INDEX,
     OPEN_SETTINGS,
     SETTINGS_BACK,
     SETTINGS_RESET_WIFI,
-    SETTINGS_TOGGLE_PROXY
+    SETTINGS_TOGGLE_PROXY,
+    SETTINGS_TOGGLE_DISPLAY_MODE
 };
 
 struct TouchEvent {
     TouchAction action;
     int16_t x;
     int16_t y;
+    int targetIndex;  // For NAVIGATE_TO_INDEX
 
-    TouchEvent() : action(TouchAction::NONE), x(0), y(0) {}
+    TouchEvent() : action(TouchAction::NONE), x(0), y(0), targetIndex(-1) {}
 };
 
 // ============================================
@@ -197,9 +258,16 @@ class WaveshareDisplay : public DisplayBase {
     // Get display for custom drawing
     LGFX_Waveshare7& getDisplay() { return _display; }
 
-    // Screen dimensions
+    // Screen dimensions (mode-aware)
+    int screenWidth() const { return _displayMode == WsDisplayMode::LANDSCAPE ? WS_L_SCREEN_WIDTH : WS_SCREEN_WIDTH; }
+    int screenHeight() const { return _displayMode == WsDisplayMode::LANDSCAPE ? WS_L_SCREEN_HEIGHT : WS_SCREEN_HEIGHT; }
+
+    // Legacy static constants (portrait defaults)
     static const int SCREEN_WIDTH = WS_SCREEN_WIDTH;
     static const int SCREEN_HEIGHT = WS_SCREEN_HEIGHT;
+
+    // Display mode
+    WsDisplayMode getDisplayMode() const { return _displayMode; }
 
   protected:
     void onStatusChanged() override;
@@ -207,6 +275,9 @@ class WaveshareDisplay : public DisplayBase {
   private:
     LGFX_Waveshare7 _display;
     CH422G _ioExpander;
+
+    // Display mode
+    WsDisplayMode _displayMode = WsDisplayMode::PORTRAIT;
 
     // Touch debouncing
     unsigned long _lastTouchTime;
@@ -218,7 +289,7 @@ class WaveshareDisplay : public DisplayBase {
     String _settingsIP;
     bool _settingsProxyEnabled = false;
 
-    // Internal drawing methods
+    // Internal drawing methods (portrait)
     void drawStatusBar();
     void drawCurrentClimb();
     void drawQRCode();
@@ -227,6 +298,20 @@ class WaveshareDisplay : public DisplayBase {
     void drawNavButtons();
     void drawSettingsScreen();
     TouchAction handleSettingsTouch(int16_t x, int16_t y);
+
+    // Landscape drawing methods
+    void drawLandscapeStatusBar();
+    void drawLandscapeBoardPanel();
+    void drawLandscapeQueuePanel();
+    void drawLandscapeClimbInfo();
+    void drawLandscapeQRCode();
+    void drawLandscapeSettingsScreen();
+    TouchEvent handleLandscapeTouch(int16_t x, int16_t y);
+    TouchAction handleLandscapeSettingsTouch(int16_t x, int16_t y);
+
+    // Queue scrolling for landscape
+    int _queueScrollOffset = 0;
+    void updateQueueScrollOffset();
 
 #ifdef ENABLE_BOARD_IMAGE
   public:
