@@ -219,6 +219,51 @@ export const SaveAuroraCredentialInputSchema = z.object({
 });
 
 // ============================================
+// New Climb Feed & Subscriptions Schemas
+// ============================================
+
+export const NewClimbSubscriptionInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive('Layout ID must be positive'),
+});
+
+export const NewClimbFeedInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive('Layout ID must be positive'),
+  limit: z.number().int().min(1).max(100).optional(),
+  offset: z.number().int().min(0).optional(),
+});
+
+export const SaveClimbInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive('Layout ID must be positive'),
+  name: z.string().min(1).max(200),
+  description: z.string().max(2000).optional().default(''),
+  isDraft: z.boolean(),
+  frames: z.string().min(1).max(10000),
+  framesCount: z.number().int().min(1).optional(),
+  framesPace: z.number().int().min(0).optional(),
+  angle: z.number().int().min(0).max(90),
+});
+
+export const SaveMoonBoardClimbInputSchema = z.object({
+  boardType: z.literal('moonboard'),
+  layoutId: z.number().int().positive('Layout ID must be positive'),
+  name: z.string().min(1).max(200),
+  description: z.string().max(2000).optional().default(''),
+  holds: z.object({
+    start: z.array(z.string()).default([]),
+    hand: z.array(z.string()).default([]),
+    finish: z.array(z.string()).default([]),
+  }),
+  angle: z.number().int().min(0).max(90),
+  isDraft: z.boolean().optional(),
+  userGrade: z.string().max(20).optional(),
+  isBenchmark: z.boolean().optional(),
+  setter: z.string().max(100).optional(),
+});
+
+// ============================================
 // Favorites Schemas
 // ============================================
 

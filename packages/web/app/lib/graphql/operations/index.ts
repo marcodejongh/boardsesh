@@ -7,3 +7,4 @@ export * from './comments-votes';
 export * from './boards';
 export * from './notifications';
 export * from './activity-feed';
+export * from './new-climb-feed';

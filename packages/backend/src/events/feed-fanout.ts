@@ -42,3 +42,32 @@ export async function fanoutFeedItems(event: SocialEvent): Promise<void> {
     await db.insert(dbSchema.feedItems).values(batch);
   }
 }
+
+/**
+   * Fan out new climb feed items to followers of the setter.
+   */
+export async function fanoutNewClimbFeedItems(event: SocialEvent): Promise<void> {
+  const followers = await db
+    .select({ followerId: dbSchema.userFollows.followerId })
+    .from(dbSchema.userFollows)
+    .where(eq(dbSchema.userFollows.followingId, event.actorId));
+
+  if (followers.length === 0) return;
+
+  const metadata = buildFeedItemMetadata(event);
+
+  const rows = followers.map((f) => ({
+    recipientId: f.followerId,
+    actorId: event.actorId,
+    type: 'new_climb' as const,
+    entityType: 'climb' as SocialEntityType,
+    entityId: event.entityId,
+    boardUuid: null,
+    metadata,
+  }));
+
+  for (let i = 0; i < rows.length; i += FANOUT_BATCH_SIZE) {
+    const batch = rows.slice(i, i + FANOUT_BATCH_SIZE);
+    await db.insert(dbSchema.feedItems).values(batch);
+  }
+}

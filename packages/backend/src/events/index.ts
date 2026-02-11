@@ -4,8 +4,12 @@ import { pubsub } from '../pubsub/index';
 import { db } from '../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
-import { fanoutFeedItems } from './feed-fanout';
+import { fanoutFeedItems, fanoutNewClimbFeedItems } from './feed-fanout';
 import crypto from 'crypto';
+import {
+  resolveClimbCreatedFollowerRecipients,
+  resolveClimbCreatedSubscriptionRecipients,
+} from './recipient-resolution';
 
 export const eventBroker = new EventBroker();
 
@@ -128,6 +132,131 @@ async function createInlineNotification(event: SocialEvent): Promise<void> {
       }
       case 'proposal.created': {
         // Multi-recipient notification (all climbers) — handled by NotificationWorker only
+        return;
+      }
+      case 'climb.created': {
+        const boardType = event.metadata.boardType;
+        const layoutId = parseInt(event.metadata.layoutId || '0', 10);
+        if (!boardType || !layoutId) return;
+
+        const followerRecipients = await resolveClimbCreatedFollowerRecipients(event.actorId);
+        const subscriberRecipients = await resolveClimbCreatedSubscriptionRecipients(
+          boardType,
+          layoutId,
+          event.actorId,
+        );
+        const followerIds = new Set(followerRecipients.map((r) => r.recipientId));
+        const recipients = [
+          ...followerRecipients,
+          ...subscriberRecipients.filter((r) => !followerIds.has(r.recipientId)),
+        ].filter((r) => r.recipientId !== event.actorId);
+
+        if (recipients.length === 0) {
+          await fanoutNewClimbFeedItems(event);
+          return;
+        }
+
+        const actorRows = await db
+          .select({
+            name: dbSchema.users.name,
+            image: dbSchema.users.image,
+            displayName: dbSchema.userProfiles.displayName,
+            avatarUrl: dbSchema.userProfiles.avatarUrl,
+          })
+          .from(dbSchema.users)
+          .leftJoin(dbSchema.userProfiles, eq(dbSchema.users.id, dbSchema.userProfiles.userId))
+          .where(eq(dbSchema.users.id, event.actorId))
+          .limit(1);
+        const actor = actorRows[0];
+
+        for (const recipient of recipients) {
+          const uuid = crypto.randomUUID();
+          await db
+            .insert(dbSchema.notifications)
+            .values({
+              uuid,
+              recipientId: recipient.recipientId,
+              actorId: event.actorId,
+              type: recipient.notificationType,
+              entityType: 'climb',
+              entityId: event.entityId,
+            });
+
+          pubsub.publishNotificationEvent(recipient.recipientId, {
+            notification: {
+              uuid,
+              type: recipient.notificationType as NotificationType,
+              actorId: event.actorId,
+              actorDisplayName: actor?.displayName || actor?.name || undefined,
+              actorAvatarUrl: actor?.avatarUrl || actor?.image || undefined,
+              entityType: 'climb',
+              entityId: event.entityId,
+              climbName: event.metadata.climbName || undefined,
+              climbUuid: event.entityId,
+              boardType,
+              isRead: false,
+              createdAt: new Date().toISOString(),
+            },
+          });
+        }
+
+        await fanoutNewClimbFeedItems(event);
+
+        const [climb] = await db
+          .select({
+            uuid: dbSchema.boardClimbs.uuid,
+            name: dbSchema.boardClimbs.name,
+            layoutId: dbSchema.boardClimbs.layoutId,
+            angle: dbSchema.boardClimbs.angle,
+            frames: dbSchema.boardClimbs.frames,
+            createdAt: dbSchema.boardClimbs.createdAt,
+            setterDisplayName: dbSchema.userProfiles.displayName,
+            setterAvatarUrl: dbSchema.userProfiles.avatarUrl,
+            difficultyName: dbSchema.boardDifficultyGrades.boulderName,
+          })
+          .from(dbSchema.boardClimbs)
+          .leftJoin(dbSchema.users, eq(dbSchema.boardClimbs.userId, dbSchema.users.id))
+          .leftJoin(dbSchema.userProfiles, eq(dbSchema.users.id, dbSchema.userProfiles.userId))
+          .leftJoin(
+            dbSchema.boardClimbStats,
+            and(
+              eq(dbSchema.boardClimbStats.boardType, dbSchema.boardClimbs.boardType),
+              eq(dbSchema.boardClimbStats.climbUuid, dbSchema.boardClimbs.uuid),
+              eq(dbSchema.boardClimbStats.angle, dbSchema.boardClimbs.angle),
+            ),
+          )
+          .leftJoin(
+            dbSchema.boardDifficultyGrades,
+            and(
+              eq(dbSchema.boardDifficultyGrades.boardType, dbSchema.boardClimbs.boardType),
+              eq(dbSchema.boardDifficultyGrades.difficulty, dbSchema.boardClimbStats.displayDifficulty),
+            ),
+          )
+          .where(
+            and(
+              eq(dbSchema.boardClimbs.uuid, event.entityId),
+              eq(dbSchema.boardClimbs.boardType, boardType),
+            ),
+          )
+          .limit(1);
+
+        if (climb) {
+          const channelKey = `${boardType}:${climb.layoutId}`;
+          pubsub.publishNewClimbEvent(channelKey, {
+            climb: {
+              uuid: climb.uuid,
+              name: climb.name ?? event.metadata.climbName,
+              boardType,
+              layoutId: climb.layoutId,
+              setterDisplayName: climb.setterDisplayName ?? actor?.displayName ?? actor?.name ?? undefined,
+              setterAvatarUrl: climb.setterAvatarUrl ?? actor?.avatarUrl ?? actor?.image ?? undefined,
+              angle: climb.angle ?? null,
+              frames: climb.frames ?? null,
+              difficultyName: climb.difficultyName ?? event.metadata.difficultyName ?? null,
+              createdAt: climb.createdAt ?? new Date().toISOString(),
+            },
+          });
+        }
         return;
       }
       case 'ascent.logged': {

@@ -1,4 +1,4 @@
-import type { QueueEvent, SessionEvent, NotificationEvent, CommentEvent } from '@boardsesh/shared-schema';
+import type { QueueEvent, SessionEvent, NotificationEvent, CommentEvent, NewClimbCreatedEvent } from '@boardsesh/shared-schema';
 import type Redis from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -7,10 +7,11 @@ const QUEUE_CHANNEL_PREFIX = 'boardsesh:queue:';
 const SESSION_CHANNEL_PREFIX = 'boardsesh:session:';
 const NOTIFICATION_CHANNEL_PREFIX = 'boardsesh:notifications:';
 const COMMENT_CHANNEL_PREFIX = 'boardsesh:comments:';
+const NEW_CLIMB_CHANNEL_PREFIX = 'boardsesh:new-climbs:';
 
 interface RedisMessage {
   instanceId: string;
-  event: QueueEvent | SessionEvent | NotificationEvent | CommentEvent;
+  event: QueueEvent | SessionEvent | NotificationEvent | CommentEvent | NewClimbCreatedEvent;
   timestamp: number;
 }
 
@@ -19,18 +20,22 @@ export interface RedisPubSubAdapter {
   publishSessionEvent(sessionId: string, event: SessionEvent): Promise<void>;
   publishNotificationEvent(userId: string, event: NotificationEvent): Promise<void>;
   publishCommentEvent(entityKey: string, event: CommentEvent): Promise<void>;
+  publishNewClimbEvent(channelKey: string, event: NewClimbCreatedEvent): Promise<void>;
   subscribeQueueChannel(sessionId: string): Promise<void>;
   subscribeSessionChannel(sessionId: string): Promise<void>;
   subscribeNotificationChannel(userId: string): Promise<void>;
   subscribeCommentChannel(entityKey: string): Promise<void>;
+  subscribeNewClimbChannel(channelKey: string): Promise<void>;
   unsubscribeQueueChannel(sessionId: string): Promise<void>;
   unsubscribeSessionChannel(sessionId: string): Promise<void>;
   unsubscribeNotificationChannel(userId: string): Promise<void>;
   unsubscribeCommentChannel(entityKey: string): Promise<void>;
+  unsubscribeNewClimbChannel(channelKey: string): Promise<void>;
   onQueueMessage(callback: (sessionId: string, event: QueueEvent) => void): void;
   onSessionMessage(callback: (sessionId: string, event: SessionEvent) => void): void;
   onNotificationMessage(callback: (userId: string, event: NotificationEvent) => void): void;
   onCommentMessage(callback: (entityKey: string, event: CommentEvent) => void): void;
+  onNewClimbMessage(callback: (channelKey: string, event: NewClimbCreatedEvent) => void): void;
   getInstanceId(): string;
 }
 
@@ -43,11 +48,13 @@ export function createRedisPubSubAdapter(
   const subscribedSessionChannels = new Set<string>();
   const subscribedNotificationChannels = new Set<string>();
   const subscribedCommentChannels = new Set<string>();
+  const subscribedNewClimbChannels = new Set<string>();
 
   let queueMessageCallback: ((sessionId: string, event: QueueEvent) => void) | null = null;
   let sessionMessageCallback: ((sessionId: string, event: SessionEvent) => void) | null = null;
   let notificationMessageCallback: ((userId: string, event: NotificationEvent) => void) | null = null;
   let commentMessageCallback: ((entityKey: string, event: CommentEvent) => void) | null = null;
+  let newClimbMessageCallback: ((channelKey: string, event: NewClimbCreatedEvent) => void) | null = null;
 
   // Set up message handler
   subscriber.on('message', (channel: string, message: string) => {
@@ -80,6 +87,11 @@ export function createRedisPubSubAdapter(
         const entityKey = channel.slice(COMMENT_CHANNEL_PREFIX.length);
         if (commentMessageCallback) {
           commentMessageCallback(entityKey, parsed.event as CommentEvent);
+        }
+      } else if (channel.startsWith(NEW_CLIMB_CHANNEL_PREFIX)) {
+        const channelKey = channel.slice(NEW_CLIMB_CHANNEL_PREFIX.length);
+        if (newClimbMessageCallback) {
+          newClimbMessageCallback(channelKey, parsed.event as NewClimbCreatedEvent);
         }
       }
     } catch (error) {
@@ -122,6 +134,16 @@ export function createRedisPubSubAdapter(
 
     async publishCommentEvent(entityKey: string, event: CommentEvent): Promise<void> {
       const channel = `${COMMENT_CHANNEL_PREFIX}${entityKey}`;
+      const message: RedisMessage = {
+        instanceId,
+        event,
+        timestamp: Date.now(),
+      };
+      await publisher.publish(channel, JSON.stringify(message));
+    },
+
+    async publishNewClimbEvent(channelKey: string, event: NewClimbCreatedEvent): Promise<void> {
+      const channel = `${NEW_CLIMB_CHANNEL_PREFIX}${channelKey}`;
       const message: RedisMessage = {
         instanceId,
         event,
@@ -188,6 +210,16 @@ export function createRedisPubSubAdapter(
       subscribedCommentChannels.add(channel);
     },
 
+    async subscribeNewClimbChannel(channelKey: string): Promise<void> {
+      const channel = `${NEW_CLIMB_CHANNEL_PREFIX}${channelKey}`;
+      if (subscribedNewClimbChannels.has(channel)) {
+        return;
+      }
+      await subscriber.subscribe(channel);
+      subscribedNewClimbChannels.add(channel);
+      console.log(`[Redis] Subscribed to new climb channel: ${channelKey}`);
+    },
+
     async unsubscribeNotificationChannel(userId: string): Promise<void> {
       const channel = `${NOTIFICATION_CHANNEL_PREFIX}${userId}`;
       if (!subscribedNotificationChannels.has(channel)) {
@@ -206,6 +238,16 @@ export function createRedisPubSubAdapter(
       subscribedCommentChannels.delete(channel);
     },
 
+    async unsubscribeNewClimbChannel(channelKey: string): Promise<void> {
+      const channel = `${NEW_CLIMB_CHANNEL_PREFIX}${channelKey}`;
+      if (!subscribedNewClimbChannels.has(channel)) {
+        return;
+      }
+      await subscriber.unsubscribe(channel);
+      subscribedNewClimbChannels.delete(channel);
+      console.log(`[Redis] Unsubscribed from new climb channel: ${channelKey}`);
+    },
+
     onQueueMessage(callback: (sessionId: string, event: QueueEvent) => void): void {
       queueMessageCallback = callback;
     },
@@ -220,6 +262,10 @@ export function createRedisPubSubAdapter(
 
     onCommentMessage(callback: (entityKey: string, event: CommentEvent) => void): void {
       commentMessageCallback = callback;
+    },
+
+    onNewClimbMessage(callback: (channelKey: string, event: NewClimbCreatedEvent) => void): void {
+      newClimbMessageCallback = callback;
     },
 
     getInstanceId(): string {

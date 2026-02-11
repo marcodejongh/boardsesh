@@ -14,6 +14,12 @@ import {
   type SaveTickMutationVariables,
   type SaveTickMutationResponse,
 } from '@/app/lib/graphql/operations';
+import {
+  SAVE_CLIMB_MUTATION,
+  type SaveClimbMutationVariables,
+  type SaveClimbMutationResponse,
+} from '@/app/lib/graphql/operations/new-climb-feed';
+import { createGraphQLClient, execute, type Client } from '../graphql-queue/graphql-client';
 
 export interface SaveClimbResponse {
   uuid: string;
@@ -90,6 +96,7 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   // Use ref to track climb UUIDs to avoid re-render loops
   const currentClimbUuidsRef = useRef<ClimbUuid[]>([]);
   const lastSessionStatusRef = useRef<string>(sessionStatus);
+  const graphqlClientRef = useRef<Client | null>(null);
 
   // Initialize when session status changes
   useEffect(() => {
@@ -156,6 +163,14 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
       return false;
     }
   };
+
+  // Reset GraphQL client when auth token changes
+  useEffect(() => {
+    if (graphqlClientRef.current && 'dispose' in graphqlClientRef.current) {
+      graphqlClientRef.current.dispose();
+    }
+    graphqlClientRef.current = null;
+  }, [wsAuthToken]);
 
   // Fetch logbook from local ticks API (works without Aurora credentials)
   // Returns true if the fetch was successful, false if it was skipped or failed
@@ -279,31 +294,38 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
 
   // Save a climb (requires authentication)
   const saveClimb = async (options: Omit<SaveClimbOptions, 'setter_id' | 'user_id'>): Promise<SaveClimbResponse> => {
-    if (sessionStatus !== 'authenticated' || !session?.user?.id) {
+    if (sessionStatus !== 'authenticated' || !session?.user?.id || !wsAuthToken) {
       throw new Error('Authentication required to create climbs');
     }
 
     try {
-      const response = await fetch(`/api/v1/${boardName}/proxy/saveClimb`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          options: {
-            ...options,
-            user_id: session.user.id,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to save climb');
+      if (!graphqlClientRef.current) {
+        graphqlClientRef.current = createGraphQLClient({
+          url: process.env.NEXT_PUBLIC_WS_URL!,
+          authToken: wsAuthToken,
+        });
       }
 
-      const data = await response.json();
-      return data;
+      const variables: SaveClimbMutationVariables = {
+        input: {
+          boardType: boardName,
+          layoutId: options.layout_id,
+          name: options.name,
+          description: options.description || '',
+          isDraft: options.is_draft,
+          frames: options.frames,
+          framesCount: options.frames_count,
+          framesPace: options.frames_pace,
+          angle: options.angle,
+        },
+      };
+
+      const result = await execute<SaveClimbMutationResponse, SaveClimbMutationVariables>(
+        graphqlClientRef.current,
+        { query: SAVE_CLIMB_MUTATION, variables },
+      );
+
+      return result.saveClimb;
     } catch (err) {
       showMessage('Failed to save climb', 'error');
       throw err;

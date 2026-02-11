@@ -548,6 +548,82 @@ export type NotificationEvent = {
   notification: Notification;
 };
 
+// ============================================
+// New Climb Feed & Subscriptions
+// ============================================
+
+export type NewClimbSubscription = {
+  id: string;
+  boardType: string;
+  layoutId: number;
+  createdAt: string;
+};
+
+export type NewClimbSubscriptionInput = {
+  boardType: string;
+  layoutId: number;
+};
+
+export type NewClimbFeedItem = {
+  uuid: string;
+  name?: string | null;
+  boardType: string;
+  layoutId: number;
+  setterDisplayName?: string | null;
+  setterAvatarUrl?: string | null;
+  angle?: number | null;
+  frames?: string | null;
+  difficultyName?: string | null;
+  createdAt: string;
+};
+
+export type NewClimbFeedResult = {
+  items: NewClimbFeedItem[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
+export type NewClimbFeedInput = {
+  boardType: string;
+  layoutId: number;
+  limit?: number;
+  offset?: number;
+};
+
+export type NewClimbCreatedEvent = {
+  climb: NewClimbFeedItem;
+};
+
+export type SaveClimbInput = {
+  boardType: string;
+  layoutId: number;
+  name: string;
+  description?: string | null;
+  isDraft: boolean;
+  frames: string;
+  framesCount?: number | null;
+  framesPace?: number | null;
+  angle: number;
+};
+
+export type SaveMoonBoardClimbInput = {
+  boardType: string;
+  layoutId: number;
+  name: string;
+  description?: string | null;
+  holds: unknown;
+  angle: number;
+  isDraft?: boolean | null;
+  userGrade?: string | null;
+  isBenchmark?: boolean | null;
+  setter?: string | null;
+};
+
+export type SaveClimbResult = {
+  uuid: string;
+  synced: boolean;
+};
+
 export type CommentAdded = {
   __typename: 'CommentAdded';
   comment: Comment;

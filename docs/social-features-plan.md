@@ -2895,7 +2895,7 @@ Each milestone creates only the DB tables and types it needs, and delivers testa
 - Admin freezes a climb → no new proposals allowed
 - Community status badges appear on climb cards
 
-### Milestone 7: New Climb Feed + Subscriptions
+### Milestone 7: New Climb Feed + Subscriptions [COMPLETED]
 
 **User value**: "I can see new climbs being set on my board type and get notified."
 
