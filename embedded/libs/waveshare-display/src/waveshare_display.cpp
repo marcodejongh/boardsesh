@@ -1086,8 +1086,8 @@ void WaveshareDisplay::drawLandscapeBoardPanel() {
     const BoardConfig* cfg = _currentBoardConfig;
 
     // Calculate scaling to fit board image in left panel
-    // Leave room for climb info (WS_L_CLIMB_INFO_HEIGHT) and nav buttons (WS_L_NAV_BUTTON_HEIGHT) at bottom
-    int availableH = WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT - WS_L_NAV_BUTTON_HEIGHT;
+    // Leave room for climb info at bottom
+    int availableH = WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT;
     int availableW = WS_L_LEFT_PANEL_W;
 
     // Scale image to fit available space
@@ -1168,8 +1168,8 @@ void WaveshareDisplay::drawLandscapeBoardPanel() {
     // Draw compact climb info below the board image
     drawLandscapeClimbInfo();
 
-    // Draw nav buttons at bottom of left panel
-    drawLandscapeNavButtons();
+    // Draw small QR code in bottom-left corner (overlaid on board image)
+    drawLandscapeQRCode();
 #else
     // No board image support - show placeholder
     _display.fillRect(WS_L_LEFT_PANEL_X, WS_L_LEFT_PANEL_Y,
@@ -1183,17 +1183,17 @@ void WaveshareDisplay::drawLandscapeClimbInfo() {
 #ifdef ENABLE_BOARD_IMAGE
     int yStart;
     if (_hasBoardImage && _currentBoardConfig) {
-        int availableH = WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT - WS_L_NAV_BUTTON_HEIGHT;
+        int availableH = WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT;
         float scaleW = (float)WS_L_LEFT_PANEL_W / _currentBoardConfig->imageWidth;
         float scaleH = (float)availableH / _currentBoardConfig->imageHeight;
         float scale = min(scaleW, scaleH);
         int drawH = (int)(_currentBoardConfig->imageHeight * scale);
         yStart = WS_L_LEFT_PANEL_Y + drawH + 4;
     } else {
-        yStart = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT - WS_L_NAV_BUTTON_HEIGHT;
+        yStart = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT;
     }
 #else
-    int yStart = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT - WS_L_NAV_BUTTON_HEIGHT;
+    int yStart = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT;
 #endif
 
     // Clear climb info area
@@ -1238,44 +1238,35 @@ void WaveshareDisplay::drawLandscapeClimbInfo() {
     _display.setTextDatum(lgfx::top_left);
 }
 
-void WaveshareDisplay::drawLandscapeNavButtons() {
-    int navY = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - WS_L_NAV_BUTTON_HEIGHT;
+void WaveshareDisplay::drawLandscapeQRCode() {
+    if (!_hasQRCode || _sessionId.length() == 0) return;
 
-    _display.fillRect(WS_L_LEFT_PANEL_X, navY, WS_L_LEFT_PANEL_W, WS_L_NAV_BUTTON_HEIGHT, COLOR_BACKGROUND);
+    // Generate QR code
+    QRCode qrCode;
+    qrcode_initText(&qrCode, _qrCodeData, QR_VERSION, ECC_LOW, _qrUrl.c_str());
 
-    if (!_hasNavigation || _queueTotal <= 1) {
-        return;
+    int qrSize = qrCode.size;
+    int pixelSize = WS_L_QR_SIZE / qrSize;
+    if (pixelSize < 1) pixelSize = 1;
+
+    int actualQrSize = pixelSize * qrSize;
+
+    // Position in bottom-left corner of left panel
+    int qrX = WS_L_LEFT_PANEL_X + WS_L_QR_MARGIN;
+    int qrY = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - actualQrSize - WS_L_QR_MARGIN;
+
+    // Draw white background
+    _display.fillRect(qrX - 2, qrY - 2, actualQrSize + 4, actualQrSize + 4, COLOR_QR_BG);
+
+    // Draw QR code modules
+    for (uint8_t y = 0; y < qrSize; y++) {
+        for (uint8_t x = 0; x < qrSize; x++) {
+            if (qrcode_getModule(&qrCode, x, y)) {
+                _display.fillRect(qrX + x * pixelSize, qrY + y * pixelSize,
+                                  pixelSize, pixelSize, COLOR_QR_FG);
+            }
+        }
     }
-
-    // Draw button bar background
-    _display.fillRect(WS_L_LEFT_PANEL_X, navY, WS_L_LEFT_PANEL_W, WS_L_NAV_BUTTON_HEIGHT, 0x2104);
-
-    int centerX = WS_L_LEFT_PANEL_X + WS_L_LEFT_PANEL_W / 2;
-
-    _display.setFont(&fonts::FreeSansBold12pt7b);
-    _display.setTextDatum(lgfx::middle_center);
-
-    // Position indicator
-    _display.setTextColor(COLOR_TEXT_DIM);
-    char posStr[16];
-    snprintf(posStr, sizeof(posStr), "%d / %d", _queueIndex + 1, _queueTotal);
-    _display.drawString(posStr, centerX, navY + WS_L_NAV_BUTTON_HEIGHT / 2);
-
-    // Previous button
-    if (_prevClimb.isValid) {
-        _display.fillRoundRect(WS_L_LEFT_PANEL_X + 10, navY + 5, 110, WS_L_NAV_BUTTON_HEIGHT - 10, 8, COLOR_ACCENT);
-        _display.setTextColor(0x0000);
-        _display.drawString("< Prev", WS_L_LEFT_PANEL_X + 65, navY + WS_L_NAV_BUTTON_HEIGHT / 2);
-    }
-
-    // Next button
-    if (_nextClimb.isValid) {
-        _display.fillRoundRect(WS_L_LEFT_PANEL_X + WS_L_LEFT_PANEL_W - 120, navY + 5, 110, WS_L_NAV_BUTTON_HEIGHT - 10, 8, COLOR_ACCENT);
-        _display.setTextColor(0x0000);
-        _display.drawString("Next >", WS_L_LEFT_PANEL_X + WS_L_LEFT_PANEL_W - 65, navY + WS_L_NAV_BUTTON_HEIGHT / 2);
-    }
-
-    _display.setTextDatum(lgfx::top_left);
 }
 
 void WaveshareDisplay::updateQueueScrollOffset() {
@@ -1491,17 +1482,6 @@ TouchEvent WaveshareDisplay::handleLandscapeTouch(int16_t x, int16_t y) {
                 return event;
             }
         }
-    }
-
-    // Left panel - nav buttons at bottom
-    int navY = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - WS_L_NAV_BUTTON_HEIGHT;
-    if (x < WS_L_RIGHT_PANEL_X && y >= navY) {
-        if (x < WS_L_LEFT_PANEL_W / 2) {
-            event.action = TouchAction::NAVIGATE_PREVIOUS;
-        } else {
-            event.action = TouchAction::NAVIGATE_NEXT;
-        }
-        return event;
     }
 
     return event;

@@ -106,8 +106,9 @@ enum class WsDisplayMode : uint8_t { PORTRAIT = 0, LANDSCAPE = 1 };
 // Climb info compact below board image in left panel
 #define WS_L_CLIMB_INFO_HEIGHT 60
 
-// Nav buttons at bottom of left panel
-#define WS_L_NAV_BUTTON_HEIGHT 50
+// QR code in bottom-left corner of left panel
+#define WS_L_QR_SIZE 80
+#define WS_L_QR_MARGIN 6
 
 // Settings button (top-right, landscape-aware)
 #define WS_L_SETTINGS_BUTTON_X (WS_L_SCREEN_WIDTH - 50)
@@ -303,7 +304,7 @@ class WaveshareDisplay : public DisplayBase {
     void drawLandscapeBoardPanel();
     void drawLandscapeQueuePanel();
     void drawLandscapeClimbInfo();
-    void drawLandscapeNavButtons();
+    void drawLandscapeQRCode();
     void drawLandscapeSettingsScreen();
     TouchEvent handleLandscapeTouch(int16_t x, int16_t y);
     TouchAction handleLandscapeSettingsTouch(int16_t x, int16_t y);

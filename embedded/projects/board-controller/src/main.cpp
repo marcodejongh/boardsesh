@@ -423,10 +423,17 @@ void loop() {
             int currentMode = Config.getInt("disp_mode", 0);
             int newMode = (currentMode == 0) ? 1 : 0;
             Config.setInt("disp_mode", newMode);
-            // Show "Restarting..." message on display
-            Display.showError("Restarting...");
-            delay(500);
-            ESP.restart();
+            // Clear settings state and show restarting message
+            Display.hideSettingsScreen();
+            Display.getDisplay().fillScreen(COLOR_BACKGROUND);
+            Display.getDisplay().setFont(&fonts::FreeSansBold18pt7b);
+            Display.getDisplay().setTextColor(COLOR_TEXT);
+            Display.getDisplay().setTextDatum(lgfx::middle_center);
+            Display.getDisplay().drawString("Restarting...",
+                Display.screenWidth() / 2, Display.screenHeight() / 2);
+            Display.getDisplay().setTextDatum(lgfx::top_left);
+            delay(1000);
+            esp_restart();
             break;
         }
         case TouchAction::NAVIGATE_TO_INDEX:
