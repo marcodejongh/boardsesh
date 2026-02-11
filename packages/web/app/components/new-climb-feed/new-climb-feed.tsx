@@ -32,7 +32,7 @@ const PAGE_SIZE = 20;
 export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isSubscribed = false }: NewClimbFeedProps) {
   const { token: wsAuthToken } = useWsAuthToken();
   const clientRef = useRef<Client | null>(null);
-  const subscriptionRef = useRef<() => void>();
+  const subscriptionRef = useRef<(() => void) | undefined>(undefined);
   const [items, setItems] = useState<NewClimbFeedItemType[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -108,6 +108,7 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
           });
         },
         error: (err) => console.error('New climb subscription error', err),
+        complete: () => {},
       },
     );
 

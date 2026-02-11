@@ -69,7 +69,7 @@ const AscentThumbnail: React.FC<AscentThumbnailProps> = ({
         size_id: config.sizeId,
         set_ids: config.setIds,
       });
-      if (details) {
+      if (details?.layout_name && details.size_name && details.set_names) {
         return constructClimbViewUrlWithSlugs(
           details.board_name,
           details.layout_name,
@@ -89,7 +89,7 @@ const AscentThumbnail: React.FC<AscentThumbnailProps> = ({
         board_name: boardType as BoardName,
         layout_id: layoutId,
         size_id: config?.sizeId ?? 1,
-        set_ids: (config?.setIds ?? []).join(','),
+        set_ids: config?.setIds ?? [],
         angle,
       },
       climbUuid,
