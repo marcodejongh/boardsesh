@@ -57,7 +57,7 @@ export default function RoleManagement() {
   const [grantRole, setGrantRole] = useState<CommunityRoleType>('community_leader');
   const [grantBoardType, setGrantBoardType] = useState('');
   const [snackbar, setSnackbar] = useState('');
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const fetchRoles = useCallback(async () => {
     if (!token) return;

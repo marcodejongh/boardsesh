@@ -15,7 +15,7 @@ import {
 } from '../../../validation/schemas';
 import { publishSocialEvent } from '../../../events/index';
 import { requireAdminOrLeader, getUserVoteWeight } from './roles';
-import { resolveCommunitySetting } from './community-settings';
+import { resolveCommunitySetting, DEFAULTS } from './community-settings';
 import crypto from 'crypto';
 
 // ============================================
@@ -101,6 +101,140 @@ async function enrichProposal(
     requiredUpvotes,
     userVote,
   };
+}
+
+/**
+ * Batch-enrich multiple proposals in 3-4 queries total (instead of 4-7 per proposal).
+ */
+async function batchEnrichProposals(
+  proposals: (typeof dbSchema.climbProposals.$inferSelect)[],
+  authenticatedUserId: string | null | undefined,
+) {
+  if (proposals.length === 0) return [];
+
+  const proposalIds = proposals.map((p) => p.id);
+  const uniqueProposerIds = [...new Set(proposals.map((p) => p.proposerId))];
+
+  // Query 1: Batch proposer profiles
+  const proposerRows = await db
+    .select({
+      id: dbSchema.users.id,
+      name: dbSchema.users.name,
+      image: dbSchema.users.image,
+      displayName: dbSchema.userProfiles.displayName,
+      avatarUrl: dbSchema.userProfiles.avatarUrl,
+    })
+    .from(dbSchema.users)
+    .leftJoin(dbSchema.userProfiles, eq(dbSchema.users.id, dbSchema.userProfiles.userId))
+    .where(inArray(dbSchema.users.id, uniqueProposerIds));
+
+  const proposerMap = new Map(proposerRows.map((p) => [p.id, p]));
+
+  // Query 2: Batch all votes
+  const voteRows = await db
+    .select({
+      proposalId: dbSchema.proposalVotes.proposalId,
+      value: dbSchema.proposalVotes.value,
+      weight: dbSchema.proposalVotes.weight,
+    })
+    .from(dbSchema.proposalVotes)
+    .where(inArray(dbSchema.proposalVotes.proposalId, proposalIds));
+
+  const voteMap = new Map<number, { weightedUpvotes: number; weightedDownvotes: number }>();
+  for (const v of voteRows) {
+    let entry = voteMap.get(v.proposalId);
+    if (!entry) {
+      entry = { weightedUpvotes: 0, weightedDownvotes: 0 };
+      voteMap.set(v.proposalId, entry);
+    }
+    if (v.value > 0) entry.weightedUpvotes += v.value * v.weight;
+    else entry.weightedDownvotes += Math.abs(v.value) * v.weight;
+  }
+
+  // Query 3: Batch approval thresholds
+  const uniqueClimbUuids = [...new Set(proposals.map((p) => p.climbUuid))];
+  const uniqueBoardTypes = [...new Set(proposals.map((p) => p.boardType))];
+
+  const thresholdRows = await db
+    .select({
+      scope: dbSchema.communitySettings.scope,
+      scopeKey: dbSchema.communitySettings.scopeKey,
+      value: dbSchema.communitySettings.value,
+    })
+    .from(dbSchema.communitySettings)
+    .where(
+      and(
+        eq(dbSchema.communitySettings.key, 'approval_threshold'),
+        sql`(
+          (${dbSchema.communitySettings.scope} = 'climb' AND ${dbSchema.communitySettings.scopeKey} IN (${sql.join(uniqueClimbUuids.map((u) => sql`${u}`), sql`, `)}))
+          OR (${dbSchema.communitySettings.scope} = 'board' AND ${dbSchema.communitySettings.scopeKey} IN (${sql.join(uniqueBoardTypes.map((b) => sql`${b}`), sql`, `)}))
+          OR (${dbSchema.communitySettings.scope} = 'global' AND ${dbSchema.communitySettings.scopeKey} = '')
+        )`,
+      ),
+    );
+
+  const thresholdMap = new Map(thresholdRows.map((r) => [`${r.scope}:${r.scopeKey}`, r.value]));
+
+  function resolveThreshold(climbUuid: string, boardType: string): number {
+    const climbVal = thresholdMap.get(`climb:${climbUuid}`);
+    if (climbVal) return parseInt(climbVal, 10) || 5;
+    const boardVal = thresholdMap.get(`board:${boardType}`);
+    if (boardVal) return parseInt(boardVal, 10) || 5;
+    const globalVal = thresholdMap.get(`global:`);
+    if (globalVal) return parseInt(globalVal, 10) || 5;
+    return parseInt(DEFAULTS['approval_threshold'], 10) || 5;
+  }
+
+  // Query 4 (conditional): Batch user votes
+  const userVoteMap = new Map<number, number>();
+  if (authenticatedUserId) {
+    const userVoteRows = await db
+      .select({
+        proposalId: dbSchema.proposalVotes.proposalId,
+        value: dbSchema.proposalVotes.value,
+      })
+      .from(dbSchema.proposalVotes)
+      .where(
+        and(
+          inArray(dbSchema.proposalVotes.proposalId, proposalIds),
+          eq(dbSchema.proposalVotes.userId, authenticatedUserId),
+        ),
+      );
+
+    for (const uv of userVoteRows) {
+      userVoteMap.set(uv.proposalId, uv.value);
+    }
+  }
+
+  // Assemble results
+  return proposals.map((proposal) => {
+    const proposer = proposerMap.get(proposal.proposerId);
+    const votes = voteMap.get(proposal.id) || { weightedUpvotes: 0, weightedDownvotes: 0 };
+    const requiredUpvotes = resolveThreshold(proposal.climbUuid, proposal.boardType);
+    const userVote = userVoteMap.get(proposal.id) || 0;
+
+    return {
+      uuid: proposal.uuid,
+      climbUuid: proposal.climbUuid,
+      boardType: proposal.boardType,
+      angle: proposal.angle,
+      proposerId: proposal.proposerId,
+      proposerDisplayName: proposer?.displayName || proposer?.name || undefined,
+      proposerAvatarUrl: proposer?.avatarUrl || proposer?.image || undefined,
+      type: proposal.type,
+      proposedValue: proposal.proposedValue,
+      currentValue: proposal.currentValue,
+      status: proposal.status,
+      reason: proposal.reason,
+      resolvedAt: proposal.resolvedAt?.toISOString() || undefined,
+      resolvedBy: proposal.resolvedBy,
+      createdAt: proposal.createdAt.toISOString(),
+      weightedUpvotes: votes.weightedUpvotes,
+      weightedDownvotes: votes.weightedDownvotes,
+      requiredUpvotes,
+      userVote,
+    };
+  });
 }
 
 async function applyProposalEffect(proposal: typeof dbSchema.climbProposals.$inferSelect): Promise<void> {
@@ -407,7 +541,7 @@ export const socialProposalQueries = {
       .where(and(...conditions));
 
     const totalCount = Number(totalResult?.count || 0);
-    const enriched = await Promise.all(proposals.map((p) => enrichProposal(p, authenticatedUserId)));
+    const enriched = await batchEnrichProposals(proposals, authenticatedUserId);
 
     return {
       proposals: enriched,
@@ -448,7 +582,7 @@ export const socialProposalQueries = {
       .where(whereClause);
 
     const totalCount = Number(totalResult?.count || 0);
-    const enriched = await Promise.all(proposals.map((p) => enrichProposal(p, authenticatedUserId)));
+    const enriched = await batchEnrichProposals(proposals, authenticatedUserId);
 
     return {
       proposals: enriched,
@@ -982,10 +1116,14 @@ export const socialProposalMutations = {
     const { climbUuid, boardType, angle, communityGrade, isBenchmark } = validated;
     const userId = ctx.userId!;
 
-    // Verify caller is setter — check boardClimbs for matching uuid and try to match setter
-    // Note: Aurora climbs use numeric user IDs, so we check via aurora credentials
+    // Verify caller is setter or admin/leader
     const [climb] = await db
-      .select({ uuid: dbSchema.boardClimbs.uuid })
+      .select({
+        uuid: dbSchema.boardClimbs.uuid,
+        setterId: dbSchema.boardClimbs.setterId,
+        userId: dbSchema.boardClimbs.userId,
+        climbBoardType: dbSchema.boardClimbs.boardType,
+      })
       .from(dbSchema.boardClimbs)
       .where(eq(dbSchema.boardClimbs.uuid, climbUuid))
       .limit(1);
@@ -994,8 +1132,36 @@ export const socialProposalMutations = {
       throw new Error('Climb not found');
     }
 
-    // For now, allow any authenticated user to setter override
-    // TODO: Verify caller is actual setter via aurora credential matching
+    // Check if caller is the setter
+    let isSetter = false;
+
+    // For locally-created climbs, userId directly stores the Boardsesh user ID
+    if (climb.userId && climb.userId === userId) {
+      isSetter = true;
+    }
+
+    // For Aurora-synced climbs, match setterId via aurora credentials
+    if (!isSetter && climb.setterId) {
+      const [cred] = await db
+        .select({ auroraUserId: dbSchema.auroraCredentials.auroraUserId })
+        .from(dbSchema.auroraCredentials)
+        .where(
+          and(
+            eq(dbSchema.auroraCredentials.userId, userId),
+            eq(dbSchema.auroraCredentials.boardType, boardType),
+          ),
+        )
+        .limit(1);
+
+      if (cred?.auroraUserId === climb.setterId) {
+        isSetter = true;
+      }
+    }
+
+    // If not the setter, require admin or leader role (throws if unauthorized)
+    if (!isSetter) {
+      await requireAdminOrLeader(ctx, boardType);
+    }
 
     // UPSERT climbCommunityStatus
     const [existing] = await db

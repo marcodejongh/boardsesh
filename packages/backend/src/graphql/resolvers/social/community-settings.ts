@@ -7,7 +7,7 @@ import { SetCommunitySettingInputSchema } from '../../../validation/schemas';
 import { requireAdminOrLeader } from './roles';
 
 // Default community settings
-const DEFAULTS: Record<string, string> = {
+export const DEFAULTS: Record<string, string> = {
   approval_threshold: '5',
   outlier_min_ascents: '10',
   outlier_grade_diff: '2',
@@ -80,6 +80,8 @@ export const socialCommunitySettingsQueries = {
     { scope, scopeKey }: { scope: string; scopeKey: string },
     ctx: ConnectionContext,
   ) => {
+    requireAuthenticated(ctx);
+
     const settings = await db
       .select()
       .from(dbSchema.communitySettings)
