@@ -235,3 +235,46 @@ export function resolveFollowRecipient(
     notificationType: 'new_follower',
   };
 }
+
+/**
+ * Resolve recipients when a user creates a climb: all followers of the setter.
+ */
+export async function resolveClimbCreatedFollowerRecipients(
+  setterId: string,
+): Promise<RecipientInfo[]> {
+  const followers = await db
+    .select({ followerId: dbSchema.userFollows.followerId })
+    .from(dbSchema.userFollows)
+    .where(eq(dbSchema.userFollows.followingId, setterId));
+
+  return followers.map((f) => ({
+    recipientId: f.followerId,
+    notificationType: 'new_climb',
+  }));
+}
+
+/**
+ * Resolve recipients subscribed to a board type + layout for new climb notifications.
+ */
+export async function resolveClimbCreatedSubscriptionRecipients(
+  boardType: string,
+  layoutId: number,
+  excludeUserId?: string,
+): Promise<RecipientInfo[]> {
+  const rows = await db
+    .select({ userId: dbSchema.newClimbSubscriptions.userId })
+    .from(dbSchema.newClimbSubscriptions)
+    .where(
+      and(
+        eq(dbSchema.newClimbSubscriptions.boardType, boardType),
+        eq(dbSchema.newClimbSubscriptions.layoutId, layoutId),
+      ),
+    );
+
+  return rows
+    .filter((r) => r.userId !== excludeUserId)
+    .map((r) => ({
+      recipientId: r.userId,
+      notificationType: 'new_climb_global',
+    }));
+}

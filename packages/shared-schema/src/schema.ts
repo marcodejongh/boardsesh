@@ -1928,6 +1928,82 @@ export const typeDefs = /* GraphQL */ `
     offset: Int
   }
 
+  # ============================================
+  # New Climb Feed & Subscriptions
+  # ============================================
+
+  type NewClimbSubscription {
+    id: ID!
+    boardType: String!
+    layoutId: Int!
+    createdAt: String!
+  }
+
+  input NewClimbSubscriptionInput {
+    boardType: String!
+    layoutId: Int!
+  }
+
+  type NewClimbFeedItem {
+    uuid: ID!
+    name: String
+    boardType: String!
+    layoutId: Int!
+    setterDisplayName: String
+    setterAvatarUrl: String
+    angle: Int
+    frames: String
+    difficultyName: String
+    createdAt: String!
+  }
+
+  type NewClimbFeedResult {
+    items: [NewClimbFeedItem!]!
+    totalCount: Int!
+    hasMore: Boolean!
+  }
+
+  input NewClimbFeedInput {
+    boardType: String!
+    layoutId: Int!
+    limit: Int
+    offset: Int
+  }
+
+  type NewClimbCreatedEvent {
+    climb: NewClimbFeedItem!
+  }
+
+  input SaveClimbInput {
+    boardType: String!
+    layoutId: Int!
+    name: String!
+    description: String
+    isDraft: Boolean!
+    frames: String!
+    framesCount: Int
+    framesPace: Int
+    angle: Int!
+  }
+
+  input SaveMoonBoardClimbInput {
+    boardType: String!
+    layoutId: Int!
+    name: String!
+    description: String
+    holds: JSON!
+    angle: Int!
+    isDraft: Boolean
+    userGrade: String
+    isBenchmark: Boolean
+    setter: String
+  }
+
+  type SaveClimbResult {
+    uuid: ID!
+    synced: Boolean!
+  }
+
   """
   Root query type for all read operations.
   """
@@ -2182,6 +2258,17 @@ export const typeDefs = /* GraphQL */ `
     """
     trendingFeed(input: ActivityFeedInput): ActivityFeedResult!
 
+    """
+    Get a feed of newly created climbs for a board type and layout.
+    """
+    newClimbFeed(input: NewClimbFeedInput!): NewClimbFeedResult!
+
+    """
+    Get the current user's new climb subscriptions.
+    Requires authentication.
+    """
+    myNewClimbSubscriptions: [NewClimbSubscription!]!
+
     # ============================================
     # Board Entity Queries
     # ============================================
@@ -2409,6 +2496,20 @@ export const typeDefs = /* GraphQL */ `
     saveTick(input: SaveTickInput!): Tick!
 
     # ============================================
+    # Climb Mutations (require auth)
+    # ============================================
+
+    """
+    Save a new climb for an Aurora-style board.
+    """
+    saveClimb(input: SaveClimbInput!): SaveClimbResult!
+
+    """
+    Save a new MoonBoard climb.
+    """
+    saveMoonBoardClimb(input: SaveMoonBoardClimbInput!): SaveClimbResult!
+
+    # ============================================
     # Playlist Mutations (require auth)
     # ============================================
 
@@ -2463,6 +2564,16 @@ export const typeDefs = /* GraphQL */ `
     Unfollow a user.
     """
     unfollowUser(input: FollowInput!): Boolean!
+
+    """
+    Subscribe to new climbs for a board type and layout.
+    """
+    subscribeNewClimbs(input: NewClimbSubscriptionInput!): Boolean!
+
+    """
+    Unsubscribe from new climbs for a board type and layout.
+    """
+    unsubscribeNewClimbs(input: NewClimbSubscriptionInput!): Boolean!
 
     # ============================================
     # Board Entity Mutations (require auth)
@@ -2626,6 +2737,11 @@ export const typeDefs = /* GraphQL */ `
     Subscribe to real-time comment updates on an entity.
     """
     commentUpdates(entityType: SocialEntityType!, entityId: String!): CommentEvent!
+
+    """
+    Subscribe to new climbs for a board type and layout.
+    """
+    newClimbCreated(boardType: String!, layoutId: Int!): NewClimbCreatedEvent!
 
     # ESP32 subscribes to receive LED commands - uses API key auth via connectionParams
     controllerEvents(sessionId: ID!): ControllerEvent!

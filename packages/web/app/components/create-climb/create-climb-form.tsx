@@ -35,10 +35,17 @@ import { useColorMode } from '@/app/hooks/use-color-mode';
 import { themeTokens } from '@/app/theme/theme-config';
 import { parseScreenshot } from '@boardsesh/moonboard-ocr/browser';
 import { convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
+import { createGraphQLClient, execute, type Client } from '../graphql-queue/graphql-client';
 import AuthModal from '../auth/auth-modal';
 import { useSnackbar } from '../providers/snackbar-provider';
 import CreateClimbHeatmapOverlay from './create-climb-heatmap-overlay';
 import styles from './create-climb-form.module.css';
+import {
+  SAVE_MOONBOARD_CLIMB_MUTATION,
+  type SaveMoonBoardClimbMutationVariables,
+  type SaveMoonBoardClimbMutationResponse,
+} from '@/app/lib/graphql/operations/new-climb-feed';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 
 
 interface CreateClimbFormValues {
@@ -81,6 +88,7 @@ export default function CreateClimbForm({
   // Aurora-specific hooks
   const { isAuthenticated, saveClimb } = useBoardProvider();
   const { showMessage } = useSnackbar();
+  const { token: wsAuthToken } = useWsAuthToken();
 
   // Determine which auth check to use based on board type
   const isLoggedIn = boardType === 'aurora' ? isAuthenticated : !!session?.user?.id;
@@ -120,6 +128,7 @@ export default function CreateClimbForm({
 
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const graphqlClientRef = useRef<Client | null>(null);
 
   // Form state
   const [isSaving, setIsSaving] = useState(false);
@@ -279,28 +288,36 @@ export default function CreateClimbForm({
           .map(([id]) => holdIdToCoordinate(Number(id))),
       };
 
-      const response = await fetch('/api/v1/moonboard/proxy/saveClimb', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          options: {
-            layout_id: layoutId,
-            user_id: userId,
-            name: climbName,
-            description: description || '',
-            holds,
-            angle: selectedAngle,
-            is_draft: isDraft,
-            user_grade: userGrade,
-            is_benchmark: isBenchmark,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to save climb');
+      if (!wsAuthToken) {
+        throw new Error('Authentication required to save climb');
       }
+
+      if (!graphqlClientRef.current) {
+        graphqlClientRef.current = createGraphQLClient({
+          url: process.env.NEXT_PUBLIC_WS_URL!,
+          authToken: wsAuthToken,
+        });
+      }
+
+      const variables: SaveMoonBoardClimbMutationVariables = {
+        input: {
+          boardType: 'moonboard',
+          layoutId,
+          name: climbName,
+          description: description || '',
+          holds,
+          angle: selectedAngle,
+          isDraft: isDraft,
+          userGrade,
+          isBenchmark,
+          setter: undefined,
+        },
+      };
+
+      await execute<SaveMoonBoardClimbMutationResponse, SaveMoonBoardClimbMutationVariables>(
+        graphqlClientRef.current,
+        { query: SAVE_MOONBOARD_CLIMB_MUTATION, variables },
+      );
 
       showMessage('Climb saved to database!', 'success');
 
@@ -312,7 +329,7 @@ export default function CreateClimbForm({
     } finally {
       setIsSaving(false);
     }
-  }, [layoutId, session, litUpHoldsMap, climbName, description, userGrade, isBenchmark, isDraft, selectedAngle, pathname, router]);
+  }, [layoutId, session, litUpHoldsMap, climbName, description, userGrade, isBenchmark, isDraft, selectedAngle, pathname, router, wsAuthToken]);
 
   const handlePublish = useCallback(async () => {
     if (!isValid || !climbName.trim()) {

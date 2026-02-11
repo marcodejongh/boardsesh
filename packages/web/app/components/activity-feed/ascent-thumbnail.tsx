@@ -6,7 +6,8 @@ import { BoardDetails, BoardName } from '@/app/lib/types';
 import BoardRenderer from '@/app/components/board-renderer/board-renderer';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
-import { getDefaultBoardConfig, getDefaultClimbViewPath } from '@/app/lib/default-board-configs';
+import { getDefaultBoardConfig } from '@/app/lib/default-board-configs';
+import { constructClimbViewUrlWithSlugs, constructClimbViewUrl } from '@/app/lib/url-utils';
 import styles from './ascents-feed.module.css';
 
 interface AscentThumbnailProps {
@@ -56,11 +57,45 @@ const AscentThumbnail: React.FC<AscentThumbnailProps> = ({
     return framesData[0];
   }, [frames, boardType]);
 
-  // Get climb view path
+  // Get climb view path (prefer friendly slugs)
   const climbViewPath = useMemo(() => {
     if (!layoutId) return null;
-    return getDefaultClimbViewPath(boardType as BoardName, layoutId, angle, climbUuid);
-  }, [boardType, layoutId, angle, climbUuid]);
+
+    const config = getDefaultBoardConfig(boardType as BoardName, layoutId);
+    if (config) {
+      const details = getBoardDetailsForBoard({
+        board_name: boardType as BoardName,
+        layout_id: layoutId,
+        size_id: config.sizeId,
+        set_ids: config.setIds,
+      });
+      if (details) {
+        return constructClimbViewUrlWithSlugs(
+          details.board_name,
+          details.layout_name,
+          details.size_name,
+          details.size_description,
+          details.set_names,
+          angle,
+          climbUuid,
+          climbName,
+        );
+      }
+    }
+
+    // Fallback to numeric path
+    return constructClimbViewUrl(
+      {
+        board_name: boardType as BoardName,
+        layout_id: layoutId,
+        size_id: config?.sizeId ?? 1,
+        set_ids: (config?.setIds ?? []).join(','),
+        angle,
+      },
+      climbUuid,
+      climbName,
+    );
+  }, [boardType, layoutId, angle, climbUuid, climbName]);
 
   // If we can't render the thumbnail, don't show anything
   if (!boardDetails || !litUpHoldsMap || !climbViewPath) {

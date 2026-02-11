@@ -1,4 +1,4 @@
-import type { QueueEvent, SessionEvent, NotificationEvent, CommentEvent } from '@boardsesh/shared-schema';
+import type { QueueEvent, SessionEvent, NotificationEvent, CommentEvent, NewClimbCreatedEvent } from '@boardsesh/shared-schema';
 import { redisClientManager } from '../redis/client';
 import { createRedisPubSubAdapter, type RedisPubSubAdapter } from './redis-adapter';
 
@@ -6,6 +6,7 @@ type QueueSubscriber = (event: QueueEvent) => void;
 type SessionSubscriber = (event: SessionEvent) => void;
 type NotificationSubscriber = (event: NotificationEvent) => void;
 type CommentSubscriber = (event: CommentEvent) => void;
+type NewClimbSubscriber = (event: NewClimbCreatedEvent) => void;
 
 // Event buffer configuration (Phase 2: Delta sync)
 const EVENT_BUFFER_SIZE = 100; // Store last 100 events per session
@@ -28,6 +29,7 @@ class PubSub {
   private sessionSubscribers: Map<string, Set<SessionSubscriber>> = new Map();
   private notificationSubscribers: Map<string, Set<NotificationSubscriber>> = new Map();
   private commentSubscribers: Map<string, Set<CommentSubscriber>> = new Map();
+  private newClimbSubscribers: Map<string, Set<NewClimbSubscriber>> = new Map();
   private redisAdapter: RedisPubSubAdapter | null = null;
   private initialized = false;
   private redisRequired = false;
@@ -96,6 +98,10 @@ class PubSub {
 
     this.redisAdapter.onCommentMessage((entityKey, event) => {
       this.dispatchToLocalCommentSubscribers(entityKey, event);
+    });
+
+    this.redisAdapter.onNewClimbMessage((channelKey, event) => {
+      this.dispatchToLocalNewClimbSubscribers(channelKey, event);
     });
   }
 
@@ -478,6 +484,74 @@ class PubSub {
           callback(event);
         } catch (error) {
           console.error('Error in comment subscriber:', error);
+        }
+      }
+    }
+  }
+
+  /**
+   * Subscribe to new climb events for a board type + layout combination.
+   * @param channelKey format: `${boardType}:${layoutId}`
+   */
+  async subscribeNewClimbs(channelKey: string, callback: NewClimbSubscriber): Promise<() => void> {
+    this.ensureRedisIfRequired();
+
+    const isFirstSubscriber = !this.newClimbSubscribers.has(channelKey);
+
+    if (!this.newClimbSubscribers.has(channelKey)) {
+      this.newClimbSubscribers.set(channelKey, new Set());
+    }
+    this.newClimbSubscribers.get(channelKey)!.add(callback);
+
+    if (isFirstSubscriber && this.redisAdapter) {
+      try {
+        await this.redisAdapter.subscribeNewClimbChannel(channelKey);
+      } catch (error) {
+        console.error(`[PubSub] Failed to subscribe to Redis new climb channel: ${error}`);
+        this.newClimbSubscribers.get(channelKey)?.delete(callback);
+        if (this.newClimbSubscribers.get(channelKey)?.size === 0) {
+          this.newClimbSubscribers.delete(channelKey);
+        }
+        if (this.redisRequired) {
+          throw error;
+        }
+      }
+    }
+
+    return () => {
+      this.newClimbSubscribers.get(channelKey)?.delete(callback);
+      if (this.newClimbSubscribers.get(channelKey)?.size === 0) {
+        this.newClimbSubscribers.delete(channelKey);
+        if (this.redisAdapter) {
+          this.redisAdapter.unsubscribeNewClimbChannel(channelKey).catch((error) => {
+            console.error(`[PubSub] Failed to unsubscribe from Redis new climb channel: ${error}`);
+          });
+        }
+      }
+    };
+  }
+
+  /**
+   * Publish a new climb event to subscribers.
+   */
+  publishNewClimbEvent(channelKey: string, event: NewClimbCreatedEvent): void {
+    this.dispatchToLocalNewClimbSubscribers(channelKey, event);
+
+    if (this.redisAdapter) {
+      this.redisAdapter.publishNewClimbEvent(channelKey, event).catch((error) => {
+        console.error('[PubSub] Redis new climb publish failed:', error);
+      });
+    }
+  }
+
+  private dispatchToLocalNewClimbSubscribers(channelKey: string, event: NewClimbCreatedEvent): void {
+    const subscribers = this.newClimbSubscribers.get(channelKey);
+    if (subscribers) {
+      for (const callback of subscribers) {
+        try {
+          callback(event);
+        } catch (error) {
+          console.error('Error in new climb subscriber:', error);
         }
       }
     }

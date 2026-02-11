@@ -18,10 +18,24 @@ const BackButton = ({ fallbackUrl, className }: BackButtonProps) => {
     if (typeof window !== 'undefined') {
       const hasHistory = window.history.length > 1;
       const referrer = document.referrer;
-      const isSameOrigin =
-        referrer !== '' && (referrer.startsWith(window.location.origin) || referrer.includes('boardsesh.com'));
+      let isBoardseshReferrer = false;
 
-      setCanGoBack(hasHistory && isSameOrigin);
+      if (referrer) {
+        try {
+          const refUrl = new URL(referrer);
+          const host = refUrl.hostname;
+          const currentHost = window.location.hostname;
+          isBoardseshReferrer =
+            host === currentHost ||
+            host.endsWith('boardsesh.com') ||
+            host.endsWith('boardsesh.io') ||
+            host === 'localhost';
+        } catch {
+          isBoardseshReferrer = false;
+        }
+      }
+
+      setCanGoBack(hasHistory && isBoardseshReferrer);
     }
   }, []);
 

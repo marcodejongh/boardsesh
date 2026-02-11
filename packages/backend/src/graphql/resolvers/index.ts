@@ -7,6 +7,7 @@ import { tickMutations } from './ticks/mutations';
 import { userQueries } from './users/queries';
 import { userMutations } from './users/mutations';
 import { climbQueries } from './climbs/queries';
+import { climbMutations } from './climbs/mutations';
 import { climbFieldResolvers } from './climbs/field-resolvers';
 import { favoriteQueries } from './favorites/queries';
 import { favoriteClimbsQuery } from './favorites/favorite-climbs-query';
@@ -35,6 +36,8 @@ import { socialCommentSubscriptions } from './social/comment-subscriptions';
 import { socialProposalQueries, socialProposalMutations } from './social/proposals';
 import { socialRoleQueries, socialRoleMutations } from './social/roles';
 import { socialCommunitySettingsQueries, socialCommunitySettingsMutations } from './social/community-settings';
+import { newClimbSubscriptionResolvers } from './social/new-climb-subscriptions';
+import { newClimbFeedSubscription } from './social/new-climb-feed-subscription';
 
 export const resolvers = {
   // Scalar types
@@ -62,12 +65,14 @@ export const resolvers = {
     ...socialProposalQueries,
     ...socialRoleQueries,
     ...socialCommunitySettingsQueries,
+    ...newClimbSubscriptionResolvers.Query,
   },
 
   Mutation: {
     ...sessionMutations,
     ...queueMutations,
     ...tickMutations,
+    ...climbMutations,
     ...userMutations,
     ...favoriteMutations,
     ...playlistMutations,
@@ -80,6 +85,7 @@ export const resolvers = {
     ...socialProposalMutations,
     ...socialRoleMutations,
     ...socialCommunitySettingsMutations,
+    ...newClimbSubscriptionResolvers.Mutation,
   },
 
   Subscription: {
@@ -88,6 +94,7 @@ export const resolvers = {
     ...controllerSubscriptions,
     ...socialNotificationSubscriptions,
     ...socialCommentSubscriptions,
+    ...newClimbFeedSubscription,
   },
 
   // Field-level resolvers
