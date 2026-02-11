@@ -1,5 +1,6 @@
 #include "waveshare_display.h"
 
+#include <config_manager.h>
 #include <grade_colors.h>
 
 #include <qrcode.h>
@@ -138,7 +139,14 @@ bool WaveshareDisplay::begin() {
 
     // 6. Initialize LovyanGFX display
     _display.init();
-    _display.setRotation(1);      // Portrait mode (480x800)
+
+    // Read display mode from config
+    _displayMode = static_cast<WsDisplayMode>(Config.getInt("disp_mode", 0));
+    if (_displayMode == WsDisplayMode::LANDSCAPE) {
+        _display.setRotation(0);  // Landscape mode (800x480)
+    } else {
+        _display.setRotation(1);  // Portrait mode (480x800)
+    }
 
     // 7. Enable backlight
     _ioExpander.setBacklight(true);
@@ -160,14 +168,17 @@ bool WaveshareDisplay::begin() {
 void WaveshareDisplay::showConnecting() {
     _display.fillScreen(COLOR_BACKGROUND);
 
+    int sw = screenWidth();
+    int sh = screenHeight();
+
     _display.setFont(&fonts::FreeSansBold24pt7b);
     _display.setTextColor(COLOR_TEXT);
     _display.setTextDatum(lgfx::middle_center);
-    _display.drawString("Connecting...", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 50);
+    _display.drawString("Connecting...", sw / 2, sh / 2 - 50);
 
     _display.setFont(&fonts::FreeSansBold18pt7b);
     _display.setTextColor(COLOR_TEXT_DIM);
-    _display.drawString("Boardsesh Queue", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 50);
+    _display.drawString("Boardsesh Queue", sw / 2, sh / 2 + 50);
 
     _display.setTextDatum(lgfx::top_left);
 }
@@ -175,19 +186,22 @@ void WaveshareDisplay::showConnecting() {
 void WaveshareDisplay::showError(const char* message, const char* ipAddress) {
     _display.fillScreen(COLOR_BACKGROUND);
 
+    int sw = screenWidth();
+    int sh = screenHeight();
+
     _display.setFont(&fonts::FreeSansBold24pt7b);
     _display.setTextColor(COLOR_STATUS_ERROR);
     _display.setTextDatum(lgfx::middle_center);
-    _display.drawString("Error", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 80);
+    _display.drawString("Error", sw / 2, sh / 2 - 80);
 
     _display.setFont(&fonts::FreeSansBold18pt7b);
     _display.setTextColor(COLOR_TEXT);
-    _display.drawString(message, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20);
+    _display.drawString(message, sw / 2, sh / 2 + 20);
 
     if (ipAddress && strlen(ipAddress) > 0) {
         _display.setTextColor(COLOR_TEXT_DIM);
         _display.setFont(&fonts::FreeSansBold9pt7b);
-        _display.drawString(ipAddress, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 120);
+        _display.drawString(ipAddress, sw / 2, sh / 2 + 120);
     }
 
     _display.setTextDatum(lgfx::top_left);
@@ -196,30 +210,32 @@ void WaveshareDisplay::showError(const char* message, const char* ipAddress) {
 void WaveshareDisplay::showConfigPortal(const char* apName, const char* ip) {
     _display.fillScreen(COLOR_BACKGROUND);
 
+    int sw = screenWidth();
+
     _display.setFont(&fonts::FreeSansBold24pt7b);
     _display.setTextColor(COLOR_ACCENT);
     _display.setTextDatum(lgfx::top_center);
-    _display.drawString("WiFi Setup", SCREEN_WIDTH / 2, 40);
+    _display.drawString("WiFi Setup", sw / 2, 40);
 
     _display.setFont(&fonts::FreeSansBold18pt7b);
     _display.setTextColor(COLOR_TEXT);
-    _display.drawString("Connect to WiFi:", SCREEN_WIDTH / 2, 140);
+    _display.drawString("Connect to WiFi:", sw / 2, 140);
 
     _display.setFont(&fonts::FreeSansBold24pt7b);
     _display.setTextColor(COLOR_STATUS_OK);
-    _display.drawString(apName, SCREEN_WIDTH / 2, 200);
+    _display.drawString(apName, sw / 2, 200);
 
     _display.setFont(&fonts::FreeSansBold18pt7b);
     _display.setTextColor(COLOR_TEXT);
-    _display.drawString("Then open browser:", SCREEN_WIDTH / 2, 340);
+    _display.drawString("Then open browser:", sw / 2, 340);
 
     _display.setFont(&fonts::FreeSansBold24pt7b);
     _display.setTextColor(COLOR_ACCENT);
-    _display.drawString(ip, SCREEN_WIDTH / 2, 400);
+    _display.drawString(ip, sw / 2, 400);
 
     _display.setFont(&fonts::FreeSansBold9pt7b);
     _display.setTextColor(COLOR_TEXT_DIM);
-    _display.drawString("Enter your WiFi credentials to continue", SCREEN_WIDTH / 2, 520);
+    _display.drawString("Enter your WiFi credentials to continue", sw / 2, _displayMode == WsDisplayMode::LANDSCAPE ? 450 : 520);
 
     _display.setTextDatum(lgfx::top_left);
 }
@@ -227,20 +243,23 @@ void WaveshareDisplay::showConfigPortal(const char* apName, const char* ip) {
 void WaveshareDisplay::showSetupScreen(const char* apName) {
     _display.fillScreen(COLOR_BACKGROUND);
 
+    int sw = screenWidth();
+    bool isLandscape = (_displayMode == WsDisplayMode::LANDSCAPE);
+
     // Header
     _display.setFont(&fonts::FreeSansBold24pt7b);
     _display.setTextColor(COLOR_ACCENT);
     _display.setTextDatum(lgfx::top_center);
-    _display.drawString("WiFi Setup", SCREEN_WIDTH / 2, 20);
+    _display.drawString("WiFi Setup", sw / 2, 20);
 
     // Step 1: Scan QR to join WiFi
     _display.setFont(&fonts::FreeSansBold18pt7b);
     _display.setTextColor(COLOR_TEXT);
-    _display.drawString("1. Scan QR to join WiFi", SCREEN_WIDTH / 2, 90);
+    _display.drawString("1. Scan QR to join WiFi", sw / 2, isLandscape ? 70 : 90);
 
     _display.setFont(&fonts::FreeSansBold24pt7b);
     _display.setTextColor(COLOR_STATUS_OK);
-    _display.drawString(apName, SCREEN_WIDTH / 2, 140);
+    _display.drawString(apName, sw / 2, isLandscape ? 110 : 140);
 
     // QR Code section - generate WiFi join QR code
     char wifiQr[80];
@@ -249,50 +268,82 @@ void WaveshareDisplay::showSetupScreen(const char* apName) {
     qrcode_initText(&qrCode, _qrCodeData, QR_VERSION, ECC_LOW, wifiQr);
 
     int qrSize = qrCode.size;
-    int pixelSize = 250 / qrSize;  // Target ~250px QR code
+    int targetQrPx = isLandscape ? 180 : 250;
+    int pixelSize = targetQrPx / qrSize;
     if (pixelSize < 1) pixelSize = 1;
 
     int actualQrSize = pixelSize * qrSize;
-    int qrX = (SCREEN_WIDTH - actualQrSize) / 2;
-    int qrY = 220;
+    int qrY = isLandscape ? 160 : 220;
 
-    // Draw white background for QR code
-    _display.fillRect(qrX - 8, qrY - 8, actualQrSize + 16, actualQrSize + 16, COLOR_QR_BG);
-
-    // Draw QR code modules
-    for (uint8_t y = 0; y < qrSize; y++) {
-        for (uint8_t x = 0; x < qrSize; x++) {
-            if (qrcode_getModule(&qrCode, x, y)) {
-                _display.fillRect(qrX + x * pixelSize, qrY + y * pixelSize, pixelSize, pixelSize, COLOR_QR_FG);
+    if (isLandscape) {
+        // Landscape: QR on left, instructions on right
+        int qrX = sw / 4 - actualQrSize / 2;
+        _display.fillRect(qrX - 8, qrY - 8, actualQrSize + 16, actualQrSize + 16, COLOR_QR_BG);
+        for (uint8_t y = 0; y < qrSize; y++) {
+            for (uint8_t x = 0; x < qrSize; x++) {
+                if (qrcode_getModule(&qrCode, x, y)) {
+                    _display.fillRect(qrX + x * pixelSize, qrY + y * pixelSize, pixelSize, pixelSize, COLOR_QR_FG);
+                }
             }
         }
+
+        int instrX = sw * 3 / 4;
+        _display.setFont(&fonts::FreeSansBold18pt7b);
+        _display.setTextColor(COLOR_TEXT);
+        _display.drawString("2. Open browser:", instrX, qrY + 20);
+        _display.setFont(&fonts::FreeSansBold24pt7b);
+        _display.setTextColor(COLOR_ACCENT);
+        _display.drawString("192.168.4.1", instrX, qrY + 70);
+        _display.setFont(&fonts::FreeSansBold9pt7b);
+        _display.setTextColor(COLOR_TEXT_DIM);
+        _display.drawString("to configure settings", instrX, qrY + 130);
+    } else {
+        // Portrait: QR centered, instructions below
+        int qrX = (sw - actualQrSize) / 2;
+        _display.fillRect(qrX - 8, qrY - 8, actualQrSize + 16, actualQrSize + 16, COLOR_QR_BG);
+        for (uint8_t y = 0; y < qrSize; y++) {
+            for (uint8_t x = 0; x < qrSize; x++) {
+                if (qrcode_getModule(&qrCode, x, y)) {
+                    _display.fillRect(qrX + x * pixelSize, qrY + y * pixelSize, pixelSize, pixelSize, COLOR_QR_FG);
+                }
+            }
+        }
+
+        int instructionY = qrY + actualQrSize + 30;
+        _display.setFont(&fonts::FreeSansBold18pt7b);
+        _display.setTextColor(COLOR_TEXT);
+        _display.drawString("2. Open browser:", sw / 2, instructionY);
+        _display.setFont(&fonts::FreeSansBold24pt7b);
+        _display.setTextColor(COLOR_ACCENT);
+        _display.drawString("192.168.4.1", sw / 2, instructionY + 60);
+        _display.setFont(&fonts::FreeSansBold9pt7b);
+        _display.setTextColor(COLOR_TEXT_DIM);
+        _display.drawString("to configure settings", sw / 2, instructionY + 120);
     }
-
-    // Step 2: Open browser
-    int instructionY = qrY + actualQrSize + 30;
-
-    _display.setFont(&fonts::FreeSansBold18pt7b);
-    _display.setTextColor(COLOR_TEXT);
-    _display.drawString("2. Open browser:", SCREEN_WIDTH / 2, instructionY);
-
-    _display.setFont(&fonts::FreeSansBold24pt7b);
-    _display.setTextColor(COLOR_ACCENT);
-    _display.drawString("192.168.4.1", SCREEN_WIDTH / 2, instructionY + 60);
-
-    _display.setFont(&fonts::FreeSansBold9pt7b);
-    _display.setTextColor(COLOR_TEXT_DIM);
-    _display.drawString("to configure settings", SCREEN_WIDTH / 2, instructionY + 120);
 
     _display.setTextDatum(lgfx::top_left);
 }
 
 void WaveshareDisplay::onStatusChanged() {
     if (_settingsScreenActive) return;
-    drawStatusBar();
+    if (_displayMode == WsDisplayMode::LANDSCAPE) {
+        drawLandscapeStatusBar();
+    } else {
+        drawStatusBar();
+    }
 }
 
 void WaveshareDisplay::refresh() {
     if (_settingsScreenActive) return;
+
+    if (_displayMode == WsDisplayMode::LANDSCAPE) {
+        drawLandscapeStatusBar();
+        drawLandscapeBoardPanel();
+        drawLandscapeQueuePanel();
+        return;
+    }
+
+    // Portrait mode (unchanged)
     drawStatusBar();
 
 #ifdef ENABLE_BOARD_IMAGE
@@ -327,6 +378,15 @@ void WaveshareDisplay::refresh() {
 
 void WaveshareDisplay::refreshInfoOnly() {
     if (_settingsScreenActive) return;
+
+    if (_displayMode == WsDisplayMode::LANDSCAPE) {
+        drawLandscapeStatusBar();
+        drawLandscapeClimbInfo();
+        drawLandscapeQueuePanel();
+        return;
+    }
+
+    // Portrait mode (unchanged)
     drawStatusBar();
 #ifdef ENABLE_BOARD_IMAGE
     if (_hasBoardImage && _currentBoardConfig) {
@@ -781,7 +841,11 @@ void WaveshareDisplay::setSettingsData(const char* ssid, const char* ip, bool pr
 
 void WaveshareDisplay::showSettingsScreen() {
     _settingsScreenActive = true;
-    drawSettingsScreen();
+    if (_displayMode == WsDisplayMode::LANDSCAPE) {
+        drawLandscapeSettingsScreen();
+    } else {
+        drawSettingsScreen();
+    }
 }
 
 void WaveshareDisplay::hideSettingsScreen() {
@@ -826,7 +890,7 @@ void WaveshareDisplay::drawSettingsScreen() {
 
     // Reset WiFi button (red)
     _display.fillRoundRect(WS_SETTINGS_BTN_X, WS_SETTINGS_RESET_BTN_Y,
-                           WS_SETTINGS_BTN_W, WS_SETTINGS_BTN_H, 12, 0xE8A4);  // Red
+                           WS_SETTINGS_BTN_W, WS_SETTINGS_BTN_H, 12, 0xE8A4);
     _display.setFont(&fonts::FreeSansBold18pt7b);
     _display.setTextColor(0xFFFF);
     _display.setTextDatum(lgfx::middle_center);
@@ -834,7 +898,7 @@ void WaveshareDisplay::drawSettingsScreen() {
                         WS_SETTINGS_RESET_BTN_Y + WS_SETTINGS_BTN_H / 2);
 
     // BLE Proxy toggle button (green if on, gray if off)
-    uint16_t proxyColor = _settingsProxyEnabled ? 0x07E0 : 0x6B6D;  // Green or gray
+    uint16_t proxyColor = _settingsProxyEnabled ? 0x07E0 : 0x6B6D;
     _display.fillRoundRect(WS_SETTINGS_BTN_X, WS_SETTINGS_PROXY_BTN_Y,
                            WS_SETTINGS_BTN_W, WS_SETTINGS_BTN_H, 12, proxyColor);
     _display.setFont(&fonts::FreeSansBold18pt7b);
@@ -844,6 +908,15 @@ void WaveshareDisplay::drawSettingsScreen() {
     snprintf(proxyLabel, sizeof(proxyLabel), "BLE Proxy: %s", _settingsProxyEnabled ? "ON" : "OFF");
     _display.drawString(proxyLabel, SCREEN_WIDTH / 2,
                         WS_SETTINGS_PROXY_BTN_Y + WS_SETTINGS_BTN_H / 2);
+
+    // Display mode toggle button (blue)
+    _display.fillRoundRect(WS_SETTINGS_BTN_X, WS_SETTINGS_DISPMODE_BTN_Y,
+                           WS_SETTINGS_BTN_W, WS_SETTINGS_BTN_H, 12, 0x3B7F);
+    _display.setFont(&fonts::FreeSansBold18pt7b);
+    _display.setTextColor(0xFFFF);
+    _display.setTextDatum(lgfx::middle_center);
+    _display.drawString("Display: Portrait", SCREEN_WIDTH / 2,
+                        WS_SETTINGS_DISPMODE_BTN_Y + WS_SETTINGS_BTN_H / 2);
 
     // Back button (cyan)
     _display.fillRoundRect(WS_SETTINGS_BTN_X, WS_SETTINGS_BACK_BTN_Y,
@@ -868,6 +941,12 @@ TouchAction WaveshareDisplay::handleSettingsTouch(int16_t x, int16_t y) {
     if (x >= WS_SETTINGS_BTN_X && x <= WS_SETTINGS_BTN_X + WS_SETTINGS_BTN_W &&
         y >= WS_SETTINGS_PROXY_BTN_Y && y <= WS_SETTINGS_PROXY_BTN_Y + WS_SETTINGS_BTN_H) {
         return TouchAction::SETTINGS_TOGGLE_PROXY;
+    }
+
+    // Display mode toggle button
+    if (x >= WS_SETTINGS_BTN_X && x <= WS_SETTINGS_BTN_X + WS_SETTINGS_BTN_W &&
+        y >= WS_SETTINGS_DISPMODE_BTN_Y && y <= WS_SETTINGS_DISPMODE_BTN_Y + WS_SETTINGS_BTN_H) {
+        return TouchAction::SETTINGS_TOGGLE_DISPLAY_MODE;
     }
 
     // Back button
@@ -897,7 +976,16 @@ TouchEvent WaveshareDisplay::pollTouch() {
         event.x = tp.x;
         event.y = tp.y;
 
-        // When settings screen is active, route all touches through settings handler
+        // Landscape mode touch handling
+        if (_displayMode == WsDisplayMode::LANDSCAPE) {
+            if (_settingsScreenActive) {
+                event.action = handleLandscapeSettingsTouch(tp.x, tp.y);
+                return event;
+            }
+            return handleLandscapeTouch(tp.x, tp.y);
+        }
+
+        // Portrait mode touch handling (unchanged)
         if (_settingsScreenActive) {
             event.action = handleSettingsTouch(tp.x, tp.y);
             return event;
@@ -924,4 +1012,525 @@ TouchEvent WaveshareDisplay::pollTouch() {
     }
 
     return event;
+}
+
+// ============================================
+// Landscape Drawing Methods
+// ============================================
+
+void WaveshareDisplay::drawLandscapeStatusBar() {
+    _display.fillRect(0, WS_L_STATUS_BAR_Y, WS_L_SCREEN_WIDTH, WS_L_STATUS_BAR_HEIGHT, COLOR_BACKGROUND);
+
+    _display.setTextSize(1);
+    _display.setFont(&fonts::FreeSansBold9pt7b);
+
+    // WiFi indicator
+    _display.setCursor(10, WS_L_STATUS_BAR_Y + 12);
+    _display.setTextColor(_wifiConnected ? COLOR_STATUS_OK : COLOR_STATUS_ERROR);
+    _display.print("WiFi");
+    _display.fillCircle(80, WS_L_STATUS_BAR_Y + 20, 6, _wifiConnected ? COLOR_STATUS_OK : COLOR_STATUS_OFF);
+
+    // Backend indicator
+    _display.setCursor(100, WS_L_STATUS_BAR_Y + 12);
+    _display.setTextColor(_backendConnected ? COLOR_STATUS_OK : COLOR_STATUS_ERROR);
+    _display.print("WS");
+    _display.fillCircle(140, WS_L_STATUS_BAR_Y + 20, 6, _backendConnected ? COLOR_STATUS_OK : COLOR_STATUS_OFF);
+
+    // BLE indicator
+    if (_bleEnabled) {
+        _display.setCursor(160, WS_L_STATUS_BAR_Y + 12);
+        _display.setTextColor(_bleConnected ? COLOR_STATUS_OK : COLOR_TEXT_DIM);
+        _display.print("BLE");
+        _display.fillCircle(200, WS_L_STATUS_BAR_Y + 20, 6, _bleConnected ? COLOR_STATUS_OK : COLOR_STATUS_OFF);
+    }
+
+    // Angle display
+    if (_hasClimb && _angle > 0) {
+        _display.setTextColor(COLOR_TEXT);
+        _display.setCursor(WS_L_SCREEN_WIDTH - 130, WS_L_STATUS_BAR_Y + 12);
+        _display.printf("%d", _angle);
+        _display.drawCircle(WS_L_SCREEN_WIDTH - 70, WS_L_STATUS_BAR_Y + 12, 4, COLOR_TEXT);
+    }
+
+    // Settings gear icon (top-right)
+    int gearCx = WS_L_SETTINGS_BUTTON_X + WS_L_SETTINGS_BUTTON_W / 2;
+    int gearCy = WS_L_STATUS_BAR_Y + WS_L_SETTINGS_BUTTON_H / 2;
+    int gearR = 10;
+    _display.drawCircle(gearCx, gearCy, gearR, COLOR_TEXT_DIM);
+    _display.drawCircle(gearCx, gearCy, 4, COLOR_TEXT_DIM);
+    _display.drawFastHLine(gearCx - gearR - 3, gearCy, 6, COLOR_TEXT_DIM);
+    _display.drawFastHLine(gearCx + gearR - 3, gearCy, 6, COLOR_TEXT_DIM);
+    _display.drawFastVLine(gearCx, gearCy - gearR - 3, 6, COLOR_TEXT_DIM);
+    _display.drawFastVLine(gearCx, gearCy + gearR - 3, 6, COLOR_TEXT_DIM);
+}
+
+void WaveshareDisplay::drawLandscapeBoardPanel() {
+#ifdef ENABLE_BOARD_IMAGE
+    if (!_hasBoardImage || !_currentBoardConfig) {
+        // Clear left panel and show "waiting" message
+        _display.fillRect(WS_L_LEFT_PANEL_X, WS_L_LEFT_PANEL_Y,
+                          WS_L_LEFT_PANEL_W, WS_L_LEFT_PANEL_H, COLOR_BACKGROUND);
+
+        if (!_hasClimb) {
+            _display.setFont(&fonts::FreeSansBold18pt7b);
+            _display.setTextColor(COLOR_TEXT_DIM);
+            _display.setTextDatum(lgfx::middle_center);
+            _display.drawString("Waiting for climb...",
+                                WS_L_LEFT_PANEL_X + WS_L_LEFT_PANEL_W / 2,
+                                WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H / 2);
+            _display.setTextDatum(lgfx::top_left);
+        }
+        return;
+    }
+
+    const BoardConfig* cfg = _currentBoardConfig;
+
+    // Calculate scaling to fit board image in left panel
+    // Leave room for climb info (WS_L_CLIMB_INFO_HEIGHT) and nav buttons (WS_L_NAV_BUTTON_HEIGHT) at bottom
+    int availableH = WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT - WS_L_NAV_BUTTON_HEIGHT;
+    int availableW = WS_L_LEFT_PANEL_W;
+
+    // Scale image to fit available space
+    float scaleW = (float)availableW / cfg->imageWidth;
+    float scaleH = (float)availableH / cfg->imageHeight;
+    float scale = min(scaleW, scaleH);
+
+    int drawW = (int)(cfg->imageWidth * scale);
+    int drawH = (int)(cfg->imageHeight * scale);
+    int offsetX = WS_L_LEFT_PANEL_X + (availableW - drawW) / 2;
+    int offsetY = WS_L_LEFT_PANEL_Y;
+
+    // Clear margins around the board image
+    if (offsetX > WS_L_LEFT_PANEL_X) {
+        _display.fillRect(WS_L_LEFT_PANEL_X, WS_L_LEFT_PANEL_Y,
+                          offsetX - WS_L_LEFT_PANEL_X, availableH, COLOR_BACKGROUND);
+        _display.fillRect(offsetX + drawW, WS_L_LEFT_PANEL_Y,
+                          WS_L_LEFT_PANEL_W - (offsetX - WS_L_LEFT_PANEL_X) - drawW, availableH, COLOR_BACKGROUND);
+    }
+
+    // Cache the decoded JPEG in a PSRAM sprite
+    if (_cachedBoardConfig != cfg) {
+        if (_boardImageSprite) {
+            _boardImageSprite->deleteSprite();
+            delete _boardImageSprite;
+            _boardImageSprite = nullptr;
+        }
+
+        _boardImageSprite = new LGFX_Sprite(&_display);
+        _boardImageSprite->setPsram(true);
+        if (_boardImageSprite->createSprite(cfg->imageWidth, cfg->imageHeight)) {
+            _boardImageSprite->drawJpg(cfg->imageData, cfg->imageSize,
+                                        0, 0, cfg->imageWidth, cfg->imageHeight);
+            _cachedBoardConfig = cfg;
+        } else {
+            delete _boardImageSprite;
+            _boardImageSprite = nullptr;
+            _cachedBoardConfig = nullptr;
+        }
+    }
+
+    // Blit the cached image scaled to fit
+    if (_boardImageSprite) {
+        // Use pushRotateZoom to scale the sprite (angle=0, scaleX=scale, scaleY=scale)
+        _boardImageSprite->pushRotateZoom(&_display,
+            offsetX + drawW / 2, offsetY + drawH / 2,
+            0, scale, scale);
+    } else {
+        _display.drawJpg(cfg->imageData, cfg->imageSize,
+                         offsetX, offsetY, drawW, drawH);
+    }
+
+    // Overlay hold circles (scaled)
+    for (int i = 0; i < _ledCommandCount; i++) {
+        uint16_t target = _ledCommands[i].position;
+        int lo = 0, hi = cfg->holdCount - 1;
+        while (lo <= hi) {
+            int mid = (lo + hi) / 2;
+            uint16_t midPos = cfg->holdMap[mid].ledPosition;
+            if (midPos == target) {
+                uint16_t color = _display.color565(
+                    _ledCommands[i].r, _ledCommands[i].g, _ledCommands[i].b);
+                int dx = offsetX + (int)(cfg->holdMap[mid].cx * scale);
+                int dy = offsetY + (int)(cfg->holdMap[mid].cy * scale);
+                int dr = max(1, (int)(cfg->holdMap[mid].radius * scale));
+                int strokeWidth = max(1, (int)(3 * scale));
+                int innerR = max(1, dr - strokeWidth);
+                _display.fillArc(dx, dy, dr, innerR, 0.0f, 360.0f, color);
+                break;
+            } else if (midPos < target) {
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+    }
+
+    // Draw compact climb info below the board image
+    drawLandscapeClimbInfo();
+
+    // Draw nav buttons at bottom of left panel
+    drawLandscapeNavButtons();
+#else
+    // No board image support - show placeholder
+    _display.fillRect(WS_L_LEFT_PANEL_X, WS_L_LEFT_PANEL_Y,
+                      WS_L_LEFT_PANEL_W, WS_L_LEFT_PANEL_H, COLOR_BACKGROUND);
+#endif
+}
+
+void WaveshareDisplay::drawLandscapeClimbInfo() {
+    if (!_hasClimb) return;
+
+#ifdef ENABLE_BOARD_IMAGE
+    int yStart;
+    if (_hasBoardImage && _currentBoardConfig) {
+        int availableH = WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT - WS_L_NAV_BUTTON_HEIGHT;
+        float scaleW = (float)WS_L_LEFT_PANEL_W / _currentBoardConfig->imageWidth;
+        float scaleH = (float)availableH / _currentBoardConfig->imageHeight;
+        float scale = min(scaleW, scaleH);
+        int drawH = (int)(_currentBoardConfig->imageHeight * scale);
+        yStart = WS_L_LEFT_PANEL_Y + drawH + 4;
+    } else {
+        yStart = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT - WS_L_NAV_BUTTON_HEIGHT;
+    }
+#else
+    int yStart = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - WS_L_CLIMB_INFO_HEIGHT - WS_L_NAV_BUTTON_HEIGHT;
+#endif
+
+    // Clear climb info area
+    _display.fillRect(WS_L_LEFT_PANEL_X, yStart, WS_L_LEFT_PANEL_W, WS_L_CLIMB_INFO_HEIGHT, COLOR_BACKGROUND);
+
+    int centerX = WS_L_LEFT_PANEL_X + WS_L_LEFT_PANEL_W / 2;
+
+    // Draw climb name
+    _display.setFont(&fonts::FreeSansBold12pt7b);
+    _display.setTextColor(COLOR_TEXT);
+    _display.setTextDatum(lgfx::top_center);
+
+    String displayName = _climbName;
+    if (displayName.length() > 30) {
+        displayName = displayName.substring(0, 27) + "...";
+    }
+    _display.drawString(displayName.c_str(), centerX, yStart);
+
+    // Draw grade badge
+    if (_grade.length() > 0) {
+        int badgeWidth = 100;
+        int badgeHeight = 28;
+        int badgeX = centerX - badgeWidth / 2;
+        int badgeY = yStart + 28;
+
+        uint16_t gradeColor565 = getGradeColor(_grade.c_str());
+        _display.fillRoundRect(badgeX, badgeY, badgeWidth, badgeHeight, 8, gradeColor565);
+
+        uint16_t textColor = getGradeTextColor(gradeColor565);
+        _display.setFont(&fonts::FreeSansBold9pt7b);
+        _display.setTextColor(textColor);
+        _display.setTextDatum(lgfx::middle_center);
+
+        String displayGrade = _grade;
+        int slashPos = displayGrade.indexOf('/');
+        if (slashPos > 0) {
+            displayGrade = displayGrade.substring(slashPos + 1);
+        }
+        _display.drawString(displayGrade.c_str(), badgeX + badgeWidth / 2, badgeY + badgeHeight / 2);
+    }
+
+    _display.setTextDatum(lgfx::top_left);
+}
+
+void WaveshareDisplay::drawLandscapeNavButtons() {
+    int navY = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - WS_L_NAV_BUTTON_HEIGHT;
+
+    _display.fillRect(WS_L_LEFT_PANEL_X, navY, WS_L_LEFT_PANEL_W, WS_L_NAV_BUTTON_HEIGHT, COLOR_BACKGROUND);
+
+    if (!_hasNavigation || _queueTotal <= 1) {
+        return;
+    }
+
+    // Draw button bar background
+    _display.fillRect(WS_L_LEFT_PANEL_X, navY, WS_L_LEFT_PANEL_W, WS_L_NAV_BUTTON_HEIGHT, 0x2104);
+
+    int centerX = WS_L_LEFT_PANEL_X + WS_L_LEFT_PANEL_W / 2;
+
+    _display.setFont(&fonts::FreeSansBold12pt7b);
+    _display.setTextDatum(lgfx::middle_center);
+
+    // Position indicator
+    _display.setTextColor(COLOR_TEXT_DIM);
+    char posStr[16];
+    snprintf(posStr, sizeof(posStr), "%d / %d", _queueIndex + 1, _queueTotal);
+    _display.drawString(posStr, centerX, navY + WS_L_NAV_BUTTON_HEIGHT / 2);
+
+    // Previous button
+    if (_prevClimb.isValid) {
+        _display.fillRoundRect(WS_L_LEFT_PANEL_X + 10, navY + 5, 110, WS_L_NAV_BUTTON_HEIGHT - 10, 8, COLOR_ACCENT);
+        _display.setTextColor(0x0000);
+        _display.drawString("< Prev", WS_L_LEFT_PANEL_X + 65, navY + WS_L_NAV_BUTTON_HEIGHT / 2);
+    }
+
+    // Next button
+    if (_nextClimb.isValid) {
+        _display.fillRoundRect(WS_L_LEFT_PANEL_X + WS_L_LEFT_PANEL_W - 120, navY + 5, 110, WS_L_NAV_BUTTON_HEIGHT - 10, 8, COLOR_ACCENT);
+        _display.setTextColor(0x0000);
+        _display.drawString("Next >", WS_L_LEFT_PANEL_X + WS_L_LEFT_PANEL_W - 65, navY + WS_L_NAV_BUTTON_HEIGHT / 2);
+    }
+
+    _display.setTextDatum(lgfx::top_left);
+}
+
+void WaveshareDisplay::updateQueueScrollOffset() {
+    if (_queueCount <= WS_L_QUEUE_VISIBLE_ITEMS) {
+        _queueScrollOffset = 0;
+        return;
+    }
+
+    // Center current item at ~position 4 (midpoint of visible items)
+    int targetCenter = WS_L_QUEUE_VISIBLE_ITEMS / 2;
+    _queueScrollOffset = _currentQueueIndex - targetCenter;
+
+    // Clamp to valid range
+    int maxOffset = _queueCount - WS_L_QUEUE_VISIBLE_ITEMS;
+    if (_queueScrollOffset < 0) _queueScrollOffset = 0;
+    if (_queueScrollOffset > maxOffset) _queueScrollOffset = maxOffset;
+}
+
+void WaveshareDisplay::drawLandscapeQueuePanel() {
+    // Clear right panel
+    _display.fillRect(WS_L_RIGHT_PANEL_X, WS_L_RIGHT_PANEL_Y,
+                      WS_L_RIGHT_PANEL_W, WS_L_RIGHT_PANEL_H, COLOR_BACKGROUND);
+
+    // Draw panel separator line
+    _display.drawFastVLine(WS_L_RIGHT_PANEL_X, WS_L_RIGHT_PANEL_Y, WS_L_RIGHT_PANEL_H, 0x2104);
+
+    if (_queueCount == 0) {
+        _display.setFont(&fonts::FreeSansBold12pt7b);
+        _display.setTextColor(COLOR_TEXT_DIM);
+        _display.setTextDatum(lgfx::middle_center);
+        _display.drawString("Waiting for",
+                            WS_L_RIGHT_PANEL_X + WS_L_RIGHT_PANEL_W / 2,
+                            WS_L_RIGHT_PANEL_Y + WS_L_RIGHT_PANEL_H / 2 - 15);
+        _display.drawString("queue...",
+                            WS_L_RIGHT_PANEL_X + WS_L_RIGHT_PANEL_W / 2,
+                            WS_L_RIGHT_PANEL_Y + WS_L_RIGHT_PANEL_H / 2 + 15);
+        _display.setTextDatum(lgfx::top_left);
+        return;
+    }
+
+    updateQueueScrollOffset();
+
+    // Draw queue header with position
+    _display.setFont(&fonts::FreeSansBold9pt7b);
+    _display.setTextColor(COLOR_TEXT_DIM);
+    _display.setTextDatum(lgfx::top_center);
+    char headerStr[16];
+    snprintf(headerStr, sizeof(headerStr), "Queue %d/%d", _currentQueueIndex + 1, _queueCount);
+    _display.drawString(headerStr, WS_L_RIGHT_PANEL_X + WS_L_RIGHT_PANEL_W / 2, WS_L_RIGHT_PANEL_Y + 4);
+    _display.setTextDatum(lgfx::top_left);
+
+    int listStartY = WS_L_RIGHT_PANEL_Y + 24;
+    int itemX = WS_L_RIGHT_PANEL_X + 8;
+    int itemW = WS_L_RIGHT_PANEL_W - 16;
+
+    int visibleCount = min(_queueCount - _queueScrollOffset, WS_L_QUEUE_VISIBLE_ITEMS);
+
+    for (int i = 0; i < visibleCount; i++) {
+        int queueIndex = _queueScrollOffset + i;
+        int itemY = listStartY + i * WS_L_QUEUE_ITEM_HEIGHT;
+
+        const LocalQueueItem* item = getQueueItem(queueIndex);
+        if (!item || !item->isValid()) continue;
+
+        // Determine colors based on position relative to current
+        uint16_t textColor;
+        if (queueIndex == _currentQueueIndex) {
+            // Current item - highlighted background
+            _display.fillRect(WS_L_RIGHT_PANEL_X + 2, itemY, WS_L_RIGHT_PANEL_W - 4, WS_L_QUEUE_ITEM_HEIGHT, 0x2104);
+            textColor = COLOR_TEXT;
+        } else if (queueIndex < _currentQueueIndex) {
+            // Previous/completed items - grey
+            textColor = COLOR_TEXT_DIM;
+        } else {
+            // Upcoming items - white
+            textColor = COLOR_TEXT;
+        }
+
+        // Draw climb name (left-aligned, truncated)
+        _display.setFont(&fonts::FreeSansBold9pt7b);
+        _display.setTextColor(textColor);
+        _display.setTextDatum(lgfx::middle_left);
+
+        String name = item->name;
+        if (name.length() > 18) {
+            name = name.substring(0, 15) + "...";
+        }
+        _display.drawString(name.c_str(), itemX, itemY + WS_L_QUEUE_ITEM_HEIGHT / 2);
+
+        // Draw grade text in grade color (right-aligned)
+        // Extract V-grade from grade string (e.g., "6c/V5" -> "V5")
+        if (item->grade[0] != '\0') {
+            char vGrade[8] = "";
+            const char* vPos = strchr(item->grade, 'V');
+            if (!vPos) vPos = strchr(item->grade, 'v');
+            if (vPos) {
+                int gi = 0;
+                vGrade[gi++] = 'V';
+                vPos++;
+                while (*vPos >= '0' && *vPos <= '9' && gi < 7) {
+                    vGrade[gi++] = *vPos++;
+                }
+                vGrade[gi] = '\0';
+            } else {
+                // No V-grade found, use the raw grade
+                strncpy(vGrade, item->grade, 7);
+                vGrade[7] = '\0';
+            }
+            _display.setTextDatum(lgfx::middle_right);
+            _display.setTextColor(item->gradeColorRgb);
+            _display.drawString(vGrade, itemX + itemW, itemY + WS_L_QUEUE_ITEM_HEIGHT / 2);
+        }
+    }
+
+    _display.setTextDatum(lgfx::top_left);
+}
+
+void WaveshareDisplay::drawLandscapeSettingsScreen() {
+    _display.fillScreen(COLOR_BACKGROUND);
+
+    int sw = WS_L_SCREEN_WIDTH;
+
+    // Title
+    _display.setFont(&fonts::FreeSansBold18pt7b);
+    _display.setTextColor(COLOR_ACCENT);
+    _display.setTextDatum(lgfx::top_center);
+    _display.drawString("Settings", sw / 2, WS_L_SETTINGS_TITLE_Y);
+
+    // WiFi info (compact)
+    _display.setFont(&fonts::FreeSansBold9pt7b);
+    _display.setTextColor(COLOR_TEXT_DIM);
+    _display.drawString("WiFi Network", sw / 2, WS_L_SETTINGS_INFO_Y);
+
+    _display.setFont(&fonts::FreeSansBold12pt7b);
+    _display.setTextColor(COLOR_TEXT);
+    _display.drawString(_settingsSSID.length() > 0 ? _settingsSSID.c_str() : "Not connected",
+                        sw / 2, WS_L_SETTINGS_INFO_Y + 25);
+
+    _display.setFont(&fonts::FreeSansBold9pt7b);
+    _display.setTextColor(COLOR_TEXT_DIM);
+    _display.drawString("IP Address", sw / 2, WS_L_SETTINGS_INFO_Y + 55);
+
+    _display.setFont(&fonts::FreeSansBold12pt7b);
+    _display.setTextColor(COLOR_TEXT);
+    _display.drawString(_settingsIP.length() > 0 ? _settingsIP.c_str() : "--",
+                        sw / 2, WS_L_SETTINGS_INFO_Y + 80);
+
+    // Reset WiFi button (red)
+    _display.fillRoundRect(WS_L_SETTINGS_BTN_X, WS_L_SETTINGS_RESET_BTN_Y,
+                           WS_L_SETTINGS_BTN_W, WS_L_SETTINGS_BTN_H, 10, 0xE8A4);
+    _display.setFont(&fonts::FreeSansBold12pt7b);
+    _display.setTextColor(0xFFFF);
+    _display.setTextDatum(lgfx::middle_center);
+    _display.drawString("Reset WiFi", sw / 2,
+                        WS_L_SETTINGS_RESET_BTN_Y + WS_L_SETTINGS_BTN_H / 2);
+
+    // BLE Proxy toggle
+    uint16_t proxyColor = _settingsProxyEnabled ? 0x07E0 : 0x6B6D;
+    _display.fillRoundRect(WS_L_SETTINGS_BTN_X, WS_L_SETTINGS_PROXY_BTN_Y,
+                           WS_L_SETTINGS_BTN_W, WS_L_SETTINGS_BTN_H, 10, proxyColor);
+    _display.setFont(&fonts::FreeSansBold12pt7b);
+    _display.setTextColor(_settingsProxyEnabled ? 0x0000 : 0xFFFF);
+    _display.setTextDatum(lgfx::middle_center);
+    char proxyLabel[32];
+    snprintf(proxyLabel, sizeof(proxyLabel), "BLE Proxy: %s", _settingsProxyEnabled ? "ON" : "OFF");
+    _display.drawString(proxyLabel, sw / 2,
+                        WS_L_SETTINGS_PROXY_BTN_Y + WS_L_SETTINGS_BTN_H / 2);
+
+    // Display mode toggle (blue)
+    _display.fillRoundRect(WS_L_SETTINGS_BTN_X, WS_L_SETTINGS_DISPMODE_BTN_Y,
+                           WS_L_SETTINGS_BTN_W, WS_L_SETTINGS_BTN_H, 10, 0x3B7F);
+    _display.setFont(&fonts::FreeSansBold12pt7b);
+    _display.setTextColor(0xFFFF);
+    _display.setTextDatum(lgfx::middle_center);
+    _display.drawString("Display: Landscape", sw / 2,
+                        WS_L_SETTINGS_DISPMODE_BTN_Y + WS_L_SETTINGS_BTN_H / 2);
+
+    // Back button (cyan) - only if there's room
+    if (WS_L_SETTINGS_BACK_BTN_Y + WS_L_SETTINGS_BTN_H <= WS_L_SCREEN_HEIGHT) {
+        _display.fillRoundRect(WS_L_SETTINGS_BTN_X, WS_L_SETTINGS_BACK_BTN_Y,
+                               WS_L_SETTINGS_BTN_W, WS_L_SETTINGS_BTN_H, 10, COLOR_ACCENT);
+        _display.setFont(&fonts::FreeSansBold12pt7b);
+        _display.setTextColor(0x0000);
+        _display.setTextDatum(lgfx::middle_center);
+        _display.drawString("Back", sw / 2,
+                            WS_L_SETTINGS_BACK_BTN_Y + WS_L_SETTINGS_BTN_H / 2);
+    }
+
+    _display.setTextDatum(lgfx::top_left);
+}
+
+TouchEvent WaveshareDisplay::handleLandscapeTouch(int16_t x, int16_t y) {
+    TouchEvent event;
+    event.x = x;
+    event.y = y;
+
+    // Settings gear button (top-right)
+    if (x >= WS_L_SETTINGS_BUTTON_X && x <= WS_L_SETTINGS_BUTTON_X + WS_L_SETTINGS_BUTTON_W &&
+        y >= WS_L_SETTINGS_BUTTON_Y && y <= WS_L_SETTINGS_BUTTON_Y + WS_L_SETTINGS_BUTTON_H) {
+        event.action = TouchAction::OPEN_SETTINGS;
+        return event;
+    }
+
+    // Right panel - queue item tap
+    if (x >= WS_L_RIGHT_PANEL_X && y >= WS_L_RIGHT_PANEL_Y) {
+        int listStartY = WS_L_RIGHT_PANEL_Y + 24;  // After header
+        if (y >= listStartY) {
+            int itemIndex = (y - listStartY) / WS_L_QUEUE_ITEM_HEIGHT;
+            int tappedQueueIndex = _queueScrollOffset + itemIndex;
+            if (tappedQueueIndex >= 0 && tappedQueueIndex < _queueCount && tappedQueueIndex != _currentQueueIndex) {
+                event.action = TouchAction::NAVIGATE_TO_INDEX;
+                event.targetIndex = tappedQueueIndex;
+                return event;
+            }
+        }
+    }
+
+    // Left panel - nav buttons at bottom
+    int navY = WS_L_LEFT_PANEL_Y + WS_L_LEFT_PANEL_H - WS_L_NAV_BUTTON_HEIGHT;
+    if (x < WS_L_RIGHT_PANEL_X && y >= navY) {
+        if (x < WS_L_LEFT_PANEL_W / 2) {
+            event.action = TouchAction::NAVIGATE_PREVIOUS;
+        } else {
+            event.action = TouchAction::NAVIGATE_NEXT;
+        }
+        return event;
+    }
+
+    return event;
+}
+
+TouchAction WaveshareDisplay::handleLandscapeSettingsTouch(int16_t x, int16_t y) {
+    // Reset WiFi button
+    if (x >= WS_L_SETTINGS_BTN_X && x <= WS_L_SETTINGS_BTN_X + WS_L_SETTINGS_BTN_W &&
+        y >= WS_L_SETTINGS_RESET_BTN_Y && y <= WS_L_SETTINGS_RESET_BTN_Y + WS_L_SETTINGS_BTN_H) {
+        return TouchAction::SETTINGS_RESET_WIFI;
+    }
+
+    // BLE Proxy toggle
+    if (x >= WS_L_SETTINGS_BTN_X && x <= WS_L_SETTINGS_BTN_X + WS_L_SETTINGS_BTN_W &&
+        y >= WS_L_SETTINGS_PROXY_BTN_Y && y <= WS_L_SETTINGS_PROXY_BTN_Y + WS_L_SETTINGS_BTN_H) {
+        return TouchAction::SETTINGS_TOGGLE_PROXY;
+    }
+
+    // Display mode toggle
+    if (x >= WS_L_SETTINGS_BTN_X && x <= WS_L_SETTINGS_BTN_X + WS_L_SETTINGS_BTN_W &&
+        y >= WS_L_SETTINGS_DISPMODE_BTN_Y && y <= WS_L_SETTINGS_DISPMODE_BTN_Y + WS_L_SETTINGS_BTN_H) {
+        return TouchAction::SETTINGS_TOGGLE_DISPLAY_MODE;
+    }
+
+    // Back button
+    if (x >= WS_L_SETTINGS_BTN_X && x <= WS_L_SETTINGS_BTN_X + WS_L_SETTINGS_BTN_W &&
+        y >= WS_L_SETTINGS_BACK_BTN_Y && y <= WS_L_SETTINGS_BACK_BTN_Y + WS_L_SETTINGS_BTN_H) {
+        return TouchAction::SETTINGS_BACK;
+    }
+
+    return TouchAction::NONE;
 }

@@ -59,10 +59,12 @@ class DisplayBase {
     const LocalQueueItem* getNextQueueItem() const;
     bool canNavigatePrevious() const { return _queueCount > 0 && _currentQueueIndex > 0; }
     bool canNavigateNext() const { return _queueCount > 0 && _currentQueueIndex < _queueCount - 1; }
+    bool canNavigateToIndex(int index) const { return _queueCount > 0 && index >= 0 && index < _queueCount; }
 
     // ====== Optimistic navigation (returns true if navigation was possible) ======
     bool navigateToPrevious();
     bool navigateToNext();
+    bool navigateToIndex(int index);
     void setCurrentQueueIndex(int index);
 
     // ====== Pending navigation state (for reconciliation with backend) ======

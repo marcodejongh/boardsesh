@@ -269,6 +269,38 @@ bool DisplayBase::navigateToNext() {
     return true;
 }
 
+bool DisplayBase::navigateToIndex(int index) {
+    if (!canNavigateToIndex(index)) {
+        return false;
+    }
+
+    _currentQueueIndex = index;
+    _pendingNavigation = true;
+
+    const LocalQueueItem* current = getCurrentQueueItem();
+    if (current) {
+        QueueNavigationItem prevItem, nextItem;
+
+        if (_currentQueueIndex > 0) {
+            const LocalQueueItem* prev = getPreviousQueueItem();
+            if (prev) {
+                prevItem = QueueNavigationItem(prev->name, prev->grade, "");
+            }
+        }
+
+        if (_currentQueueIndex < _queueCount - 1) {
+            const LocalQueueItem* next = getNextQueueItem();
+            if (next) {
+                nextItem = QueueNavigationItem(next->name, next->grade, "");
+            }
+        }
+
+        setNavigationContext(prevItem, nextItem, _currentQueueIndex, _queueCount);
+    }
+
+    return true;
+}
+
 void DisplayBase::setCurrentQueueIndex(int index) {
     if (index >= 0 && index < _queueCount) {
         _currentQueueIndex = index;
