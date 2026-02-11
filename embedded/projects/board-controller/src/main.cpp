@@ -177,6 +177,9 @@ void navigateToIndex(int index);
 void sendNavigationMutation(const char* queueItemUuid);
 #endif
 void startupAnimation();
+#ifdef ENABLE_WAVESHARE_DISPLAY
+void updateSettingsDisplay(bool proxyEnabled);
+#endif
 
 #ifdef ENABLE_BLE_PROXY
 void onBLERawForward(const uint8_t* data, size_t len);
@@ -328,6 +331,20 @@ void setup() {
 #endif
 }
 
+#ifdef ENABLE_WAVESHARE_DISPLAY
+/**
+ * Update the settings display with current WiFi/proxy state.
+ * Centralizes the IP retrieval logic to avoid duplication.
+ */
+void updateSettingsDisplay(bool proxyEnabled) {
+    const char* ssid = WiFiMgr.isConnected() ? WiFiMgr.getSSID().c_str() : "";
+    const char* ip = WiFiMgr.isConnected() ? WiFiMgr.getIP().c_str()
+                     : WiFiMgr.isAPMode()   ? WiFiMgr.getAPIP().c_str()
+                                             : "";
+    Display.setSettingsData(ssid, ip, proxyEnabled);
+}
+#endif
+
 void loop() {
     // Process WiFi
     WiFiMgr.loop();
@@ -382,39 +399,37 @@ void loop() {
             break;
         case TouchAction::OPEN_SETTINGS:
             Logger.logln("Touch: open settings");
-            Display.setSettingsData(
-                WiFiMgr.isConnected() ? WiFiMgr.getSSID().c_str() : "",
-                WiFiMgr.isConnected() ? WiFiMgr.getIP().c_str() : WiFiMgr.isAPMode() ? WiFiMgr.getAPIP().c_str() : "",
-                Config.getBool("proxy_en", false)
-            );
+            updateSettingsDisplay(Config.getBool("proxy_en", false));
             Display.showSettingsScreen();
             break;
         case TouchAction::SETTINGS_BACK:
             Logger.logln("Touch: settings back");
             Display.hideSettingsScreen();
             break;
-        case TouchAction::SETTINGS_RESET_WIFI:
+        case TouchAction::SETTINGS_RESET_WIFI: {
             Logger.logln("Touch: reset WiFi");
-            Config.setString("wifi_ssid", "");
-            Config.setString("wifi_pass", "");
+            bool wifiResetOk = Config.setString("wifi_ssid", "")
+                            && Config.setString("wifi_pass", "");
+            if (!wifiResetOk) {
+                Logger.logln("WARNING: Failed to persist WiFi reset");
+            }
             WiFiMgr.disconnect();
             Display.hideSettingsScreen();
             if (WiFiMgr.startAP()) {
                 Display.showSetupScreen(DEFAULT_AP_NAME);
             }
             break;
+        }
         case TouchAction::SETTINGS_TOGGLE_PROXY: {
             Logger.logln("Touch: toggle BLE proxy");
             bool newProxyState = !Config.getBool("proxy_en", false);
-            Config.setBool("proxy_en", newProxyState);
+            if (!Config.setBool("proxy_en", newProxyState)) {
+                Logger.logln("WARNING: Failed to persist proxy toggle");
+            }
 #ifdef ENABLE_BLE_PROXY
             Proxy.setEnabled(newProxyState);
 #endif
-            Display.setSettingsData(
-                WiFiMgr.isConnected() ? WiFiMgr.getSSID().c_str() : "",
-                WiFiMgr.isConnected() ? WiFiMgr.getIP().c_str() : WiFiMgr.isAPMode() ? WiFiMgr.getAPIP().c_str() : "",
-                newProxyState
-            );
+            updateSettingsDisplay(newProxyState);
             Display.showSettingsScreen();
             break;
         }
@@ -471,10 +486,13 @@ void loop() {
             Display.showError("Resetting...");
             button1LongPressTriggered = true;
 
-            Config.setString("wifi_ssid", "");
-            Config.setString("wifi_pass", "");
-            Config.setString("api_key", "");
-            Config.setString("session_id", "");
+            bool resetOk = Config.setString("wifi_ssid", "")
+                        && Config.setString("wifi_pass", "")
+                        && Config.setString("api_key", "")
+                        && Config.setString("session_id", "");
+            if (!resetOk) {
+                Logger.logln("WARNING: Failed to persist config reset");
+            }
 
             delay(1000);
             ESP.restart();

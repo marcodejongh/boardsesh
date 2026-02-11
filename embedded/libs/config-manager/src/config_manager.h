@@ -15,19 +15,19 @@ class ConfigManager {
 
     // String values
     String getString(const char* key, const String& defaultValue = "");
-    void setString(const char* key, const String& value);
+    bool setString(const char* key, const String& value);
 
     // Integer values
     int32_t getInt(const char* key, int32_t defaultValue = 0);
-    void setInt(const char* key, int32_t value);
+    bool setInt(const char* key, int32_t value);
 
     // Boolean values
     bool getBool(const char* key, bool defaultValue = false);
-    void setBool(const char* key, bool value);
+    bool setBool(const char* key, bool value);
 
     // Byte arrays
     size_t getBytes(const char* key, uint8_t* buffer, size_t maxLen);
-    void setBytes(const char* key, const uint8_t* buffer, size_t len);
+    bool setBytes(const char* key, const uint8_t* buffer, size_t len);
 
     // Clear all config
     void clear();

@@ -23,9 +23,9 @@ String ConfigManager::getString(const char* key, const String& defaultValue) {
     return prefs.getString(key, defaultValue);
 }
 
-void ConfigManager::setString(const char* key, const String& value) {
+bool ConfigManager::setString(const char* key, const String& value) {
     begin();
-    prefs.putString(key, value);
+    return prefs.putString(key, value) > 0 || value.length() == 0;
 }
 
 int32_t ConfigManager::getInt(const char* key, int32_t defaultValue) {
@@ -33,9 +33,9 @@ int32_t ConfigManager::getInt(const char* key, int32_t defaultValue) {
     return prefs.getInt(key, defaultValue);
 }
 
-void ConfigManager::setInt(const char* key, int32_t value) {
+bool ConfigManager::setInt(const char* key, int32_t value) {
     begin();
-    prefs.putInt(key, value);
+    return prefs.putInt(key, value) > 0;
 }
 
 bool ConfigManager::getBool(const char* key, bool defaultValue) {
@@ -43,9 +43,9 @@ bool ConfigManager::getBool(const char* key, bool defaultValue) {
     return prefs.getBool(key, defaultValue);
 }
 
-void ConfigManager::setBool(const char* key, bool value) {
+bool ConfigManager::setBool(const char* key, bool value) {
     begin();
-    prefs.putBool(key, value);
+    return prefs.putBool(key, value) > 0;
 }
 
 size_t ConfigManager::getBytes(const char* key, uint8_t* buffer, size_t maxLen) {
@@ -53,9 +53,9 @@ size_t ConfigManager::getBytes(const char* key, uint8_t* buffer, size_t maxLen) 
     return prefs.getBytes(key, buffer, maxLen);
 }
 
-void ConfigManager::setBytes(const char* key, const uint8_t* buffer, size_t len) {
+bool ConfigManager::setBytes(const char* key, const uint8_t* buffer, size_t len) {
     begin();
-    prefs.putBytes(key, buffer, len);
+    return prefs.putBytes(key, buffer, len) > 0 || len == 0;
 }
 
 void ConfigManager::clear() {
