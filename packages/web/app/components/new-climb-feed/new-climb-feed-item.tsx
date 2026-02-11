@@ -40,7 +40,7 @@ export default function NewClimbFeedItem({ item }: NewClimbFeedItemProps) {
         set_ids: defaultConfig.setIds,
       });
 
-      if (details) {
+      if (details?.layout_name && details.size_name && details.set_names) {
         return constructClimbViewUrlWithSlugs(
           boardName,
           details.layout_name,
