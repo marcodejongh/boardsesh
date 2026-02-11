@@ -7,6 +7,7 @@ import {
   boolean,
   index,
   uniqueIndex,
+  unique,
   check,
   pgEnum,
 } from 'drizzle-orm/pg-core';
@@ -53,11 +54,9 @@ export const communityRoles = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => ({
-    userRoleIdx: uniqueIndex('community_roles_user_role_board_idx').on(
-      table.userId,
-      table.role,
-      table.boardType,
-    ),
+    userRoleUnique: unique('community_roles_user_role_board_idx')
+      .on(table.userId, table.role, table.boardType)
+      .nullsNotDistinct(),
     boardTypeIdx: index('community_roles_board_type_idx').on(table.boardType),
   }),
 );

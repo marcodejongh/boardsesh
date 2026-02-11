@@ -1,4 +1,4 @@
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, count } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
@@ -208,6 +208,28 @@ export const socialRoleMutations = {
 
     const validated = validateInput(RevokeRoleInputSchema, input, 'input');
     const { userId, role, boardType } = validated;
+
+    // Prevent removing the last admin
+    if (role === 'admin') {
+      const adminConditions = boardType
+        ? and(
+            eq(dbSchema.communityRoles.role, 'admin'),
+            eq(dbSchema.communityRoles.boardType, boardType),
+          )
+        : and(
+            eq(dbSchema.communityRoles.role, 'admin'),
+            isNull(dbSchema.communityRoles.boardType),
+          );
+
+      const [adminCount] = await db
+        .select({ count: count() })
+        .from(dbSchema.communityRoles)
+        .where(adminConditions);
+
+      if (Number(adminCount?.count || 0) <= 1) {
+        throw new Error('Cannot remove the last admin');
+      }
+    }
 
     const conditions = boardType
       ? and(

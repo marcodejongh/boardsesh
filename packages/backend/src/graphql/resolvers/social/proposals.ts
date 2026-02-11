@@ -881,26 +881,33 @@ export const socialProposalMutations = {
         weight,
       });
 
-    // Check auto-approval
+    // Check auto-approval (atomic: only transition if still 'open')
     const shouldApprove = await checkAutoApproval(proposal.id, boardType, climbUuid, angle || null);
     if (shouldApprove) {
-      await db
+      const [approved] = await db
         .update(dbSchema.climbProposals)
         .set({ status: 'approved', resolvedAt: new Date() })
-        .where(eq(dbSchema.climbProposals.id, proposal.id));
-      proposal.status = 'approved';
-      proposal.resolvedAt = new Date();
+        .where(and(
+          eq(dbSchema.climbProposals.id, proposal.id),
+          eq(dbSchema.climbProposals.status, 'open'),
+        ))
+        .returning();
 
-      await applyProposalEffect(proposal);
+      if (approved) {
+        proposal.status = 'approved';
+        proposal.resolvedAt = approved.resolvedAt;
 
-      publishSocialEvent({
-        type: 'proposal.approved',
-        actorId: proposerId,
-        entityType: 'proposal',
-        entityId: uuid,
-        timestamp: Date.now(),
-        metadata: { climbUuid, boardType, proposalType: type },
-      }).catch((err) => console.error('[Proposals] Failed to publish proposal.approved:', err));
+        await applyProposalEffect(proposal);
+
+        publishSocialEvent({
+          type: 'proposal.approved',
+          actorId: proposerId,
+          entityType: 'proposal',
+          entityId: uuid,
+          timestamp: Date.now(),
+          metadata: { climbUuid, boardType, proposalType: type },
+        }).catch((err) => console.error('[Proposals] Failed to publish proposal.approved:', err));
+      }
     }
 
     // Publish created event
@@ -974,26 +981,33 @@ export const socialProposalMutations = {
         .values({ proposalId: proposal.id, userId, value, weight });
     }
 
-    // Check auto-approval
+    // Check auto-approval (atomic: only transition if still 'open')
     const shouldApprove = await checkAutoApproval(proposal.id, proposal.boardType, proposal.climbUuid, proposal.angle);
-    if (shouldApprove && proposal.status === 'open') {
-      await db
+    if (shouldApprove) {
+      const [approved] = await db
         .update(dbSchema.climbProposals)
         .set({ status: 'approved', resolvedAt: new Date() })
-        .where(eq(dbSchema.climbProposals.id, proposal.id));
-      proposal.status = 'approved';
-      proposal.resolvedAt = new Date();
+        .where(and(
+          eq(dbSchema.climbProposals.id, proposal.id),
+          eq(dbSchema.climbProposals.status, 'open'),
+        ))
+        .returning();
 
-      await applyProposalEffect(proposal);
+      if (approved) {
+        proposal.status = 'approved';
+        proposal.resolvedAt = approved.resolvedAt;
 
-      publishSocialEvent({
-        type: 'proposal.approved',
-        actorId: userId,
-        entityType: 'proposal',
-        entityId: proposalUuid,
-        timestamp: Date.now(),
-        metadata: { climbUuid: proposal.climbUuid, boardType: proposal.boardType, proposalType: proposal.type },
-      }).catch((err) => console.error('[Proposals] Failed to publish proposal.approved:', err));
+        await applyProposalEffect(proposal);
+
+        publishSocialEvent({
+          type: 'proposal.approved',
+          actorId: userId,
+          entityType: 'proposal',
+          entityId: proposalUuid,
+          timestamp: Date.now(),
+          metadata: { climbUuid: proposal.climbUuid, boardType: proposal.boardType, proposalType: proposal.type },
+        }).catch((err) => console.error('[Proposals] Failed to publish proposal.approved:', err));
+      }
     }
 
     // Publish voted event

@@ -64,12 +64,15 @@ export default function CreateProposalForm({
     if (!val) return;
     setType(val);
     // Reset proposed value when changing type
-    if (val === 'grade') {
-      setProposedValue(currentClimbDifficulty || '');
+    if (val === 'grade' || val === 'benchmark') {
       setSelectedAngle(angle);
     } else {
-      setProposedValue('');
       setSelectedAngle('all');
+    }
+    if (val === 'grade') {
+      setProposedValue(currentClimbDifficulty || '');
+    } else {
+      setProposedValue('');
     }
   }, [currentClimbDifficulty, angle]);
 
@@ -189,7 +192,7 @@ export default function CreateProposalForm({
                 onChange={(e) => setSelectedAngle(e.target.value as number | 'all')}
                 MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}
               >
-                {type !== 'grade' && (
+                {type === 'classic' && (
                   <MenuItem value="all">All angles</MenuItem>
                 )}
                 {boardAngles.map((a) => (
@@ -224,8 +227,8 @@ export default function CreateProposalForm({
             <>
               <Typography variant="caption" sx={{ color: themeTokens.neutral[500] }}>
                 {type === 'classic'
-                  ? 'Classic proposals apply to all angles by default.'
-                  : 'Benchmark proposals apply to all angles by default.'}
+                  ? 'Classic proposals apply to all angles.'
+                  : 'Benchmark proposals are per-angle.'}
               </Typography>
               <FormControl size="small" fullWidth>
                 <InputLabel>Proposed Status</InputLabel>
