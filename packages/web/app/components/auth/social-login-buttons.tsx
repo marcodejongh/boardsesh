@@ -5,7 +5,6 @@ import Skeleton from '@mui/material/Skeleton';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import { signIn } from 'next-auth/react';
-import { themeTokens } from '@/app/theme/theme-config';
 
 // Note: OAuth provider icons and button colors use brand-specific colors
 // per Google/Apple/Facebook brand guidelines, not design system tokens
@@ -94,9 +93,9 @@ export default function SocialLoginButtons({
 
   // Apple button needs custom colors per brand guidelines
   const appleButtonStyles = {
-    backgroundColor: themeTokens.neutral[900],
-    color: themeTokens.semantic.surface,
-    borderColor: themeTokens.neutral[900],
+    backgroundColor: 'var(--neutral-900)',
+    color: 'var(--semantic-surface)',
+    borderColor: 'var(--neutral-900)',
   };
 
   return (

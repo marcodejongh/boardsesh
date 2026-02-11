@@ -1,14 +1,27 @@
-import { sql } from '@/app/lib/db/db';
-import { NextResponse } from 'next/server';
+import { getDb } from '@/app/lib/db/db';
+import { boardDifficultyGrades } from '@/app/lib/db/schema';
+import { eq, and, asc } from 'drizzle-orm';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ board_name: string }> }) {
   try {
-    const grades = await sql`
-      SELECT difficulty as difficulty_id, boulder_name as difficulty_name
-      FROM difficulty_grades
-      WHERE is_listed = true
-      ORDER BY difficulty ASC
-    `;
+    const { board_name } = await params;
+    const db = getDb();
+
+    const grades = await db
+      .select({
+        difficulty_id: boardDifficultyGrades.difficulty,
+        difficulty_name: boardDifficultyGrades.boulderName,
+      })
+      .from(boardDifficultyGrades)
+      .where(
+        and(
+          eq(boardDifficultyGrades.boardType, board_name),
+          eq(boardDifficultyGrades.isListed, true),
+        ),
+      )
+      .orderBy(asc(boardDifficultyGrades.difficulty));
+
     return NextResponse.json(grades, {
       headers: { 'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800' },
     });

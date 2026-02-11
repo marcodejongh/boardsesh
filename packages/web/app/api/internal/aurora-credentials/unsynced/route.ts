@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
-import { sql } from "@/app/lib/db/db";
+import { getDb } from "@/app/lib/db/db";
+import { auroraCredentials, boardseshTicks, boardClimbs } from "@/app/lib/db/schema";
+import { eq, and, isNull, count } from "drizzle-orm";
 import { authOptions } from "@/app/lib/auth/auth-options";
 
 export interface UnsyncedCounts {
@@ -25,12 +27,16 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const db = getDb();
+
     // Get user's Aurora account user IDs from credentials
-    const credentials = await sql`
-      SELECT board_type, aurora_user_id
-      FROM aurora_credentials
-      WHERE user_id = ${session.user.id} AND aurora_user_id IS NOT NULL
-    `;
+    const credentials = await db
+      .select({
+        boardType: auroraCredentials.boardType,
+        auroraUserId: auroraCredentials.auroraUserId,
+      })
+      .from(auroraCredentials)
+      .where(eq(auroraCredentials.userId, session.user.id));
 
     const counts: UnsyncedCounts = {
       kilter: { ascents: 0, climbs: 0 },
@@ -38,33 +44,42 @@ export async function GET() {
     };
 
     for (const cred of credentials) {
-      const boardType = cred.board_type as 'kilter' | 'tension';
-      const auroraUserId = cred.aurora_user_id;
+      if (!cred.auroraUserId) continue;
+
+      const boardType = cred.boardType as 'kilter' | 'tension';
 
       // Count unsynced ticks (ascents/bids) for this user from boardsesh_ticks
       // Note: boardsesh_ticks uses NextAuth userId, not Aurora user_id
       // Unsynced ticks are those without an auroraId
-      const ascentResult = await sql`
-        SELECT COUNT(*) as count FROM boardsesh_ticks
-        WHERE user_id = ${session.user.id}
-          AND board_type = ${boardType}
-          AND aurora_id IS NULL
-      `;
+      const [ascentResult] = await db
+        .select({ count: count() })
+        .from(boardseshTicks)
+        .where(
+          and(
+            eq(boardseshTicks.userId, session.user.id),
+            eq(boardseshTicks.boardType, boardType),
+            isNull(boardseshTicks.auroraId),
+          ),
+        );
 
       // Count unsynced climbs for this user
-      const climbResult = await sql`
-        SELECT COUNT(*) as count FROM board_climbs
-        WHERE board_type = ${boardType}
-          AND setter_id = ${auroraUserId}
-          AND synced = false
-      `;
+      const [climbResult] = await db
+        .select({ count: count() })
+        .from(boardClimbs)
+        .where(
+          and(
+            eq(boardClimbs.boardType, boardType),
+            eq(boardClimbs.setterId, cred.auroraUserId),
+            eq(boardClimbs.synced, false),
+          ),
+        );
 
       if (boardType === 'kilter') {
-        counts.kilter.ascents = Number(ascentResult[0]?.count || 0);
-        counts.kilter.climbs = Number(climbResult[0]?.count || 0);
+        counts.kilter.ascents = ascentResult?.count ?? 0;
+        counts.kilter.climbs = climbResult?.count ?? 0;
       } else if (boardType === 'tension') {
-        counts.tension.ascents = Number(ascentResult[0]?.count || 0);
-        counts.tension.climbs = Number(climbResult[0]?.count || 0);
+        counts.tension.ascents = ascentResult?.count ?? 0;
+        counts.tension.climbs = climbResult?.count ?? 0;
       }
     }
 

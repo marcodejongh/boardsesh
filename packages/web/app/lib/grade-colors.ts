@@ -180,9 +180,13 @@ function hexToHSL(hex: string): { h: number; s: number; l: number } {
  * Create a softened version of a hex color for use as text color.
  * Preserves the hue with high saturation to stay close to the original color
  * while using controlled lightness for readability on bold/large text.
+ * In dark mode, uses higher lightness for readability on dark backgrounds.
  */
-function softenColor(hex: string): string {
+function softenColor(hex: string, darkMode?: boolean): string {
   const { h } = hexToHSL(hex);
+  if (darkMode) {
+    return `hsl(${Math.round(h)}, 80%, 72%)`;
+  }
   return `hsl(${Math.round(h)}, 72%, 44%)`;
 }
 
@@ -190,30 +194,30 @@ function softenColor(hex: string): string {
  * Get a softened color for a V-grade string (e.g., "V3", "V10").
  * Returns a muted version of the grade color suitable for large/bold text in list views.
  */
-export function getSoftVGradeColor(vGrade: string | null | undefined): string | undefined {
+export function getSoftVGradeColor(vGrade: string | null | undefined, darkMode?: boolean): string | undefined {
   const color = getVGradeColor(vGrade);
   if (!color) return undefined;
-  return softenColor(color);
+  return softenColor(color, darkMode);
 }
 
 /**
  * Get a softened color for a Font grade string (e.g., "6a", "7b+").
  * Returns a muted version of the grade color suitable for large/bold text in list views.
  */
-export function getSoftFontGradeColor(fontGrade: string | null | undefined): string | undefined {
+export function getSoftFontGradeColor(fontGrade: string | null | undefined, darkMode?: boolean): string | undefined {
   const color = getFontGradeColor(fontGrade);
   if (!color) return undefined;
-  return softenColor(color);
+  return softenColor(color, darkMode);
 }
 
 /**
  * Get a softened color for a difficulty string (e.g., "6a/V3", "V5").
  * Returns a muted version of the grade color suitable for large/bold text in list views.
  */
-export function getSoftGradeColor(difficulty: string | null | undefined): string | undefined {
+export function getSoftGradeColor(difficulty: string | null | undefined, darkMode?: boolean): string | undefined {
   const color = getGradeColor(difficulty);
   if (!color) return undefined;
-  return softenColor(color);
+  return softenColor(color, darkMode);
 }
 
 function hexToHue(hex: string): number {
@@ -224,13 +228,21 @@ function hexToHue(hex: string): number {
  * Get a subtle HSL tint color derived from a climb's grade color.
  * @param difficulty - Difficulty string like "6a/V3" or "V5"
  * @param variant - 'default' for queue bar (30% sat, 88% light), 'light' for list items (20% sat, 94% light)
+ * @param darkMode - When true, uses lower lightness values suitable for dark backgrounds
  * @returns HSL color string or undefined if no grade color found
  */
-export function getGradeTintColor(difficulty: string | null | undefined, variant: 'default' | 'light' = 'default'): string | undefined {
+export function getGradeTintColor(difficulty: string | null | undefined, variant: 'default' | 'light' = 'default', darkMode?: boolean): string | undefined {
   const color = getGradeColor(difficulty);
   if (!color) return undefined;
 
   const hue = Math.round(hexToHue(color));
+
+  if (darkMode) {
+    if (variant === 'light') {
+      return `hsl(${hue}, 25%, 22%)`;
+    }
+    return `hsla(${hue}, 35%, 28%, 0.6)`;
+  }
 
   if (variant === 'light') {
     return `hsl(${hue}, 20%, 94%)`;

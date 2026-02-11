@@ -8,7 +8,7 @@ import Box from '@mui/material/Box';
 import { DeleteOutlined } from '@mui/icons-material';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
-import { themeTokens } from '@/app/theme/theme-config';
+
 import QueueList from '@/app/components/queue-control/queue-list';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
@@ -52,7 +52,7 @@ const QueueSidebar: React.FC<{ boardDetails: BoardDetails }> = ({ boardDetails }
             okText="Clear"
             cancelText="Cancel"
           >
-            <MuiButton variant="text" startIcon={<DeleteOutlined />} size="small" sx={{ color: themeTokens.neutral[400] }}>
+            <MuiButton variant="text" startIcon={<DeleteOutlined />} size="small" sx={{ color: 'var(--neutral-400)' }}>
               Clear
             </MuiButton>
           </ConfirmPopover>

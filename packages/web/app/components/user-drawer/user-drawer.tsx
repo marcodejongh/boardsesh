@@ -18,8 +18,11 @@ import SwapHorizOutlined from '@mui/icons-material/SwapHorizOutlined';
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
 import GroupOutlined from '@mui/icons-material/GroupOutlined';
+import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
+import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
 
 import { useSession, signOut } from 'next-auth/react';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
@@ -51,6 +54,7 @@ export default function UserDrawer({ boardDetails, boardConfigs }: UserDrawerPro
   const [showBoardSelector, setShowBoardSelector] = useState(false);
   const [recentSessions, setRecentSessions] = useState<StoredSession[]>([]);
 
+  const { mode, toggleMode } = useColorMode();
   const isMoonboard = boardDetails?.board_name === 'moonboard';
 
   // Load recent sessions when drawer opens
@@ -279,6 +283,22 @@ export default function UserDrawer({ boardDetails, boardConfigs }: UserDrawerPro
               </button>
             </>
           )}
+
+          {/* Spacer to push toggle to bottom */}
+          <div className={styles.bottomSpacer} />
+
+          {/* Sun/Moon toggle */}
+          <div className={styles.themeToggleContainer}>
+            <div className={styles.themeToggle} onClick={toggleMode} role="button" tabIndex={0} aria-label="Toggle dark mode">
+              <div className={`${styles.themeToggleThumb} ${mode === 'dark' ? styles.themeToggleThumbDark : ''}`} />
+              <div className={`${styles.themeToggleOption} ${mode === 'light' ? styles.themeToggleOptionActive : ''}`}>
+                <LightModeOutlined sx={{ fontSize: 16 }} />
+              </div>
+              <div className={`${styles.themeToggleOption} ${mode === 'dark' ? styles.themeToggleOptionActive : ''}`}>
+                <DarkModeOutlined sx={{ fontSize: 16 }} />
+              </div>
+            </div>
+          </div>
         </div>
       </SwipeableDrawer>
 

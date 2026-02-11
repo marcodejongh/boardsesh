@@ -82,7 +82,7 @@ export default function BoardCreationBanner({
           mb: 2,
           borderColor: themeTokens.colors.primary,
           borderRadius: `${themeTokens.borderRadius.lg}px`,
-          backgroundColor: themeTokens.semantic.selectedLight,
+          backgroundColor: 'var(--semantic-selected-light)',
         }}
       >
         <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>

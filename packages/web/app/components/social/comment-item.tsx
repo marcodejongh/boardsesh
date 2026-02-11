@@ -265,7 +265,7 @@ export default function CommentItem({
                   onClick={() => setShowReplyForm(!showReplyForm)}
                   sx={{
                     textTransform: 'none',
-                    color: themeTokens.neutral[500],
+                    color: 'var(--neutral-500)',
                     fontSize: themeTokens.typography.fontSize.xs,
                   }}
                 >
@@ -277,7 +277,7 @@ export default function CommentItem({
                   <IconButton
                     size="small"
                     onClick={() => setIsEditing(true)}
-                    sx={{ color: themeTokens.neutral[400] }}
+                    sx={{ color: 'var(--neutral-400)' }}
                     aria-label="Edit comment"
                   >
                     <EditOutlined sx={{ fontSize: 16 }} />
@@ -291,7 +291,7 @@ export default function CommentItem({
                   >
                     <IconButton
                       size="small"
-                      sx={{ color: themeTokens.neutral[400] }}
+                      sx={{ color: 'var(--neutral-400)' }}
                       aria-label="Delete comment"
                     >
                       <DeleteOutlined sx={{ fontSize: 16 }} />

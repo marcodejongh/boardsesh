@@ -6,6 +6,7 @@ import Box from '@mui/material/Box';
 import CopyrightOutlined from '@mui/icons-material/CopyrightOutlined';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getSoftVGradeColor } from '@/app/lib/grade-colors';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 
 export type ClimbTitleData = {
   name?: string;
@@ -15,6 +16,7 @@ export type ClimbTitleData = {
   angle?: number | string;
   setter_username?: string;
   ascensionist_count?: number;
+  communityGrade?: string | null;
 };
 
 type ClimbTitleProps = {
@@ -55,6 +57,9 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   centered = false,
   titleFontSize,
 }) => {
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
+
   if (!climb) {
     return (
       <Typography
@@ -70,7 +75,10 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     );
   }
 
-  const hasGrade = climb.difficulty && climb.quality_average && climb.quality_average !== '0';
+  // Use community grade when available, otherwise fall back to original difficulty
+  const displayDifficulty = climb.communityGrade || climb.difficulty;
+
+  const hasGrade = displayDifficulty && climb.quality_average && climb.quality_average !== '0';
   // A climb is a benchmark/classic if benchmark_difficulty has a meaningful value (not null, undefined, empty, or "0")
   const isBenchmark =
     climb.benchmark_difficulty !== null &&
@@ -84,7 +92,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     return vGradeMatch ? vGradeMatch[0].toUpperCase() : null;
   };
 
-  const vGrade = climb.difficulty ? getVGrade(climb.difficulty) : null;
+  const vGrade = displayDifficulty ? getVGrade(displayDifficulty) : null;
 
   const textOverflowStyles = ellipsis
     ? {
@@ -96,7 +104,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
 
   const renderDifficultyText = () => {
     if (hasGrade) {
-      const baseText = `${climb.difficulty} ${climb.quality_average}★`;
+      const baseText = `${displayDifficulty} ${climb.quality_average}★`;
       return showAngle ? `${baseText} @ ${climb.angle}°` : baseText;
     }
     const projectText = showAngle ? `project @ ${climb.angle}°` : 'project';
@@ -143,7 +151,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     </Typography>
   );
 
-  const gradeColor = vGrade ? getSoftVGradeColor(vGrade) : undefined;
+  const gradeColor = vGrade ? getSoftVGradeColor(vGrade, isDark) : undefined;
 
   const largeGradeElement = vGrade && (
     <Typography
@@ -178,7 +186,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   if (layout === 'horizontal') {
     const secondLineContent = [];
     if (hasGrade) {
-      secondLineContent.push(`${climb.difficulty} ${climb.quality_average}★`);
+      secondLineContent.push(`${displayDifficulty} ${climb.quality_average}★`);
     }
     if (showSetterInfo && climb.setter_username) {
       secondLineContent.push(`${climb.setter_username}`);

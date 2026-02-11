@@ -12,7 +12,7 @@ import UserDrawer from '@/app/components/user-drawer/user-drawer';
 import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
 import PersistentQueueControlBar from '@/app/components/queue-control/persistent-queue-control-bar';
 import { useSession } from 'next-auth/react';
-import { themeTokens } from '@/app/theme/theme-config';
+
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import ErrorBoundary from '@/app/components/error-boundary';
 import BoardSelectorPills from '@/app/components/board-entity/board-selector-pills';
@@ -59,7 +59,7 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
           gap: 1.5,
           px: 2,
           py: 1.5,
-          borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+          borderBottom: '1px solid var(--neutral-200)',
         }}
       >
         <UserDrawer boardConfigs={boardConfigs} />

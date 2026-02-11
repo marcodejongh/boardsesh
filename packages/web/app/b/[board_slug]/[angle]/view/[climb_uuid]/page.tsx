@@ -6,14 +6,13 @@ import { getClimb } from '@/app/lib/data/queries';
 import { constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import ClimbCard from '@/app/components/climb-card/climb-card';
-import BetaVideos from '@/app/components/beta-videos/beta-videos';
-import { LogbookSection } from '@/app/components/logbook/logbook-section';
 import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
-import ClimbSocialSection from '@/app/components/social/climb-social-section';
+import ClimbViewSidebar from '@/app/components/climb-view/climb-view-sidebar';
 import { dbz } from '@/app/lib/db/db';
 import { eq, and } from 'drizzle-orm';
 import type { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
+import { climbCommunityStatus } from '@/app/lib/db/schema';
 import styles from '@/app/[board_name]/[layout_id]/[size_id]/[set_ids]/[angle]/view/[climb_uuid]/climb-view.module.css';
 
 interface BoardSlugViewPageProps {
@@ -58,10 +57,30 @@ export default async function BoardSlugViewPage(props: BoardSlugViewPageProps) {
       }
     };
 
-    const [boardDetails, currentClimb, betaLinks] = await Promise.all([
+    const fetchCommunityGrade = async (): Promise<string | null> => {
+      try {
+        const [result] = await dbz
+          .select({ communityGrade: climbCommunityStatus.communityGrade })
+          .from(climbCommunityStatus)
+          .where(
+            and(
+              eq(climbCommunityStatus.climbUuid, parsedParams.climb_uuid),
+              eq(climbCommunityStatus.boardType, parsedParams.board_name),
+              eq(climbCommunityStatus.angle, parsedParams.angle),
+            ),
+          )
+          .limit(1);
+        return result?.communityGrade ?? null;
+      } catch {
+        return null;
+      }
+    };
+
+    const [boardDetails, currentClimb, betaLinks, communityGrade] = await Promise.all([
       getBoardDetailsForBoard(parsedParams),
       getClimb(parsedParams),
       fetchBetaLinks(),
+      fetchCommunityGrade(),
     ]);
 
     if (!currentClimb) {
@@ -72,6 +91,7 @@ export default async function BoardSlugViewPage(props: BoardSlugViewPageProps) {
     const climbWithProcessedData = {
       ...currentClimb,
       litUpHoldsMap,
+      communityGrade,
     };
 
     const auroraAppUrl = constructClimbInfoUrl(
@@ -95,15 +115,15 @@ export default async function BoardSlugViewPage(props: BoardSlugViewPageProps) {
             <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
           </div>
           <div className={styles.sidebarSection}>
-            <div className={styles.betaSection}>
-              <BetaVideos betaLinks={betaLinks} />
-            </div>
-            <div className={styles.logbookSection}>
-              <LogbookSection climb={climbWithProcessedData} />
-            </div>
-            <div className={styles.logbookSection}>
-              <ClimbSocialSection climbUuid={parsedParams.climb_uuid} />
-            </div>
+            <ClimbViewSidebar
+              climb={climbWithProcessedData}
+              betaLinks={betaLinks}
+              climbUuid={parsedParams.climb_uuid}
+              boardType={parsedParams.board_name}
+              angle={parsedParams.angle}
+              currentClimbDifficulty={currentClimb.difficulty ?? undefined}
+              boardName={parsedParams.board_name}
+            />
           </div>
         </div>
       </div>

@@ -134,7 +134,7 @@ export default function VoteButton({
           disabled={isLoading}
           aria-label={isLiked ? 'Unlike' : 'Like'}
           sx={{
-            color: isLiked ? themeTokens.colors.error : themeTokens.neutral[400],
+            color: isLiked ? themeTokens.colors.error : 'var(--neutral-400)',
             p: 0.5,
           }}
         >
@@ -148,7 +148,7 @@ export default function VoteButton({
           <MuiTypography
             variant="body2"
             sx={{
-              color: isLiked ? themeTokens.colors.error : themeTokens.neutral[500],
+              color: isLiked ? themeTokens.colors.error : 'var(--neutral-500)',
               fontSize: themeTokens.typography.fontSize.xs,
             }}
           >
@@ -174,7 +174,7 @@ export default function VoteButton({
         disabled={isLoading}
         aria-label="Upvote"
         sx={{
-          color: userVote === 1 ? themeTokens.colors.success : themeTokens.neutral[400],
+          color: userVote === 1 ? themeTokens.colors.success : 'var(--neutral-400)',
           p: 0.5,
         }}
       >
@@ -191,7 +191,7 @@ export default function VoteButton({
               ? themeTokens.colors.success
               : userVote === -1
                 ? themeTokens.colors.error
-                : themeTokens.neutral[600],
+                : 'var(--neutral-600)',
         }}
       >
         {score}
@@ -202,7 +202,7 @@ export default function VoteButton({
         disabled={isLoading}
         aria-label="Downvote"
         sx={{
-          color: userVote === -1 ? themeTokens.colors.error : themeTokens.neutral[400],
+          color: userVote === -1 ? themeTokens.colors.error : 'var(--neutral-400)',
           p: 0.5,
         }}
       >

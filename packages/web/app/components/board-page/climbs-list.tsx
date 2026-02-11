@@ -174,7 +174,7 @@ const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_i
   const noMoreClimbsBoxSx = useMemo(() => ({
     textAlign: 'center' as const,
     padding: `${themeTokens.spacing[5]}px`,
-    color: themeTokens.neutral[400],
+    color: 'var(--neutral-400)',
   }), []);
 
   // Set up Intersection Observer

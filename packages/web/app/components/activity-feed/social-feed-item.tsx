@@ -132,7 +132,7 @@ const SocialFeedItem: React.FC<SocialFeedItemProps> = ({ item, showUserHeader = 
                   label={statusDisplay.label}
                   size="small"
                   color={statusDisplay.chipColor}
-                  sx={statusDisplay.color ? { bgcolor: statusDisplay.color, color: themeTokens.neutral[900] } : undefined}
+                  sx={statusDisplay.color ? { bgcolor: statusDisplay.color, color: 'var(--neutral-900)' } : undefined}
                   className={styles.statusTag}
                 />
                 {!showUserHeader && (

@@ -56,7 +56,7 @@ const PlayViewComments: React.FC<PlayViewCommentsProps> = ({ climbUuid }) => {
               alignItems: 'flex-start',
               gap: `${themeTokens.spacing[2]}px`,
               py: `${themeTokens.spacing[1]}px`,
-              borderBottom: `1px solid ${themeTokens.neutral[100]}`,
+              borderBottom: '1px solid var(--neutral-100)',
               '&:last-child': { borderBottom: 'none' },
             }}
           >
@@ -65,7 +65,7 @@ const PlayViewComments: React.FC<PlayViewCommentsProps> = ({ climbUuid }) => {
               {ascent.is_ascent ? (
                 <CheckOutlined sx={{ fontSize: themeTokens.typography.fontSize.base, color: themeTokens.colors.success }} />
               ) : (
-                <CloseOutlined sx={{ fontSize: themeTokens.typography.fontSize.base, color: themeTokens.neutral[400] }} />
+                <CloseOutlined sx={{ fontSize: themeTokens.typography.fontSize.base, color: 'var(--neutral-400)' }} />
               )}
             </Box>
 
@@ -81,8 +81,8 @@ const PlayViewComments: React.FC<PlayViewCommentsProps> = ({ climbUuid }) => {
                   sx={{
                     height: themeTokens.spacing[5],
                     fontSize: themeTokens.typography.fontSize.xs,
-                    bgcolor: ascent.is_ascent ? themeTokens.colors.successBg : themeTokens.neutral[100],
-                    color: ascent.is_ascent ? themeTokens.colors.success : themeTokens.neutral[500],
+                    bgcolor: ascent.is_ascent ? 'var(--color-success-bg)' : 'var(--neutral-100)',
+                    color: ascent.is_ascent ? themeTokens.colors.success : 'var(--neutral-500)',
                   }}
                 />
                 {ascent.tries > 1 && (

@@ -9,3 +9,4 @@ export * from './follows';
 export * from './social';
 export * from './notifications';
 export * from './feed';
+export * from './proposals';

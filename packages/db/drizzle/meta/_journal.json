@@ -323,6 +323,34 @@
       "when": 1769222400000,
       "tag": "0049_fix_feed_items_index_ordering",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1769308800000,
+      "tag": "0048_add_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1769395200000,
+      "tag": "0049_seed_admin_marco",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1769481600000,
+      "tag": "0050_add_proposal_created_notification_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1769568000000,
+      "tag": "0051_community_roles_nulls_not_distinct",
+      "breakpoints": true
     }
   ]
 }

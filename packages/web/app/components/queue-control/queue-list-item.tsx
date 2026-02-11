@@ -31,6 +31,7 @@ import ClimbTitle from '../climb-card/climb-title';
 import { useBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams, constructClimbInfoUrl } from '@/app/lib/url-utils';
 import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import styles from './queue-list-item.module.css';
@@ -72,13 +73,13 @@ export const AscentStatus = ({ climbUuid, fontSize }: { climbUuid: ClimbUuid; fo
         {/* Regular ascent icon */}
         {hasSuccessfulAscent ? (
           <div className={styles.ascentIconRegular}>
-            <CheckOutlined style={{ color: themeTokens.neutral[400], fontSize }} />
+            <CheckOutlined style={{ color: 'var(--neutral-400)', fontSize }} />
           </div>
         ) : null}
         {/* Mirrored ascent icon */}
         {hasSuccessfulMirroredAscent ? (
           <div className={styles.ascentIconMirrored}>
-            <CheckOutlined style={{ color: themeTokens.neutral[400], fontSize }} />
+            <CheckOutlined style={{ color: 'var(--neutral-400)', fontSize }} />
           </div>
         ) : null}
         {!hasSuccessfulMirroredAscent && !hasSuccessfulAscent ? (
@@ -90,7 +91,7 @@ export const AscentStatus = ({ climbUuid, fontSize }: { climbUuid: ClimbUuid; fo
 
   // Single icon for non-mirroring boards
   return hasSuccessfulAscent ? (
-    <CheckOutlined style={{ color: themeTokens.neutral[400], fontSize }} />
+    <CheckOutlined style={{ color: 'var(--neutral-400)', fontSize }} />
   ) : (
     <CloseOutlined style={{ color: themeTokens.colors.error, fontSize }} />
   );
@@ -114,6 +115,8 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   onToggleSelect,
 }) => {
   const router = useRouter();
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
   const itemRef = useRef<HTMLDivElement>(null);
@@ -182,7 +185,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
   // Memoize style objects to prevent recreation on every render
   const borderBottomStyle = useMemo(
-    () => ({ borderBottom: `1px solid ${themeTokens.neutral[200]}` }),
+    () => ({ borderBottom: `1px solid var(--neutral-200)` }),
     [],
   );
 
@@ -212,10 +215,10 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
     () => ({
       padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
       backgroundColor: isCurrent
-        ? (getGradeTintColor(item.climb?.difficulty, 'light') ?? themeTokens.semantic.selected)
+        ? (getGradeTintColor(item.climb?.difficulty, 'light', isDark) ?? 'var(--semantic-selected)')
         : isHistory
-          ? themeTokens.neutral[100]
-          : themeTokens.semantic.surface,
+          ? 'var(--neutral-100)'
+          : 'var(--semantic-surface)',
       opacity: isSwipeComplete ? 0 : isHistory ? 0.6 : 1,
       cursor: isEditMode ? 'pointer' : undefined,
     }),
@@ -339,7 +342,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
               ) : (
                 <MuiTooltip title="Added via Bluetooth">
                   <MuiAvatar sx={avatarBluetoothStyle}>
-                    <BluetoothIcon style={{ color: themeTokens.neutral[400] }} />
+                    <BluetoothIcon style={{ color: 'var(--neutral-400)' }} />
                   </MuiAvatar>
                 </MuiTooltip>
               )}

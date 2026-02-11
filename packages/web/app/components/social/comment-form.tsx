@@ -78,7 +78,7 @@ export default function CommentForm({
           {showCounter && (
             <MuiTypography
               variant="caption"
-              sx={{ color: isOverLimit ? themeTokens.colors.error : themeTokens.neutral[400] }}
+              sx={{ color: isOverLimit ? themeTokens.colors.error : 'var(--neutral-400)' }}
             >
               {body.length}/{MAX_BODY_LENGTH}
             </MuiTypography>

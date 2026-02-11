@@ -16,7 +16,6 @@ import {
   type GetCommentsQueryVariables,
   type GetCommentsQueryResponse,
 } from '@/app/lib/graphql/operations';
-import { themeTokens } from '@/app/theme/theme-config';
 import CommentItem from './comment-item';
 
 interface CommentListProps {
@@ -139,7 +138,7 @@ export default function CommentList({ entityType, entityId, refreshKey = 0, curr
       {/* Comments */}
       {comments.length === 0 ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 1 }}>
-          <ChatBubbleOutlineOutlined sx={{ fontSize: 32, color: themeTokens.neutral[300] }} />
+          <ChatBubbleOutlineOutlined sx={{ fontSize: 32, color: 'var(--neutral-300)' }} />
           <MuiTypography variant="body2" color="text.secondary">
             No comments yet. Be the first!
           </MuiTypography>

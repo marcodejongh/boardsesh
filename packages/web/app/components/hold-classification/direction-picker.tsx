@@ -107,8 +107,8 @@ const DirectionPicker: React.FC<DirectionPickerProps> = ({
           cx={center}
           cy={center}
           r={radius}
-          fill={themeTokens.neutral[50]}
-          stroke={themeTokens.neutral[300]}
+          fill="var(--neutral-50)"
+          stroke="var(--neutral-300)"
           strokeWidth={2}
         />
 
@@ -123,7 +123,7 @@ const DirectionPicker: React.FC<DirectionPickerProps> = ({
           cx={center}
           cy={center}
           r={4}
-          fill={themeTokens.neutral[400]}
+          fill="var(--neutral-400)"
         />
 
         {/* Arrow line */}

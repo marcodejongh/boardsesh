@@ -186,7 +186,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
   const suggestedItemStyle = useMemo(
     () => ({
       padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
-      borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+      borderBottom: `1px solid var(--neutral-200)`,
     }),
     [],
   );
@@ -210,7 +210,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
   const noMoreSuggestionsStyle = useMemo(
     () => ({
       padding: themeTokens.spacing[4],
-      color: themeTokens.neutral[400],
+      color: 'var(--neutral-400)',
     }),
     [],
   );

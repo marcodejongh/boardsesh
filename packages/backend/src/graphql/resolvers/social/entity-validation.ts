@@ -109,7 +109,15 @@ export async function validateEntityExists(
     }
 
     case 'proposal': {
-      throw new Error('Proposals are not yet supported');
+      const [proposal] = await db
+        .select({ uuid: dbSchema.climbProposals.uuid })
+        .from(dbSchema.climbProposals)
+        .where(eq(dbSchema.climbProposals.uuid, entityId))
+        .limit(1);
+      if (!proposal) {
+        throw new Error('Proposal not found');
+      }
+      break;
     }
 
     default: {

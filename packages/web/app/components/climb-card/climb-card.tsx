@@ -12,6 +12,7 @@ import { Climb, BoardDetails } from '@/app/lib/types';
 import { ClimbActions } from '../climb-actions';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 
 type ClimbCardProps = {
   climb?: Climb;
@@ -65,6 +66,8 @@ function ClimbCardWithActions({
   onCoverDoubleClick?: () => void;
   selected?: boolean;
 }) {
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} onDoubleClick={onCoverDoubleClick} />;
   const cardTitle = <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />;
 
@@ -89,7 +92,7 @@ function ClimbCardWithActions({
         <CardContent
           sx={{
             padding: `${themeTokens.spacing[1] + 2}px`,
-            backgroundColor: selected ? (getGradeTintColor(climb.difficulty, 'light') ?? themeTokens.semantic.selectedLight) : undefined,
+            backgroundColor: selected ? (getGradeTintColor(climb.difficulty, 'light', isDark) ?? 'var(--semantic-selected-light)') : undefined,
           }}
         >
           <div style={{ position: 'relative' }}>
@@ -100,7 +103,7 @@ function ClimbCardWithActions({
         <CardActions
           sx={{
             justifyContent: 'space-around',
-            borderTop: `1px solid ${themeTokens.neutral[200]}`,
+            borderTop: `1px solid var(--neutral-200)`,
           }}
         >
           <ClimbActions
@@ -129,6 +132,8 @@ const ClimbCardStatic = React.memo(
     actions,
     expandedContent,
   }: ClimbCardProps) => {
+    const { mode } = useColorMode();
+    const isDark = mode === 'dark';
     const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} onDoubleClick={onCoverDoubleClick} />;
     const cardTitle = climb ? (
       <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />
@@ -146,7 +151,7 @@ const ClimbCardStatic = React.memo(
           <CardContent
             sx={{
               padding: `${themeTokens.spacing[1] + 2}px`,
-              backgroundColor: selected ? (getGradeTintColor(climb?.difficulty, 'light') ?? themeTokens.semantic.selectedLight) : undefined,
+              backgroundColor: selected ? (getGradeTintColor(climb?.difficulty, 'light', isDark) ?? 'var(--semantic-selected-light)') : undefined,
             }}
           >
             <div style={{ position: 'relative' }}>
@@ -155,7 +160,7 @@ const ClimbCardStatic = React.memo(
             </div>
           </CardContent>
           {actions && actions.length > 0 && (
-            <CardActions sx={{ justifyContent: 'space-around', borderTop: `1px solid ${themeTokens.neutral[200]}` }}>
+            <CardActions sx={{ justifyContent: 'space-around', borderTop: `1px solid var(--neutral-200)` }}>
               {actions}
             </CardActions>
           )}

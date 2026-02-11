@@ -472,7 +472,7 @@ function ServerBoardCard({ board, onSelect }: { board: UserBoard; onSelect: () =
           </Box>
           {board.locationName && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-              <LocationOnOutlined sx={{ fontSize: 12, color: themeTokens.neutral[400] }} />
+              <LocationOnOutlined sx={{ fontSize: 12, color: 'var(--neutral-400)' }} />
               <Typography variant="caption" color="text.secondary" noWrap>
                 {board.locationName}
               </Typography>

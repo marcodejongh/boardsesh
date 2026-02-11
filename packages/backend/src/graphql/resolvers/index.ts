@@ -32,6 +32,9 @@ import { socialVoteQueries, socialVoteMutations } from './social/votes';
 import { socialBoardQueries, socialBoardMutations } from './social/boards';
 import { socialNotificationQueries, socialNotificationMutations, socialNotificationSubscriptions } from './social/notifications';
 import { socialCommentSubscriptions } from './social/comment-subscriptions';
+import { socialProposalQueries, socialProposalMutations } from './social/proposals';
+import { socialRoleQueries, socialRoleMutations } from './social/roles';
+import { socialCommunitySettingsQueries, socialCommunitySettingsMutations } from './social/community-settings';
 
 export const resolvers = {
   // Scalar types
@@ -56,6 +59,9 @@ export const resolvers = {
     ...socialBoardQueries,
     ...activityFeedQueries,
     ...socialNotificationQueries,
+    ...socialProposalQueries,
+    ...socialRoleQueries,
+    ...socialCommunitySettingsQueries,
   },
 
   Mutation: {
@@ -71,6 +77,9 @@ export const resolvers = {
     ...socialVoteMutations,
     ...socialBoardMutations,
     ...socialNotificationMutations,
+    ...socialProposalMutations,
+    ...socialRoleMutations,
+    ...socialCommunitySettingsMutations,
   },
 
   Subscription: {

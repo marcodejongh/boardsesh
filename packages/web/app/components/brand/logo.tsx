@@ -113,7 +113,7 @@ export const Logo = ({ size = 'md', showText = true, linkToHome = true }: LogoPr
           style={{
             fontSize,
             fontWeight: themeTokens.typography.fontWeight.bold,
-            color: themeTokens.neutral[800],
+            color: 'var(--neutral-800)',
             letterSpacing: '-0.02em',
             lineHeight: 1,
           }}

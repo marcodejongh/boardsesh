@@ -28,6 +28,7 @@ import { ShareBoardButton } from '../board-page/share-button';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION, ENTER_ANIMATION_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import PlayViewDrawer from '../play-view/play-view-drawer';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
+import { useColorMode } from '@/app/hooks/use-color-mode';
 import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
 import styles from './queue-control-bar.module.css';
 
@@ -89,7 +90,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const isPlayPage = pathname.includes('/play/');
   const { currentClimb, currentClimbQueueItem, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
 
-  const gradeTintColor = useMemo(() => getGradeTintColor(currentClimb?.difficulty), [currentClimb?.difficulty]);
+  const { mode } = useColorMode();
+  const isDark = mode === 'dark';
+  const gradeTintColor = useMemo(() => getGradeTintColor(currentClimb?.difficulty, 'default', isDark), [currentClimb?.difficulty, isDark]);
 
   const nextClimb = getNextClimbQueueItem();
   const previousClimb = getPreviousClimbQueueItem();
@@ -255,7 +258,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   return (
     <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar">
       {/* Main Control Bar */}
-      <MuiCard variant="outlined" className={styles.card} sx={{ border: 'none' }}>
+      <MuiCard variant="outlined" className={styles.card} sx={{ border: 'none', backgroundColor: 'transparent' }}>
         <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
         {/* Swipe container - captures swipe gestures, does NOT translate */}
         <div className={styles.swipeWrapper}>
@@ -264,7 +267,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
             className={styles.swipeContainer}
             style={{
               padding: `6px ${themeTokens.spacing[3]}px 6px ${themeTokens.spacing[3]}px`,
-              backgroundColor: gradeTintColor ?? themeTokens.semantic.surface,
+              backgroundColor: gradeTintColor ?? (isDark ? 'transparent' : 'var(--semantic-surface)'),
             }}
           >
             <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }} className={styles.row}>
@@ -395,7 +398,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
               okText="Clear"
               cancelText="Cancel"
             >
-              <MuiButton variant="text" startIcon={<DeleteOutlined />} sx={{ color: themeTokens.neutral[400] }}>
+              <MuiButton variant="text" startIcon={<DeleteOutlined />} sx={{ color: 'var(--neutral-400)' }}>
                 Clear
               </MuiButton>
             </ConfirmPopover>

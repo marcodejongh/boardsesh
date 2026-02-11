@@ -9,6 +9,10 @@ import {
   resolveCommentRecipients,
   resolveVoteRecipients,
   resolveFollowRecipient,
+  resolveProposalVoteRecipients,
+  resolveProposalApprovalRecipients,
+  resolveProposalRejectionRecipients,
+  resolveProposalCreatedRecipients,
 } from './recipient-resolution';
 import { fanoutFeedItems } from './feed-fanout';
 import crypto from 'crypto';
@@ -43,7 +47,18 @@ export class NotificationWorker {
         case 'ascent.logged':
           await this.handleAscentLogged(event);
           break;
-        // Future event types (climb.created, proposal.*) are skipped for now
+        case 'proposal.voted':
+          await this.handleProposalVoted(event);
+          break;
+        case 'proposal.approved':
+          await this.handleProposalApproved(event);
+          break;
+        case 'proposal.rejected':
+          await this.handleProposalRejected(event);
+          break;
+        case 'proposal.created':
+          await this.handleProposalCreated(event);
+          break;
         default:
           break;
       }
@@ -141,6 +156,84 @@ export class NotificationWorker {
 
   private async handleAscentLogged(event: SocialEvent): Promise<void> {
     await fanoutFeedItems(event);
+  }
+
+  private async handleProposalVoted(event: SocialEvent): Promise<void> {
+    const recipients = await resolveProposalVoteRecipients(event.entityId);
+
+    for (const recipient of recipients) {
+      const isDuplicate = await this.isDuplicate(
+        event.actorId,
+        recipient.recipientId,
+        recipient.notificationType,
+        event.entityId,
+        60,
+      );
+      if (isDuplicate) continue;
+
+      await this.createAndPublishNotification(
+        recipient.recipientId,
+        event.actorId,
+        recipient.notificationType,
+        event.entityType,
+        event.entityId,
+      );
+    }
+  }
+
+  private async handleProposalApproved(event: SocialEvent): Promise<void> {
+    const recipients = await resolveProposalApprovalRecipients(event.entityId);
+
+    for (const recipient of recipients) {
+      await this.createAndPublishNotification(
+        recipient.recipientId,
+        event.actorId,
+        recipient.notificationType,
+        event.entityType,
+        event.entityId,
+      );
+    }
+  }
+
+  private async handleProposalRejected(event: SocialEvent): Promise<void> {
+    const recipients = await resolveProposalRejectionRecipients(event.entityId);
+
+    for (const recipient of recipients) {
+      await this.createAndPublishNotification(
+        recipient.recipientId,
+        event.actorId,
+        recipient.notificationType,
+        event.entityType,
+        event.entityId,
+      );
+    }
+  }
+
+  private async handleProposalCreated(event: SocialEvent): Promise<void> {
+    const climbUuid = event.metadata.climbUuid;
+    const boardType = event.metadata.boardType;
+    if (!climbUuid || !boardType) return;
+
+    const recipients = await resolveProposalCreatedRecipients(climbUuid, boardType, event.actorId);
+
+    for (const recipient of recipients) {
+      const isDuplicate = await this.isDuplicate(
+        event.actorId,
+        recipient.recipientId,
+        recipient.notificationType,
+        event.entityId,
+        60,
+      );
+      if (isDuplicate) continue;
+
+      await this.createAndPublishNotification(
+        recipient.recipientId,
+        event.actorId,
+        recipient.notificationType,
+        event.entityType,
+        event.entityId,
+      );
+    }
   }
 
   private async isDuplicate(

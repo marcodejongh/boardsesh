@@ -22,7 +22,6 @@ import WorkoutTypeSelector from './workout-type-selector';
 import GeneratorOptionsForm, { getDefaultOptions } from './generator-options-form';
 import GradeProgressionChart from './grade-progression-chart';
 import { generateWorkoutPlan, groupSlotsBySection, getGradeName } from './generation-utils';
-import { themeTokens } from '@/app/theme/theme-config';
 import styles from './playlist-generator-drawer.module.css';
 
 
@@ -345,7 +344,7 @@ const PlaylistGeneratorDrawer: React.FC<PlaylistGeneratorDrawerProps> = ({
       styles={{
         wrapper: { height: '85vh' },
         header: {
-          borderBottom: `1px solid ${themeTokens.neutral[200]}`,
+          borderBottom: `1px solid var(--neutral-200)`,
         },
         body: {
           padding: drawerState === 'select' ? 0 : 16,
