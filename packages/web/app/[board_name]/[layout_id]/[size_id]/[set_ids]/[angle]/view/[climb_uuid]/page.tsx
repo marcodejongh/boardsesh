@@ -1,13 +1,9 @@
 import React from 'react';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { BoardRouteParametersWithUuid, BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { getClimb } from '@/app/lib/data/queries';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
-import ClimbCard from '@/app/components/climb-card/climb-card';
-
-import ClimbViewSidebar from '@/app/components/climb-view/climb-view-sidebar';
 import {
-  constructClimbInfoUrl,
   extractUuidFromSlug,
   constructClimbViewUrl,
   isUuidOnly,
@@ -16,14 +12,9 @@ import {
 } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
-import ClimbViewActions from '@/app/components/climb-view/climb-view-actions';
 import { Metadata } from 'next';
-import { dbz } from '@/app/lib/db/db';
-import { eq, and } from 'drizzle-orm';
-import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
-import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
-import { climbCommunityStatus } from '@/app/lib/db/schema';
-import styles from './climb-view.module.css';
+import { fetchClimbDetailData } from '@/app/lib/data/climb-detail-data.server';
+import ClimbDetailPageServer from '@/app/components/climb-detail/climb-detail-page.server';
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParametersWithUuid> }): Promise<Metadata> {
   const params = await props.params;
@@ -38,7 +29,6 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
     const description = `${climbName} - ${climbGrade} by ${setter}. Quality: ${currentClimb.quality_average || 0}/5. Ascents: ${currentClimb.ascensionist_count || 0}`;
     const climbUrl = constructClimbViewUrl(parsedParams, parsedParams.climb_uuid, climbName);
 
-    // Generate OG image URL - use parsed numeric IDs for better performance
     const ogImageUrl = new URL('/api/og/climb', 'https://boardsesh.com');
     ogImageUrl.searchParams.set('board_name', parsedParams.board_name);
     ogImageUrl.searchParams.set('layout_id', parsedParams.layout_id.toString());
@@ -83,7 +73,6 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
   const params = await props.params;
 
   try {
-    // Check if any parameters are in numeric format (old URLs)
     const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
       param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
     );
@@ -91,21 +80,16 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
     let parsedParams;
 
     if (hasNumericParams) {
-      // For old URLs, use the simple parsing function first
       parsedParams = parseBoardRouteParams({
         ...params,
         climb_uuid: extractUuidFromSlug(params.climb_uuid),
       });
     } else {
-      // For new URLs, use the slug parsing function
       parsedParams = await parseBoardRouteParamsWithSlugs(params);
     }
 
     if (hasNumericParams || isUuidOnly(params.climb_uuid)) {
-      // Need to redirect to new slug-based URL
       const currentClimb = await getClimb(parsedParams);
-
-      // Get the names for slug generation
       const layouts = await import('@/app/lib/data/queries').then((m) => m.getLayouts(parsedParams.board_name));
       const sizes = await import('@/app/lib/data/queries').then((m) =>
         m.getSizes(parsedParams.board_name, parsedParams.layout_id),
@@ -132,113 +116,42 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
         permanentRedirect(newUrl);
       }
     }
-    // Fetch beta links server-side
-    const fetchBetaLinks = async (): Promise<BetaLink[]> => {
-      try {
-        const { betaLinks } = UNIFIED_TABLES;
 
-        const results = await dbz
-          .select()
-          .from(betaLinks)
-          .where(
-            and(eq(betaLinks.boardType, parsedParams.board_name), eq(betaLinks.climbUuid, parsedParams.climb_uuid)),
-          );
-
-        // Transform the database results to match the BetaLink interface
-        return results.map((link) => ({
-          climb_uuid: link.climbUuid,
-          link: link.link,
-          foreign_username: link.foreignUsername,
-          angle: link.angle,
-          thumbnail: link.thumbnail,
-          is_listed: link.isListed ?? false,
-          created_at: link.createdAt ?? new Date().toISOString(),
-        }));
-      } catch (error) {
-        console.error('Error fetching beta links:', error);
-        return [];
-      }
-    };
-
-    const fetchCommunityGrade = async (): Promise<string | null> => {
-      try {
-        const [result] = await dbz
-          .select({ communityGrade: climbCommunityStatus.communityGrade })
-          .from(climbCommunityStatus)
-          .where(
-            and(
-              eq(climbCommunityStatus.climbUuid, parsedParams.climb_uuid),
-              eq(climbCommunityStatus.boardType, parsedParams.board_name),
-              eq(climbCommunityStatus.angle, parsedParams.angle),
-            ),
-          )
-          .limit(1);
-        return result?.communityGrade ?? null;
-      } catch {
-        return null;
-      }
-    };
-
-    // Fetch the search results using searchCLimbs
-    const [boardDetails, currentClimb, betaLinks, communityGrade] = await Promise.all([
+    const [boardDetails, currentClimb, detailData] = await Promise.all([
       getBoardDetailsForBoard(parsedParams),
       getClimb(parsedParams),
-      fetchBetaLinks(),
-      fetchCommunityGrade(),
+      fetchClimbDetailData({
+        boardName: parsedParams.board_name,
+        climbUuid: parsedParams.climb_uuid,
+        angle: parsedParams.angle,
+      }),
     ]);
 
     if (!currentClimb) {
-      console.error('Climb not found for params:', parsedParams);
       notFound();
     }
 
-    // Process the frames to get litUpHoldsMap (same as the API does)
     const litUpHoldsMap = convertLitUpHoldsStringToMap(currentClimb.frames, parsedParams.board_name)[0];
     const climbWithProcessedData = {
       ...currentClimb,
       litUpHoldsMap,
-      communityGrade,
+      communityGrade: detailData.communityGrade,
     };
 
-    const auroraAppUrl = constructClimbInfoUrl(
-      boardDetails,
-      currentClimb.uuid,
-      currentClimb.angle || parsedParams.angle,
-    );
-
     return (
-      <div className={styles.pageContainer}>
-        {/* Actions Section */}
-        <div className={styles.actionsSection}>
-          <ClimbViewActions
-            climb={climbWithProcessedData}
-            boardDetails={boardDetails}
-            auroraAppUrl={auroraAppUrl}
-            angle={parsedParams.angle}
-          />
-        </div>
-
-        {/* Main Content */}
-        <div className={styles.contentWrapper}>
-          <div className={styles.climbSection}>
-            <ClimbCard climb={climbWithProcessedData} boardDetails={boardDetails} actions={[]} />
-          </div>
-          <div className={styles.sidebarSection}>
-            <ClimbViewSidebar
-              climb={climbWithProcessedData}
-              betaLinks={betaLinks}
-              climbUuid={parsedParams.climb_uuid}
-              boardType={parsedParams.board_name}
-              angle={parsedParams.angle}
-              currentClimbDifficulty={currentClimb.difficulty ?? undefined}
-              boardName={parsedParams.board_name}
-            />
-          </div>
-        </div>
-      </div>
+      <ClimbDetailPageServer
+        climb={climbWithProcessedData}
+        boardDetails={boardDetails}
+        betaLinks={detailData.betaLinks}
+        climbUuid={parsedParams.climb_uuid}
+        boardType={parsedParams.board_name}
+        angle={parsedParams.angle}
+        currentClimbDifficulty={currentClimb.difficulty ?? undefined}
+        boardName={parsedParams.board_name}
+      />
     );
   } catch (error) {
     console.error('Error fetching results or climb:', error);
-    notFound(); // or show a 500 error page
+    notFound();
   }
 }

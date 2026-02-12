@@ -28,19 +28,40 @@ import { useWakeLock } from '../board-bluetooth-control/use-wake-lock';
 import { themeTokens } from '@/app/theme/theme-config';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import type { ActiveDrawer } from '../queue-control/queue-control-bar';
-import type { BoardDetails, Angle } from '@/app/lib/types';
-import PlayViewBetaSlider from './play-view-beta-slider';
-import PlayViewComments from './play-view-comments';
+import type { BoardDetails, Angle, Climb } from '@/app/lib/types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useColorMode } from '@/app/hooks/use-color-mode';
 import styles from './play-view-drawer.module.css';
 import drawerStyles from '../swipeable-drawer/swipeable-drawer.module.css';
+import ClimbDetailShellClient from '@/app/components/climb-detail/climb-detail-shell.client';
+import { useBuildClimbDetailSections } from '@/app/components/climb-detail/build-climb-detail-sections';
 
 const SendClimbToBoardButton = dynamic(
   () => import('../board-bluetooth-control/send-climb-to-board-button').then((mod) => mod.default || mod),
   { ssr: false },
 );
+
+
+interface PlayDrawerContentProps {
+  climb: Climb;
+  boardType: string;
+  angle: number;
+  aboveFold: React.ReactNode;
+}
+
+const PlayDrawerContent: React.FC<PlayDrawerContentProps> = ({ climb, boardType, angle, aboveFold }) => {
+  const sections = useBuildClimbDetailSections({
+    climb,
+    climbUuid: climb.uuid,
+    boardType,
+    angle,
+    currentClimbDifficulty: climb.difficulty ?? undefined,
+    boardName: boardType,
+  });
+
+  return <ClimbDetailShellClient mode="play" sections={sections} aboveFold={aboveFold} />;
+};
 
 interface PlayViewDrawerProps {
   activeDrawer: ActiveDrawer;
@@ -216,6 +237,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
 
   const isMirrored = !!currentClimb?.mirrored;
 
+
   return (
     <SwipeableDrawer
       placement="bottom"
@@ -230,39 +252,43 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       }}
     >
       <div className={styles.drawerContent}>
-        <div className={styles.aboveFold}>
-          {/* Board renderer with card-swipe */}
-          {currentClimb && (
-            <SwipeBoardCarousel
-              boardDetails={boardDetails}
-              currentClimb={currentClimb}
-              nextClimb={nextItem?.climb}
-              previousClimb={prevItem?.climb}
-              onSwipeNext={handleSwipeNext}
-              onSwipePrevious={handleSwipePrevious}
-              canSwipeNext={canSwipeNext}
-              canSwipePrevious={canSwipePrevious}
-              className={styles.boardSection}
-              boardContainerClassName={styles.swipeCardContainer}
-              fillContainer
-            />
-          )}
+        {currentClimb ? (
+          <PlayDrawerContent
+            climb={currentClimb}
+            boardType={boardDetails.board_name}
+            angle={typeof angle === 'string' ? parseInt(angle, 10) : angle}
+            aboveFold={
+            <>
+              {/* Board renderer with card-swipe */}
+              {currentClimb && (
+                <SwipeBoardCarousel
+                  boardDetails={boardDetails}
+                  currentClimb={currentClimb}
+                  nextClimb={nextItem?.climb}
+                  previousClimb={prevItem?.climb}
+                  onSwipeNext={handleSwipeNext}
+                  onSwipePrevious={handleSwipePrevious}
+                  canSwipeNext={canSwipeNext}
+                  canSwipePrevious={canSwipePrevious}
+                  className={styles.boardSection}
+                  boardContainerClassName={styles.swipeCardContainer}
+                  fillContainer
+                />
+              )}
 
-          {/* Climb info below board */}
-          <div className={styles.climbInfoSection}>
-            <ClimbTitle
-              climb={currentClimb}
-              layout="horizontal"
-              showSetterInfo
-              showAngle
-              centered
-              titleFontSize={themeTokens.typography.fontSize.xl}
-              rightAddon={currentClimb && <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />}
-            />
-          </div>
+              <div className={styles.climbInfoSection}>
+                <ClimbTitle
+                  climb={currentClimb}
+                  layout="horizontal"
+                  showSetterInfo
+                  showAngle
+                  centered
+                  titleFontSize={themeTokens.typography.fontSize.xl}
+                  rightAddon={currentClimb && <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />}
+                />
+              </div>
 
-          {/* Action bar with prev/next on the outside */}
-          <div className={styles.actionBar}>
+              <div className={styles.actionBar}>
             <IconButton
               disabled={!canSwipePrevious}
               onClick={() => {
@@ -334,15 +360,12 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             >
               <SkipNextOutlined />
             </IconButton>
-          </div>
-        </div>
-
-        {/* Beta videos & comments — below the fold, scroll to reveal */}
-        {currentClimb && (
-          <div className={styles.extrasSection}>
-            <PlayViewBetaSlider boardName={boardDetails.board_name} climbUuid={currentClimb.uuid} />
-            <PlayViewComments climbUuid={currentClimb.uuid} />
-          </div>
+              </div>
+            </>
+            }
+          />
+        ) : (
+          <ClimbDetailShellClient mode="play" sections={[]} aboveFold={null} />
         )}
       </div>
 
