@@ -2653,7 +2653,9 @@ To avoid notification spam:
 
 Each milestone creates only the DB tables and types it needs, and delivers testable, user-visible value. Migrations are additive -- each one adds new tables/columns without touching prior ones. Postgres enums can be extended with `ALTER TYPE ADD VALUE` if needed in later milestones.
 
-**Dependency chain**: M1 → M4 (follows → notifications), M1+M2 → M4 → M5 (follows + comments → notifications → feed), M5 → M6 (feed → proposals with notification wiring).
+**Dependency chain (M1-M9)**: M1 → M4 (follows → notifications), M1+M2 → M4 → M5 (follows + comments → notifications → feed), M5 → M6 (feed → proposals with notification wiring).
+
+**Dependency chain (M10-M14)**: M10 → M11 (gyms → enhanced sessions), M11 → M12 (sessions → multi-session/board display), M11 → M13 (sessions → feed improvements), M12 → M14 (multi-session → ESP32 display). See [Milestone Dependency Chain](#milestone-dependency-chain) for details.
 
 ### Milestone 1: User Profiles & Follow System [COMPLETED]
 
@@ -2807,7 +2809,7 @@ Each milestone creates only the DB tables and types it needs, and delivers testa
 - Mark notification as read → badge count decrements
 - Mark all as read
 
-### Milestone 5: Activity Feed
+### Milestone 5: Activity Feed [COMPLETED]
 
 **User value**: "My home page shows what my friends are climbing."
 
@@ -2923,7 +2925,9 @@ Each milestone creates only the DB tables and types it needs, and delivers testa
 - Follow a setter → they create a climb → get `new_climb` notification
 - Live: viewing the feed → new climb appears in real-time
 
-### Milestone 8: Unified Search + Discovery
+### Milestone 8: Unified Search + Discovery [PARTIAL]
+
+**Partial coverage note:** Search category pills (frontend items 4-5) and board search (backend item 2, frontend item 8) are partially covered by the existing board entity work in M3. User search (backend item 3) exists from M1. The remaining items (PostGIS proximity, playlist search, home page search default) are not yet implemented. Gym search will be added in M10.
 
 **User value**: "I can search for users, playlists, and boards from one search bar."
 
@@ -2959,6 +2963,266 @@ Each milestone creates only the DB tables and types it needs, and delivers testa
 4. Comprehensive rate limiting audit via Redis
 5. Feed sort mode performance (materialized hot scores if needed)
 
+### Milestone 10: Gym Entity & Board-Gym Relationship
+
+**User value**: "I can create a gym for my boards, manage members, and let others discover and follow my gym."
+
+**DB schema (created in this milestone):**
+
+`gyms` table (`packages/db/src/schema/app/gyms.ts`):
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `bigserial` | PK |
+| `uuid` | `text` | Unique |
+| `name` | `text` | NOT NULL |
+| `slug` | `text` | Unique, URL-friendly |
+| `owner_id` | `text` | FK → users.id, ON DELETE CASCADE |
+| `address` | `text` | Nullable |
+| `contact_email` | `text` | Nullable |
+| `contact_phone` | `text` | Nullable |
+| `latitude` | `double precision` | Nullable |
+| `longitude` | `double precision` | Nullable |
+| `is_public` | `boolean` | DEFAULT true |
+| `description` | `text` | Nullable |
+| `image_url` | `text` | Nullable |
+| `created_at` | `timestamp` | DEFAULT now() |
+| `updated_at` | `timestamp` | DEFAULT now() |
+| `deleted_at` | `timestamp` | Nullable, soft delete |
+
+`gym_members` table (`packages/db/src/schema/app/gyms.ts`):
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `bigserial` | PK |
+| `gym_id` | `bigint` | FK → gyms.id, ON DELETE CASCADE |
+| `user_id` | `text` | FK → users.id, ON DELETE CASCADE |
+| `role` | `gym_member_role` | Enum: 'admin', 'member' |
+| `created_at` | `timestamp` | DEFAULT now() |
+
+Constraints: Unique `(gym_id, user_id)`. Owner is implicit via `gyms.owner_id`, not in this table.
+
+`gym_follows` table (`packages/db/src/schema/app/gyms.ts`):
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `bigserial` | PK |
+| `gym_id` | `bigint` | FK → gyms.id, ON DELETE CASCADE |
+| `user_id` | `text` | FK → users.id, ON DELETE CASCADE |
+| `created_at` | `timestamp` | DEFAULT now() |
+
+Constraints: Unique `(gym_id, user_id)`.
+
+Schema modification to `user_boards`:
+- Add `gym_id` column: `bigint`, nullable, FK → gyms.id ON DELETE SET NULL
+- Index on `gym_id`
+
+Add `gym` to `social_entity_type` enum: `ALTER TYPE social_entity_type ADD VALUE 'gym';`
+
+**GraphQL types:**
+- `Gym`, `GymConnection`, `GymMember`, `GymMemberRole` enum (`admin`, `member`)
+- `CreateGymInput` (name, description, address, latitude, longitude, isPublic, imageUrl)
+- `UpdateGymInput` (same fields, optional)
+- `AddGymMemberInput` (gymUuid, userId, role)
+- `RemoveGymMemberInput` (gymUuid, userId)
+- `FollowGymInput` (gymUuid)
+- `MyGymsInput` (includeFollowed: Boolean)
+- `SearchGymsInput` (query: String, latitude, longitude, radiusKm)
+
+**Backend:**
+1. `createGym` mutation -- auto-link board if creating from board context
+2. `updateGym` / `deleteGym` mutations -- owner only
+3. `addGymMember` / `removeGymMember` mutations -- owner/admin only
+4. `followGym` / `unfollowGym` mutations
+5. `gym` / `myGyms` / `searchGyms` queries
+6. `gymMembers` / `gymFollowers` queries
+7. Auto-create gym flow: when creating a board, if user has no gym → create gym + link board. If user has 1+ gym → prompt "Add to existing gym?"
+8. Wire `gym` entity_type into comments and votes resolvers
+
+**Frontend:**
+9. `GymCreationFlow` -- integrated into board creation wizard
+10. `GymProfilePage` -- name, boards list, members, followers, comment section
+11. `GymCard` for search results and lists
+12. `GymMemberManagement` -- add/remove members, change roles
+13. `FollowGymButton`
+14. `GymSelector` in board creation form (for users with existing gyms)
+
+**Testable outcomes:**
+- Create a board → auto-created gym appears in "My Gyms"
+- Create a second board → prompted to add to existing gym or create new
+- Add a member to gym → they see gym in their list
+- Follow a public gym → see it in followed gyms
+- Search for gyms by name
+- Gym profile page shows boards, members, follower count
+
+### Milestone 11: Enhanced Sessions
+
+**User value**: "I can set goals for my session, see a summary when I'm done, and sessions automatically end when everyone leaves."
+
+**DB schema changes to `board_sessions`** (`packages/db/src/schema/app/sessions.ts`):
+
+| Column | Type | Notes |
+|---|---|---|
+| `goal` | `text` | Nullable, session goal text |
+| `is_public` | `boolean` | DEFAULT true |
+| `started_at` | `timestamp` | Nullable, explicit start time |
+| `ended_at` | `timestamp` | Nullable, explicit or auto end time |
+| `is_permanent` | `boolean` | DEFAULT false, exempt from auto-end |
+| `color` | `text` | Nullable, hex color for multi-session display |
+
+New `session_boards` junction table (`packages/db/src/schema/app/sessions.ts`):
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `bigserial` | PK |
+| `session_id` | `text` | FK → board_sessions.id, ON DELETE CASCADE |
+| `board_id` | `bigint` | FK → user_boards.id, ON DELETE CASCADE |
+| `created_at` | `timestamp` | DEFAULT now() |
+
+Constraints: Unique `(session_id, board_id)`. All boards must belong to the same gym (enforced at app layer).
+
+**GraphQL types:**
+- Update `Session` type with new fields: `goal`, `isPublic`, `startedAt`, `endedAt`, `isPermanent`, `color`
+- `SessionSummary` -- grade distribution (array of `{grade, count}`), total sends/attempts, hardest climb (uuid + name + grade), participant list
+- `CreateSessionInput` -- add `goal`, `isPermanent`, `boardIds[]`, `color`
+- `EndSessionInput` (sessionId)
+- `SessionSummaryInput` (sessionId)
+
+**Backend:**
+1. Add new columns via migration
+2. Session auto-end job: periodic cleanup (every 5 min), end sessions where `last_activity < NOW() - interval` AND `is_permanent = false` AND `status = 'inactive'`
+3. `endSession` mutation -- sets `ended_at`, changes status to 'ended', generates summary
+4. `sessionSummary` query -- aggregates `boardsesh_ticks` by `session_id`: grade distribution, participant stats, hardest climbs
+5. Update `createSession` to accept `goal`, `color`, `boardIds`
+6. Validate multi-board: all boards must share the same `gym_id` (requires M10)
+
+**Frontend:**
+7. Session creation form: add goal input, color picker, board multi-select (if gym has >1 board)
+8. Session end summary view: reuse grade bar chart from `profile-stats-charts.tsx`, show participants, hardest climbs
+9. Session detail in activity feed: summary card with chart + participant avatars
+10. Permanent session toggle in admin/settings
+
+**Testable outcomes:**
+- Create session with goal → goal displays in session header
+- End session → see grade distribution summary with bar chart
+- Session auto-ends after 30min inactivity (configurable)
+- Permanent session stays active indefinitely
+- Create multi-board session → queue accepts climbs from all boards in the session
+
+### Milestone 12: Multi-Session & Multi-Board Display
+
+**User value**: "Multiple groups can share one board with their own sessions, and I can climb across multiple boards in one session."
+
+**Backend:**
+1. Allow multiple active sessions per `board_id` (remove any single-session assumptions)
+2. "My turn" signaling: new `claimTurn` mutation -- sets the active session for the board's display
+3. Session color assignment: auto-assign distinct colors when multiple sessions exist on a board
+4. `activeSessions` query for a board -- returns all active sessions with colors
+5. Cross-board climb search: `searchClimbs` accepts multiple board configs (`boardType`/`layoutId`/`sizeId`/`setIds` combos)
+6. Extend `ClimbQueueItem` with optional `boardId` and `boardPath` for multi-board queues
+
+**Shared types updates** (`packages/shared-schema/src/types.ts`):
+- Add `boardId?: number` and `boardPath?: string` to `ClimbQueueItem` and `ClimbQueueItemInput`
+- Add `ActiveBoardSession` type: `{ sessionId: string; name: string; color: string; participantCount: number; isMyTurn: boolean }`
+
+**Frontend:**
+7. Multi-session indicator on board page (shows colored dots for active sessions)
+8. "Claim turn" button in session UI when board has multiple sessions
+9. Session color display throughout UI (queue bar, session list)
+10. Multi-board session: board switcher tabs when session spans multiple boards
+11. Cross-board search results: show which board each climb belongs to
+
+**Testable outcomes:**
+- Two sessions on one board → display shows two colored indicators
+- Press "My turn" → board LEDs switch to my session's current climb
+- Create session with 2 boards → search finds climbs from both
+- Add climb from board A and board B to same queue → works correctly
+
+### Milestone 13: Activity Feed Improvements
+
+**User value**: "My feed shows session summaries instead of individual ascents, supports deep linking, and I can @mention friends."
+
+**DB schema:**
+- Add `mention` to `notification_type` enum: `ALTER TYPE notification_type ADD VALUE 'mention';`
+- Add `session_id` column to `feed_items` table: `text`, nullable, FK → board_sessions.id ON DELETE SET NULL
+- Add `session_summary` to `feed_item_type` enum: `ALTER TYPE feed_item_type ADD VALUE 'session_summary';`
+
+**Backend:**
+1. Session summary aggregation: when generating feed items for ascents, group by `session_id` (or by timestamp proximity if no explicit session -- 2hr window)
+2. `sessionFeedSummary` query -- returns grouped ascent data for a session/time-window: grade distribution, participant list, hardest climbs
+3. @mention parsing: extract `@username` from comment body, resolve to `user_id`
+4. @mention notifications: new `mention` notification type, wire to notification pipeline
+5. Activity feed SSR endpoint: accept URL search params for `boardUuid`, `sortBy`, `topPeriod`
+6. Proposal feed items: include proposals from boards/climbs the user follows in feed fanout
+
+**Frontend:**
+7. SSR activity feed: move filtering to URL search params, server-render initial page
+8. `SessionSummaryFeedItem` component:
+   - Participant avatars row ("Bob, Marco, and Anton had a session")
+   - Grade distribution bar chart (reuse from `profile-stats-charts.tsx`)
+   - Slideshow of 5 hardest climb previews (board renderer thumbnails)
+   - Total sends/attempts count
+9. @mention autocomplete in `CommentForm`: `@` trigger → dropdown of followed users
+10. @mention rendering: clickable links to user profiles
+11. "Jump back in" horizontal slider on home page:
+    - Shows boards user has recently used (from recent ticks/sessions)
+    - Each card: board name, last session date, quick "Start session" action
+    - Horizontal scroll with snap points
+12. URL-based feed filtering: board selector updates URL, sort selector updates URL
+13. Deep linking: feed URLs are shareable and SSR-rendered
+
+**Testable outcomes:**
+- View feed → see session summaries instead of individual ascents
+- Session summary shows grade chart and participant avatars
+- Click through slideshow of hardest climbs in a session
+- Type `@` in comment → see autocomplete dropdown → mention resolves to profile link
+- Mentioned user receives notification
+- Share feed URL → recipient sees same filtered view (SSR)
+- Home page shows "Jump back in" slider with recent boards
+
+### Milestone 14: Boardsesh Display Modes (ESP32)
+
+**User value**: "My Boardsesh display automatically adapts to show the right layout for my session setup."
+
+**Backend:**
+1. Display mode detection: when controller connects, check number of active sessions on board
+2. Send `ControllerDisplayConfig` event on controller connection and when session count changes
+3. Session button press handling: controller reports which session was selected → backend processes turn claim via `claimTurn` mutation (M12)
+
+**Shared types** (`packages/shared-schema/src/types.ts`):
+- `DisplayMode = 'single_session' | 'multi_session'`
+- `ControllerDisplayConfig = { mode: DisplayMode; sessions: ActiveBoardSession[] }`
+- `ControllerSessionClaim = { __typename: 'SessionClaim'; sessionId: string }`
+- Add `ControllerDisplayConfig` and `ControllerSessionClaim` to `ControllerEvent` union
+
+**ESP32 firmware:**
+4. Single-session layout renderer: board preview (2/3 width) + scrollable queue list (1/3 width)
+5. Multi-session layout renderer: board preview (2/3 width) + colored session buttons (1/3 width)
+6. Session button interaction: touch handler → WebSocket message → turn claimed
+7. Display mode switching: smooth transition when sessions are added/removed
+8. Queue list rendering: climb name, grade (with grade color), setter
+
+**Testable outcomes:**
+- Single session on board → display shows climb + queue
+- Second session created → display switches to multi-session mode with colored buttons
+- Press session button → board LEDs update to that session's climb
+- Session ends → display returns to single-session mode (or idle)
+
+### Milestone Dependency Chain
+
+Milestones 10-14 have the following dependency graph:
+
+```
+M10 (Gyms) → M11 (Enhanced Sessions) → M12 (Multi-Session/Board) → M14 (ESP32 Display)
+                                      → M13 (Feed Improvements)
+```
+
+- **M10 (Gyms)** -- independent, can start immediately
+- **M11 (Enhanced Sessions)** -- depends on M10 (multi-board sessions need gym to validate boards belong to same gym)
+- **M12 (Multi-Session/Board Display)** -- depends on M11
+- **M13 (Feed Improvements)** -- depends on M11 (session summaries need enhanced sessions)
+- **M14 (ESP32 Display)** -- depends on M12
+
 ---
 
 ## Future Considerations
@@ -2972,3 +3236,7 @@ Features and improvements not in the initial scope but worth designing toward:
 - **Direct messaging** -- private messaging between users for coordination (send a climb, share a playlist)
 - **Collaborative playlists** -- multiple editors on a single playlist with invitation and permission management
 - **Feed recommendations** -- algorithmic feed alongside the chronological feed, surfacing content based on climbing ability, board preferences, and engagement patterns
+- **Per-board leaderboard seasons** -- time-boxed leaderboard periods (monthly/quarterly) with historical rankings and achievements
+- **Gym analytics dashboard** -- usage stats, popular climbs, peak hours, member engagement metrics for gym owners
+- **Cross-gym events** -- competitions or challenges that span multiple gyms, with shared leaderboards
+- **Session replays** -- record and replay a session's climb sequence for training analysis or sharing
