@@ -18,6 +18,8 @@ interface BoardSelectorPillsProps {
   onBoardSelect?: (board: UserBoard) => void;
   onBoardFilter?: (boardUuid: string | null) => void;
   includeAllPill?: boolean;
+  /** Controlled selection from URL params. When provided, overrides internal state. */
+  selectedBoardUuid?: string | null;
 }
 
 export default function BoardSelectorPills({
@@ -25,11 +27,15 @@ export default function BoardSelectorPills({
   onBoardSelect,
   onBoardFilter,
   includeAllPill = false,
+  selectedBoardUuid: controlledSelectedUuid,
 }: BoardSelectorPillsProps) {
   const [boards, setBoards] = useState<UserBoard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedUuid, setSelectedUuid] = useState<string | null>(null);
+  const [internalSelectedUuid, setInternalSelectedUuid] = useState<string | null>(null);
   const { token, isAuthenticated } = useWsAuthToken();
+
+  // Use controlled value if provided, otherwise use internal state
+  const selectedUuid = controlledSelectedUuid !== undefined ? controlledSelectedUuid : internalSelectedUuid;
 
   const fetchBoards = useCallback(async () => {
     if (!token) return;
@@ -67,7 +73,7 @@ export default function BoardSelectorPills({
   }
 
   const handleSelect = (board: UserBoard) => {
-    setSelectedUuid(board.uuid);
+    setInternalSelectedUuid(board.uuid);
     if (mode === 'filter') {
       onBoardFilter?.(board.uuid);
     } else {
@@ -77,7 +83,7 @@ export default function BoardSelectorPills({
   };
 
   const handleAllClick = () => {
-    setSelectedUuid(null);
+    setInternalSelectedUuid(null);
     onBoardFilter?.(null);
   };
 

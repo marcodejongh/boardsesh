@@ -3,12 +3,19 @@ import React, { useState } from 'react';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import CircularProgress from '@mui/material/CircularProgress';
+import MuiButton from '@mui/material/Button';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import SearchPill from '../search-drawer/search-pill';
-import SearchDropdown from '../search-drawer/search-dropdown';
+import UnifiedSearchDrawer from '../search-drawer/unified-search-drawer';
+import AccordionSearchForm from '../search-drawer/accordion-search-form';
 import { BoardDetails } from '@/app/lib/types';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { useQueueContext } from '../graphql-queue';
+import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
+import { hasActiveFilters, getSearchPillSummary } from '../search-drawer/search-summary-utils';
+import { addRecentSearch } from '../search-drawer/recent-searches-storage';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined';
 import AngleSelector from './angle-selector';
@@ -37,7 +44,8 @@ function usePageMode(): PageMode {
 }
 
 export default function BoardSeshHeader({ boardDetails, angle, boardConfigs }: BoardSeshHeaderProps) {
-  const { currentClimb } = useQueueContext();
+  const { currentClimb, totalSearchResultCount, isFetchingClimbs } = useQueueContext();
+  const { uiSearchParams, clearClimbSearchParams } = useUISearchParams();
   const pageMode = usePageMode();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -134,11 +142,53 @@ export default function BoardSeshHeader({ boardDetails, angle, boardConfigs }: B
         </Box>
       </Box>
 
-      {/* Search dropdown drawer (mobile) */}
-      <SearchDropdown
+      {/* Search drawer (mobile) */}
+      <UnifiedSearchDrawer
         boardDetails={boardDetails}
+        defaultCategory="climbs"
         open={searchDropdownOpen}
-        onClose={() => setSearchDropdownOpen(false)}
+        onClose={() => {
+          const filtersActive = hasActiveFilters(uiSearchParams);
+          if (filtersActive) {
+            const label = getSearchPillSummary(uiSearchParams);
+            addRecentSearch(label, uiSearchParams).catch(() => {});
+          }
+          setSearchDropdownOpen(false);
+        }}
+        renderClimbSearch={() => (
+          <AccordionSearchForm boardDetails={boardDetails} />
+        )}
+        renderClimbFooter={() => {
+          const filtersActive = hasActiveFilters(uiSearchParams);
+          const resultCount = totalSearchResultCount ?? 0;
+          const showResultCount = filtersActive && !isFetchingClimbs && resultCount > 0;
+          return (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: 'var(--semantic-surface, #FFFFFF)', borderTop: '1px solid var(--neutral-100, #F0F0F0)' }}>
+              <button
+                type="button"
+                onClick={clearClimbSearchParams}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: 16, fontWeight: 600, color: 'var(--neutral-900, #111827)', textDecoration: 'underline', cursor: 'pointer' }}
+              >
+                Clear all
+              </button>
+              <MuiButton
+                variant="contained"
+                startIcon={isFetchingClimbs ? <CircularProgress size={20} /> : <SearchOutlined />}
+                onClick={() => {
+                  if (filtersActive) {
+                    const label = getSearchPillSummary(uiSearchParams);
+                    addRecentSearch(label, uiSearchParams).catch(() => {});
+                  }
+                  setSearchDropdownOpen(false);
+                }}
+                size="large"
+                sx={{ borderRadius: '12px', height: 48, px: 3, fontSize: 16, fontWeight: 600 }}
+              >
+                Search{showResultCount ? ` \u00B7 ${resultCount.toLocaleString()}` : ''}
+              </MuiButton>
+            </div>
+          );
+        }}
       />
     </Box>
   );

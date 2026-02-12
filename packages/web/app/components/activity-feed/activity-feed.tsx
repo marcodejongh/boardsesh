@@ -28,6 +28,8 @@ interface ActivityFeedProps {
   sortBy?: SortMode;
   topPeriod?: TimePeriod;
   onFindClimbers?: () => void;
+  /** SSR-provided initial items for unauthenticated users. Renders immediately while client fetches fresh data. */
+  initialItems?: ActivityFeedItem[];
 }
 
 function renderFeedItem(item: ActivityFeedItem) {
@@ -49,10 +51,11 @@ export default function ActivityFeed({
   sortBy = 'new',
   topPeriod = 'all',
   onFindClimbers,
+  initialItems,
 }: ActivityFeedProps) {
-  const [items, setItems] = useState<ActivityFeedItem[]>([]);
+  const [items, setItems] = useState<ActivityFeedItem[]>(initialItems ?? []);
   const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialItems || initialItems.length === 0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +148,7 @@ export default function ActivityFeed({
     fetchFeed(null);
   }, [isAuthenticated, token, authLoading, boardUuid, sortBy, fetchFeed]);
 
-  if (authLoading || loading) {
+  if ((authLoading || loading) && items.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
         <CircularProgress />

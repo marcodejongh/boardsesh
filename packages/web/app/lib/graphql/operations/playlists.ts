@@ -429,3 +429,48 @@ export interface UpdatePlaylistLastAccessedMutationVariables {
 export interface UpdatePlaylistLastAccessedMutationResponse {
   updatePlaylistLastAccessed: boolean;
 }
+
+// ============================================
+// Search Playlists (Global) Types and Operations
+// ============================================
+
+export const SEARCH_PLAYLISTS = gql`
+  query SearchPlaylists($input: SearchPlaylistsInput!) {
+    searchPlaylists(input: $input) {
+      playlists {
+        id
+        uuid
+        boardType
+        layoutId
+        name
+        description
+        color
+        icon
+        climbCount
+        creatorId
+        creatorName
+        createdAt
+        updatedAt
+      }
+      totalCount
+      hasMore
+    }
+  }
+`;
+
+export interface SearchPlaylistsQueryVariables {
+  input: {
+    query: string;
+    boardType?: string;
+    limit?: number;
+    offset?: number;
+  };
+}
+
+export interface SearchPlaylistsQueryResponse {
+  searchPlaylists: {
+    playlists: DiscoverablePlaylist[];
+    totalCount: number;
+    hasMore: boolean;
+  };
+}

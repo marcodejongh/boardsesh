@@ -11,6 +11,7 @@ import {
   GetPlaylistClimbsInputSchema,
   DiscoverPlaylistsInputSchema,
   GetPlaylistCreatorsInputSchema,
+  SearchPlaylistsInputSchema,
 } from '../../../validation/schemas';
 import { getBoardTables, isValidBoardName } from '../../../db/queries/util/table-select';
 import { getSizeEdges } from '../../../db/queries/util/product-sizes-data';
@@ -676,5 +677,131 @@ export const playlistQueries = {
       .limit(20);
 
     return results;
+  },
+
+  /**
+   * Search public playlists globally by name.
+   * No authentication required.
+   */
+  searchPlaylists: async (
+    _: unknown,
+    { input }: { input: unknown },
+    _ctx: ConnectionContext
+  ): Promise<{ playlists: unknown[]; totalCount: number; hasMore: boolean }> => {
+    const validatedInput = validateInput(SearchPlaylistsInputSchema, input, 'input');
+
+    const limit = validatedInput.limit ?? 20;
+    const offset = validatedInput.offset ?? 0;
+
+    // Build conditions
+    const conditions = [
+      eq(dbSchema.playlists.isPublic, true),
+    ];
+
+    // Name filter (required, ILIKE partial match)
+    const escapedQuery = validatedInput.query.replace(/[%_\\]/g, '\\$&');
+    conditions.push(sql`LOWER(${dbSchema.playlists.name}) LIKE LOWER(${'%' + escapedQuery + '%'})`);
+
+    // Optional board type filter
+    if (validatedInput.boardType) {
+      conditions.push(eq(dbSchema.playlists.boardType, validatedInput.boardType));
+    }
+
+    // Get total count of matching playlists with at least 1 climb
+    const countResult = await db
+      .select({ count: sql<number>`count(DISTINCT ${dbSchema.playlists.id})::int` })
+      .from(dbSchema.playlists)
+      .innerJoin(
+        dbSchema.playlistOwnership,
+        eq(dbSchema.playlistOwnership.playlistId, dbSchema.playlists.id)
+      )
+      .innerJoin(
+        dbSchema.playlistClimbs,
+        eq(dbSchema.playlistClimbs.playlistId, dbSchema.playlists.id)
+      )
+      .innerJoin(
+        dbSchema.users,
+        eq(dbSchema.users.id, dbSchema.playlistOwnership.userId)
+      )
+      .where(and(...conditions, eq(dbSchema.playlistOwnership.role, 'owner')));
+
+    const totalCount = countResult[0]?.count || 0;
+
+    // Get playlists with creator info
+    const results = await db
+      .select({
+        id: dbSchema.playlists.id,
+        uuid: dbSchema.playlists.uuid,
+        boardType: dbSchema.playlists.boardType,
+        layoutId: dbSchema.playlists.layoutId,
+        name: dbSchema.playlists.name,
+        description: dbSchema.playlists.description,
+        color: dbSchema.playlists.color,
+        icon: dbSchema.playlists.icon,
+        createdAt: dbSchema.playlists.createdAt,
+        updatedAt: dbSchema.playlists.updatedAt,
+        creatorId: dbSchema.playlistOwnership.userId,
+        creatorName: sql<string>`COALESCE(${dbSchema.users.name}, 'Anonymous')`,
+        climbCount: sql<number>`count(DISTINCT ${dbSchema.playlistClimbs.id})::int`,
+      })
+      .from(dbSchema.playlists)
+      .innerJoin(
+        dbSchema.playlistOwnership,
+        eq(dbSchema.playlistOwnership.playlistId, dbSchema.playlists.id)
+      )
+      .innerJoin(
+        dbSchema.playlistClimbs,
+        eq(dbSchema.playlistClimbs.playlistId, dbSchema.playlists.id)
+      )
+      .innerJoin(
+        dbSchema.users,
+        eq(dbSchema.users.id, dbSchema.playlistOwnership.userId)
+      )
+      .where(and(...conditions, eq(dbSchema.playlistOwnership.role, 'owner')))
+      .groupBy(
+        dbSchema.playlists.id,
+        dbSchema.playlists.uuid,
+        dbSchema.playlists.boardType,
+        dbSchema.playlists.layoutId,
+        dbSchema.playlists.name,
+        dbSchema.playlists.description,
+        dbSchema.playlists.color,
+        dbSchema.playlists.icon,
+        dbSchema.playlists.createdAt,
+        dbSchema.playlists.updatedAt,
+        dbSchema.playlistOwnership.userId,
+        dbSchema.users.name,
+      )
+      .orderBy(
+        desc(sql`count(DISTINCT ${dbSchema.playlistClimbs.id})`),
+        desc(dbSchema.playlists.createdAt),
+      )
+      .limit(limit + 1)
+      .offset(offset);
+
+    const hasMore = results.length > limit;
+    const trimmedResults = hasMore ? results.slice(0, limit) : results;
+
+    const playlists = trimmedResults.map(p => ({
+      id: p.id.toString(),
+      uuid: p.uuid,
+      boardType: p.boardType,
+      layoutId: p.layoutId,
+      name: p.name,
+      description: p.description,
+      color: p.color,
+      icon: p.icon,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+      climbCount: p.climbCount,
+      creatorId: p.creatorId,
+      creatorName: p.creatorName,
+    }));
+
+    return {
+      playlists,
+      totalCount,
+      hasMore,
+    };
   },
 };

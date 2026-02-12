@@ -9,18 +9,18 @@ import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import ActivityFeed from '@/app/components/activity-feed/activity-feed';
 import FeedSortSelector from '@/app/components/activity-feed/feed-sort-selector';
 import searchPillStyles from '@/app/components/search-drawer/search-pill.module.css';
-import UserSearchDrawer from '@/app/components/social/user-search-drawer';
+import UnifiedSearchDrawer from '@/app/components/search-drawer/unified-search-drawer';
 import UserDrawer from '@/app/components/user-drawer/user-drawer';
 import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
 import PersistentQueueControlBar from '@/app/components/queue-control/persistent-queue-control-bar';
 import { useSession } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import ErrorBoundary from '@/app/components/error-boundary';
 import BoardSelectorPills from '@/app/components/board-entity/board-selector-pills';
-import type { SortMode } from '@boardsesh/shared-schema';
+import type { SortMode, ActivityFeedItem } from '@boardsesh/shared-schema';
 import bottomBarStyles from '@/app/components/bottom-tab-bar/bottom-bar-wrapper.module.css';
-import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
 import { NewClimbFeed } from '@/app/components/new-climb-feed';
 import type { UserBoard, NewClimbSubscription } from '@boardsesh/shared-schema';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
@@ -30,54 +30,71 @@ import {
   type GetMyNewClimbSubscriptionsResponse,
 } from '@/app/lib/graphql/operations/new-climb-feed';
 
+const SORT_MODES: SortMode[] = ['new', 'top', 'controversial', 'hot'];
+const TAB_DEFAULTS: Record<string, string> = { tab: 'activity', sort: 'new' };
+
 interface HomePageContentProps {
   boardConfigs: BoardConfigData;
+  initialTab?: 'activity' | 'newClimbs';
+  initialBoardUuid?: string;
+  initialSortBy?: SortMode;
+  initialTrendingFeed?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean } | null;
 }
 
-export default function HomePageContent({ boardConfigs }: HomePageContentProps) {
+export default function HomePageContent({
+  boardConfigs,
+  initialTab = 'activity',
+  initialBoardUuid,
+  initialSortBy = 'new',
+  initialTrendingFeed,
+}: HomePageContentProps) {
   const { data: session, status } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [selectedBoardUuid, setSelectedBoardUuid] = useState<string | null>(null);
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
-  const [sortBy, setSortBy] = useState<SortMode>('new');
-  const [activeTab, setActiveTab] = useState<'activity' | 'newClimbs'>('activity');
   const [subscriptions, setSubscriptions] = useState<NewClimbSubscription[]>([]);
 
   const isAuthenticated = status === 'authenticated' && !!session?.user;
   const { token: wsAuthToken } = useWsAuthToken();
 
-  // Load persisted sort mode and tab
-  useEffect(() => {
-    getPreference<SortMode>('activityFeedSortMode').then((saved) => {
-      if (saved) setSortBy(saved);
-    });
-    getPreference<'activity' | 'newClimbs'>('homeTab').then((saved) => {
-      if (saved) setActiveTab(saved);
-    });
-  }, []);
+  // Read state from URL params (with fallbacks to server-provided initial values)
+  const activeTab = (searchParams.get('tab') === 'newClimbs' ? 'newClimbs' : (searchParams.get('tab') || initialTab)) as 'activity' | 'newClimbs';
+  const selectedBoardUuid = searchParams.get('board') || initialBoardUuid || null;
+  const sortBy = (SORT_MODES.includes(searchParams.get('sort') as SortMode)
+    ? searchParams.get('sort') : (searchParams.has('sort') ? initialSortBy : initialSortBy)) as SortMode;
+
+  // Helper: update a URL param via shallow navigation
+  const updateParam = useCallback((key: string, value: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value && value !== TAB_DEFAULTS[key]) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    const qs = params.toString();
+    router.push(qs ? `/?${qs}` : '/', { scroll: false });
+  }, [router, searchParams]);
 
   const handleSortChange = useCallback((newSort: SortMode) => {
-    setSortBy(newSort);
-    setPreference('activityFeedSortMode', newSort);
-  }, []);
+    updateParam('sort', newSort);
+  }, [updateParam]);
 
   const handleTabChange = (_: React.SyntheticEvent, value: string) => {
-    const tab = value as 'activity' | 'newClimbs';
-    setActiveTab(tab);
-    setPreference('homeTab', tab);
+    updateParam('tab', value);
   };
 
   const handleBoardFilter = useCallback((boardUuid: string | null) => {
-    setSelectedBoardUuid(boardUuid);
+    updateParam('board', boardUuid);
     if (!boardUuid) {
       setSelectedBoard(null);
     }
-  }, []);
+  }, [updateParam]);
 
   const handleBoardSelect = useCallback((board: UserBoard) => {
     setSelectedBoard(board);
-    setSelectedBoardUuid(board.uuid);
-  }, []);
+    updateParam('board', board.uuid);
+  }, [updateParam]);
 
   useEffect(() => {
     async function fetchSubscriptions() {
@@ -108,16 +125,14 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
         }}
       >
         <UserDrawer boardConfigs={boardConfigs} />
-        {isAuthenticated && (
-          <button
-            className={searchPillStyles.pill}
-            onClick={() => setSearchOpen(true)}
-            type="button"
-          >
-            <SearchOutlined className={searchPillStyles.icon} />
-            <span className={searchPillStyles.text}>Search boards & climbers</span>
-          </button>
-        )}
+        <button
+          className={searchPillStyles.pill}
+          onClick={() => setSearchOpen(true)}
+          type="button"
+        >
+          <SearchOutlined className={searchPillStyles.icon} />
+          <span className={searchPillStyles.text}>Search</span>
+        </button>
       </Box>
 
       {/* Feed */}
@@ -125,6 +140,7 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
         {isAuthenticated && (
           <BoardSelectorPills
             mode="filter"
+            selectedBoardUuid={selectedBoardUuid}
             onBoardFilter={handleBoardFilter}
             onBoardSelect={handleBoardSelect}
             includeAllPill
@@ -154,6 +170,7 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
               boardUuid={selectedBoardUuid}
               sortBy={sortBy}
               onFindClimbers={() => setSearchOpen(true)}
+              initialItems={initialTrendingFeed?.items}
             />
           </>
         )}
@@ -188,9 +205,11 @@ export default function HomePageContent({ boardConfigs }: HomePageContentProps) 
         <BottomTabBar boardConfigs={boardConfigs} />
       </div>
 
-      {isAuthenticated && (
-        <UserSearchDrawer open={searchOpen} onClose={() => setSearchOpen(false)} />
-      )}
+      <UnifiedSearchDrawer
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        defaultCategory="boards"
+      />
     </Box>
   );
 }

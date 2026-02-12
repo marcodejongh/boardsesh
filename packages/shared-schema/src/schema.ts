@@ -946,6 +946,32 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
+  Input for searching playlists globally.
+  """
+  input SearchPlaylistsInput {
+    "Search query"
+    query: String!
+    "Optional board type filter"
+    boardType: String
+    "Max results to return"
+    limit: Int
+    "Offset for pagination"
+    offset: Int
+  }
+
+  """
+  Result of global playlist search.
+  """
+  type SearchPlaylistsResult {
+    "List of playlists"
+    playlists: [DiscoverablePlaylist!]!
+    "Total count"
+    totalCount: Int!
+    "Whether more are available"
+    hasMore: Boolean!
+  }
+
+  """
   Input for getting playlist creators.
   """
   input GetPlaylistCreatorsInput {
@@ -1183,6 +1209,12 @@ export const typeDefs = /* GraphQL */ `
     query: String
     "Filter by board type"
     boardType: String
+    "Latitude for proximity search"
+    latitude: Float
+    "Longitude for proximity search"
+    longitude: Float
+    "Radius in km for proximity search (default 50)"
+    radiusKm: Float
     "Max results to return"
     limit: Int
     "Offset for pagination"
@@ -2190,6 +2222,11 @@ export const typeDefs = /* GraphQL */ `
     Discover public playlists with at least 1 climb.
     """
     discoverPlaylists(input: DiscoverPlaylistsInput!): DiscoverPlaylistsResult!
+
+    """
+    Search public playlists globally by name.
+    """
+    searchPlaylists(input: SearchPlaylistsInput!): SearchPlaylistsResult!
 
     """
     Get playlist creators for autocomplete suggestions.
