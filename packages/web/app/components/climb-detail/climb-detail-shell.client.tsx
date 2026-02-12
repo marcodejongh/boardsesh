@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import CollapsibleSection from '@/app/components/collapsible-section/collapsible-section';
 import type { CollapsibleSectionConfig } from '@/app/components/collapsible-section/collapsible-section';
 import styles from './climb-detail-shell.module.css';
@@ -18,6 +19,8 @@ export default function ClimbDetailShellClient({
   sections,
   desktopRightColumn,
 }: ClimbDetailShellClientProps) {
+  const isDesktop = useMediaQuery('(min-width:1024px)', { noSsr: true });
+
   if (mode === 'play') {
     return (
       <div className={styles.mobileScrollLayout}>
@@ -33,13 +36,9 @@ export default function ClimbDetailShellClient({
     <div className={styles.infoPageLayout}>
       <div>
         {aboveFold}
-        <div className={styles.mobileOnly}>
-          <CollapsibleSection sections={sections} />
-        </div>
+        {!isDesktop ? <CollapsibleSection sections={sections} /> : null}
       </div>
-      <div className={styles.desktopOnly}>
-        {desktopRightColumn ?? <CollapsibleSection sections={sections} />}
-      </div>
+      <div>{isDesktop ? (desktopRightColumn ?? <CollapsibleSection sections={sections} />) : null}</div>
     </div>
   );
 }

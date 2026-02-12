@@ -28,27 +28,11 @@
   gap: 16px;
 }
 
-.mobileOnly {
-  display: block;
-}
-
-.desktopOnly {
-  display: none;
-}
-
 @media (min-width: 1024px) {
   .infoPageLayout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
     gap: 16px;
     align-items: start;
-  }
-
-  .mobileOnly {
-    display: none;
-  }
-
-  .desktopOnly {
-    display: block;
   }
 }
