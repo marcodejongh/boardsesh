@@ -77,7 +77,7 @@ export function usePaginatedFeed<T>({
   }, [fetchPage, items.length]);
 
   // Inline IntersectionObserver — same pattern as climbs-list.tsx
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef(loadMore);
   const hasMoreRef = useRef(hasMore);
   const loadingMoreRef = useRef(loadingMore);

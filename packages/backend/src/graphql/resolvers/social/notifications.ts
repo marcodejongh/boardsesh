@@ -154,7 +154,7 @@ export const socialNotificationQueries = {
           MAX(n."created_at") as "latestCreatedAt",
           BOOL_AND(n."read_at" IS NOT NULL) as "allRead",
           (array_agg(c."body" ORDER BY n."created_at" DESC))[1] as "commentBody",
-          (array_agg(DISTINCT n."actor_id"))[1:3] as "actorIds"
+          (array_remove(array_agg(DISTINCT n."actor_id"), NULL))[1:3] as "actorIds"
         FROM "notifications" n
         LEFT JOIN "comments" c ON n."comment_id" = c."id"
         WHERE n."recipient_id" = ${userId}
@@ -197,12 +197,14 @@ export const socialNotificationQueries = {
       const actorAvatarUrls = row.actorAvatarUrls || [];
 
       const actors = actorIds
-        .filter((id): id is string => id != null)
         .map((id, i) => ({
           id,
           displayName: actorDisplayNames[i] || undefined,
           avatarUrl: actorAvatarUrls[i] || undefined,
-        }));
+        }))
+        .filter((actor): actor is { id: string; displayName: string | undefined; avatarUrl: string | undefined } =>
+          actor.id != null,
+        );
 
       return {
         uuid: row.latestUuid,
