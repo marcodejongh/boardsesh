@@ -251,6 +251,19 @@ export const createClimbFilters = (
       eq(tables.climbStats.angle, params.angle),
     ],
 
+    // For use in getHoldHeatmapData - joins climbStats via climbHolds
+    getHoldHeatmapClimbStatsConditions: () => [
+      eq(tables.climbStats.climbUuid, tables.climbHolds.climbUuid),
+      eq(tables.climbStats.boardType, params.board_name),
+      eq(tables.climbStats.angle, params.angle),
+    ],
+
+    // For use when joining climbHolds to climbs
+    getClimbHoldsJoinConditions: () => [
+      eq(tables.climbHolds.climbUuid, tables.climbs.uuid),
+      eq(tables.climbHolds.boardType, params.board_name),
+    ],
+
     // User-specific logbook data selectors
     getUserLogbookSelects,
 

@@ -20,10 +20,6 @@ import {
   BoardNameSchema,
   GradesResponseSchema,
   ClimbSchema,
-  ClimbStatsResponseSchema,
-  BetaLinksResponseSchema,
-  SettersResponseSchema,
-  HeatmapDataSchema,
   AnglesResponseSchema,
   LayoutSlugResponseSchema,
   SizeSlugResponseSchema,
@@ -33,9 +29,6 @@ import {
   VerifyEmailRequestSchema,
   ResendVerificationRequestSchema,
   ErrorResponseSchema,
-  AuroraLoginRequestSchema,
-  AuroraLoginResponseSchema,
-  SaveAscentRequestSchema,
   UserProfileSchema,
   UpdateProfileRequestSchema,
   WsAuthResponseSchema,
@@ -157,108 +150,6 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: ErrorResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-registry.registerPath({
-  method: 'get',
-  path: '/api/v1/{board_name}/climb-stats/{climb_uuid}',
-  summary: 'Get climb statistics across all angles',
-  description: 'Returns statistics for a climb at every angle it has been attempted. Useful for seeing how difficulty and popularity vary with angle.',
-  tags: ['Climbs'],
-  request: {
-    params: z.object({
-      board_name: BoardNameSchema,
-      climb_uuid: z.string().describe('Unique climb identifier'),
-    }),
-  },
-  responses: {
-    200: {
-      description: 'Climb statistics by angle',
-      content: {
-        'application/json': {
-          schema: ClimbStatsResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-registry.registerPath({
-  method: 'get',
-  path: '/api/v1/{board_name}/beta/{climb_uuid}',
-  summary: 'Get beta videos for a climb',
-  description: 'Returns links to beta videos for a specific climb. Beta links are user-submitted and may include videos at different angles.',
-  tags: ['Climbs'],
-  request: {
-    params: z.object({
-      board_name: BoardNameSchema,
-      climb_uuid: z.string().describe('Unique climb identifier'),
-    }),
-  },
-  responses: {
-    200: {
-      description: 'Beta video links',
-      content: {
-        'application/json': {
-          schema: BetaLinksResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-registry.registerPath({
-  method: 'get',
-  path: '/api/v1/{board_name}/{layout_id}/{size_id}/{set_ids}/{angle}/setters',
-  summary: 'Get setters for a board configuration',
-  description: 'Returns a list of climb setters for the specified board configuration, ordered by number of climbs set.',
-  tags: ['Climbs'],
-  request: {
-    params: z.object({
-      board_name: BoardNameSchema,
-      layout_id: z.string().describe('Layout ID'),
-      size_id: z.string().describe('Size ID'),
-      set_ids: z.string().describe('Comma-separated set IDs'),
-      angle: z.string().describe('Board angle in degrees'),
-    }),
-  },
-  responses: {
-    200: {
-      description: 'List of setters',
-      content: {
-        'application/json': {
-          schema: SettersResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-registry.registerPath({
-  method: 'get',
-  path: '/api/v1/{board_name}/{layout_id}/{size_id}/{set_ids}/{angle}/heatmap',
-  summary: 'Get hold usage heatmap',
-  description: 'Returns frequency data for each hold, showing how often holds are used in climbs. Useful for visualizing popular hold positions.',
-  tags: ['Climbs'],
-  request: {
-    params: z.object({
-      board_name: BoardNameSchema,
-      layout_id: z.string().describe('Layout ID'),
-      size_id: z.string().describe('Size ID'),
-      set_ids: z.string().describe('Comma-separated set IDs'),
-      angle: z.string().describe('Board angle in degrees'),
-    }),
-  },
-  responses: {
-    200: {
-      description: 'Hold usage frequency map',
-      content: {
-        'application/json': {
-          schema: HeatmapDataSchema,
         },
       },
     },
@@ -484,86 +375,6 @@ registry.registerPath({
     },
     429: {
       description: 'Rate limit exceeded',
-      content: {
-        'application/json': {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-// ============================================
-// Aurora Proxy Routes
-// ============================================
-
-registry.registerPath({
-  method: 'post',
-  path: '/api/v1/{board_name}/proxy/login',
-  summary: 'Login to Aurora board',
-  description: 'Authenticates with the Aurora Climbing API and returns a session token. This token is used for subsequent Aurora API calls.',
-  tags: ['Aurora Proxy'],
-  request: {
-    params: z.object({
-      board_name: BoardNameSchema,
-    }),
-    body: {
-      content: {
-        'application/json': {
-          schema: AuroraLoginRequestSchema,
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      description: 'Login successful',
-      content: {
-        'application/json': {
-          schema: AuroraLoginResponseSchema,
-        },
-      },
-    },
-    401: {
-      description: 'Invalid credentials',
-      content: {
-        'application/json': {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-registry.registerPath({
-  method: 'post',
-  path: '/api/v1/{board_name}/proxy/saveAscent',
-  summary: 'Save an ascent to Aurora',
-  description: 'Records a climb completion (ascent) to the Aurora Climbing platform. Requires a valid Aurora session token.',
-  tags: ['Aurora Proxy'],
-  request: {
-    params: z.object({
-      board_name: BoardNameSchema,
-    }),
-    body: {
-      content: {
-        'application/json': {
-          schema: SaveAscentRequestSchema,
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      description: 'Ascent saved successfully',
-      content: {
-        'application/json': {
-          schema: z.object({ success: z.boolean() }),
-        },
-      },
-    },
-    401: {
-      description: 'Invalid or expired token',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,

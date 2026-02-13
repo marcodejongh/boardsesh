@@ -13,7 +13,7 @@ import CardContent from '@mui/material/CardContent';
 import { Instagram, PersonOutlined, ExpandLessOutlined } from '@mui/icons-material';
 import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
 import { EmptyState } from '@/app/components/ui/empty-state';
-import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
+import type { BetaLink } from '@boardsesh/shared-schema';
 import { themeTokens } from '@/app/theme/theme-config';
 
 interface BetaVideosProps {
@@ -79,7 +79,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
                   pointerEvents: 'none',
                 }}
                 scrolling="no"
-                title={`Beta video by ${betaLink.foreign_username || 'unknown'}`}
+                title={`Beta video by ${betaLink.foreignUsername || 'unknown'}`}
               />
             </Box>
           ) : (
@@ -105,9 +105,9 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
               borderTop: `1px solid var(--neutral-100)`,
             }}
           >
-            {betaLink.foreign_username && (
+            {betaLink.foreignUsername && (
               <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: themeTokens.typography.fontSize.sm }}>
-                <PersonOutlined sx={{ marginRight: 4, fontSize: 'inherit', verticalAlign: 'middle' }} />@{betaLink.foreign_username}
+                <PersonOutlined sx={{ marginRight: 4, fontSize: 'inherit', verticalAlign: 'middle' }} />@{betaLink.foreignUsername}
                 {betaLink.angle && <Box component="span" sx={{ marginLeft: 8 }}>{betaLink.angle}&deg;</Box>}
               </Typography>
             )}
@@ -170,7 +170,7 @@ const BetaVideos: React.FC<BetaVideosProps> = ({ betaLinks }) => {
           sx={{ '& .MuiDialog-paper': { maxWidth: '500px', width: '90%' } }}
         >
           <DialogTitle>
-            {selectedVideo?.foreign_username ? `Beta by @${selectedVideo.foreign_username}` : 'Beta Video'}
+            {selectedVideo?.foreign_username ? `Beta by @${selectedVideo.foreignUsername}` : 'Beta Video'}
           </DialogTitle>
           <DialogContent>
             {selectedVideo && (
