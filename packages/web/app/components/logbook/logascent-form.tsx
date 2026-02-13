@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import MuiRating from '@mui/material/Rating';
 import Chip from '@mui/material/Chip';
 import MuiTooltip from '@mui/material/Tooltip';
@@ -66,11 +66,15 @@ export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boar
   const { token: wsAuthToken } = useWsAuthToken();
   const isAuthenticated = boardProvider?.isAuthenticated ?? (sessionStatus === 'authenticated');
 
+  // Use a ref so the fallback saveTick closure always reads the latest token
+  const wsAuthTokenRef = useRef(wsAuthToken);
+  wsAuthTokenRef.current = wsAuthToken;
+
   const saveTick = boardProvider?.saveTick ?? (async (options: SaveTickOptions) => {
     await executeGraphQL<SaveTickMutationResponse>(
       SAVE_TICK,
       { input: { ...options, boardType: boardDetails.board_name } },
-      wsAuthToken,
+      wsAuthTokenRef.current,
     );
   });
   const grades = TENSION_KILTER_GRADES;
