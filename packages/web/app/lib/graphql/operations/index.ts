@@ -5,6 +5,7 @@ export * from './playlists';
 export * from './social';
 export * from './comments-votes';
 export * from './boards';
+export * from './gyms';
 export * from './notifications';
 export * from './activity-feed';
 export * from './new-climb-feed';

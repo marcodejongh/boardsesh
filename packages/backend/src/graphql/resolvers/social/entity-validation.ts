@@ -108,6 +108,23 @@ export async function validateEntityExists(
       break;
     }
 
+    case 'gym': {
+      const [gym] = await db
+        .select({ uuid: dbSchema.gyms.uuid })
+        .from(dbSchema.gyms)
+        .where(
+          and(
+            eq(dbSchema.gyms.uuid, entityId),
+            isNull(dbSchema.gyms.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (!gym) {
+        throw new Error('Gym not found');
+      }
+      break;
+    }
+
     case 'proposal': {
       const [proposal] = await db
         .select({ uuid: dbSchema.climbProposals.uuid })

@@ -94,7 +94,7 @@ async function enrichBoard(
   authenticatedUserId?: string,
 ) {
   // Run all independent queries in parallel to avoid N+1 per board
-  const [ownerResult, tickStatsResult, followerStatsResult, commentStatsResult, followCheckResult] =
+  const [ownerResult, tickStatsResult, followerStatsResult, commentStatsResult, followCheckResult, gymInfoResult] =
     await Promise.all([
       // Get owner profile
       db
@@ -156,6 +156,15 @@ async function enrichBoard(
               )
             )
         : Promise.resolve([]),
+
+      // Get gym info if board is linked to a gym
+      board.gymId
+        ? db
+            .select({ uuid: dbSchema.gyms.uuid, name: dbSchema.gyms.name })
+            .from(dbSchema.gyms)
+            .where(and(eq(dbSchema.gyms.id, board.gymId), isNull(dbSchema.gyms.deletedAt)))
+            .limit(1)
+        : Promise.resolve([]),
     ]);
 
   const ownerInfo = ownerResult[0];
@@ -163,6 +172,7 @@ async function enrichBoard(
   const followerStats = followerStatsResult[0];
   const commentStats = commentStatsResult[0];
   const isFollowedByMe = Number(followCheckResult[0]?.count || 0) > 0;
+  const gymInfo = (gymInfoResult as Array<{ uuid: string; name: string }>)[0];
 
   return {
     uuid: board.uuid,
@@ -192,6 +202,9 @@ async function enrichBoard(
     followerCount: Number(followerStats?.count || 0),
     commentCount: Number(commentStats?.count || 0),
     isFollowedByMe,
+    gymId: board.gymId ?? null,
+    gymUuid: gymInfo?.uuid ?? null,
+    gymName: gymInfo?.name ?? null,
   };
 }
 
@@ -653,6 +666,79 @@ export const socialBoardMutations = {
     const uuid = uuidv4();
     const slug = await generateUniqueSlug(validatedInput.name);
 
+    // Resolve gymId from gymUuid if provided
+    let gymId: number | null = null;
+    if (validatedInput.gymUuid) {
+      const [gym] = await db
+        .select({ id: dbSchema.gyms.id, ownerId: dbSchema.gyms.ownerId })
+        .from(dbSchema.gyms)
+        .where(and(eq(dbSchema.gyms.uuid, validatedInput.gymUuid), isNull(dbSchema.gyms.deletedAt)))
+        .limit(1);
+
+      if (!gym) {
+        throw new Error('Gym not found');
+      }
+
+      // Verify user is owner or admin of the gym
+      if (gym.ownerId !== userId) {
+        const [member] = await db
+          .select({ role: dbSchema.gymMembers.role })
+          .from(dbSchema.gymMembers)
+          .where(
+            and(
+              eq(dbSchema.gymMembers.gymId, gym.id),
+              eq(dbSchema.gymMembers.userId, userId),
+              eq(dbSchema.gymMembers.role, 'admin'),
+            )
+          )
+          .limit(1);
+
+        if (!member) {
+          throw new Error('Not authorized to link board to this gym');
+        }
+      }
+
+      gymId = gym.id;
+    } else {
+      // Auto-create a gym if user has zero gyms
+      const [existingGym] = await db
+        .select({ id: dbSchema.gyms.id })
+        .from(dbSchema.gyms)
+        .where(and(eq(dbSchema.gyms.ownerId, userId), isNull(dbSchema.gyms.deletedAt)))
+        .limit(1);
+
+      if (!existingGym) {
+        const gymName = validatedInput.locationName || validatedInput.name;
+        const gymUuid = uuidv4();
+        const gymSlug = gymName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 100) || 'gym';
+
+        const [newGym] = await db
+          .insert(dbSchema.gyms)
+          .values({
+            uuid: gymUuid,
+            slug: gymSlug,
+            ownerId: userId,
+            name: gymName,
+            isPublic: validatedInput.isPublic ?? true,
+            latitude: validatedInput.latitude ?? null,
+            longitude: validatedInput.longitude ?? null,
+          })
+          .returning();
+
+        if (validatedInput.latitude != null && validatedInput.longitude != null) {
+          await db.execute(
+            sql`UPDATE gyms SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${newGym.id}`
+          );
+        }
+
+        gymId = newGym.id;
+      }
+    }
+
     const [board] = await db
       .insert(dbSchema.userBoards)
       .values({
@@ -670,6 +756,7 @@ export const socialBoardMutations = {
         longitude: validatedInput.longitude ?? null,
         isPublic: validatedInput.isPublic ?? true,
         isOwned: validatedInput.isOwned ?? true,
+        gymId,
       })
       .returning();
 

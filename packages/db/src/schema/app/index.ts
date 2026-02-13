@@ -1,3 +1,4 @@
+export * from './gyms';
 export * from './boards';
 export * from './sessions';
 export * from './favorites';

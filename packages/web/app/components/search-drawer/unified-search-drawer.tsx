@@ -10,10 +10,11 @@ import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import UserSearchResults from '../social/user-search-results';
 import BoardSearchResults from '../social/board-search-results';
 import PlaylistSearchResults from '../social/playlist-search-results';
+import GymSearchResults from '../social/gym-search-results';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { BoardDetails } from '@/app/lib/types';
 
-export type SearchCategory = 'climbs' | 'users' | 'playlists' | 'boards';
+export type SearchCategory = 'climbs' | 'users' | 'playlists' | 'boards' | 'gyms';
 
 interface UnifiedSearchDrawerProps {
   open: boolean;
@@ -53,6 +54,7 @@ export default function UnifiedSearchDrawer({
   const categories: { key: SearchCategory; label: string; visible: boolean }[] = [
     { key: 'climbs', label: 'Climbs', visible: !!boardDetails },
     { key: 'boards', label: 'Boards', visible: true },
+    { key: 'gyms', label: 'Gyms', visible: true },
     { key: 'users', label: 'Users', visible: true },
     { key: 'playlists', label: 'Playlists', visible: true },
   ];
@@ -104,6 +106,7 @@ export default function UnifiedSearchDrawer({
               size="small"
               placeholder={
                 category === 'boards' ? 'Search boards...'
+                  : category === 'gyms' ? 'Search gyms...'
                   : category === 'users' ? 'Search climbers...'
                   : 'Search playlists...'
               }
@@ -125,6 +128,9 @@ export default function UnifiedSearchDrawer({
           <Box sx={{ overflow: 'auto', flex: 1 }}>
             {category === 'boards' && (
               <BoardSearchResults query={query} authToken={token} />
+            )}
+            {category === 'gyms' && (
+              <GymSearchResults query={query} authToken={token} />
             )}
             {category === 'users' && (
               <UserSearchResults query={query} authToken={token} />
