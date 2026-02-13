@@ -12,7 +12,9 @@ import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import LoginOutlined from '@mui/icons-material/LoginOutlined';
 import AppsOutlined from '@mui/icons-material/AppsOutlined';
 import { ClimbActionProps, ClimbActionResult } from '../types';
-import { useBoardProvider } from '../../board-provider/board-provider-context';
+import { useOptionalBoardProvider } from '../../board-provider/board-provider-context';
+import { useSession } from 'next-auth/react';
+import { useLogbook } from '@/app/hooks/use-logbook';
 import AuthModal from '../../auth/auth-modal';
 import { LogAscentDrawer } from '../../logbook/log-ascent-drawer';
 import { track } from '@vercel/analytics';
@@ -34,10 +36,17 @@ export function TickAction({
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const {
-    isAuthenticated,
-    logbook,
-  } = useBoardProvider();
+  const boardProvider = useOptionalBoardProvider();
+  const { status: sessionStatus } = useSession();
+  const isAuthenticated = boardProvider?.isAuthenticated ?? (sessionStatus === 'authenticated');
+
+  // Use standalone useLogbook when outside BoardProvider
+  // Pass empty array when provider exists to skip the fetch (enabled requires climbUuids.length > 0)
+  const { logbook: standaloneLogbook } = useLogbook(
+    boardDetails.board_name,
+    boardProvider ? [] : [climb.uuid],
+  );
+  const logbook = boardProvider?.logbook ?? standaloneLogbook;
 
   const { alwaysUseApp, loaded, enableAlwaysUseApp } = useAlwaysTickInApp();
 

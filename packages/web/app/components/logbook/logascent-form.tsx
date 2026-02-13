@@ -18,7 +18,9 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
-import { useBoardProvider, TickStatus } from '../board-provider/board-provider-context';
+import { useOptionalBoardProvider, type TickStatus } from '../board-provider/board-provider-context';
+import { useSession } from 'next-auth/react';
+import { useSaveTick } from '@/app/hooks/use-save-tick';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
 
 import dayjs from 'dayjs';
@@ -54,7 +56,14 @@ interface LogAscentFormProps {
 }
 
 export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boardDetails, onClose }) => {
-  const { saveTick, isAuthenticated } = useBoardProvider();
+  const boardProvider = useOptionalBoardProvider();
+  const { status: sessionStatus } = useSession();
+  const isAuthenticated = boardProvider?.isAuthenticated ?? (sessionStatus === 'authenticated');
+
+  const saveTickMutation = useSaveTick(boardDetails.board_name);
+  const saveTick = boardProvider?.saveTick ?? (async (options: Parameters<typeof saveTickMutation.mutateAsync>[0]) => {
+    await saveTickMutation.mutateAsync(options);
+  });
   const grades = TENSION_KILTER_GRADES;
   const angleOptions = ANGLES[boardDetails.board_name];
 
