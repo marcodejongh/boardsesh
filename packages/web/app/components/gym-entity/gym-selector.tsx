@@ -6,7 +6,7 @@ import Chip from '@mui/material/Chip';
 import MuiTypography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddOutlined from '@mui/icons-material/AddOutlined';
-import useSWR from 'swr';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
@@ -25,10 +25,11 @@ interface GymSelectorProps {
 export default function GymSelector({ selectedGymUuid, onSelect }: GymSelectorProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { token } = useWsAuthToken();
+  const queryClient = useQueryClient();
 
-  const { data, isLoading, mutate } = useSWR(
-    token ? ['myGyms', token] : null,
-    async () => {
+  const { data, isLoading } = useQuery({
+    queryKey: ['myGyms'],
+    queryFn: async () => {
       const client = createGraphQLHttpClient(token!);
       const response = await client.request<GetMyGymsQueryResponse, GetMyGymsQueryVariables>(
         GET_MY_GYMS,
@@ -36,13 +37,14 @@ export default function GymSelector({ selectedGymUuid, onSelect }: GymSelectorPr
       );
       return response.myGyms.gyms;
     },
-    { revalidateOnFocus: false },
-  );
+    enabled: !!token,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const gyms = data ?? [];
 
   const handleGymCreated = (gym: Gym) => {
-    mutate((prev) => (prev ? [gym, ...prev] : [gym]), false);
+    queryClient.setQueryData<Gym[]>(['myGyms'], (prev) => (prev ? [gym, ...prev] : [gym]));
     onSelect(gym.uuid);
     setShowCreateForm(false);
   };

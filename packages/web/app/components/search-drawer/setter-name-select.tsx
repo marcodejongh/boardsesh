@@ -6,7 +6,7 @@ import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 import { useQueueContext } from '../graphql-queue';
-import useSWR from 'swr';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { constructSetterStatsUrl } from '@/app/lib/url-utils';
 
 interface SetterStat {
@@ -40,15 +40,13 @@ const SetterNameSelect = () => {
     : null;
 
   // Fetch setter stats from the API
-  const { data: setterStats, isLoading } = useSWR<SetterStat[]>(
-    apiUrl,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      keepPreviousData: true,
-    }
-  );
+  const { data: setterStats, isLoading } = useQuery<SetterStat[]>({
+    queryKey: ['setterStats', apiUrl],
+    queryFn: () => fetcher(apiUrl!),
+    enabled: !!apiUrl,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
+  });
 
   // Map setter stats to Autocomplete options
   const options: SetterOption[] = React.useMemo(() => {

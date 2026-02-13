@@ -1,74 +1,18 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { BoardName, ClimbUuid } from '@/app/lib/types';
 import { SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
-import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { useSession } from 'next-auth/react';
-import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
-import {
-  GET_TICKS,
-  SAVE_TICK,
-  type GetTicksQueryVariables,
-  type GetTicksQueryResponse,
-  type SaveTickMutationVariables,
-  type SaveTickMutationResponse,
-} from '@/app/lib/graphql/operations';
-import {
-  SAVE_CLIMB_MUTATION,
-  type SaveClimbMutationVariables,
-  type SaveClimbMutationResponse,
-} from '@/app/lib/graphql/operations/new-climb-feed';
-import { createGraphQLClient, execute, type Client } from '../graphql-queue/graphql-client';
+import { useLogbook as useLogbookQuery } from '@/app/hooks/use-logbook';
+import { useSaveTick as useSaveTickMutation, type SaveTickOptions } from '@/app/hooks/use-save-tick';
+import { useSaveClimb as useSaveClimbMutation, type SaveClimbResponse } from '@/app/hooks/use-save-climb';
 
-export interface SaveClimbResponse {
-  uuid: string;
-}
+// Re-export types for backward compatibility
+export type { SaveTickOptions } from '@/app/hooks/use-save-tick';
+export type { SaveClimbResponse } from '@/app/hooks/use-save-climb';
+export type { TickStatus, LogbookEntry } from '@/app/hooks/use-logbook';
 
-// Tick status type matching the database enum
-export type TickStatus = 'flash' | 'send' | 'attempt';
-
-// Options for saving a tick (local storage, no Aurora required)
-export interface SaveTickOptions {
-  climbUuid: string;
-  angle: number;
-  isMirror: boolean;
-  status: TickStatus;
-  attemptCount: number;
-  quality?: number; // 1-5, optional for attempts
-  difficulty?: number; // optional for attempts
-  isBenchmark: boolean;
-  comment: string;
-  climbedAt: string;
-  sessionId?: string;
-  // Board resolution fields (for associating ticks with board entities)
-  layoutId?: number;
-  sizeId?: number;
-  setIds?: string;
-}
-
-// Logbook entry that works for both local ticks and legacy Aurora entries
-export interface LogbookEntry {
-  uuid: string;
-  climb_uuid: string;
-  angle: number;
-  is_mirror: boolean;
-  user_id: number;
-  attempt_id: number;
-  tries: number;
-  quality: number | null;
-  difficulty: number | null;
-  is_benchmark: boolean;
-  is_listed: boolean;
-  comment: string;
-  climbed_at: string;
-  created_at: string;
-  updated_at: string;
-  wall_uuid: string | null;
-  is_ascent: boolean;
-  status?: TickStatus;
-  aurora_synced?: boolean;
-}
+import type { LogbookEntry } from '@/app/hooks/use-logbook';
 
 interface BoardContextType {
   boardName: BoardName;
@@ -77,7 +21,7 @@ interface BoardContextType {
   error: string | null;
   isInitialized: boolean;
   logbook: LogbookEntry[];
-  getLogbook: (climbUuids: ClimbUuid[]) => Promise<boolean>;
+  getLogbook: (climbUuids: ClimbUuid[]) => Promise<void>;
   saveTick: (options: SaveTickOptions) => Promise<void>;
   saveClimb: (options: Omit<SaveClimbOptions, 'setter_id' | 'user_id'>) => Promise<SaveClimbResponse>;
 }
@@ -85,263 +29,46 @@ interface BoardContextType {
 const BoardContext = createContext<BoardContextType | undefined>(undefined);
 
 export function BoardProvider({ boardName, children }: { boardName: BoardName; children: React.ReactNode }) {
-  const { showMessage } = useSnackbar();
-  const { data: session, status: sessionStatus } = useSession();
-  // Use wsAuthToken for GraphQL backend auth (NextAuth session token)
-  const { token: wsAuthToken } = useWsAuthToken();
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { status: sessionStatus } = useSession();
   const [isInitialized, setIsInitialized] = useState(false);
-  const [logbook, setLogbook] = useState<LogbookEntry[]>([]);
-  // Use ref to track climb UUIDs to avoid re-render loops
-  const currentClimbUuidsRef = useRef<ClimbUuid[]>([]);
-  const lastSessionStatusRef = useRef<string>(sessionStatus);
-  const graphqlClientRef = useRef<Client | null>(null);
+  const [climbUuids, setClimbUuids] = useState<ClimbUuid[]>([]);
+
+  // Use TanStack Query hooks for data fetching and mutations
+  const { logbook } = useLogbookQuery(boardName, climbUuids);
+  const saveTickMutation = useSaveTickMutation(boardName);
+  const saveClimbMutation = useSaveClimbMutation(boardName);
 
   // Initialize when session status changes
   useEffect(() => {
     if (sessionStatus !== 'loading') {
-      setIsLoading(false);
       setIsInitialized(true);
     }
   }, [sessionStatus]);
 
-  // Internal fetch function (not memoized, called by getLogbook and effect)
-  // Returns true if the fetch was successful, false if it was skipped or failed
-  const fetchLogbook = async (climbUuids: ClimbUuid[]): Promise<boolean> => {
-    if (sessionStatus !== 'authenticated') {
-      setLogbook([]);
-      return false;
-    }
+  // getLogbook now just sets the climbUuids state; TanStack Query handles the fetch
+  const getLogbook = useCallback(async (uuids: ClimbUuid[]): Promise<void> => {
+    setClimbUuids(uuids);
+  }, []);
 
-    // CRITICAL: Wait for wsAuthToken to be available
-    if (!wsAuthToken) {
-      console.log('[fetchLogbook] Waiting for auth token...');
-      return false; // Caller should retry when wsAuthToken becomes available
-    }
+  // Wrapper to maintain backward-compatible API
+  const saveTick = useCallback(async (options: SaveTickOptions): Promise<void> => {
+    await saveTickMutation.mutateAsync(options);
+  }, [saveTickMutation]);
 
-    try {
-      const client = createGraphQLHttpClient(wsAuthToken);
+  const saveClimb = useCallback(async (options: Omit<SaveClimbOptions, 'setter_id' | 'user_id'>): Promise<SaveClimbResponse> => {
+    return saveClimbMutation.mutateAsync(options);
+  }, [saveClimbMutation]);
 
-      const variables: GetTicksQueryVariables = {
-        input: {
-          boardType: boardName,
-          climbUuids: climbUuids.length > 0 ? climbUuids : undefined,
-        }
-      };
-
-      const response = await client.request<GetTicksQueryResponse>(GET_TICKS, variables);
-
-      // Transform to LogbookEntry format for backward compatibility
-      const entries: LogbookEntry[] = response.ticks.map((tick) => ({
-        uuid: tick.uuid,
-        climb_uuid: tick.climbUuid,
-        angle: tick.angle,
-        is_mirror: tick.isMirror,
-        user_id: 0,
-        attempt_id: 0,
-        tries: tick.attemptCount,
-        quality: tick.quality,
-        difficulty: tick.difficulty,
-        is_benchmark: tick.isBenchmark,
-        is_listed: true,
-        comment: tick.comment,
-        climbed_at: tick.climbedAt,
-        created_at: tick.createdAt,
-        updated_at: tick.updatedAt,
-        wall_uuid: null,
-        is_ascent: tick.status === 'flash' || tick.status === 'send',
-        status: tick.status,
-        aurora_synced: tick.auroraId !== null,
-      }));
-
-      setLogbook(entries);
-      return true;
-    } catch (err) {
-      console.error('Failed to fetch logbook:', err);
-      setLogbook([]);
-      return false;
-    }
-  };
-
-  // Reset GraphQL client when auth token changes
-  useEffect(() => {
-    if (graphqlClientRef.current && 'dispose' in graphqlClientRef.current) {
-      graphqlClientRef.current.dispose();
-    }
-    graphqlClientRef.current = null;
-  }, [wsAuthToken]);
-
-  // Fetch logbook from local ticks API (works without Aurora credentials)
-  // Returns true if the fetch was successful, false if it was skipped or failed
-  const getLogbook = useCallback(async (climbUuids: ClimbUuid[]): Promise<boolean> => {
-    // Store the UUIDs in ref to avoid re-render loops
-    currentClimbUuidsRef.current = climbUuids;
-    return await fetchLogbook(climbUuids);
-  }, [boardName, sessionStatus, wsAuthToken]);
-
-  // Refetch logbook only when session status changes from non-authenticated to authenticated
-  useEffect(() => {
-    const wasAuthenticated = lastSessionStatusRef.current === 'authenticated';
-    const isNowAuthenticated = sessionStatus === 'authenticated';
-    lastSessionStatusRef.current = sessionStatus;
-
-    // Only refetch if we just became authenticated, have token, and have climb UUIDs
-    if (!wasAuthenticated && isNowAuthenticated && wsAuthToken && currentClimbUuidsRef.current.length > 0) {
-      fetchLogbook(currentClimbUuidsRef.current);
-    } else if (!isNowAuthenticated) {
-      setLogbook([]);
-    }
-  }, [sessionStatus, boardName, wsAuthToken]);
-
-  // Save a tick to local storage (no Aurora credentials required)
-  const saveTick = async (options: SaveTickOptions) => {
-    if (sessionStatus !== 'authenticated') {
-      throw new Error('Not authenticated');
-    }
-
-    const tempUuid = `temp-${Date.now()}`;
-    const optimisticEntry: LogbookEntry = {
-      uuid: tempUuid,
-      climb_uuid: options.climbUuid,
-      angle: options.angle,
-      is_mirror: options.isMirror,
-      user_id: 0,
-      attempt_id: 0,
-      tries: options.attemptCount,
-      quality: options.quality ?? null,
-      difficulty: options.difficulty ?? null,
-      is_benchmark: options.isBenchmark,
-      is_listed: true,
-      comment: options.comment,
-      climbed_at: options.climbedAt,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      wall_uuid: null,
-      is_ascent: options.status === 'flash' || options.status === 'send',
-      status: options.status,
-      aurora_synced: false,
-    };
-
-    // Optimistically update the logbook
-    setLogbook((currentLogbook) => [optimisticEntry, ...currentLogbook]);
-
-    try {
-      const client = createGraphQLHttpClient(wsAuthToken);
-
-      const variables: SaveTickMutationVariables = {
-        input: {
-          boardType: boardName,
-          climbUuid: options.climbUuid,
-          angle: options.angle,
-          isMirror: options.isMirror,
-          status: options.status,
-          attemptCount: options.attemptCount,
-          quality: options.quality,
-          difficulty: options.difficulty,
-          isBenchmark: options.isBenchmark,
-          comment: options.comment,
-          climbedAt: options.climbedAt,
-          sessionId: options.sessionId,
-          layoutId: options.layoutId,
-          sizeId: options.sizeId,
-          setIds: options.setIds,
-        }
-      };
-
-      const response = await client.request<SaveTickMutationResponse>(SAVE_TICK, variables);
-      const tick = response.saveTick;
-
-      // Update the optimistic entry with the real data
-      setLogbook((currentLogbook) =>
-        currentLogbook.map((entry) =>
-          entry.uuid === tempUuid
-            ? {
-                ...entry,
-                uuid: tick.uuid,
-                created_at: tick.createdAt,
-                updated_at: tick.updatedAt,
-              }
-            : entry
-        )
-      );
-    } catch (err) {
-      console.error('Failed to save tick:', err);
-
-      // Extract error message for user display
-      let errorMessage = 'Failed to save tick';
-      if (err instanceof Error) {
-        // GraphQL errors often have structured error info
-        if ('response' in err && typeof err.response === 'object' && err.response !== null) {
-          const response = err.response as { errors?: Array<{ message: string }> };
-          if (response.errors && response.errors.length > 0) {
-            errorMessage = response.errors[0].message;
-          }
-        } else {
-          errorMessage = err.message;
-        }
-      }
-
-      showMessage(errorMessage, 'error');
-
-      // Rollback on error
-      setLogbook((currentLogbook) =>
-        currentLogbook.filter((entry) => entry.uuid !== tempUuid)
-      );
-      throw err;
-    }
-  };
-
-  // Save a climb (requires authentication)
-  const saveClimb = async (options: Omit<SaveClimbOptions, 'setter_id' | 'user_id'>): Promise<SaveClimbResponse> => {
-    if (sessionStatus !== 'authenticated' || !session?.user?.id || !wsAuthToken) {
-      throw new Error('Authentication required to create climbs');
-    }
-
-    try {
-      if (!graphqlClientRef.current) {
-        graphqlClientRef.current = createGraphQLClient({
-          url: process.env.NEXT_PUBLIC_WS_URL!,
-          authToken: wsAuthToken,
-        });
-      }
-
-      const variables: SaveClimbMutationVariables = {
-        input: {
-          boardType: boardName,
-          layoutId: options.layout_id,
-          name: options.name,
-          description: options.description || '',
-          isDraft: options.is_draft,
-          frames: options.frames,
-          framesCount: options.frames_count,
-          framesPace: options.frames_pace,
-          angle: options.angle,
-        },
-      };
-
-      const result = await execute<SaveClimbMutationResponse, SaveClimbMutationVariables>(
-        graphqlClientRef.current,
-        { query: SAVE_CLIMB_MUTATION, variables },
-      );
-
-      return result.saveClimb;
-    } catch (err) {
-      showMessage('Failed to save climb', 'error');
-      throw err;
-    }
-  };
-
-  const value = {
+  const value: BoardContextType = {
+    boardName,
     isAuthenticated: sessionStatus === 'authenticated',
-    isLoading,
-    error,
+    isLoading: sessionStatus === 'loading',
+    error: null,
     isInitialized,
-    getLogbook,
     logbook,
+    getLogbook,
     saveTick,
     saveClimb,
-    boardName,
   };
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>;

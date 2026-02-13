@@ -73,7 +73,6 @@
     "react-swipeable": "^7.0.2",
     "server-only": "^0.0.1",
     "swagger-ui-react": "^5.31.0",
-    "swr": "^2.3.8",
     "undici": "^7.16.0",
     "use-debounce": "^10.0.6",
     "uuid": "^13.0.0",
