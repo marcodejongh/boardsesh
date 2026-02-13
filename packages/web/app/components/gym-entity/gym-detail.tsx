@@ -10,6 +10,11 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Divider from '@mui/material/Divider';
 import MuiButton from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
@@ -52,6 +57,7 @@ export default function GymDetail({ gymUuid, open, onClose, onDeleted, anchor = 
   const [activeTab, setActiveTab] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { token } = useWsAuthToken();
   const { data: session } = useSession();
   const { showMessage } = useSnackbar();
@@ -85,10 +91,10 @@ export default function GymDetail({ gymUuid, open, onClose, onDeleted, anchor = 
   const isOwner = !!currentUserId && gym?.ownerId === currentUserId;
   const isOwnerOrAdmin = isOwner || gym?.myRole === 'admin';
 
-  const handleDelete = async () => {
+  const handleDeleteConfirm = async () => {
     if (!token || !gym) return;
-    if (!window.confirm(`Delete "${gym.name}"? This action can be undone later.`)) return;
 
+    setShowDeleteDialog(false);
     setIsDeleting(true);
     try {
       const client = createGraphQLHttpClient(token);
@@ -236,7 +242,7 @@ export default function GymDetail({ gymUuid, open, onClose, onDeleted, anchor = 
                       size="small"
                       color="error"
                       startIcon={<DeleteOutlined />}
-                      onClick={handleDelete}
+                      onClick={() => setShowDeleteDialog(true)}
                       disabled={isDeleting}
                       sx={{ textTransform: 'none' }}
                     >
@@ -281,6 +287,22 @@ export default function GymDetail({ gymUuid, open, onClose, onDeleted, anchor = 
           </Box>
         )}
       </Box>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
+        <DialogTitle>Delete Gym</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Delete &quot;{gym?.name}&quot;? This action can be undone later.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <MuiButton onClick={() => setShowDeleteDialog(false)}>Cancel</MuiButton>
+          <MuiButton onClick={handleDeleteConfirm} color="error" autoFocus>
+            Delete
+          </MuiButton>
+        </DialogActions>
+      </Dialog>
     </Drawer>
   );
 }

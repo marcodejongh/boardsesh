@@ -31,24 +31,29 @@ async function generateUniqueGymSlug(name: string): Promise<string> {
     .replace(/^-+|-+$/g, '')
     .slice(0, 100) || 'gym';
 
+  // Find all existing slugs matching this base in a single query
   const existing = await db
     .select({ slug: dbSchema.gyms.slug })
     .from(dbSchema.gyms)
-    .where(and(eq(dbSchema.gyms.slug, baseSlug), isNull(dbSchema.gyms.deletedAt)))
-    .limit(1);
+    .where(
+      and(
+        or(
+          eq(dbSchema.gyms.slug, baseSlug),
+          ilike(dbSchema.gyms.slug, `${baseSlug.replace(/[%_\\]/g, '\\$&')}-%`),
+        ),
+        isNull(dbSchema.gyms.deletedAt),
+      )
+    );
 
-  if (existing.length === 0) {
+  const existingSlugs = new Set(existing.map((r) => r.slug));
+
+  if (!existingSlugs.has(baseSlug)) {
     return baseSlug;
   }
 
   for (let i = 2; i <= 100; i++) {
     const candidateSlug = `${baseSlug}-${i}`;
-    const check = await db
-      .select({ slug: dbSchema.gyms.slug })
-      .from(dbSchema.gyms)
-      .where(and(eq(dbSchema.gyms.slug, candidateSlug), isNull(dbSchema.gyms.deletedAt)))
-      .limit(1);
-    if (check.length === 0) {
+    if (!existingSlugs.has(candidateSlug)) {
       return candidateSlug;
     }
   }
@@ -339,24 +344,18 @@ export const socialGymQueries = {
       const escapedQuery = query ? query.replace(/[%_\\]/g, '\\$&') : null;
       const likePattern = escapedQuery ? `%${escapedQuery}%` : null;
 
-      const countSql = sql`SELECT count(*)::int as count FROM gyms WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${lon}, ${lat})::geography, ${radiusMeters})`;
-
-      if (likePattern) {
-        countSql.append(sql` AND (name ILIKE ${likePattern} OR address ILIKE ${likePattern})`);
-      }
-
-      const countRows = await db.execute(countSql);
+      const countRows = await db.execute(
+        likePattern
+          ? sql`SELECT count(*)::int as count FROM gyms WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${lon}, ${lat})::geography, ${radiusMeters}) AND (name ILIKE ${likePattern} OR address ILIKE ${likePattern})`
+          : sql`SELECT count(*)::int as count FROM gyms WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${lon}, ${lat})::geography, ${radiusMeters})`,
+      );
       const totalCount = Number(((countRows as unknown as Array<Record<string, unknown>>)[0])?.count || 0);
 
-      const mainSql = sql`SELECT *, ST_Distance(location, ST_MakePoint(${lon}, ${lat})::geography) as distance_meters FROM gyms WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${lon}, ${lat})::geography, ${radiusMeters})`;
-
-      if (likePattern) {
-        mainSql.append(sql` AND (name ILIKE ${likePattern} OR address ILIKE ${likePattern})`);
-      }
-
-      mainSql.append(sql` ORDER BY distance_meters ASC LIMIT ${limit} OFFSET ${offset}`);
-
-      const gymRows = await db.execute(mainSql);
+      const gymRows = await db.execute(
+        likePattern
+          ? sql`SELECT *, ST_Distance(location, ST_MakePoint(${lon}, ${lat})::geography) as distance_meters FROM gyms WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${lon}, ${lat})::geography, ${radiusMeters}) AND (name ILIKE ${likePattern} OR address ILIKE ${likePattern}) ORDER BY distance_meters ASC LIMIT ${limit} OFFSET ${offset}`
+          : sql`SELECT *, ST_Distance(location, ST_MakePoint(${lon}, ${lat})::geography) as distance_meters FROM gyms WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${lon}, ${lat})::geography, ${radiusMeters}) ORDER BY distance_meters ASC LIMIT ${limit} OFFSET ${offset}`,
+      );
       const rows = (gymRows as unknown as Array<Record<string, unknown>>);
 
       type GymRow = typeof dbSchema.gyms.$inferSelect;

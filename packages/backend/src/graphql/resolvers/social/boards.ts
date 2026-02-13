@@ -716,26 +716,58 @@ export const socialBoardMutations = {
           .replace(/^-+|-+$/g, '')
           .slice(0, 100) || 'gym';
 
-        const [newGym] = await db
-          .insert(dbSchema.gyms)
-          .values({
-            uuid: gymUuid,
-            slug: gymSlug,
-            ownerId: userId,
-            name: gymName,
-            isPublic: validatedInput.isPublic ?? true,
-            latitude: validatedInput.latitude ?? null,
-            longitude: validatedInput.longitude ?? null,
-          })
-          .returning();
+        // Use transaction to atomically create gym + board
+        const board = await db.transaction(async (tx) => {
+          const [newGym] = await tx
+            .insert(dbSchema.gyms)
+            .values({
+              uuid: gymUuid,
+              slug: gymSlug,
+              ownerId: userId,
+              name: gymName,
+              isPublic: validatedInput.isPublic ?? true,
+              latitude: validatedInput.latitude ?? null,
+              longitude: validatedInput.longitude ?? null,
+            })
+            .returning();
 
-        if (validatedInput.latitude != null && validatedInput.longitude != null) {
-          await db.execute(
-            sql`UPDATE gyms SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${newGym.id}`
-          );
-        }
+          if (validatedInput.latitude != null && validatedInput.longitude != null) {
+            await tx.execute(
+              sql`UPDATE gyms SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${newGym.id}`
+            );
+          }
 
-        gymId = newGym.id;
+          const [newBoard] = await tx
+            .insert(dbSchema.userBoards)
+            .values({
+              uuid,
+              slug,
+              ownerId: userId,
+              boardType: validatedInput.boardType,
+              layoutId: validatedInput.layoutId,
+              sizeId: validatedInput.sizeId,
+              setIds: validatedInput.setIds,
+              name: validatedInput.name,
+              description: validatedInput.description ?? null,
+              locationName: validatedInput.locationName ?? null,
+              latitude: validatedInput.latitude ?? null,
+              longitude: validatedInput.longitude ?? null,
+              isPublic: validatedInput.isPublic ?? true,
+              isOwned: validatedInput.isOwned ?? true,
+              gymId: newGym.id,
+            })
+            .returning();
+
+          if (validatedInput.latitude != null && validatedInput.longitude != null) {
+            await tx.execute(
+              sql`UPDATE user_boards SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${newBoard.id}`
+            );
+          }
+
+          return newBoard;
+        });
+
+        return enrichBoard(board, userId);
       }
     }
 
