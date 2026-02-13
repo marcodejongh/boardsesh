@@ -12,7 +12,8 @@ import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import LoginOutlined from '@mui/icons-material/LoginOutlined';
 import AppsOutlined from '@mui/icons-material/AppsOutlined';
 import { ClimbActionProps, ClimbActionResult } from '../types';
-import { useBoardProvider } from '../../board-provider/board-provider-context';
+import { useOptionalBoardProvider } from '../../board-provider/board-provider-context';
+import { useSession } from 'next-auth/react';
 import AuthModal from '../../auth/auth-modal';
 import { LogAscentDrawer } from '../../logbook/log-ascent-drawer';
 import { track } from '@vercel/analytics';
@@ -34,10 +35,10 @@ export function TickAction({
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const {
-    isAuthenticated,
-    logbook,
-  } = useBoardProvider();
+  const boardProvider = useOptionalBoardProvider();
+  const { status: sessionStatus } = useSession();
+  const isAuthenticated = boardProvider?.isAuthenticated ?? (sessionStatus === 'authenticated');
+  const logbook = boardProvider?.logbook ?? [];
 
   const { alwaysUseApp, loaded, enableAlwaysUseApp } = useAlwaysTickInApp();
 

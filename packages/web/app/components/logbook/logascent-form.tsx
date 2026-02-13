@@ -18,7 +18,14 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
-import { useBoardProvider, TickStatus } from '../board-provider/board-provider-context';
+import { useOptionalBoardProvider, TickStatus, type SaveTickOptions } from '../board-provider/board-provider-context';
+import { useSession } from 'next-auth/react';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import {
+  SAVE_TICK,
+  type SaveTickMutationResponse,
+} from '@/app/lib/graphql/operations';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
 
 import dayjs from 'dayjs';
@@ -54,7 +61,18 @@ interface LogAscentFormProps {
 }
 
 export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boardDetails, onClose }) => {
-  const { saveTick, isAuthenticated } = useBoardProvider();
+  const boardProvider = useOptionalBoardProvider();
+  const { status: sessionStatus } = useSession();
+  const { token: wsAuthToken } = useWsAuthToken();
+  const isAuthenticated = boardProvider?.isAuthenticated ?? (sessionStatus === 'authenticated');
+
+  const saveTick = boardProvider?.saveTick ?? (async (options: SaveTickOptions) => {
+    await executeGraphQL<SaveTickMutationResponse>(
+      SAVE_TICK,
+      { input: { ...options, boardType: boardDetails.board_name } },
+      wsAuthToken,
+    );
+  });
   const grades = TENSION_KILTER_GRADES;
   const angleOptions = ANGLES[boardDetails.board_name];
 

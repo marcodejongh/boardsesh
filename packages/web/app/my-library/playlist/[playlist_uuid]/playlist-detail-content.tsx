@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import MuiAlert from '@mui/material/Alert';
 import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -19,6 +18,7 @@ import {
   ElectricBoltOutlined,
   EditOutlined,
   DeleteOutlined,
+  ShareOutlined,
 } from '@mui/icons-material';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Climb, BoardDetails } from '@/app/lib/types';
@@ -212,27 +212,15 @@ export default function PlaylistDetailContent({
 
   const allClimbs: Climb[] = climbsData?.pages.flatMap((page) => page.climbs as Climb[]) ?? [];
 
-  // Filter out cross-layout climbs
-  const { visibleClimbs, hiddenCount } = useMemo(() => {
-    const visible: Climb[] = [];
-    let hidden = 0;
-
-    for (const climb of allClimbs) {
-      const isCrossLayout = climb.layoutId != null && climb.layoutId !== boardDetails?.layout_id;
-      if (isCrossLayout) {
-        hidden++;
-      } else {
-        visible.push({ ...climb, angle });
-      }
-    }
-
-    return { visibleClimbs: visible, hiddenCount: hidden };
-  }, [allClimbs, boardDetails?.layout_id, angle]);
+  const climbsWithAngle = useMemo(
+    () => allClimbs.map((climb) => ({ ...climb, angle })),
+    [allClimbs, angle],
+  );
 
   // Climb UUIDs for favorites/playlists provider
   const climbUuids = useMemo(
-    () => visibleClimbs.map((climb) => climb.uuid),
-    [visibleClimbs],
+    () => climbsWithAngle.map((climb) => climb.uuid),
+    [climbsWithAngle],
   );
 
   // Favorites and playlists data fetching
@@ -282,6 +270,31 @@ export default function PlaylistDetailContent({
   }, [token, playlist, playlistUuid, router, showMessage]);
 
   const isOwner = playlist?.userRole === 'owner';
+
+  const handleShare = useCallback(async () => {
+    const shareData = {
+      title: playlist?.name ?? 'Playlist',
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        showMessage('Link copied to clipboard!', 'success');
+      }
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          showMessage('Link copied to clipboard!', 'success');
+        } catch {
+          showMessage('Failed to share', 'error');
+        }
+      }
+    }
+  }, [playlist?.name, showMessage]);
 
   const getPlaylistColor = () => {
     if (playlist?.color && isValidHexColor(playlist.color)) {
@@ -345,7 +358,7 @@ export default function PlaylistDetailContent({
       );
     }
 
-    if (visibleClimbs.length === 0 && hiddenCount === 0 && !isFetchingClimbs) {
+    if (climbsWithAngle.length === 0 && !isFetchingClimbs) {
       return (
         <div className={styles.climbsSection}>
           <EmptyState description="No climbs in this playlist yet" />
@@ -353,33 +366,18 @@ export default function PlaylistDetailContent({
       );
     }
 
-    // Build header with hidden-count alert and all-hidden empty state
-    const climbsHeader = (
-      <>
-        {hiddenCount > 0 && (
-          <MuiAlert severity="info" className={styles.hiddenClimbsNotice}>
-            {`Not showing ${hiddenCount} ${hiddenCount === 1 ? 'climb' : 'climbs'} from other layouts`}
-          </MuiAlert>
-        )}
-        {visibleClimbs.length === 0 && hiddenCount > 0 && !isFetchingClimbs && (
-          <EmptyState description="All climbs in this playlist are from other layouts" />
-        )}
-      </>
-    );
-
     return (
       <div className={styles.climbsSection}>
         <FavoritesProvider {...favoritesProviderProps}>
           <PlaylistsProvider {...playlistsProviderProps}>
             <ClimbsList
               boardDetails={boardDetails}
-              climbs={visibleClimbs}
+              climbs={climbsWithAngle}
               selectedClimbUuid={selectedClimbUuid}
               isFetching={isFetchingClimbs}
               hasMore={hasNextPage ?? false}
               onClimbSelect={handleClimbSelect}
               onLoadMore={handleLoadMore}
-              header={climbsHeader}
             />
           </PlaylistsProvider>
         </FavoritesProvider>
@@ -437,39 +435,43 @@ export default function PlaylistDetailContent({
             </div>
           </div>
 
-          {/* Ellipsis Menu */}
-          <IconButton
-            className={styles.heroMenuButton}
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) => setMenuAnchor(e.currentTarget)}
-            aria-label="Playlist actions"
-          >
-            <MoreVertOutlined />
-          </IconButton>
+          {/* Action Buttons */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <IconButton onClick={handleShare} aria-label="Share playlist">
+              <ShareOutlined />
+            </IconButton>
 
-          <Menu
-            anchorEl={menuAnchor}
-            open={Boolean(menuAnchor)}
-            onClose={() => setMenuAnchor(null)}
-          >
             {isOwner && (
-              <MenuItem onClick={() => { setMenuAnchor(null); setGeneratorOpen(true); }}>
-                <ListItemIcon><ElectricBoltOutlined /></ListItemIcon>
-                <ListItemText>Generate</ListItemText>
-              </MenuItem>
+              <>
+                <IconButton
+                  className={styles.heroMenuButton}
+                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => setMenuAnchor(e.currentTarget)}
+                  aria-label="Playlist actions"
+                >
+                  <MoreVertOutlined />
+                </IconButton>
+
+                <Menu
+                  anchorEl={menuAnchor}
+                  open={Boolean(menuAnchor)}
+                  onClose={() => setMenuAnchor(null)}
+                >
+                  <MenuItem onClick={() => { setMenuAnchor(null); setGeneratorOpen(true); }}>
+                    <ListItemIcon><ElectricBoltOutlined /></ListItemIcon>
+                    <ListItemText>Generate</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchor(null); setEditDrawerOpen(true); }}>
+                    <ListItemIcon><EditOutlined /></ListItemIcon>
+                    <ListItemText>Edit</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={handleDelete} sx={{ color: themeTokens.colors.error }}>
+                    <ListItemIcon><DeleteOutlined sx={{ color: themeTokens.colors.error }} /></ListItemIcon>
+                    <ListItemText>Delete</ListItemText>
+                  </MenuItem>
+                </Menu>
+              </>
             )}
-            {isOwner && (
-              <MenuItem onClick={() => { setMenuAnchor(null); setEditDrawerOpen(true); }}>
-                <ListItemIcon><EditOutlined /></ListItemIcon>
-                <ListItemText>Edit</ListItemText>
-              </MenuItem>
-            )}
-            {isOwner && (
-              <MenuItem onClick={handleDelete} sx={{ color: themeTokens.colors.error }}>
-                <ListItemIcon><DeleteOutlined sx={{ color: themeTokens.colors.error }} /></ListItemIcon>
-                <ListItemText>Delete</ListItemText>
-              </MenuItem>
-            )}
-          </Menu>
+          </Box>
         </div>
 
         {/* Climbs List */}
