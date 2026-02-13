@@ -121,6 +121,7 @@ export default function StartSeshDrawer({ open, onClose, boardConfigs }: StartSe
           size="small"
           variant={isCustomSelected ? 'filled' : 'outlined'}
           color={isCustomSelected ? 'primary' : 'default'}
+          disabled={!boardConfigs}
           onClick={() => setShowBoardDrawer(true)}
           sx={{
             flexShrink: 0,

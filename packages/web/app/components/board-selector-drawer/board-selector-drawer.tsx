@@ -21,9 +21,7 @@ import { getDefaultSizeForLayout } from '@/app/lib/__generated__/product-sizes-d
 import { constructClimbListWithSlugs, constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import { loadSavedBoards, saveBoardConfig, deleteBoardConfig, StoredBoardConfig } from '@/app/lib/saved-boards-db';
 import { setLastUsedBoard } from '@/app/lib/last-used-board-db';
-import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
-import { GET_MY_BOARDS, type GetMyBoardsQueryResponse } from '@/app/lib/graphql/operations';
+import { useMyBoards } from '@/app/hooks/use-my-boards';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import Chip from '@mui/material/Chip';
 import Card from '@mui/material/Card';
@@ -51,9 +49,7 @@ export default function BoardSelectorDrawer({
   const [activeTab, setActiveTab] = useState<'saved' | 'new'>('saved');
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [serverBoards, setServerBoards] = useState<UserBoard[]>([]);
-  const [isLoadingServerBoards, setIsLoadingServerBoards] = useState(false);
-  const { token, isAuthenticated } = useWsAuthToken();
+  const { boards: serverBoards, isLoading: isLoadingServerBoards } = useMyBoards(open);
 
   // New board form state
   const [selectedBoard, setSelectedBoard] = useState<BoardName | undefined>(undefined);
@@ -95,18 +91,6 @@ export default function BoardSelectorDrawer({
       });
     }
   }, [open, selectedBoard]);
-
-  // Fetch server-side board entities (owned + followed)
-  useEffect(() => {
-    if (!open || !isAuthenticated || !token) return;
-    setIsLoadingServerBoards(true);
-    const client = createGraphQLHttpClient(token);
-    client
-      .request<GetMyBoardsQueryResponse>(GET_MY_BOARDS, { input: { limit: 50, offset: 0 } })
-      .then((data) => setServerBoards(data.myBoards.boards))
-      .catch((err) => console.error('Failed to fetch boards:', err))
-      .finally(() => setIsLoadingServerBoards(false));
-  }, [open, isAuthenticated, token]);
 
   // Auto-cascade: layout when board changes
   useEffect(() => {
