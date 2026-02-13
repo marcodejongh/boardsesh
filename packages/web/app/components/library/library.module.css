@@ -230,6 +230,23 @@
   background: linear-gradient(135deg, var(--color-error), #D87F7A);
 }
 
+/* Sign-in Banner (compact, non-blocking) */
+.signInBanner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background-color: var(--semantic-surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+
+.signInBannerText {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Empty/Loading/Error States */
 .emptyContainer {
   display: flex;
