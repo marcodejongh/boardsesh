@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -29,8 +29,15 @@ export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps)
   const { createSession, isCreating } = useCreateSession();
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [formKey, setFormKey] = useState(0);
 
   const isLoggedIn = status === 'authenticated';
+
+  const handleClose = useCallback(() => {
+    onClose();
+    setSelectedBoard(null);
+    setFormKey((k) => k + 1);
+  }, [onClose]);
 
   const handleBoardSelect = (board: UserBoard) => {
     setSelectedBoard(board);
@@ -55,11 +62,12 @@ export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps)
       const boardUrl = constructBoardSlugUrl(selectedBoard.slug, selectedBoard.angle);
       router.push(`${boardUrl}?session=${sessionId}`);
 
-      onClose();
+      handleClose();
       showMessage('Session started!', 'success');
     } catch (error) {
       console.error('Failed to create session:', error);
       showMessage('Failed to start session', 'error');
+      throw error;
     }
   };
 
@@ -87,7 +95,7 @@ export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps)
         title="Start Sesh"
         placement="top"
         open={open}
-        onClose={onClose}
+        onClose={handleClose}
       >
         {!isLoggedIn ? (
           <Box
@@ -116,6 +124,7 @@ export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps)
               Start a session to track your climbing and invite others to join.
             </Typography>
             <SessionCreationForm
+              key={formKey}
               onSubmit={handleSubmit}
               isSubmitting={isCreating}
               submitLabel="Start Sesh"

@@ -48,20 +48,24 @@ export default function SessionCreationForm({
   const [discoverable, setDiscoverable] = useState(true);
 
   const handleSubmit = async () => {
-    await onSubmit({
-      name: name.trim() || undefined,
-      goal: goal.trim() || undefined,
-      color,
-      isPermanent,
-      discoverable,
-    });
+    try {
+      await onSubmit({
+        name: name.trim() || undefined,
+        goal: goal.trim() || undefined,
+        color,
+        isPermanent,
+        discoverable,
+      });
 
-    // Reset form state after successful submit
-    setName('');
-    setGoal('');
-    setColor(undefined);
-    setIsPermanent(false);
-    setDiscoverable(true);
+      // Reset form state only after successful submit
+      setName('');
+      setGoal('');
+      setColor(undefined);
+      setIsPermanent(false);
+      setDiscoverable(true);
+    } catch {
+      // Don't reset on error — preserve form data for retry
+    }
   };
 
   return (
