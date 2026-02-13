@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { PartyProfileProvider } from '../party-manager/party-profile-context';
 import { PersistentSessionProvider, useIsOnBoardRoute } from '../persistent-session';
 import PersistentQueueControlBar from '../queue-control/persistent-queue-control-bar';
+import ErrorBoundary from '../error-boundary';
 import styles from '../queue-control/persistent-queue-control-bar.module.css';
 
 interface PersistentSessionWrapperProps {
@@ -29,20 +30,28 @@ export default function PersistentSessionWrapper({ children }: PersistentSession
 }
 
 /**
- * Shows the QueueControlBar when the user is NOT on a board route and NOT on
- * a page that renders its own bottom bar (home, my-library, notifications).
- * The PersistentQueueControlBar handles queue-state checks and provider wrapping internally.
+ * Single root-level instance of the queue control bar for ALL non-board pages.
+ * Board routes render their own provider, so this returns null on board routes.
+ * On pages with a bottom tab bar (home, my-library, notifications) the queue bar
+ * is positioned above the tab bar; on other pages it sits at the bottom of the viewport.
  */
 function OffBoardQueueBar() {
   const isOnBoardRoute = useIsOnBoardRoute();
   const pathname = usePathname();
-  const isHomePage = pathname === '/';
-  // Pages with their own layout that includes BottomBarWithQueue handle the queue bar themselves
-  const hasOwnBottomBar = pathname.startsWith('/my-library') || pathname.startsWith('/notifications');
 
-  if (isOnBoardRoute || isHomePage || hasOwnBottomBar) {
+  if (isOnBoardRoute) {
     return null;
   }
 
-  return <PersistentQueueControlBar className={styles.fixedBottom} />;
+  const hasBottomTabBar = pathname === '/' ||
+    pathname.startsWith('/my-library') ||
+    pathname.startsWith('/notifications');
+
+  return (
+    <ErrorBoundary>
+      <PersistentQueueControlBar
+        className={hasBottomTabBar ? styles.aboveTabBar : styles.fixedBottom}
+      />
+    </ErrorBoundary>
+  );
 }

@@ -14,13 +14,11 @@ import searchPillStyles from '@/app/components/search-drawer/search-pill.module.
 import UnifiedSearchDrawer from '@/app/components/search-drawer/unified-search-drawer';
 import UserDrawer from '@/app/components/user-drawer/user-drawer';
 import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
-import PersistentQueueControlBar from '@/app/components/queue-control/persistent-queue-control-bar';
 import StartSeshDrawer from '@/app/components/session-creation/start-sesh-drawer';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-import ErrorBoundary from '@/app/components/error-boundary';
 import BoardScrollSection from '@/app/components/board-scroll/board-scroll-section';
 import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
 import type { SortMode, ActivityFeedItem } from '@boardsesh/shared-schema';
@@ -233,11 +231,8 @@ export default function HomePageContent({
         )}
       </Box>
 
-      {/* Bottom Bar: QueueControlBar (if active) + BottomTabBar */}
+      {/* Bottom Tab Bar */}
       <div className={bottomBarStyles.bottomBarWrapper}>
-        <ErrorBoundary>
-          <PersistentQueueControlBar />
-        </ErrorBoundary>
         <BottomTabBar boardConfigs={boardConfigs} />
       </div>
 

@@ -81,6 +81,13 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
   // Correlation ID counter for tracking local updates (keeps reducer pure)
   const correlationCounterRef = useRef(0);
 
+  // Guard to skip the first sync-to-persistent-session effect execution.
+  // On mount, the reducer starts with empty state. If the sync effect fires
+  // immediately it overwrites the persistent session before the restoration
+  // effect's dispatch (INITIAL_QUEUE_DATA) has been processed, causing the
+  // PersistentQueueControlBar to see an empty queue and unmount.
+  const isFirstSyncRef = useRef(true);
+
   // Get backend URL from settings
   const { backendUrl } = useConnectionSettings();
 
@@ -227,6 +234,13 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
   // Sync queue changes to local queue when not in party mode
   useEffect(() => {
+    // Skip the first execution to avoid overwriting persistent session with
+    // empty initial reducer state before the restoration effect runs.
+    if (isFirstSyncRef.current) {
+      isFirstSyncRef.current = false;
+      return;
+    }
+
     // Only sync when NOT in party mode
     if (isPersistentSessionActive || sessionId) return;
 
