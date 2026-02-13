@@ -318,30 +318,34 @@ export const socialBoardQueries = {
     if (useProximity) {
       // PostGIS proximity search path
       const radiusMeters = (radiusKm ?? 50) * 1000;
+      const lon = Number(longitude);
+      const lat = Number(latitude);
 
-      // Use parameterized query via sql template
-      const countSql = sql`SELECT count(*)::int as count FROM user_boards WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${sql.raw(String(longitude))}, ${sql.raw(String(latitude))})::geography, ${sql.raw(String(radiusMeters))})`;
+      // Escape ILIKE wildcards once for reuse in both count and main queries
+      const escapedQuery = query ? query.replace(/[%_\\]/g, '\\$&') : null;
+      const likePattern = escapedQuery ? `%${escapedQuery}%` : null;
+
+      // Build count query with proper parameterization
+      const countSql = sql`SELECT count(*)::int as count FROM user_boards WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${lon}, ${lat})::geography, ${radiusMeters})`;
 
       if (boardType) {
         countSql.append(sql` AND board_type = ${boardType}`);
       }
-      if (query) {
-        const escapedQuery = query.replace(/[%_\\]/g, '\\$&');
-        countSql.append(sql` AND (name ILIKE ${`%${escapedQuery}%`} OR location_name ILIKE ${`%${escapedQuery}%`})`);
+      if (likePattern) {
+        countSql.append(sql` AND (name ILIKE ${likePattern} OR location_name ILIKE ${likePattern})`);
       }
 
       const countRows = await db.execute(countSql);
       const totalCount = Number(((countRows as unknown as Array<Record<string, unknown>>)[0])?.count || 0);
 
       // Build the main query with distance ordering
-      const mainSql = sql`SELECT *, ST_Distance(location, ST_MakePoint(${sql.raw(String(longitude))}, ${sql.raw(String(latitude))})::geography) as distance_meters FROM user_boards WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${sql.raw(String(longitude))}, ${sql.raw(String(latitude))})::geography, ${sql.raw(String(radiusMeters))})`;
+      const mainSql = sql`SELECT *, ST_Distance(location, ST_MakePoint(${lon}, ${lat})::geography) as distance_meters FROM user_boards WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${lon}, ${lat})::geography, ${radiusMeters})`;
 
       if (boardType) {
         mainSql.append(sql` AND board_type = ${boardType}`);
       }
-      if (query) {
-        const escapedQuery = query.replace(/[%_\\]/g, '\\$&');
-        mainSql.append(sql` AND (name ILIKE ${`%${escapedQuery}%`} OR location_name ILIKE ${`%${escapedQuery}%`})`);
+      if (likePattern) {
+        mainSql.append(sql` AND (name ILIKE ${likePattern} OR location_name ILIKE ${likePattern})`);
       }
 
       mainSql.append(sql` ORDER BY distance_meters ASC LIMIT ${limit} OFFSET ${offset}`);

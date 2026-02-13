@@ -163,14 +163,14 @@ export default function BoardSeshHeader({ boardDetails, angle, boardConfigs }: B
           const resultCount = totalSearchResultCount ?? 0;
           const showResultCount = filtersActive && !isFetchingClimbs && resultCount > 0;
           return (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: 'var(--semantic-surface, #FFFFFF)', borderTop: '1px solid var(--neutral-100, #F0F0F0)' }}>
-              <button
-                type="button"
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 2, px: 3, background: 'var(--semantic-surface)', borderTop: '1px solid var(--neutral-100)' }}>
+              <MuiButton
+                variant="text"
                 onClick={clearClimbSearchParams}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: 16, fontWeight: 600, color: 'var(--neutral-900, #111827)', textDecoration: 'underline', cursor: 'pointer' }}
+                sx={{ textDecoration: 'underline', fontWeight: 600, color: 'var(--neutral-900)', p: 0, minWidth: 'auto' }}
               >
                 Clear all
-              </button>
+              </MuiButton>
               <MuiButton
                 variant="contained"
                 startIcon={isFetchingClimbs ? <CircularProgress size={20} /> : <SearchOutlined />}
@@ -182,11 +182,11 @@ export default function BoardSeshHeader({ boardDetails, angle, boardConfigs }: B
                   setSearchDropdownOpen(false);
                 }}
                 size="large"
-                sx={{ borderRadius: '12px', height: 48, px: 3, fontSize: 16, fontWeight: 600 }}
+                sx={{ borderRadius: 3, height: 48, px: 3, fontSize: 16, fontWeight: 600 }}
               >
                 Search{showResultCount ? ` \u00B7 ${resultCount.toLocaleString()}` : ''}
               </MuiButton>
-            </div>
+            </Box>
           );
         }}
       />
