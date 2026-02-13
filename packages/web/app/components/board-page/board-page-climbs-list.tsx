@@ -7,12 +7,12 @@ import ClimbsList from './climbs-list';
 import BoardCreationBanner from '../board-entity/board-creation-banner';
 import RecentSearchPills from '../search-drawer/recent-search-pills';
 
-type QueueClimbsListProps = ParsedBoardRouteParameters & {
+type BoardPageClimbsListProps = ParsedBoardRouteParameters & {
   boardDetails: BoardDetails;
   initialClimbs: Climb[];
 };
 
-const QueueClimbsList = ({
+const BoardPageClimbsList = ({
   boardDetails,
   initialClimbs,
   board_name,
@@ -20,7 +20,7 @@ const QueueClimbsList = ({
   size_id,
   set_ids,
   angle,
-}: QueueClimbsListProps) => {
+}: BoardPageClimbsListProps) => {
   const {
     setCurrentClimb,
     climbSearchResults,
@@ -80,4 +80,4 @@ const QueueClimbsList = ({
   );
 };
 
-export default QueueClimbsList;
+export default BoardPageClimbsList;
