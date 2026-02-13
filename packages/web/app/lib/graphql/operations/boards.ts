@@ -42,6 +42,9 @@ const BOARD_FIELDS = `
   followerCount
   commentCount
   isFollowedByMe
+  gymId
+  gymUuid
+  gymName
 `;
 
 export const GET_BOARD = gql`

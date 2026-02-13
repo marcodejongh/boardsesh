@@ -4,8 +4,9 @@ import { pubsub } from './pubsub/index';
 import { roomManager } from './services/room-manager';
 import { redisClientManager } from './redis/client';
 import { eventBroker, NotificationWorker } from './events/index';
-import { sql } from 'drizzle-orm';
+import { sql, eq, and, lt, isNull } from 'drizzle-orm';
 import { db } from './db/client';
+import { sessions } from './db/schema';
 import { initCors, applyCorsHeaders } from './handlers/cors';
 import { handleHealthCheck } from './handlers/health';
 import { handleSessionJoin } from './handlers/join';
@@ -284,6 +285,53 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     }
   }, 120000); // 2 minutes
   intervals.push(ttlRefreshInterval);
+
+  // Periodic auto-end for stale inactive sessions (every 5 minutes)
+  const SESSION_AUTO_END_MINUTES = parseInt(process.env.SESSION_AUTO_END_MINUTES || '30', 10);
+  const AUTO_END_MAX_RETRIES = 3;
+  const autoEndFailures = new Map<string, number>();
+
+  const autoEndInterval = setInterval(async () => {
+    try {
+      const threshold = new Date(Date.now() - SESSION_AUTO_END_MINUTES * 60 * 1000);
+      const stale = await db
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.status, 'inactive'),
+            eq(sessions.isPermanent, false),
+            lt(sessions.lastActivity, threshold),
+            isNull(sessions.endedAt)
+          )
+        )
+        .limit(50);
+
+      if (stale.length > 0) {
+        console.log(`[Server] Auto-ending ${stale.length} stale sessions (inactive > ${SESSION_AUTO_END_MINUTES}min)`);
+      }
+
+      for (const row of stale) {
+        const priorFailures = autoEndFailures.get(row.id) ?? 0;
+        if (priorFailures >= AUTO_END_MAX_RETRIES) {
+          continue;
+        }
+
+        await roomManager.endSession(row.id).catch((err) => {
+          const failures = priorFailures + 1;
+          autoEndFailures.set(row.id, failures);
+          if (failures >= AUTO_END_MAX_RETRIES) {
+            console.error(`[Server] Auto-end permanently failed for ${row.id} after ${AUTO_END_MAX_RETRIES} attempts:`, err);
+          } else {
+            console.error(`[Server] Auto-end failed for ${row.id} (attempt ${failures}/${AUTO_END_MAX_RETRIES}):`, err);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[Server] Error in session auto-end job:', error);
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+  intervals.push(autoEndInterval);
 
   return { wss, httpServer };
 }

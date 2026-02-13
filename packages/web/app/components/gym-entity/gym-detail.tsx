@@ -6,144 +6,116 @@ import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
 import MuiTypography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Divider from '@mui/material/Divider';
 import MuiButton from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
-import TrendingUpOutlined from '@mui/icons-material/TrendingUpOutlined';
+import FitnessCenterOutlined from '@mui/icons-material/FitnessCenterOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import PeopleOutlined from '@mui/icons-material/PeopleOutlined';
 import ChatBubbleOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined';
-import type { UserBoard } from '@boardsesh/shared-schema';
+import type { Gym } from '@boardsesh/shared-schema';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
-  GET_BOARD,
-  DELETE_BOARD,
-  type GetBoardQueryResponse,
-  type GetBoardQueryVariables,
-  type DeleteBoardMutationVariables,
-  type DeleteBoardMutationResponse,
+  GET_GYM,
+  DELETE_GYM,
+  type GetGymQueryResponse,
+  type GetGymQueryVariables,
+  type DeleteGymMutationVariables,
+  type DeleteGymMutationResponse,
 } from '@/app/lib/graphql/operations';
 import { useSession } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
-import FitnessCenterOutlined from '@mui/icons-material/FitnessCenterOutlined';
-import AddOutlined from '@mui/icons-material/AddOutlined';
-import FollowBoardButton from './follow-board-button';
-import BoardLeaderboard from './board-leaderboard';
-import EditBoardForm from './edit-board-form';
+import FollowGymButton from './follow-gym-button';
+import EditGymForm from './edit-gym-form';
+import GymMemberManagement from './gym-member-management';
 import CommentSection from '@/app/components/social/comment-section';
-import GymDetail from '@/app/components/gym-entity/gym-detail';
-import GymSelector from '@/app/components/gym-entity/gym-selector';
-import { LINK_BOARD_TO_GYM, type LinkBoardToGymMutationVariables, type LinkBoardToGymMutationResponse } from '@/app/lib/graphql/operations';
 
-const BOARD_TYPE_LABELS: Record<string, string> = {
-  kilter: 'Kilter',
-  tension: 'Tension',
-  moonboard: 'MoonBoard',
-  decoy: 'Decoy',
-  touchstone: 'Touchstone',
-  grasshopper: 'Grasshopper',
-  soill: 'So iLL',
-};
-
-interface BoardDetailProps {
-  boardUuid: string;
+interface GymDetailProps {
+  gymUuid: string;
   open: boolean;
   onClose: () => void;
   onDeleted?: () => void;
   anchor?: 'top' | 'bottom';
 }
 
-export default function BoardDetail({ boardUuid, open, onClose, onDeleted, anchor = 'bottom' }: BoardDetailProps) {
-  const [board, setBoard] = useState<UserBoard | null>(null);
+export default function GymDetail({ gymUuid, open, onClose, onDeleted, anchor = 'bottom' }: GymDetailProps) {
+  const [gym, setGym] = useState<Gym | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showGymDetail, setShowGymDetail] = useState(false);
-  const [showGymSelector, setShowGymSelector] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { token } = useWsAuthToken();
   const { data: session } = useSession();
   const { showMessage } = useSnackbar();
   const currentUserId = session?.user?.id ?? null;
 
-  const fetchBoard = useCallback(async () => {
-    if (!token || !boardUuid) return;
+  const fetchGym = useCallback(async () => {
+    if (!token || !gymUuid) return;
     setIsLoading(true);
     try {
       const client = createGraphQLHttpClient(token);
-      const data = await client.request<GetBoardQueryResponse, GetBoardQueryVariables>(
-        GET_BOARD,
-        { boardUuid },
+      const data = await client.request<GetGymQueryResponse, GetGymQueryVariables>(
+        GET_GYM,
+        { gymUuid },
       );
-      setBoard(data.board ?? null);
+      setGym(data.gym ?? null);
     } catch (error) {
-      console.error('Failed to fetch board:', error);
+      console.error('Failed to fetch gym:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [token, boardUuid]);
+  }, [token, gymUuid]);
 
   useEffect(() => {
     if (open) {
-      fetchBoard();
+      fetchGym();
       setIsEditing(false);
       setActiveTab(0);
     }
-  }, [open, fetchBoard]);
+  }, [open, fetchGym]);
 
-  const isOwner = !!currentUserId && board?.ownerId === currentUserId;
+  const isOwner = !!currentUserId && gym?.ownerId === currentUserId;
+  const isOwnerOrAdmin = isOwner || gym?.myRole === 'admin';
 
-  const handleDelete = async () => {
-    if (!token || !board) return;
-    if (!window.confirm(`Delete "${board.name}"? This action can be undone later.`)) return;
+  const handleDeleteConfirm = async () => {
+    if (!token || !gym) return;
 
+    setShowDeleteDialog(false);
     setIsDeleting(true);
     try {
       const client = createGraphQLHttpClient(token);
-      await client.request<DeleteBoardMutationResponse, DeleteBoardMutationVariables>(
-        DELETE_BOARD,
-        { boardUuid: board.uuid },
+      await client.request<DeleteGymMutationResponse, DeleteGymMutationVariables>(
+        DELETE_GYM,
+        { gymUuid: gym.uuid },
       );
-      showMessage('Board deleted', 'success');
+      showMessage('Gym deleted', 'success');
       onDeleted?.();
       onClose();
     } catch (error) {
-      console.error('Failed to delete board:', error);
-      showMessage('Failed to delete board', 'error');
+      console.error('Failed to delete gym:', error);
+      showMessage('Failed to delete gym', 'error');
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const handleEditSuccess = (updatedBoard: UserBoard) => {
-    setBoard(updatedBoard);
+  const handleEditSuccess = (updatedGym: Gym) => {
+    setGym(updatedGym);
     setIsEditing(false);
-  };
-
-  const handleLinkGym = async (gymUuid: string | null) => {
-    if (!token || !board) return;
-    try {
-      const client = createGraphQLHttpClient(token);
-      await client.request<LinkBoardToGymMutationResponse, LinkBoardToGymMutationVariables>(
-        LINK_BOARD_TO_GYM,
-        { input: { boardUuid: board.uuid, gymUuid } },
-      );
-      showMessage(gymUuid ? 'Board linked to gym' : 'Board unlinked from gym', 'success');
-      setShowGymSelector(false);
-      fetchBoard();
-    } catch (error) {
-      console.error('Failed to link board to gym:', error);
-      showMessage('Failed to link board to gym', 'error');
-    }
   };
 
   return (
@@ -167,21 +139,12 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
       }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* Handle bar (top for bottom-anchored, bottom for top-anchored) */}
         {anchor === 'bottom' && (
           <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: 'var(--neutral-300)',
-              }}
-            />
+            <Box sx={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--neutral-300)' }} />
           </Box>
         )}
 
-        {/* Close button */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 1 }}>
           <IconButton onClick={onClose} size="small">
             <CloseOutlined />
@@ -192,14 +155,14 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
             <CircularProgress />
           </Box>
-        ) : !board ? (
+        ) : !gym ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
-            <MuiTypography color="text.secondary">Board not found</MuiTypography>
+            <MuiTypography color="text.secondary">Gym not found</MuiTypography>
           </Box>
         ) : isEditing ? (
           <Box sx={{ px: 2, pb: 2, overflow: 'auto', flex: 1 }}>
-            <EditBoardForm
-              board={board}
+            <EditGymForm
+              gym={gym}
               onSuccess={handleEditSuccess}
               onCancel={() => setIsEditing(false)}
             />
@@ -214,97 +177,53 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
                     variant="h5"
                     sx={{ fontWeight: themeTokens.typography.fontWeight.bold }}
                   >
-                    {board.name}
+                    {gym.name}
                   </MuiTypography>
-                  {board.locationName && (
+                  {gym.address && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                       <LocationOnOutlined sx={{ fontSize: 16, color: 'var(--neutral-400)' }} />
                       <MuiTypography variant="body2" color="text.secondary">
-                        {board.locationName}
+                        {gym.address}
                       </MuiTypography>
                     </Box>
                   )}
                 </Box>
-                <Chip
-                  label={BOARD_TYPE_LABELS[board.boardType] || board.boardType}
-                  size="small"
-                  variant="outlined"
-                />
               </Box>
 
               {/* Owner info */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5 }}>
                 <Avatar
-                  src={board.ownerAvatarUrl ?? undefined}
+                  src={gym.ownerAvatarUrl ?? undefined}
                   sx={{ width: 24, height: 24, fontSize: 11 }}
                 >
-                  {board.ownerDisplayName?.[0]?.toUpperCase()}
+                  {gym.ownerDisplayName?.[0]?.toUpperCase()}
                 </Avatar>
                 <MuiTypography variant="body2" color="text.secondary">
-                  {board.ownerDisplayName}
+                  {gym.ownerDisplayName}
                 </MuiTypography>
               </Box>
 
-              {board.description && (
+              {gym.description && (
                 <MuiTypography variant="body2" sx={{ mt: 1.5, color: 'var(--neutral-600)' }}>
-                  {board.description}
+                  {gym.description}
                 </MuiTypography>
-              )}
-
-              {/* Gym info */}
-              {board.gymName && board.gymUuid && (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5,
-                    mt: 1.5,
-                    cursor: 'pointer',
-                    '&:hover': { opacity: 0.8 },
-                  }}
-                  onClick={() => setShowGymDetail(true)}
-                >
-                  <FitnessCenterOutlined sx={{ fontSize: 16, color: 'var(--neutral-400)' }} />
-                  <MuiTypography variant="body2" color="primary" sx={{ textDecoration: 'underline' }}>
-                    {board.gymName}
-                  </MuiTypography>
-                </Box>
-              )}
-              {!board.gymUuid && isOwner && !showGymSelector && (
-                <MuiButton
-                  variant="text"
-                  size="small"
-                  startIcon={<AddOutlined />}
-                  onClick={() => setShowGymSelector(true)}
-                  sx={{ textTransform: 'none', mt: 1, alignSelf: 'flex-start' }}
-                >
-                  Add to Gym
-                </MuiButton>
-              )}
-              {showGymSelector && isOwner && (
-                <Box sx={{ mt: 1.5 }}>
-                  <GymSelector
-                    selectedGymUuid={board.gymUuid ?? null}
-                    onSelect={(gymUuid) => handleLinkGym(gymUuid)}
-                  />
-                </Box>
               )}
 
               {/* Stats */}
               <Box sx={{ display: 'flex', gap: 2.5, mt: 2, flexWrap: 'wrap' }}>
-                <StatChip icon={<TrendingUpOutlined sx={{ fontSize: 16 }} />} value={board.totalAscents} label="ascents" />
-                <StatChip icon={<PersonOutlined sx={{ fontSize: 16 }} />} value={board.uniqueClimbers} label="climbers" />
-                <StatChip icon={<PeopleOutlined sx={{ fontSize: 16 }} />} value={board.followerCount} label="followers" />
-                <StatChip icon={<ChatBubbleOutlined sx={{ fontSize: 16 }} />} value={board.commentCount} label="comments" />
+                <StatChip icon={<FitnessCenterOutlined sx={{ fontSize: 16 }} />} value={gym.boardCount} label="boards" />
+                <StatChip icon={<PersonOutlined sx={{ fontSize: 16 }} />} value={gym.memberCount} label="members" />
+                <StatChip icon={<PeopleOutlined sx={{ fontSize: 16 }} />} value={gym.followerCount} label="followers" />
+                <StatChip icon={<ChatBubbleOutlined sx={{ fontSize: 16 }} />} value={gym.commentCount} label="comments" />
               </Box>
 
               {/* Actions */}
               <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                 {!isOwner && (
-                  <FollowBoardButton
-                    boardUuid={board.uuid}
-                    initialIsFollowing={board.isFollowedByMe}
-                    onFollowChange={() => fetchBoard()}
+                  <FollowGymButton
+                    gymUuid={gym.uuid}
+                    initialIsFollowing={gym.isFollowedByMe}
+                    onFollowChange={() => fetchGym()}
                   />
                 )}
                 {isOwner && (
@@ -323,7 +242,7 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
                       size="small"
                       color="error"
                       startIcon={<DeleteOutlined />}
-                      onClick={handleDelete}
+                      onClick={() => setShowDeleteDialog(true)}
                       disabled={isDeleting}
                       sx={{ textTransform: 'none' }}
                     >
@@ -342,47 +261,48 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
               onChange={(_, v) => setActiveTab(v)}
               sx={{ px: 2 }}
             >
-              <Tab label="Leaderboard" sx={{ textTransform: 'none' }} />
+              <Tab label="Members" sx={{ textTransform: 'none' }} />
               <Tab label="Comments" sx={{ textTransform: 'none' }} />
             </Tabs>
 
             {/* Tab content */}
             <Box sx={{ flex: 1, overflow: 'auto', px: 2, py: 2 }}>
-              {activeTab === 0 && <BoardLeaderboard boardUuid={board.uuid} />}
+              {activeTab === 0 && (
+                <GymMemberManagement gymUuid={gym.uuid} isOwnerOrAdmin={isOwnerOrAdmin} />
+              )}
               {activeTab === 1 && (
                 <CommentSection
-                  entityType="board"
-                  entityId={board.uuid}
-                  title="Board Discussion"
+                  entityType="gym"
+                  entityId={gym.uuid}
+                  title="Gym Discussion"
                 />
               )}
             </Box>
-
-            {/* Gym detail drawer */}
-            {board.gymUuid && showGymDetail && (
-              <GymDetail
-                gymUuid={board.gymUuid}
-                open={showGymDetail}
-                onClose={() => setShowGymDetail(false)}
-                anchor="top"
-              />
-            )}
           </>
         )}
 
         {anchor === 'top' && (
           <Box sx={{ display: 'flex', justifyContent: 'center', pb: 1 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: 'var(--neutral-300)',
-              }}
-            />
+            <Box sx={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--neutral-300)' }} />
           </Box>
         )}
       </Box>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
+        <DialogTitle>Delete Gym</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Delete &quot;{gym?.name}&quot;? This action can be undone later.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <MuiButton onClick={() => setShowDeleteDialog(false)}>Cancel</MuiButton>
+          <MuiButton onClick={handleDeleteConfirm} color="error" autoFocus>
+            Delete
+          </MuiButton>
+        </DialogActions>
+      </Dialog>
     </Drawer>
   );
 }

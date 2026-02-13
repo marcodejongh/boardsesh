@@ -17,8 +17,10 @@ import {
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 import type { CreateSessionInput } from '../shared/types';
 import { db } from '../../../db/client';
-import { esp32Controllers } from '@boardsesh/db/schema/app';
-import { eq } from 'drizzle-orm';
+import { esp32Controllers, userBoards } from '@boardsesh/db/schema/app';
+import { sessionBoards, sessions } from '../../../db/schema';
+import { eq, inArray } from 'drizzle-orm';
+import { generateSessionSummary } from './session-summary';
 
 /**
  * Auto-authorize all controllers owned by a user for a session.
@@ -110,6 +112,9 @@ export const sessionMutations = {
     };
     pubsub.publishSessionEvent(sessionId, userJoinedEvent);
 
+    // Fetch session data for new fields
+    const sessionData = await roomManager.getSessionById(sessionId);
+
     return {
       id: sessionId,
       name: result.sessionName || null,
@@ -123,6 +128,12 @@ export const sessionMutations = {
       },
       isLeader: result.isLeader,
       clientId: result.clientId,
+      goal: sessionData?.goal || null,
+      isPublic: sessionData?.isPublic ?? true,
+      startedAt: sessionData?.startedAt?.toISOString() || null,
+      endedAt: sessionData?.endedAt?.toISOString() || null,
+      isPermanent: sessionData?.isPermanent ?? false,
+      color: sessionData?.color || null,
     };
   },
 
@@ -159,8 +170,38 @@ export const sessionMutations = {
         userId,
         input.latitude,
         input.longitude,
-        input.name
+        input.name,
+        input.goal,
+        input.isPermanent,
+        input.color
       );
+
+      // If boardIds provided, create sessionBoards junction rows
+      if (input.boardIds && input.boardIds.length > 0) {
+        // Verify boards exist
+        const boards = await db
+          .select({ id: userBoards.id, gymId: userBoards.gymId })
+          .from(userBoards)
+          .where(inArray(userBoards.id, input.boardIds));
+
+        if (boards.length !== input.boardIds.length) {
+          throw new Error('One or more board IDs do not exist');
+        }
+
+        // Validate all boards share the same gym (multi-board requires same gym)
+        const gymIds = new Set(boards.map((b) => b.gymId).filter(Boolean));
+        if (gymIds.size > 1) {
+          throw new Error('All boards must belong to the same gym for multi-board sessions');
+        }
+
+        // Insert junction rows
+        await db.insert(sessionBoards).values(
+          input.boardIds.map((boardId) => ({
+            sessionId,
+            boardId,
+          }))
+        );
+      }
     }
 
     // Join the session as the creator
@@ -195,6 +236,12 @@ export const sessionMutations = {
       },
       isLeader: result.isLeader,
       clientId: result.clientId,
+      goal: input.goal || null,
+      isPublic: true,
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      isPermanent: input.isPermanent || false,
+      color: input.color || null,
     };
   },
 
@@ -230,6 +277,49 @@ export const sessionMutations = {
     }
 
     return true;
+  },
+
+  /**
+   * End a session explicitly.
+   * Validates the caller is the session creator or leader.
+   * Returns a session summary with stats, or null if no ticks.
+   */
+  endSession: async (
+    _: unknown,
+    { sessionId }: { sessionId: string },
+    ctx: ConnectionContext
+  ) => {
+    await applyRateLimit(ctx, 5);
+    requireAuthenticated(ctx);
+    validateInput(SessionIdSchema, sessionId, 'sessionId');
+
+    // Verify caller is session creator or leader
+    const sessionData = await roomManager.getSessionById(sessionId);
+    if (!sessionData) {
+      throw new Error('Session not found');
+    }
+
+    const isCreator = sessionData.createdByUserId === ctx.userId;
+    const client = roomManager.getClient(ctx.connectionId);
+    const isLeader = client?.isLeader ?? false;
+
+    if (!isCreator && !isLeader) {
+      throw new Error('Only the session creator or leader can end a session');
+    }
+
+    // End the session via room manager
+    await roomManager.endSession(sessionId);
+
+    // Publish SessionEnded event so all connected clients are notified
+    const sessionEndedEvent: SessionEvent = {
+      __typename: 'SessionEnded',
+      reason: 'Session ended by leader',
+    };
+    pubsub.publishSessionEvent(sessionId, sessionEndedEvent);
+
+    // Generate and return summary
+    const summary = await generateSessionSummary(sessionId);
+    return summary;
   },
 
   /**

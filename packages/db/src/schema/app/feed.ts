@@ -16,6 +16,7 @@ export const feedItemTypeEnum = pgEnum('feed_item_type', [
   'new_climb',
   'comment',
   'proposal_approved',
+  'session_summary',
 ]);
 
 export const feedItems = pgTable(
@@ -56,4 +57,4 @@ export const feedItems = pgTable(
 
 export type FeedItem = typeof feedItems.$inferSelect;
 export type NewFeedItem = typeof feedItems.$inferInsert;
-export type FeedItemType = 'ascent' | 'new_climb' | 'comment' | 'proposal_approved';
+export type FeedItemType = 'ascent' | 'new_climb' | 'comment' | 'proposal_approved' | 'session_summary';
