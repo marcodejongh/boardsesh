@@ -1287,6 +1287,62 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
+  An actor in a grouped notification.
+  """
+  type GroupedNotificationActor {
+    "User ID"
+    id: ID!
+    "Display name"
+    displayName: String
+    "Avatar URL"
+    avatarUrl: String
+  }
+
+  """
+  A grouped notification combining multiple notifications of the same type on the same entity.
+  """
+  type GroupedNotification {
+    "UUID of the most recent notification in the group"
+    uuid: ID!
+    "Type of notification"
+    type: NotificationType!
+    "Entity type"
+    entityType: SocialEntityType
+    "Entity ID"
+    entityId: String
+    "Number of distinct actors"
+    actorCount: Int!
+    "First few actors (up to 3)"
+    actors: [GroupedNotificationActor!]!
+    "Preview of comment body"
+    commentBody: String
+    "Climb name"
+    climbName: String
+    "Climb UUID"
+    climbUuid: String
+    "Board type"
+    boardType: String
+    "Whether all notifications in the group are read"
+    isRead: Boolean!
+    "When the most recent notification was created"
+    createdAt: String!
+  }
+
+  """
+  Paginated grouped notification list.
+  """
+  type GroupedNotificationConnection {
+    "List of grouped notifications"
+    groups: [GroupedNotification!]!
+    "Total number of groups"
+    totalCount: Int!
+    "Number of unread notifications"
+    unreadCount: Int!
+    "Whether more groups are available"
+    hasMore: Boolean!
+  }
+
+  """
   Subscription payload for real-time notification delivery.
   """
   type NotificationEvent {
@@ -2350,6 +2406,12 @@ export const typeDefs = /* GraphQL */ `
     Get notifications for the current user.
     """
     notifications(unreadOnly: Boolean, limit: Int, offset: Int): NotificationConnection!
+
+    """
+    Get grouped notifications for the current user.
+    Groups notifications by (type, entity_type, entity_id).
+    """
+    groupedNotifications(limit: Int, offset: Int): GroupedNotificationConnection!
 
     """
     Get unread notification count for the current user.

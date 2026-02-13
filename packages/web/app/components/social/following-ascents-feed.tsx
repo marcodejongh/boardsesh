@@ -36,7 +36,7 @@ export default function FollowingAscentsFeed({ onFindClimbers }: FollowingAscent
     return response.followingAscentsFeed;
   }, [token]);
 
-  const { items, loading, loadingMore, hasMore, totalCount, loadMore } = usePaginatedFeed<FollowingAscentFeedItem>({
+  const { items, loading, loadingMore, hasMore, sentinelRef } = usePaginatedFeed<FollowingAscentFeedItem>({
     fetchFn,
     enabled: isAuthenticated && !!token,
   });
@@ -70,15 +70,8 @@ export default function FollowingAscentsFeed({ onFindClimbers }: FollowingAscent
         <SocialFeedItem key={item.uuid} item={item} showUserHeader />
       ))}
       {hasMore && (
-        <Box sx={{ py: 2 }}>
-          <MuiButton
-            onClick={loadMore}
-            disabled={loadingMore}
-            variant="outlined"
-            fullWidth
-          >
-            {loadingMore ? 'Loading...' : `Load more (${items.length} of ${totalCount})`}
-          </MuiButton>
+        <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+          {loadingMore && <CircularProgress size={24} />}
         </Box>
       )}
     </Box>

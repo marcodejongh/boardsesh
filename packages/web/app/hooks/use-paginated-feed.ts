@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useInfiniteScroll } from './use-infinite-scroll';
 
 interface PaginatedFeedResult<T> {
   items: T[];
@@ -9,6 +10,7 @@ interface PaginatedFeedResult<T> {
   hasMore: boolean;
   totalCount: number;
   loadMore: () => void;
+  sentinelRef: React.RefObject<HTMLDivElement | null>;
 }
 
 interface UsePaginatedFeedOptions<T> {
@@ -73,6 +75,12 @@ export function usePaginatedFeed<T>({
     fetchPage(items.length);
   }, [fetchPage, items.length]);
 
+  const sentinelRef = useInfiniteScroll({
+    onLoadMore: loadMore,
+    hasMore,
+    isLoading: loadingMore,
+  });
+
   return {
     items,
     loading,
@@ -80,5 +88,6 @@ export function usePaginatedFeed<T>({
     hasMore,
     totalCount,
     loadMore,
+    sentinelRef,
   };
 }

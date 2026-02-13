@@ -2,7 +2,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import Box from '@mui/material/Box';
-import MuiButton from '@mui/material/Button';
 import MuiTypography from '@mui/material/Typography';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -11,6 +10,7 @@ import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutl
 import type { Comment as CommentType, SocialEntityType, SortMode } from '@boardsesh/shared-schema';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 import {
   GET_COMMENTS,
   type GetCommentsQueryVariables,
@@ -97,6 +97,12 @@ export default function CommentList({ entityType, entityId, refreshKey = 0, curr
     setTotalCount((prev) => prev - 1);
   }, []);
 
+  const sentinelRef = useInfiniteScroll({
+    onLoadMore: handleLoadMore,
+    hasMore,
+    isLoading: isLoadingMore,
+  });
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
@@ -157,15 +163,8 @@ export default function CommentList({ entityType, entityId, refreshKey = 0, curr
             />
           ))}
           {hasMore && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
-              <MuiButton
-                onClick={handleLoadMore}
-                disabled={isLoadingMore}
-                size="small"
-                sx={{ textTransform: 'none' }}
-              >
-                {isLoadingMore ? <CircularProgress size={16} /> : 'Load more'}
-              </MuiButton>
+            <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 1, minHeight: 20 }}>
+              {isLoadingMore && <CircularProgress size={16} />}
             </Box>
           )}
         </>

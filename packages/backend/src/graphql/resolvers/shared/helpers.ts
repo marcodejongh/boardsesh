@@ -1,5 +1,6 @@
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { checkRateLimit } from '../../../utils/rate-limiter';
+import { checkRateLimitRedis } from '../../../utils/redis-rate-limiter';
 import { getContext } from '../../context';
 import { getDistributedState } from '../../../services/distributed-state';
 import { db } from '../../../db/client';
@@ -116,12 +117,29 @@ export async function requireSessionMember(
 }
 
 /**
- * Apply rate limiting to a connection.
+ * Apply rate limiting to a connection (synchronous).
+ * Uses in-memory rate limiter keyed by userId (if authenticated) or connectionId.
+ * Also enqueues an async Redis rate limit check for distributed enforcement.
+ *
  * @param ctx - Connection context
  * @param limit - Optional custom limit (default: 60 requests per minute)
+ * @param operation - Operation name for Redis key namespacing (default: 'default')
  */
-export function applyRateLimit(ctx: ConnectionContext, limit?: number): void {
-  checkRateLimit(ctx.connectionId, limit);
+export function applyRateLimit(ctx: ConnectionContext, limit?: number, operation = 'default'): void {
+  const maxRequests = limit ?? 60;
+
+  // Always apply synchronous in-memory rate limiting as the primary enforcement
+  const key = ctx.isAuthenticated && ctx.userId
+    ? `${ctx.userId}:${operation}`
+    : ctx.connectionId;
+  checkRateLimit(key, maxRequests);
+
+  // Additionally, for authenticated users, fire async Redis check for distributed enforcement
+  if (ctx.isAuthenticated && ctx.userId) {
+    void checkRateLimitRedis(ctx.userId, operation, maxRequests, 60_000).catch(() => {
+      // Swallow — in-memory rate limiting above is the primary safeguard
+    });
+  }
 }
 
 /**

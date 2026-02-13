@@ -58,33 +58,26 @@ function mapCommentRow(row: CommentRow) {
 }
 
 /**
- * Helper to get aggregate vote counts for a comment using the query builder
+ * Helper to get aggregate vote counts for a comment from vote_counts table
  */
 async function getCommentVoteCounts(commentUuid: string) {
-  const upvoteResult = await db
-    .select({ count: count() })
-    .from(dbSchema.votes)
+  const [counts] = await db
+    .select({
+      upvotes: dbSchema.voteCounts.upvotes,
+      downvotes: dbSchema.voteCounts.downvotes,
+    })
+    .from(dbSchema.voteCounts)
     .where(
       and(
-        eq(dbSchema.votes.entityType, 'comment'),
-        eq(dbSchema.votes.entityId, commentUuid),
-        eq(dbSchema.votes.value, 1),
+        eq(dbSchema.voteCounts.entityType, 'comment'),
+        eq(dbSchema.voteCounts.entityId, commentUuid),
       ),
-    );
-  const downvoteResult = await db
-    .select({ count: count() })
-    .from(dbSchema.votes)
-    .where(
-      and(
-        eq(dbSchema.votes.entityType, 'comment'),
-        eq(dbSchema.votes.entityId, commentUuid),
-        eq(dbSchema.votes.value, -1),
-      ),
-    );
+    )
+    .limit(1);
 
   return {
-    upvotes: Number(upvoteResult[0]?.count || 0),
-    downvotes: Number(downvoteResult[0]?.count || 0),
+    upvotes: counts?.upvotes ?? 0,
+    downvotes: counts?.downvotes ?? 0,
   };
 }
 
@@ -119,24 +112,24 @@ export const socialCommentQueries = {
       parentCommentFilter = sql`c."parent_comment_id" IS NULL`;
     }
 
-    // Build ORDER BY based on sortBy
+    // Build ORDER BY based on sortBy — uses vote_counts columns instead of LATERAL subqueries
     let orderByClause: ReturnType<typeof sql>;
     switch (sortBy) {
       case 'top':
-        orderByClause = sql`(COALESCE(v_up.cnt, 0) - COALESCE(v_down.cnt, 0)) DESC, c."created_at" DESC`;
+        orderByClause = sql`COALESCE(vc."score", 0) DESC, c."created_at" DESC`;
         break;
       case 'controversial':
         orderByClause = sql`
-          CASE WHEN COALESCE(v_up.cnt, 0) + COALESCE(v_down.cnt, 0) = 0 THEN 0
-          ELSE POWER(COALESCE(v_up.cnt, 0) + COALESCE(v_down.cnt, 0),
-            LEAST(COALESCE(v_up.cnt, 0)::float, COALESCE(v_down.cnt, 0)::float) /
-            GREATEST(COALESCE(v_up.cnt, 0)::float, COALESCE(v_down.cnt, 0)::float, 1)
+          CASE WHEN COALESCE(vc."upvotes", 0) + COALESCE(vc."downvotes", 0) = 0 THEN 0
+          ELSE POWER(COALESCE(vc."upvotes", 0) + COALESCE(vc."downvotes", 0),
+            LEAST(COALESCE(vc."upvotes", 0)::float, COALESCE(vc."downvotes", 0)::float) /
+            GREATEST(COALESCE(vc."upvotes", 0)::float, COALESCE(vc."downvotes", 0)::float, 1)
           ) END DESC, c."created_at" DESC`;
         break;
       case 'hot':
         orderByClause = sql`
-          SIGN(COALESCE(v_up.cnt, 0) - COALESCE(v_down.cnt, 0)) *
-          LOG(GREATEST(ABS(COALESCE(v_up.cnt, 0) - COALESCE(v_down.cnt, 0)), 1)) +
+          SIGN(COALESCE(vc."score", 0)) *
+          LN(GREATEST(ABS(COALESCE(vc."score", 0)), 1)) +
           EXTRACT(EPOCH FROM c."created_at") / 45000 DESC`;
         break;
       default: // 'new'
@@ -158,7 +151,7 @@ export const socialCommentQueries = {
       );
     const totalCount = Number(countResult[0]?.count || 0);
 
-    // Main query with JOINs — use raw SQL but cast result properly
+    // Main query — LEFT JOIN vote_counts instead of LATERAL JOIN subqueries
     const rawResult = await db.execute(sql`
       SELECT
         c."id",
@@ -177,8 +170,8 @@ export const socialCommentQueries = {
         up."avatar_url" as "avatarUrl",
         parent_c."uuid" as "parentUuid",
         COALESCE(reply_cnt.cnt, 0) as "replyCount",
-        COALESCE(v_up.cnt, 0) as "upvotes",
-        COALESCE(v_down.cnt, 0) as "downvotes",
+        COALESCE(vc."upvotes", 0) as "upvotes",
+        COALESCE(vc."downvotes", 0) as "downvotes",
         ${authenticatedUserId
           ? sql`COALESCE(my_vote."value", 0)`
           : sql`0`
@@ -191,14 +184,7 @@ export const socialCommentQueries = {
         SELECT COUNT(*) as cnt FROM "comments" r
         WHERE r."parent_comment_id" = c."id" AND r."deleted_at" IS NULL
       ) reply_cnt ON true
-      LEFT JOIN LATERAL (
-        SELECT COUNT(*) as cnt FROM "votes" v
-        WHERE v."entity_type" = 'comment' AND v."entity_id" = c."uuid" AND v."value" = 1
-      ) v_up ON true
-      LEFT JOIN LATERAL (
-        SELECT COUNT(*) as cnt FROM "votes" v
-        WHERE v."entity_type" = 'comment' AND v."entity_id" = c."uuid" AND v."value" = -1
-      ) v_down ON true
+      LEFT JOIN "vote_counts" vc ON vc."entity_type" = 'comment' AND vc."entity_id" = c."uuid"
       ${authenticatedUserId
         ? sql`LEFT JOIN "votes" my_vote ON my_vote."entity_type" = 'comment' AND my_vote."entity_id" = c."uuid" AND my_vote."user_id" = ${authenticatedUserId}`
         : sql``
@@ -230,7 +216,7 @@ export const socialCommentMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 10);
+    applyRateLimit(ctx, 10, 'comment');
 
     const validated = validateInput(AddCommentInputSchema, input, 'input');
     const { entityType, entityId, parentCommentUuid, body } = validated;
@@ -338,7 +324,7 @@ export const socialCommentMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 10);
+    applyRateLimit(ctx, 10, 'comment');
 
     const validated = validateInput(UpdateCommentInputSchema, input, 'input');
     const { commentUuid, body } = validated;
@@ -380,7 +366,7 @@ export const socialCommentMutations = {
       .where(eq(dbSchema.users.id, userId))
       .limit(1);
 
-    // Fetch vote data using query builder
+    // Fetch vote data from vote_counts
     const { upvotes, downvotes } = await getCommentVoteCounts(commentUuid);
 
     // Reply count

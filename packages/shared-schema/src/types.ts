@@ -576,6 +576,34 @@ export type NotificationConnection = {
   hasMore: boolean;
 };
 
+export type GroupedNotificationActor = {
+  id: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+};
+
+export type GroupedNotification = {
+  uuid: string;
+  type: NotificationType;
+  entityType?: SocialEntityType | null;
+  entityId?: string | null;
+  actorCount: number;
+  actors: GroupedNotificationActor[];
+  commentBody?: string | null;
+  climbName?: string | null;
+  climbUuid?: string | null;
+  boardType?: string | null;
+  isRead: boolean;
+  createdAt: string;
+};
+
+export type GroupedNotificationConnection = {
+  groups: GroupedNotification[];
+  totalCount: number;
+  unreadCount: number;
+  hasMore: boolean;
+};
+
 export type NotificationEvent = {
   notification: Notification;
 };

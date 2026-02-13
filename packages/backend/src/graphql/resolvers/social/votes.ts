@@ -1,4 +1,4 @@
-import { eq, and, count, inArray } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import type { ConnectionContext, SocialEntityType } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
@@ -16,29 +16,24 @@ async function getVoteSummary(
   entityId: string,
   authenticatedUserId: string | null | undefined,
 ) {
-  const upvoteResult = await db
-    .select({ count: count() })
-    .from(dbSchema.votes)
+  // Single query to vote_counts table instead of 3 separate COUNT queries
+  const [counts] = await db
+    .select({
+      upvotes: dbSchema.voteCounts.upvotes,
+      downvotes: dbSchema.voteCounts.downvotes,
+      score: dbSchema.voteCounts.score,
+    })
+    .from(dbSchema.voteCounts)
     .where(
       and(
-        eq(dbSchema.votes.entityType, entityType),
-        eq(dbSchema.votes.entityId, entityId),
-        eq(dbSchema.votes.value, 1),
+        eq(dbSchema.voteCounts.entityType, entityType),
+        eq(dbSchema.voteCounts.entityId, entityId),
       ),
-    );
-  const downvoteResult = await db
-    .select({ count: count() })
-    .from(dbSchema.votes)
-    .where(
-      and(
-        eq(dbSchema.votes.entityType, entityType),
-        eq(dbSchema.votes.entityId, entityId),
-        eq(dbSchema.votes.value, -1),
-      ),
-    );
+    )
+    .limit(1);
 
-  const upvotes = Number(upvoteResult[0]?.count || 0);
-  const downvotes = Number(downvoteResult[0]?.count || 0);
+  const upvotes = counts?.upvotes ?? 0;
+  const downvotes = counts?.downvotes ?? 0;
 
   let userVote = 0;
   if (authenticatedUserId) {
@@ -89,48 +84,27 @@ export const socialVoteQueries = {
 
     if (entityIds.length === 0) return [];
 
-    // Batch query upvote counts grouped by entity_id
-    const upvoteResults = await db
+    // Single query to vote_counts instead of separate upvote/downvote GROUP BY queries
+    const countResults = await db
       .select({
-        entityId: dbSchema.votes.entityId,
-        count: count(),
+        entityId: dbSchema.voteCounts.entityId,
+        upvotes: dbSchema.voteCounts.upvotes,
+        downvotes: dbSchema.voteCounts.downvotes,
       })
-      .from(dbSchema.votes)
+      .from(dbSchema.voteCounts)
       .where(
         and(
-          eq(dbSchema.votes.entityType, entityType),
-          inArray(dbSchema.votes.entityId, entityIds),
-          eq(dbSchema.votes.value, 1),
+          eq(dbSchema.voteCounts.entityType, entityType),
+          inArray(dbSchema.voteCounts.entityId, entityIds),
         ),
-      )
-      .groupBy(dbSchema.votes.entityId);
-
-    const downvoteResults = await db
-      .select({
-        entityId: dbSchema.votes.entityId,
-        count: count(),
-      })
-      .from(dbSchema.votes)
-      .where(
-        and(
-          eq(dbSchema.votes.entityType, entityType),
-          inArray(dbSchema.votes.entityId, entityIds),
-          eq(dbSchema.votes.value, -1),
-        ),
-      )
-      .groupBy(dbSchema.votes.entityId);
+      );
 
     const votesMap = new Map<string, { upvotes: number; downvotes: number }>();
-    for (const row of upvoteResults) {
+    for (const row of countResults) {
       votesMap.set(row.entityId, {
-        upvotes: Number(row.count || 0),
-        downvotes: 0,
+        upvotes: row.upvotes,
+        downvotes: row.downvotes,
       });
-    }
-    for (const row of downvoteResults) {
-      const existing = votesMap.get(row.entityId) || { upvotes: 0, downvotes: 0 };
-      existing.downvotes = Number(row.count || 0);
-      votesMap.set(row.entityId, existing);
     }
 
     // Batch fetch user votes if authenticated
@@ -176,7 +150,7 @@ export const socialVoteMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 30);
+    applyRateLimit(ctx, 30, 'vote');
 
     const validated = validateInput(VoteInputSchema, input, 'input');
     const { entityType, entityId, value } = validated;

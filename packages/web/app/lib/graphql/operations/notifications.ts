@@ -2,6 +2,8 @@ import { gql } from 'graphql-request';
 import type {
   Notification,
   NotificationConnection,
+  GroupedNotification,
+  GroupedNotificationConnection,
   NotificationType,
   SocialEntityType,
 } from '@boardsesh/shared-schema';
@@ -21,6 +23,34 @@ export const GET_NOTIFICATIONS = gql`
         actorAvatarUrl
         entityType
         entityId
+        commentBody
+        climbName
+        climbUuid
+        boardType
+        isRead
+        createdAt
+      }
+      totalCount
+      unreadCount
+      hasMore
+    }
+  }
+`;
+
+export const GET_GROUPED_NOTIFICATIONS = gql`
+  query GetGroupedNotifications($limit: Int, $offset: Int) {
+    groupedNotifications(limit: $limit, offset: $offset) {
+      groups {
+        uuid
+        type
+        entityType
+        entityId
+        actorCount
+        actors {
+          id
+          displayName
+          avatarUrl
+        }
         commentBody
         climbName
         climbUuid
@@ -152,6 +182,15 @@ export interface GetNotificationsQueryVariables {
 
 export interface GetNotificationsQueryResponse {
   notifications: NotificationConnection;
+}
+
+export interface GetGroupedNotificationsQueryVariables {
+  limit?: number;
+  offset?: number;
+}
+
+export interface GetGroupedNotificationsQueryResponse {
+  groupedNotifications: GroupedNotificationConnection;
 }
 
 export interface GetUnreadNotificationCountQueryResponse {

@@ -2,7 +2,6 @@
 
 import React, { useCallback } from 'react';
 import Box from '@mui/material/Box';
-import MuiButton from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import PublicOutlined from '@mui/icons-material/PublicOutlined';
 import { EmptyState } from '@/app/components/ui/empty-state';
@@ -27,7 +26,7 @@ export default function GlobalAscentsFeed() {
     return response.globalAscentsFeed;
   }, []);
 
-  const { items, loading, loadingMore, hasMore, totalCount, loadMore } = usePaginatedFeed<FollowingAscentFeedItem>({
+  const { items, loading, loadingMore, hasMore, sentinelRef } = usePaginatedFeed<FollowingAscentFeedItem>({
     fetchFn,
   });
 
@@ -54,15 +53,8 @@ export default function GlobalAscentsFeed() {
         <SocialFeedItem key={item.uuid} item={item} showUserHeader />
       ))}
       {hasMore && (
-        <Box sx={{ py: 2 }}>
-          <MuiButton
-            onClick={loadMore}
-            disabled={loadingMore}
-            variant="outlined"
-            fullWidth
-          >
-            {loadingMore ? 'Loading...' : `Load more (${items.length} of ${totalCount})`}
-          </MuiButton>
+        <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+          {loadingMore && <CircularProgress size={24} />}
         </Box>
       )}
     </Box>

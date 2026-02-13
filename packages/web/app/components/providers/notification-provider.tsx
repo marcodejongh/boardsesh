@@ -1,19 +1,19 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import type { Notification } from '@boardsesh/shared-schema';
+import type { Notification, GroupedNotification, GroupedNotificationConnection } from '@boardsesh/shared-schema';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { createGraphQLClient, subscribe } from '@/app/components/graphql-queue/graphql-client';
 import {
-  GET_NOTIFICATIONS,
+  GET_GROUPED_NOTIFICATIONS,
   GET_UNREAD_NOTIFICATION_COUNT,
   MARK_NOTIFICATION_READ,
   MARK_ALL_NOTIFICATIONS_READ,
   NOTIFICATION_RECEIVED_SUBSCRIPTION,
-  type GetNotificationsQueryResponse,
-  type GetNotificationsQueryVariables,
+  type GetGroupedNotificationsQueryResponse,
+  type GetGroupedNotificationsQueryVariables,
   type GetUnreadNotificationCountQueryResponse,
   type MarkNotificationReadMutationVariables,
   type NotificationReceivedSubscriptionResponse,
@@ -21,23 +21,18 @@ import {
 
 interface NotificationContextValue {
   unreadCount: number;
-  notifications: Notification[];
+  groupedNotifications: GroupedNotification[];
   isLoading: boolean;
-  fetchNotifications: (unreadOnly?: boolean, limit?: number, offset?: number) => Promise<{
-    notifications: Notification[];
-    totalCount: number;
-    unreadCount: number;
-    hasMore: boolean;
-  } | null>;
+  fetchGroupedNotifications: (limit?: number, offset?: number) => Promise<GroupedNotificationConnection | null>;
   markAsRead: (uuid: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextValue>({
   unreadCount: 0,
-  notifications: [],
+  groupedNotifications: [],
   isLoading: true,
-  fetchNotifications: async () => null,
+  fetchGroupedNotifications: async () => null,
   markAsRead: async () => {},
   markAllAsRead: async () => {},
 });
@@ -48,7 +43,7 @@ export function useNotifications() {
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [groupedNotifications, setGroupedNotifications] = useState<GroupedNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { token, isAuthenticated } = useWsAuthToken();
   const { showMessage } = useSnackbar();
@@ -117,9 +112,73 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         next: (data) => {
           if (data?.notificationReceived?.notification) {
             const notification = data.notificationReceived.notification;
-            setNotifications((prev) => [notification, ...prev]);
             setUnreadCount((prev) => prev + 1);
             showMessage(formatNotificationMessage(notification), 'info');
+
+            // Merge into grouped notifications: find matching group or prepend new one
+            setGroupedNotifications((prev) => {
+              const matchIdx = prev.findIndex(
+                (g) =>
+                  g.type === notification.type &&
+                  g.entityType === notification.entityType &&
+                  g.entityId === notification.entityId,
+              );
+
+              if (matchIdx >= 0) {
+                // Update existing group: increment count, add actor if new, update timestamp
+                const existing = prev[matchIdx];
+                const actorAlreadyPresent = existing.actors.some(
+                  (a) => a.id === notification.actorId,
+                );
+                const updatedGroup: GroupedNotification = {
+                  ...existing,
+                  uuid: notification.uuid,
+                  actorCount: actorAlreadyPresent ? existing.actorCount : existing.actorCount + 1,
+                  actors: actorAlreadyPresent
+                    ? existing.actors
+                    : [
+                        {
+                          id: notification.actorId || '',
+                          displayName: notification.actorDisplayName,
+                          avatarUrl: notification.actorAvatarUrl,
+                        },
+                        ...existing.actors,
+                      ].slice(0, 3),
+                  isRead: false,
+                  createdAt: notification.createdAt,
+                  commentBody: notification.commentBody || existing.commentBody,
+                };
+                // Move to top
+                const newList = [...prev];
+                newList.splice(matchIdx, 1);
+                return [updatedGroup, ...newList];
+              }
+
+              // No matching group — prepend new one
+              const newGroup: GroupedNotification = {
+                uuid: notification.uuid,
+                type: notification.type,
+                entityType: notification.entityType,
+                entityId: notification.entityId,
+                actorCount: 1,
+                actors: notification.actorId
+                  ? [
+                      {
+                        id: notification.actorId,
+                        displayName: notification.actorDisplayName,
+                        avatarUrl: notification.actorAvatarUrl,
+                      },
+                    ]
+                  : [],
+                commentBody: notification.commentBody,
+                climbName: notification.climbName,
+                climbUuid: notification.climbUuid,
+                boardType: notification.boardType,
+                isRead: false,
+                createdAt: notification.createdAt,
+              };
+              return [newGroup, ...prev];
+            });
           }
         },
         error: (err) => {
@@ -141,27 +200,27 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     };
   }, [isAuthenticated, token, showMessage, refreshUnreadCount]);
 
-  const fetchNotifications = useCallback(
-    async (unreadOnly?: boolean, limit = 20, offset = 0) => {
+  const fetchGroupedNotifications = useCallback(
+    async (limit = 20, offset = 0) => {
       if (!token) return null;
 
       try {
         const client = createGraphQLHttpClient(token);
-        const data = await client.request<GetNotificationsQueryResponse, GetNotificationsQueryVariables>(
-          GET_NOTIFICATIONS,
-          { unreadOnly, limit, offset },
-        );
+        const data = await client.request<
+          GetGroupedNotificationsQueryResponse,
+          GetGroupedNotificationsQueryVariables
+        >(GET_GROUPED_NOTIFICATIONS, { limit, offset });
 
         if (offset === 0) {
-          setNotifications(data.notifications.notifications);
+          setGroupedNotifications(data.groupedNotifications.groups);
         } else {
-          setNotifications((prev) => [...prev, ...data.notifications.notifications]);
+          setGroupedNotifications((prev) => [...prev, ...data.groupedNotifications.groups]);
         }
-        setUnreadCount(data.notifications.unreadCount);
+        setUnreadCount(data.groupedNotifications.unreadCount);
 
-        return data.notifications;
+        return data.groupedNotifications;
       } catch (err) {
-        console.error('[Notifications] Failed to fetch notifications:', err);
+        console.error('[Notifications] Failed to fetch grouped notifications:', err);
         return null;
       }
     },
@@ -179,7 +238,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           { notificationUuid: uuid },
         );
 
-        setNotifications((prev) =>
+        setGroupedNotifications((prev) =>
           prev.map((n) => (n.uuid === uuid ? { ...n, isRead: true } : n)),
         );
         setUnreadCount((prev) => Math.max(0, prev - 1));
@@ -197,7 +256,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       const client = createGraphQLHttpClient(token);
       await client.request(MARK_ALL_NOTIFICATIONS_READ);
 
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setGroupedNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (err) {
       console.error('[Notifications] Failed to mark all as read:', err);
@@ -208,9 +267,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     <NotificationContext.Provider
       value={{
         unreadCount,
-        notifications,
+        groupedNotifications,
         isLoading,
-        fetchNotifications,
+        fetchGroupedNotifications,
         markAsRead,
         markAllAsRead,
       }}
