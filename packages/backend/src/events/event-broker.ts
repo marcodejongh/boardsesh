@@ -79,17 +79,29 @@ export class EventBroker {
     console.log(`[EventBroker] Starting consumer "${this.consumerName}"`);
 
     const runLoop = async () => {
+      let consecutiveErrors = 0;
+
       while (this.running) {
+        // Check if Redis connection is permanently closed
+        if (this.consumer?.status === 'end') {
+          console.error('[EventBroker] Redis connection permanently closed, stopping consumer loop');
+          this.running = false;
+          break;
+        }
+
         try {
           // 1. Reclaim dead consumer events
           await this.reclaimPendingEvents(handler);
 
           // 2. Read new events
           await this.readNewEvents(handler);
+
+          consecutiveErrors = 0;
         } catch (error) {
-          console.error('[EventBroker] Consumer loop error:', error);
-          // Wait before retrying on error
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          consecutiveErrors++;
+          const delay = Math.min(1000 * Math.pow(2, consecutiveErrors - 1), 30000);
+          console.error(`[EventBroker] Consumer loop error (attempt ${consecutiveErrors}, retry in ${delay}ms):`, error);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
     };
@@ -134,6 +146,9 @@ export class EventBroker {
       // xautoclaim may not be available on older Redis versions
       if (error instanceof Error && error.message.includes('ERR unknown command')) {
         // Silently skip - xautoclaim requires Redis 6.2+
+      } else if (error instanceof Error && error.message.includes('Connection is closed')) {
+        // Re-throw connection errors so the outer loop handles them with backoff
+        throw error;
       } else {
         console.error('[EventBroker] Error reclaiming events:', error);
       }
