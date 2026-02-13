@@ -41,10 +41,10 @@ export function TickAction({
   const isAuthenticated = boardProvider?.isAuthenticated ?? (sessionStatus === 'authenticated');
 
   // Use standalone useLogbook when outside BoardProvider
-  // When inside BoardProvider, prefer its logbook (already fetched, same cache)
+  // Pass empty array when provider exists to skip the fetch (enabled requires climbUuids.length > 0)
   const { logbook: standaloneLogbook } = useLogbook(
     boardDetails.board_name,
-    [climb.uuid],
+    boardProvider ? [] : [climb.uuid],
   );
   const logbook = boardProvider?.logbook ?? standaloneLogbook;
 

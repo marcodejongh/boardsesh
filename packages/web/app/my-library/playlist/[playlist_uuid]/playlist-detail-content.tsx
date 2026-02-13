@@ -280,6 +280,7 @@ export default function PlaylistDetailContent({
     try {
       if (navigator.share && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
+        showMessage('Shared successfully!', 'success');
       } else {
         await navigator.clipboard.writeText(window.location.href);
         showMessage('Link copied to clipboard!', 'success');
