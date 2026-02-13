@@ -197,7 +197,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
 
   // Compute paper dimensions from height/width/styles.wrapper
   const paperSx = useMemo(() => {
-    const sx: Record<string, unknown> = { position: 'relative' };
+    const sx: Record<string, unknown> = {};
 
     // Apply wrapper styles (styles.wrapper → MUI PaperProps.sx)
     if (userStyles?.wrapper) {
@@ -319,7 +319,9 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
       slotProps={slotProps}
       PaperProps={muiPaperProps}
     >
-      {bodyContent}
+      <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        {bodyContent}
+      </Box>
     </MuiSwipeableDrawer>
   );
 };
