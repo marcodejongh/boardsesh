@@ -7,7 +7,14 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { UNIFIED_TABLES } from '../../db/queries/util/table-select';
 import { boardseshTicks, auroraCredentials, playlists, playlistClimbs, playlistOwnership } from '../../db/schema';
 import { randomUUID } from 'crypto';
-import { convertQuality } from './convert-quality';
+
+/**
+ * Convert Aurora quality (1-3 scale) to Boardsesh quality (1-5 scale)
+ */
+function convertQuality(auroraQuality: number | null | undefined): number | null {
+  if (auroraQuality == null) return null;
+  return Math.round((auroraQuality / 3.0) * 5);
+}
 
 /**
  * Get NextAuth user ID from Aurora user ID

@@ -27,7 +27,8 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import styles from './profile-page.module.css';
 import type { ChartData } from './profile-stats-charts';
-import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import { createGraphQLHttpClient, executeGraphQL } from '@/app/lib/graphql/client';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import {
   GET_USER_TICKS,
   type GetUserTicksQueryVariables,
@@ -37,6 +38,9 @@ import {
   type GetUserProfileStatsQueryResponse,
   FOLLOW_USER,
   UNFOLLOW_USER,
+  GET_PUBLIC_PROFILE,
+  type GetPublicProfileQueryVariables,
+  type GetPublicProfileQueryResponse,
 } from '@/app/lib/graphql/operations';
 import { FONT_GRADE_COLORS, getGradeColorWithOpacity } from '@/app/lib/grade-colors';
 import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
@@ -59,14 +63,9 @@ const ProfileStatsCharts = dynamic(() => import('./profile-stats-charts'), {
 
 interface UserProfile {
   id: string;
-  email: string;
-  name: string | null;
-  image: string | null;
-  profile: {
-    displayName: string | null;
-    avatarUrl: string | null;
-    instagramUrl: string | null;
-  } | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  instagramUrl: string | null;
   followerCount: number;
   followingCount: number;
   isFollowedByMe: boolean;
@@ -209,31 +208,31 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
 
   const isOwnProfile = session?.user?.id === userId;
   const { showMessage } = useSnackbar();
+  const { token: authToken } = useWsAuthToken();
 
   // Fetch profile data for the userId in the URL
   const fetchProfile = useCallback(async () => {
     try {
-      const response = await fetch(`/api/internal/profile/${userId}`);
+      // Use auth token if available (for isFollowedByMe), but publicProfile works without auth too
+      const data = await executeGraphQL<GetPublicProfileQueryResponse, GetPublicProfileQueryVariables>(
+        GET_PUBLIC_PROFILE,
+        { userId },
+        authToken,
+      );
 
-      if (response.status === 404) {
+      if (!data.publicProfile) {
         setNotFound(true);
         return;
       }
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch profile');
-      }
-
-      const data = await response.json();
       setProfile({
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        image: data.image,
-        profile: data.profile,
-        followerCount: data.followerCount ?? 0,
-        followingCount: data.followingCount ?? 0,
-        isFollowedByMe: data.isFollowedByMe ?? false,
+        id: data.publicProfile.id,
+        displayName: data.publicProfile.displayName ?? null,
+        avatarUrl: data.publicProfile.avatarUrl ?? null,
+        instagramUrl: data.publicProfile.instagramUrl ?? null,
+        followerCount: data.publicProfile.followerCount,
+        followingCount: data.publicProfile.followingCount,
+        isFollowedByMe: data.publicProfile.isFollowedByMe,
       });
     } catch (error) {
       console.error('Failed to fetch profile:', error);
@@ -241,7 +240,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, authToken]);
 
   // Fetch ticks from GraphQL backend
   const fetchLogbook = useCallback(async (boardType: string) => {
@@ -647,9 +646,9 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
     );
   }
 
-  const displayName = profile?.profile?.displayName || profile?.name || 'Crusher';
-  const avatarUrl = profile?.profile?.avatarUrl || profile?.image;
-  const instagramUrl = profile?.profile?.instagramUrl;
+  const displayName = profile?.displayName || 'Crusher';
+  const avatarUrl = profile?.avatarUrl;
+  const instagramUrl = profile?.instagramUrl;
 
   // Board options are now available for all users (no Aurora credentials required)
   const boardOptions = BOARD_TYPES.map((boardType) => ({
@@ -720,8 +719,8 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                 followerCount={profile?.followerCount ?? 0}
                 followingCount={profile?.followingCount ?? 0}
               />
-              {isOwnProfile && (
-                <Typography variant="body2" component="span" color="text.secondary">{profile?.email}</Typography>
+              {isOwnProfile && session?.user?.email && (
+                <Typography variant="body2" component="span" color="text.secondary">{session.user.email}</Typography>
               )}
               {instagramUrl && (
                 <a

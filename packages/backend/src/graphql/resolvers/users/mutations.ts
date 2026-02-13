@@ -12,7 +12,7 @@ export const userMutations = {
    */
   updateProfile: async (
     _: unknown,
-    { input }: { input: { displayName?: string; avatarUrl?: string } },
+    { input }: { input: { displayName?: string; avatarUrl?: string; instagramUrl?: string } },
     ctx: ConnectionContext
   ): Promise<UserProfile> => {
     requireAuthenticated(ctx);
@@ -33,6 +33,7 @@ export const userMutations = {
         userId,
         displayName: input.displayName,
         avatarUrl: input.avatarUrl,
+        instagramUrl: input.instagramUrl,
       });
     } else {
       // Update existing profile
@@ -41,8 +42,20 @@ export const userMutations = {
         .set({
           displayName: input.displayName ?? existingProfile[0].displayName,
           avatarUrl: input.avatarUrl ?? existingProfile[0].avatarUrl,
+          instagramUrl: input.instagramUrl ?? existingProfile[0].instagramUrl,
         })
         .where(eq(dbSchema.userProfiles.userId, userId));
+    }
+
+    // Also update the user's name if displayName is provided
+    if (input.displayName !== undefined) {
+      await db
+        .update(dbSchema.users)
+        .set({
+          name: input.displayName || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(dbSchema.users.id, userId));
     }
 
     // Fetch and return updated profile
@@ -66,6 +79,7 @@ export const userMutations = {
       email: user.email,
       displayName: profile?.displayName || user.name || undefined,
       avatarUrl: profile?.avatarUrl || user.image || undefined,
+      instagramUrl: profile?.instagramUrl || undefined,
     };
   },
 
