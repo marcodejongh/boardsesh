@@ -12,7 +12,8 @@ import ListItemText from '@mui/material/ListItemText';
 import CircularProgress from '@mui/material/CircularProgress';
 import { PersonOutlined } from '@mui/icons-material';
 import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
-import FollowButton from './follow-button';
+import FollowButton from '@/app/components/ui/follow-button';
+import { FOLLOW_USER, UNFOLLOW_USER } from '@/app/lib/graphql/operations';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
@@ -161,8 +162,12 @@ export default function FollowerCount({ userId, followerCount, followingCount }:
                   }}
                   secondaryAction={
                     <FollowButton
-                      userId={user.id}
+                      entityId={user.id}
                       initialIsFollowing={user.isFollowedByMe}
+                      followMutation={FOLLOW_USER}
+                      unfollowMutation={UNFOLLOW_USER}
+                      entityLabel="user"
+                      getFollowVariables={(id) => ({ input: { userId: id } })}
                     />
                   }
                 >

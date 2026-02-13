@@ -1,8 +1,6 @@
-import { openDB, IDBPDatabase } from 'idb';
 import { v4 as uuidv4 } from 'uuid';
+import { createIndexedDBStore, migrateFromLocalStorage } from './idb-helper';
 
-const DB_NAME = 'boardsesh-party';
-const DB_VERSION = 1;
 const STORE_NAME = 'profile';
 const PROFILE_KEY = 'party-profile';
 
@@ -13,27 +11,15 @@ export interface PartyProfile {
   id: string; // UUID, auto-generated
 }
 
-let dbPromise: Promise<IDBPDatabase> | null = null;
-
-const initDB = async (): Promise<IDBPDatabase> => {
-  if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME);
-        }
-      },
-    });
-  }
-  return dbPromise;
-};
+const getDB = createIndexedDBStore('boardsesh-party', STORE_NAME);
 
 /**
  * Get the party profile from IndexedDB
  */
 export const getPartyProfile = async (): Promise<PartyProfile | null> => {
   try {
-    const db = await initDB();
+    const db = await getDB();
+    if (!db) return null;
     const profile = await db.get(STORE_NAME, PROFILE_KEY);
     if (profile) {
       // Return only the id field (ignore legacy username/avatarUrl if present)
@@ -51,7 +37,8 @@ export const getPartyProfile = async (): Promise<PartyProfile | null> => {
  */
 export const savePartyProfile = async (profile: PartyProfile): Promise<void> => {
   try {
-    const db = await initDB();
+    const db = await getDB();
+    if (!db) return;
     await db.put(STORE_NAME, profile, PROFILE_KEY);
   } catch (error) {
     console.error('Failed to save party profile:', error);
@@ -64,7 +51,8 @@ export const savePartyProfile = async (profile: PartyProfile): Promise<void> => 
  */
 export const clearPartyProfile = async (): Promise<void> => {
   try {
-    const db = await initDB();
+    const db = await getDB();
+    if (!db) return;
     await db.delete(STORE_NAME, PROFILE_KEY);
   } catch (error) {
     console.error('Failed to clear party profile:', error);
@@ -76,40 +64,31 @@ export const clearPartyProfile = async (): Promise<void> => {
  * Migrate data from legacy localStorage keys to IndexedDB
  * Returns true if migration was performed, false otherwise
  */
-export const migrateFromLocalStorage = async (): Promise<boolean> => {
+const migrateFromLegacyStorage = async (): Promise<boolean> => {
   if (typeof window === 'undefined') {
     return false;
   }
 
   try {
-    // Check if we already have a profile
     const existingProfile = await getPartyProfile();
     if (existingProfile) {
-      // Already migrated or profile exists
       return false;
     }
 
-    // Check for legacy localStorage user ID
-    const legacyUserId = localStorage.getItem(LEGACY_USER_ID_KEY);
+    const migrated = await migrateFromLocalStorage<string>(
+      LEGACY_USER_ID_KEY,
+      async (legacyUserId) => {
+        await savePartyProfile({ id: legacyUserId });
+      },
+    );
 
-    if (legacyUserId) {
-      // Create new profile with migrated ID
-      const migratedProfile: PartyProfile = {
-        id: legacyUserId,
-      };
-
-      await savePartyProfile(migratedProfile);
-
-      // Clean up legacy localStorage
-      localStorage.removeItem(LEGACY_USER_ID_KEY);
+    if (migrated) {
       // Also clean up legacy username key if present
       localStorage.removeItem('boardsesh:username');
-
       console.log('Successfully migrated party profile from localStorage to IndexedDB');
-      return true;
     }
 
-    return false;
+    return migrated;
   } catch (error) {
     console.error('Failed to migrate from localStorage:', error);
     return false;
@@ -124,7 +103,7 @@ export const migrateFromLocalStorage = async (): Promise<boolean> => {
 export const ensurePartyProfile = async (): Promise<PartyProfile> => {
   try {
     // First, try to migrate from localStorage
-    await migrateFromLocalStorage();
+    await migrateFromLegacyStorage();
 
     // Check for existing profile
     const existingProfile = await getPartyProfile();

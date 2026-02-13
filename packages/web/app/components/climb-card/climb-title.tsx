@@ -5,8 +5,8 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import CopyrightOutlined from '@mui/icons-material/CopyrightOutlined';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getSoftVGradeColor } from '@/app/lib/grade-colors';
-import { useColorMode } from '@/app/hooks/use-color-mode';
+import { getSoftVGradeColor, extractVGrade } from '@/app/lib/grade-colors';
+import { useIsDarkMode } from '@/app/hooks/use-is-dark-mode';
 
 export type ClimbTitleData = {
   name?: string;
@@ -57,8 +57,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   centered = false,
   titleFontSize,
 }) => {
-  const { mode } = useColorMode();
-  const isDark = mode === 'dark';
+  const isDark = useIsDarkMode();
 
   if (!climb) {
     return (
@@ -86,13 +85,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
     climb.benchmark_difficulty !== '' &&
     climb.benchmark_difficulty !== '0';
 
-  // Extract V grade from difficulty string (e.g., "6a/V3" -> "V3", "V5" -> "V5")
-  const getVGrade = (difficulty: string): string | null => {
-    const vGradeMatch = difficulty.match(/V\d+/i);
-    return vGradeMatch ? vGradeMatch[0].toUpperCase() : null;
-  };
-
-  const vGrade = displayDifficulty ? getVGrade(displayDifficulty) : null;
+  const vGrade = extractVGrade(displayDifficulty);
 
   const textOverflowStyles = ellipsis
     ? {

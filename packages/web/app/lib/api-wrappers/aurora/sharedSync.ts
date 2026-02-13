@@ -1,6 +1,7 @@
 import { fetch } from 'undici';
 import { SyncData } from '../sync-api-types';
 import { WEB_HOSTS, SyncOptions, AuroraBoardName } from './types';
+import { handleAuroraApiResponse } from './util';
 
 //TODO: Can probably be consolidated with userSync
 export async function sharedSync(
@@ -67,7 +68,7 @@ export async function sharedSync(
     body: requestBody,
   });
 
-  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  handleAuroraApiResponse(response, `Shared sync failed for ${board}`);
 
   return response.json() as Promise<SyncData>;
 }

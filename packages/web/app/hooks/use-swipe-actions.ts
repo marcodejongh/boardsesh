@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useState } from 'react';
 import { useSwipeable } from 'react-swipeable';
+import { useSwipeDirection } from './use-swipe-direction';
 
 // Threshold in pixels to trigger the swipe action
 const DEFAULT_SWIPE_THRESHOLD = 100;
@@ -61,7 +62,7 @@ export function useSwipeActions({
 
   // Gesture state (not React state -- no re-renders)
   const offsetRef = useRef(0);
-  const isHorizontalRef = useRef<boolean | null>(null);
+  const { detect: detectDirection, reset: resetDirection, isHorizontalRef } = useSwipeDirection();
 
   const contentRef = useCallback((node: HTMLElement | null) => {
     contentEl.current = node;
@@ -134,17 +135,11 @@ export function useSwipeActions({
       const { deltaX, deltaY, event } = eventData;
 
       // Determine swipe direction on first significant movement
-      if (isHorizontalRef.current === null) {
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-        if (absX > 10 || absY > 10) {
-          isHorizontalRef.current = absX > absY;
-        }
-        return;
-      }
+      const isHorizontal = detectDirection(deltaX, deltaY);
+      if (isHorizontal === null) return;
 
       // Let vertical swipes pass through for scrolling
-      if (!isHorizontalRef.current) return;
+      if (!isHorizontal) return;
 
       // Horizontal swipe -- prevent scroll and update offset via DOM
       if ('nativeEvent' in event) {
@@ -162,7 +157,7 @@ export function useSwipeActions({
       } else {
         resetOffset();
       }
-      isHorizontalRef.current = null;
+      resetDirection();
     },
     onSwipedRight: (eventData) => {
       if (isHorizontalRef.current && Math.abs(eventData.deltaX) >= swipeThreshold) {
@@ -170,13 +165,13 @@ export function useSwipeActions({
       } else {
         resetOffset();
       }
-      isHorizontalRef.current = null;
+      resetDirection();
     },
     onTouchEndOrOnMouseUp: () => {
       if (Math.abs(offsetRef.current) < swipeThreshold) {
         resetOffset();
       }
-      isHorizontalRef.current = null;
+      resetDirection();
     },
     trackMouse: false,
     trackTouch: true,

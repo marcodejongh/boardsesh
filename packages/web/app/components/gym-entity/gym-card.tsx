@@ -12,6 +12,7 @@ import FitnessCenterOutlined from '@mui/icons-material/FitnessCenterOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import type { Gym } from '@boardsesh/shared-schema';
 import { themeTokens } from '@/app/theme/theme-config';
+import StatItem from '@/app/components/ui/stat-item';
 
 interface GymCardProps {
   gym: Gym;
@@ -71,16 +72,3 @@ export default function GymCard({ gym, onClick }: GymCardProps) {
   );
 }
 
-function StatItem({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-      <Box sx={{ color: 'var(--neutral-400)', display: 'flex' }}>{icon}</Box>
-      <MuiTypography variant="body2" sx={{ fontWeight: themeTokens.typography.fontWeight.medium }}>
-        {value}
-      </MuiTypography>
-      <MuiTypography variant="body2" color="text.secondary">
-        {label}
-      </MuiTypography>
-    </Box>
-  );
-}

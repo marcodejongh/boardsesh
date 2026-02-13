@@ -1,9 +1,7 @@
-import { openDB, IDBPDatabase } from 'idb';
+import { createIndexedDBStore } from './idb-helper';
 import { ClimbQueueItem } from '../components/queue-control/types';
 import { BoardDetails } from './types';
 
-const DB_NAME = 'boardsesh-queue';
-const DB_VERSION = 1;
 const STORE_NAME = 'queues';
 
 /**
@@ -17,21 +15,7 @@ export interface StoredQueueState {
   updatedAt: number;
 }
 
-let dbPromise: Promise<IDBPDatabase> | null = null;
-
-const initDB = async (): Promise<IDBPDatabase> => {
-  if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          // Create store with boardPath as key
-          db.createObjectStore(STORE_NAME);
-        }
-      },
-    });
-  }
-  return dbPromise;
-};
+const getDB = createIndexedDBStore('boardsesh-queue', STORE_NAME);
 
 /**
  * Get the queue key for a board path
@@ -45,12 +29,9 @@ function getQueueKey(boardPath: string): string {
  * Get stored queue state for a specific board path
  */
 export const getStoredQueue = async (boardPath: string): Promise<StoredQueueState | null> => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
   try {
-    const db = await initDB();
+    const db = await getDB();
+    if (!db) return null;
     const key = getQueueKey(boardPath);
     const stored = await db.get(STORE_NAME, key);
 
@@ -78,12 +59,9 @@ export const getStoredQueue = async (boardPath: string): Promise<StoredQueueStat
  * Save queue state for a specific board path
  */
 export const saveQueueState = async (state: StoredQueueState): Promise<void> => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
   try {
-    const db = await initDB();
+    const db = await getDB();
+    if (!db) return;
     const key = getQueueKey(state.boardPath);
 
     // Ensure we save with timestamp
@@ -103,12 +81,9 @@ export const saveQueueState = async (state: StoredQueueState): Promise<void> => 
  * Clear stored queue for a specific board path
  */
 export const clearStoredQueue = async (boardPath: string): Promise<void> => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
   try {
-    const db = await initDB();
+    const db = await getDB();
+    if (!db) return;
     const key = getQueueKey(boardPath);
     await db.delete(STORE_NAME, key);
   } catch (error) {
@@ -121,12 +96,9 @@ export const clearStoredQueue = async (boardPath: string): Promise<void> => {
  * Get all stored queue states (for debugging or cleanup)
  */
 export const getAllStoredQueues = async (): Promise<StoredQueueState[]> => {
-  if (typeof window === 'undefined') {
-    return [];
-  }
-
   try {
-    const db = await initDB();
+    const db = await getDB();
+    if (!db) return [];
     const allKeys = await db.getAllKeys(STORE_NAME);
     const queues: StoredQueueState[] = [];
 
@@ -149,12 +121,9 @@ export const getAllStoredQueues = async (): Promise<StoredQueueState[]> => {
  * Default: 30 days
  */
 export const cleanupOldQueues = async (maxAgeDays: number = 30): Promise<number> => {
-  if (typeof window === 'undefined') {
-    return 0;
-  }
-
   try {
-    const db = await initDB();
+    const db = await getDB();
+    if (!db) return 0;
     const allKeys = await db.getAllKeys(STORE_NAME);
     const maxAgeMs = maxAgeDays * 24 * 60 * 60 * 1000;
     const now = Date.now();

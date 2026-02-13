@@ -21,6 +21,7 @@ import LastUsedBoardTracker from '@/app/components/board-page/last-used-board-tr
 import { getAllBoardConfigs } from '@/app/lib/server-board-configs';
 import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import layoutStyles from './layout.module.css';
+import { themeTokens } from '@/app/theme/theme-config';
 
 interface BoardSlugRouteParams {
   board_slug: string;
@@ -97,8 +98,8 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
                       id="content-for-scrollable"
                       style={{
                         flex: 1,
-                        paddingLeft: '10px',
-                        paddingRight: '10px',
+                        paddingLeft: `${themeTokens.spacing[2]}px`,
+                        paddingRight: `${themeTokens.spacing[2]}px`,
                         paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))',
                         paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
                       }}

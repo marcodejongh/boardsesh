@@ -27,22 +27,26 @@ import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_BOARD,
   DELETE_BOARD,
+  FOLLOW_BOARD,
+  UNFOLLOW_BOARD,
+  LINK_BOARD_TO_GYM,
   type GetBoardQueryResponse,
   type GetBoardQueryVariables,
   type DeleteBoardMutationVariables,
   type DeleteBoardMutationResponse,
+  type LinkBoardToGymMutationVariables,
+  type LinkBoardToGymMutationResponse,
 } from '@/app/lib/graphql/operations';
 import { useSession } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
 import FitnessCenterOutlined from '@mui/icons-material/FitnessCenterOutlined';
 import AddOutlined from '@mui/icons-material/AddOutlined';
-import FollowBoardButton from './follow-board-button';
+import FollowButton from '@/app/components/ui/follow-button';
 import BoardLeaderboard from './board-leaderboard';
 import EditBoardForm from './edit-board-form';
 import CommentSection from '@/app/components/social/comment-section';
 import GymDetail from '@/app/components/gym-entity/gym-detail';
 import GymSelector from '@/app/components/gym-entity/gym-selector';
-import { LINK_BOARD_TO_GYM, type LinkBoardToGymMutationVariables, type LinkBoardToGymMutationResponse } from '@/app/lib/graphql/operations';
 
 const BOARD_TYPE_LABELS: Record<string, string> = {
   kilter: 'Kilter',
@@ -301,9 +305,13 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
               {/* Actions */}
               <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                 {!isOwner && (
-                  <FollowBoardButton
-                    boardUuid={board.uuid}
+                  <FollowButton
+                    entityId={board.uuid}
                     initialIsFollowing={board.isFollowedByMe}
+                    followMutation={FOLLOW_BOARD}
+                    unfollowMutation={UNFOLLOW_BOARD}
+                    entityLabel="board"
+                    getFollowVariables={(id) => ({ input: { boardUuid: id } })}
                     onFollowChange={() => fetchBoard()}
                   />
                 )}
