@@ -28,7 +28,7 @@ export const getClimb = async (params: ParsedBoardRouteParametersWithUuid): Prom
         dg.boulder_name as difficulty,
         ROUND(climb_stats.quality_average::numeric, 2) as quality_average,
         ROUND(climb_stats.difficulty_average::numeric - climb_stats.display_difficulty::numeric, 2) AS difficulty_error,
-        climb_stats.benchmark_difficulty
+        CASE WHEN climb_stats.benchmark_difficulty > 0 THEN climb_stats.benchmark_difficulty::text ELSE NULL END as benchmark_difficulty
         FROM board_climbs climbs
         LEFT JOIN board_climb_stats climb_stats
           ON climb_stats.climb_uuid = climbs.uuid

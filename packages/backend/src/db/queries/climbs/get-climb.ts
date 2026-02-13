@@ -69,7 +69,7 @@ export const getClimbByUuid = async (params: GetClimbParams): Promise<Climb | nu
       quality_average: row.quality_average?.toString() || '0',
       stars: Math.round((Number(row.quality_average) || 0) * 5),
       difficulty_error: row.difficulty_error?.toString() || '0',
-      benchmark_difficulty: row.benchmark_difficulty?.toString() || null,
+      benchmark_difficulty: row.benchmark_difficulty && row.benchmark_difficulty > 0 ? row.benchmark_difficulty.toString() : null,
       litUpHoldsMap: convertLitUpHoldsStringToMap(row.frames || '', params.board_name)[0] || {},
     };
 

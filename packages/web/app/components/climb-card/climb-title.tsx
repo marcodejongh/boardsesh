@@ -78,12 +78,11 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   const displayDifficulty = climb.communityGrade || climb.difficulty;
 
   const hasGrade = displayDifficulty && climb.quality_average && climb.quality_average !== '0';
-  // A climb is a benchmark/classic if benchmark_difficulty has a meaningful value (not null, undefined, empty, or "0")
-  const isBenchmark =
-    climb.benchmark_difficulty !== null &&
-    climb.benchmark_difficulty !== undefined &&
-    climb.benchmark_difficulty !== '' &&
-    climb.benchmark_difficulty !== '0';
+  // A climb is a benchmark/classic if benchmark_difficulty is a positive number.
+  // Handle both string and numeric types defensively since the value may arrive
+  // as a raw number from some code paths or as a string from GraphQL.
+  const benchmarkValue = climb.benchmark_difficulty != null ? Number(climb.benchmark_difficulty) : null;
+  const isBenchmark = benchmarkValue !== null && benchmarkValue > 0 && !Number.isNaN(benchmarkValue);
 
   const vGrade = extractVGrade(displayDifficulty);
 

@@ -117,7 +117,7 @@ export const searchClimbs = async (
       quality_average: result.quality_average?.toString() || '0',
       stars: Math.round((Number(result.quality_average) || 0) * 5),
       difficulty_error: result.difficulty_error?.toString() || '0',
-      benchmark_difficulty: result.benchmark_difficulty?.toString() || null,
+      benchmark_difficulty: result.benchmark_difficulty && result.benchmark_difficulty > 0 ? result.benchmark_difficulty.toString() : null,
       // TODO: Multiframe support should remove the hardcoded [0]
       litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', params.board_name)[0],
       // Add user-specific fields if they exist
