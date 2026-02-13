@@ -50,7 +50,7 @@ BEGIN
   -- receiving their first vote).
   SELECT COALESCE(
     (SELECT fi."created_at" FROM feed_items fi
-     WHERE fi."entity_type" = v_entity_type::text AND fi."entity_id" = v_entity_id
+     WHERE fi."entity_type" = v_entity_type AND fi."entity_id" = v_entity_id
      LIMIT 1),
     NOW()
   ) INTO v_created_at;
@@ -92,13 +92,13 @@ SELECT
   SIGN(SUM(v.value)) * LN(GREATEST(ABS(SUM(v.value)), 1))
     + EXTRACT(EPOCH FROM COALESCE(
         (SELECT fi."created_at" FROM feed_items fi
-         WHERE fi."entity_type" = v.entity_type::text AND fi."entity_id" = v.entity_id
+         WHERE fi."entity_type" = v.entity_type AND fi."entity_id" = v.entity_id
          LIMIT 1),
         MIN(v.created_at)
       )) / 45000.0 as hot_score,
   COALESCE(
     (SELECT fi."created_at" FROM feed_items fi
-     WHERE fi."entity_type" = v.entity_type::text AND fi."entity_id" = v.entity_id
+     WHERE fi."entity_type" = v.entity_type AND fi."entity_id" = v.entity_id
      LIMIT 1),
     MIN(v.created_at)
   ) as created_at
