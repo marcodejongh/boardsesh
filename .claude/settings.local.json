@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:github.com)",
       "Bash(npm run lint:*)",
-      "Bash(npm run typecheck:*)"
+      "Bash(npm run typecheck:*)",
+      "Bash(git -C ~/Projects/Github/boardsesh/second --no-pager diff --no-ext-diff packages/web/app/theme/mui-theme.ts)"
     ]
   }
 }

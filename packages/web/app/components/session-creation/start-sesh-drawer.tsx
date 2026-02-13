@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -8,27 +8,38 @@ import LoginOutlined from '@mui/icons-material/LoginOutlined';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import SessionCreationForm from './session-creation-form';
 import type { SessionCreationFormData } from './session-creation-form';
-import BoardSelectorPills from '@/app/components/board-entity/board-selector-pills';
+import BoardSelectorDrawer from '@/app/components/board-selector-drawer/board-selector-drawer';
+import BoardScrollSection from '@/app/components/board-scroll/board-scroll-section';
+import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
+import CreateBoardCard from '@/app/components/board-scroll/create-board-card';
 import { useCreateSession } from '@/app/hooks/use-create-session';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import AuthModal from '../auth/auth-modal';
-import type { UserBoard } from '@boardsesh/shared-schema';
+import { useMyBoards } from '@/app/hooks/use-my-boards';
+import { BoardConfigData } from '@/app/lib/server-board-configs';
+import type { StoredBoardConfig } from '@/app/lib/saved-boards-db';
 
 interface StartSeshDrawerProps {
   open: boolean;
   onClose: () => void;
+  boardConfigs?: BoardConfigData;
 }
 
-export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps) {
+export default function StartSeshDrawer({ open, onClose, boardConfigs }: StartSeshDrawerProps) {
   const { status } = useSession();
   const router = useRouter();
   const { showMessage } = useSnackbar();
   const { createSession, isCreating } = useCreateSession();
-  const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
+  const { boards, isLoading: isLoadingBoards, error: boardsError } = useMyBoards(open);
+
+  const [selectedBoard, setSelectedBoard] = useState<(typeof boards)[number] | null>(null);
+  const [selectedCustomPath, setSelectedCustomPath] = useState<string | null>(null);
+  const [selectedCustomConfig, setSelectedCustomConfig] = useState<StoredBoardConfig | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showBoardDrawer, setShowBoardDrawer] = useState(false);
   const [formKey, setFormKey] = useState(0);
 
   const isLoggedIn = status === 'authenticated';
@@ -36,11 +47,22 @@ export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps)
   const handleClose = useCallback(() => {
     onClose();
     setSelectedBoard(null);
+    setSelectedCustomPath(null);
+    setSelectedCustomConfig(null);
     setFormKey((k) => k + 1);
   }, [onClose]);
 
-  const handleBoardSelect = (board: UserBoard) => {
+  const handleBoardSelect = (board: (typeof boards)[number]) => {
     setSelectedBoard(board);
+    setSelectedCustomPath(null);
+    setSelectedCustomConfig(null);
+  };
+
+  const handleCustomSelect = (url: string, config?: StoredBoardConfig) => {
+    setSelectedCustomPath(url);
+    setSelectedCustomConfig(config ?? null);
+    setSelectedBoard(null);
+    setShowBoardDrawer(false);
   };
 
   const handleSubmit = async (formData: SessionCreationFormData) => {
@@ -49,18 +71,27 @@ export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps)
       return;
     }
 
-    if (!selectedBoard) {
+    if (!selectedBoard && !selectedCustomPath) {
       showMessage('Please select a board first', 'warning');
       return;
     }
 
     try {
-      const boardPath = `/b/${selectedBoard.slug}`;
-      const sessionId = await createSession(formData, boardPath);
+      let boardPath: string;
+      let navigateUrl: string;
 
-      // Navigate to board page with session
-      const boardUrl = constructBoardSlugListUrl(selectedBoard.slug, selectedBoard.angle);
-      router.push(`${boardUrl}?session=${sessionId}`);
+      if (selectedBoard) {
+        boardPath = `/b/${selectedBoard.slug}`;
+        navigateUrl = constructBoardSlugListUrl(selectedBoard.slug, selectedBoard.angle);
+      } else if (selectedCustomPath) {
+        boardPath = selectedCustomPath;
+        navigateUrl = selectedCustomPath;
+      } else {
+        return;
+      }
+
+      const sessionId = await createSession(formData, boardPath);
+      router.push(`${navigateUrl}?session=${sessionId}`);
 
       handleClose();
       showMessage('Session started!', 'success');
@@ -73,17 +104,32 @@ export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps)
 
   const boardSelector = (
     <Box>
-      <Typography variant="body2" component="span" fontWeight={600} gutterBottom>
-        Select a board
-      </Typography>
-      <BoardSelectorPills
-        mode="filter"
-        selectedBoardUuid={selectedBoard?.uuid ?? null}
-        onBoardSelect={handleBoardSelect}
-      />
-      {selectedBoard && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          {selectedBoard.name}
+      <BoardScrollSection title="Select a board" loading={isLoadingBoards}>
+        <CreateBoardCard
+          onClick={() => setShowBoardDrawer(true)}
+          label="Custom"
+        />
+        {selectedCustomConfig && (
+          <BoardScrollCard
+            key={`custom-${selectedCustomConfig.name}`}
+            storedConfig={selectedCustomConfig}
+            boardConfigs={boardConfigs}
+            selected
+            onClick={() => setShowBoardDrawer(true)}
+          />
+        )}
+        {boards.map((board) => (
+          <BoardScrollCard
+            key={board.uuid}
+            userBoard={board}
+            selected={selectedBoard?.uuid === board.uuid}
+            onClick={() => handleBoardSelect(board)}
+          />
+        ))}
+      </BoardScrollSection>
+      {boardsError && (
+        <Typography variant="body2" color="error" sx={{ mt: 0.5 }}>
+          {boardsError}
         </Typography>
       )}
     </Box>
@@ -92,7 +138,7 @@ export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps)
   return (
     <>
       <SwipeableDrawer
-        title="Start Sesh"
+        title="Sesh"
         placement="top"
         open={open}
         onClose={handleClose}
@@ -127,12 +173,22 @@ export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps)
               key={formKey}
               onSubmit={handleSubmit}
               isSubmitting={isCreating}
-              submitLabel="Start Sesh"
+              submitLabel="Sesh"
               headerContent={boardSelector}
             />
           </Box>
         )}
       </SwipeableDrawer>
+
+      {boardConfigs && (
+        <BoardSelectorDrawer
+          open={showBoardDrawer}
+          onClose={() => setShowBoardDrawer(false)}
+          boardConfigs={boardConfigs}
+          placement="top"
+          onBoardSelected={handleCustomSelect}
+        />
+      )}
 
       <AuthModal
         open={showAuthModal}

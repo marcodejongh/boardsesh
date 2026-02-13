@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17
+    image: postgis/postgis:17-3.5
     command: postgres -c max_connections=300 -c log_min_messages=warning
     volumes:
       - db_data:/var/lib/postgresql/data

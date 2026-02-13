@@ -1,0 +1,199 @@
+/* Board Scroll Section Styles */
+
+.scrollSection {
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin-bottom: 12px;
+}
+
+.scrollContainer {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+}
+
+.scrollContainer::-webkit-scrollbar {
+  display: none;
+}
+
+/* Board Card */
+.cardScroll {
+  width: 140px;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+.cardSquare {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow-xs);
+  background: var(--neutral-100);
+  position: relative;
+}
+
+.cardSquareSelected {
+  outline: 2.5px solid var(--color-primary);
+  outline-offset: -2.5px;
+}
+
+.cardFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--neutral-400);
+}
+
+.cardName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardNameSelected {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.cardMeta {
+  font-size: 12px;
+  color: var(--neutral-500);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Create New Card */
+.createSquare {
+  border: 2px dashed var(--neutral-300);
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--neutral-400);
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.cardScroll:hover .createSquare {
+  border-color: var(--neutral-400);
+  color: var(--neutral-500);
+}
+
+.createLabel {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Skeleton */
+.skeletonSquare {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.skeletonText {
+  border-radius: 4px;
+}
+
+/* Filter card (e.g. "All" in activity feed) */
+.filterSquare {
+  background: var(--neutral-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neutral-500);
+  transition: background-color 150ms ease;
+}
+
+.cardScroll:hover .filterSquare {
+  background: var(--neutral-200);
+}
+
+.filterLabel {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Small size variant */
+.scrollSectionSmall {
+  margin-bottom: 8px;
+}
+
+.scrollSectionSmall .sectionTitle {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.scrollContainerSmall {
+  gap: 8px;
+}
+
+.cardScrollSmall {
+  width: 100px;
+}
+
+.cardScrollSmall .cardSquare {
+  margin-bottom: 4px;
+  border-radius: 6px;
+}
+
+.cardScrollSmall .cardSquareSelected {
+  outline-width: 2px;
+  outline-offset: -2px;
+}
+
+.cardScrollSmall .cardName {
+  font-size: 12px;
+}
+
+.cardScrollSmall .cardMeta {
+  font-size: 11px;
+}
+
+.cardScrollSmall .createSquare {
+  border-width: 1.5px;
+}
+
+.cardScrollSmall .createLabel {
+  font-size: 11px;
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .cardScroll {
+    width: 140px;
+  }
+
+  .cardScrollSmall {
+    width: 100px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .cardScroll {
+    width: 160px;
+  }
+
+  .cardScrollSmall {
+    width: 120px;
+  }
+}
