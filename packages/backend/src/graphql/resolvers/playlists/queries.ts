@@ -8,6 +8,7 @@ import {
   GetUserPlaylistsInputSchema,
   GetAllUserPlaylistsInputSchema,
   GetPlaylistsForClimbInputSchema,
+  GetPlaylistMembershipsForClimbsInputSchema,
   GetPlaylistClimbsInputSchema,
   DiscoverPlaylistsInputSchema,
   GetPlaylistCreatorsInputSchema,
@@ -307,6 +308,69 @@ export const playlistQueries = {
       );
 
     return results.map(r => r.playlistUuid);
+  },
+
+  /**
+   * Batch-fetch playlist memberships for multiple climbs in a single query.
+   * Replaces N separate playlistsForClimb calls with one batched query.
+   */
+  playlistMembershipsForClimbs: async (
+    _: unknown,
+    { input }: { input: { boardType: string; layoutId: number; climbUuids: string[] } },
+    ctx: ConnectionContext
+  ): Promise<Array<{ climbUuid: string; playlistIds: string[] }>> => {
+    requireAuthenticated(ctx);
+    validateInput(GetPlaylistMembershipsForClimbsInputSchema, input, 'input');
+
+    const userId = ctx.userId!;
+
+    if (input.climbUuids.length === 0) {
+      return [];
+    }
+
+    // Single query to get all playlist memberships for all requested climbs
+    const results = await db
+      .select({
+        climbUuid: dbSchema.playlistClimbs.climbUuid,
+        playlistUuid: dbSchema.playlists.uuid,
+      })
+      .from(dbSchema.playlistClimbs)
+      .innerJoin(
+        dbSchema.playlists,
+        eq(dbSchema.playlists.id, dbSchema.playlistClimbs.playlistId)
+      )
+      .innerJoin(
+        dbSchema.playlistOwnership,
+        eq(dbSchema.playlistOwnership.playlistId, dbSchema.playlists.id)
+      )
+      .where(
+        and(
+          inArray(dbSchema.playlistClimbs.climbUuid, input.climbUuids),
+          eq(dbSchema.playlists.boardType, input.boardType),
+          or(
+            eq(dbSchema.playlists.layoutId, input.layoutId),
+            isNull(dbSchema.playlists.layoutId)
+          ),
+          eq(dbSchema.playlistOwnership.userId, userId)
+        )
+      );
+
+    // Group results by climbUuid
+    const membershipsMap = new Map<string, string[]>();
+    for (const row of results) {
+      const existing = membershipsMap.get(row.climbUuid);
+      if (existing) {
+        existing.push(row.playlistUuid);
+      } else {
+        membershipsMap.set(row.climbUuid, [row.playlistUuid]);
+      }
+    }
+
+    // Return entries for all requested climbUuids (empty array for those with no memberships)
+    return input.climbUuids.map(uuid => ({
+      climbUuid: uuid,
+      playlistIds: membershipsMap.get(uuid) ?? [],
+    }));
   },
 
   /**
