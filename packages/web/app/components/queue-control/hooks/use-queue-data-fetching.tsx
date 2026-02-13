@@ -1,18 +1,11 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react';
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { PAGE_LIMIT } from '../../board-page/constants';
 import { ClimbQueue } from '../types';
 import { ParsedBoardRouteParameters, SearchRequestPagination, SearchClimbsResult } from '@/app/lib/types';
 import { useBoardProvider } from '../../board-provider/board-provider-context';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
-import {
-  GET_FAVORITES,
-  TOGGLE_FAVORITE,
-  type FavoritesQueryResponse,
-  type ToggleFavoriteMutationResponse,
-} from '@/app/lib/graphql/operations/favorites';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 
 interface UseQueueDataFetchingProps {
@@ -31,10 +24,8 @@ export const useQueueDataFetching = ({
   setHasDoneFirstFetch,
 }: UseQueueDataFetchingProps) => {
   const { getLogbook } = useBoardProvider();
-  const { showMessage } = useSnackbar();
   // Use wsAuthToken for GraphQL backend auth (NextAuth session token)
-  const { token: wsAuthToken, isAuthenticated, isLoading: isAuthLoading } = useWsAuthToken();
-  const queryClient = useQueryClient();
+  const { token: wsAuthToken } = useWsAuthToken();
   const fetchedUuidsRef = useRef<string>('');
 
   // Create a stable query key with flattened primitive values to avoid object reference changes
@@ -155,7 +146,8 @@ export const useQueueDataFetching = ({
     [climbSearchResults, queue],
   );
 
-  // Combine and deduplicate climb UUIDs from both sources
+  // Combine and deduplicate climb UUIDs from both search results and queue
+  // Returned so callers (e.g. QueueContext) can pass to useClimbActionsData
   const climbUuids = useMemo(() => {
     const searchUuids = climbSearchResults?.map((climb) => climb.uuid) || [];
     const queueUuids = queue.map((item) => item.climb?.uuid).filter(Boolean) as string[];
@@ -163,107 +155,6 @@ export const useQueueDataFetching = ({
   }, [climbSearchResults, queue]);
 
   const climbUuidsString = useMemo(() => JSON.stringify(climbUuids), [climbUuids]);
-
-  // Favorites query - fetches all favorites for visible climbs in one request
-  const favoritesQueryKey = useMemo(
-    () => ['favorites', parsedParams.board_name, parsedParams.angle, climbUuids.join(',')] as const,
-    [parsedParams.board_name, parsedParams.angle, climbUuids]
-  );
-
-  const { data: favoritesData, isLoading: isLoadingFavorites, error: favoritesError } = useQuery({
-    queryKey: favoritesQueryKey,
-    queryFn: async (): Promise<Set<string>> => {
-      if (climbUuids.length === 0) return new Set();
-
-      const client = createGraphQLHttpClient(wsAuthToken);
-      try {
-        const result = await client.request<FavoritesQueryResponse>(GET_FAVORITES, {
-          boardName: parsedParams.board_name,
-          climbUuids,
-          angle: parsedParams.angle,
-        });
-        return new Set(result.favorites);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`[GraphQL] Favorites query error for ${parsedParams.board_name}:`, error);
-        throw new Error(`Failed to fetch favorites: ${errorMessage}`);
-      }
-    },
-    // Wait for auth to finish loading before making authenticated requests
-    enabled: isAuthenticated && !isAuthLoading && climbUuids.length > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
-
-  const favorites = favoritesData ?? new Set<string>();
-
-  // Toggle favorite mutation
-  const toggleFavoriteMutation = useMutation({
-    mutationKey: ['toggleFavorite', parsedParams.board_name, parsedParams.angle],
-    mutationFn: async (climbUuid: string): Promise<{ uuid: string; favorited: boolean }> => {
-      const client = createGraphQLHttpClient(wsAuthToken);
-      try {
-        const result = await client.request<ToggleFavoriteMutationResponse>(TOGGLE_FAVORITE, {
-          input: {
-            boardName: parsedParams.board_name,
-            climbUuid,
-            angle: parsedParams.angle,
-          },
-        });
-        return { uuid: climbUuid, favorited: result.toggleFavorite.favorited };
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`[GraphQL] Toggle favorite error for climb ${climbUuid}:`, error);
-        throw new Error(`Failed to toggle favorite: ${errorMessage}`);
-      }
-    },
-    onMutate: async (climbUuid: string) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: favoritesQueryKey });
-
-      // Snapshot previous value
-      const previousFavorites = queryClient.getQueryData<Set<string>>(favoritesQueryKey);
-
-      // Optimistic update
-      queryClient.setQueryData<Set<string>>(favoritesQueryKey, (old) => {
-        const next = new Set(old);
-        if (next.has(climbUuid)) {
-          next.delete(climbUuid);
-        } else {
-          next.add(climbUuid);
-        }
-        return next;
-      });
-
-      return { previousFavorites };
-    },
-    onError: (err, climbUuid, context) => {
-      // Log the error with context
-      console.error(`[Favorites] Error toggling favorite for climb ${climbUuid}:`, err);
-      // Rollback on error
-      if (context?.previousFavorites) {
-        queryClient.setQueryData(favoritesQueryKey, context.previousFavorites);
-      }
-      // Show user feedback
-      showMessage('Failed to update favorite. Please try again.', 'error');
-    },
-    // Don't invalidate on settled - optimistic update is sufficient
-    // Only invalidate on error (handled above via rollback)
-  });
-
-  const toggleFavorite = useCallback(
-    async (climbUuid: string): Promise<boolean> => {
-      if (!isAuthenticated) return false;
-      const result = await toggleFavoriteMutation.mutateAsync(climbUuid);
-      return result.favorited;
-    },
-    [isAuthenticated, toggleFavoriteMutation]
-  );
-
-  const isFavorited = useCallback(
-    (climbUuid: string): boolean => favorites.has(climbUuid),
-    [favorites]
-  );
 
   useEffect(() => {
     if (climbUuidsString === fetchedUuidsRef.current) {
@@ -303,15 +194,9 @@ export const useQueueDataFetching = ({
     isFetchingClimbs: isFetching,
     isFetchingNextPage,
     fetchMoreClimbs,
-    // Favorites
-    favorites,
-    isFavorited,
-    toggleFavorite,
-    isLoadingFavorites,
-    isAuthenticated,
-    isAuthLoading,
+    // Combined climb UUIDs for use by useClimbActionsData
+    climbUuids,
     // Error states
     searchError,
-    favoritesError,
   };
 };

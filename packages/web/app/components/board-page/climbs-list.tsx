@@ -5,24 +5,27 @@ import Box from '@mui/material/Box';
 import AppsOutlined from '@mui/icons-material/AppsOutlined';
 import FormatListBulletedOutlined from '@mui/icons-material/FormatListBulletedOutlined';
 import { track } from '@vercel/analytics';
-import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
-import { useQueueContext } from '../graphql-queue';
+import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbCard from '../climb-card/climb-card';
 import ClimbListItem from '../climb-card/climb-list-item';
 import { ClimbCardSkeleton, ClimbListItemSkeleton } from './board-page-skeleton';
-import { useSearchParams } from 'next/navigation';
 import { themeTokens } from '@/app/theme/theme-config';
-import RecentSearchPills from '../search-drawer/recent-search-pills';
 import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
-import BoardCreationBanner from '@/app/components/board-entity/board-creation-banner';
 
 type ViewMode = 'grid' | 'list';
 
 const VIEW_MODE_PREFERENCE_KEY = 'climbListViewMode';
 
-type ClimbsListProps = ParsedBoardRouteParameters & {
+export type ClimbsListProps = {
   boardDetails: BoardDetails;
-  initialClimbs: Climb[];
+  climbs: Climb[];
+  selectedClimbUuid?: string | null;
+  isFetching: boolean;
+  hasMore: boolean;
+  onClimbSelect?: (climb: Climb) => void;
+  onLoadMore: () => void;
+  header?: React.ReactNode;
+  headerInline?: React.ReactNode;
 };
 
 const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; viewMode: ViewMode }) => {
@@ -38,19 +41,17 @@ const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; vi
   ));
 };
 
-const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_id, set_ids, angle }: ClimbsListProps) => {
-  const {
-    setCurrentClimb,
-    climbSearchResults,
-    hasMoreResults,
-    fetchMoreClimbs,
-    currentClimb,
-    hasDoneFirstFetch,
-    isFetchingClimbs,
-  } = useQueueContext();
-
-  const searchParams = useSearchParams();
-  const page = searchParams.get('page');
+const ClimbsList = ({
+  boardDetails,
+  climbs,
+  selectedClimbUuid,
+  isFetching,
+  hasMore,
+  onClimbSelect,
+  onLoadMore,
+  header,
+  headerInline,
+}: ClimbsListProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   // Read stored view mode preference after mount to avoid hydration mismatch
@@ -68,35 +69,16 @@ const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_i
     track('View Mode Changed', { mode });
   }, []);
 
-  // Queue Context provider uses React Query infinite to fetch results, which can only happen clientside.
-  // That data equals null at the start, so when its null we use the initialClimbs array which we
-  // fill on the server side in the page component. This way the user never sees a loading state for
-  // the climb list.
-  // Deduplicate climbs by uuid to prevent React key warnings during hydration/re-renders
-  // Memoized to prevent unnecessary re-filtering on every render
-  const climbs = useMemo(() => {
-    const rawClimbs = !hasDoneFirstFetch ? initialClimbs : climbSearchResults || [];
-    return rawClimbs.filter((climb, index, self) =>
-      index === self.findIndex((c) => c.uuid === climb.uuid)
-    );
-  }, [hasDoneFirstFetch, initialClimbs, climbSearchResults]);
-
   // Ref for the intersection observer sentinel element
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Refs for observer callback values — prevents observer recreation on every page load
-  const fetchMoreClimbsRef = useRef(fetchMoreClimbs);
-  const hasMoreResultsRef = useRef(hasMoreResults);
+  const fetchMoreClimbsRef = useRef(onLoadMore);
+  const hasMoreResultsRef = useRef(hasMore);
   const climbsCountRef = useRef(climbs.length);
-  fetchMoreClimbsRef.current = fetchMoreClimbs;
-  hasMoreResultsRef.current = hasMoreResults;
+  fetchMoreClimbsRef.current = onLoadMore;
+  hasMoreResultsRef.current = hasMore;
   climbsCountRef.current = climbs.length;
-
-  useEffect(() => {
-    if (page === '0' && hasDoneFirstFetch && isFetchingClimbs) {
-      window.scrollTo({ top: 0, behavior: 'instant' });
-    }
-  }, [page, hasDoneFirstFetch, isFetchingClimbs]);
 
   // Intersection Observer callback for infinite scroll — stable ref, never recreated
   const handleObserver = useCallback(
@@ -116,12 +98,12 @@ const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_i
   // Memoized handler for climb card double-click
   const handleClimbDoubleClick = useCallback(
     (climb: Climb) => {
-      setCurrentClimb(climb);
+      onClimbSelect?.(climb);
       track('Climb List Card Clicked', {
         climbUuid: climb.uuid,
       });
     },
-    [setCurrentClimb],
+    [onClimbSelect],
   );
 
   // Memoize climb-specific handlers to prevent unnecessary re-renders
@@ -197,17 +179,11 @@ const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_i
 
   return (
     <Box sx={{ pt: `${themeTokens.spacing[1]}px` }}>
-      {/* Board creation banner */}
-      <BoardCreationBanner
-        boardType={board_name}
-        layoutId={layout_id}
-        sizeId={size_id}
-        setIds={set_ids.join(',')}
-        angle={angle}
-      />
-      {/* View mode toggle + recent searches */}
+      {/* Optional header content (e.g. BoardCreationBanner) */}
+      {header}
+      {/* View mode toggle + optional inline header content */}
       <Box sx={headerBoxSx}>
-        <RecentSearchPills />
+        {headerInline}
         <Box sx={viewModeToggleBoxSx}>
           <IconButton
             onClick={() => handleViewModeChange('list')}
@@ -241,13 +217,13 @@ const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_i
                 <ClimbCard
                   climb={climb}
                   boardDetails={boardDetails}
-                  selected={currentClimb?.uuid === climb.uuid}
+                  selected={selectedClimbUuid === climb.uuid}
                   onCoverDoubleClick={climbHandlersMap.get(climb.uuid)}
                 />
               </div>
             </Box>
           ))}
-          {isFetchingClimbs && (!climbs || climbs.length === 0) ? (
+          {isFetching && (!climbs || climbs.length === 0) ? (
             <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="grid" />
           ) : null}
         </Box>
@@ -262,12 +238,12 @@ const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_i
               <ClimbListItem
                 climb={climb}
                 boardDetails={boardDetails}
-                selected={currentClimb?.uuid === climb.uuid}
+                selected={selectedClimbUuid === climb.uuid}
                 onSelect={climbHandlersMap.get(climb.uuid)}
               />
             </div>
           ))}
-          {isFetchingClimbs && (!climbs || climbs.length === 0) ? (
+          {isFetching && (!climbs || climbs.length === 0) ? (
             <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="list" />
           ) : null}
         </div>
@@ -275,7 +251,7 @@ const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_i
 
       {/* Sentinel element for Intersection Observer - needs min-height to be observable */}
       <Box ref={loadMoreRef} sx={sentinelBoxSx}>
-        {isFetchingClimbs && climbs.length > 0 && (
+        {isFetching && climbs.length > 0 && (
           viewMode === 'grid' ? (
             <Box sx={gridContainerSx}>
               <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="grid" />
@@ -284,7 +260,7 @@ const ClimbsList = ({ boardDetails, initialClimbs, board_name, layout_id, size_i
             <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="list" />
           )
         )}
-        {!hasMoreResults && climbs.length > 0 && (
+        {!hasMore && climbs.length > 0 && (
           <Box sx={noMoreClimbsBoxSx}>
             No more climbs
           </Box>

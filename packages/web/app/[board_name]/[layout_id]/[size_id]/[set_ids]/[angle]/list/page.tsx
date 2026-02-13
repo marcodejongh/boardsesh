@@ -8,7 +8,7 @@ import {
   constructClimbListWithSlugs,
 } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
-import ClimbsList from '@/app/components/board-page/climbs-list';
+import QueueClimbsList from '@/app/components/board-page/queue-climbs-list';
 import { cachedSearchClimbs } from '@/app/lib/graphql/server-cached-client';
 import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
@@ -155,5 +155,5 @@ export default async function DynamicResultsPage(props: {
     };
   }
 
-  return <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={searchResponse.searchClimbs.climbs} />;
+  return <QueueClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={searchResponse.searchClimbs.climbs} />;
 }
