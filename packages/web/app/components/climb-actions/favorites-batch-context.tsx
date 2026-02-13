@@ -1,19 +1,19 @@
 'use client';
 
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { useMemo } from 'react';
+import { createTypedContext } from '@/app/lib/create-typed-context';
 
 interface FavoritesContextValue {
-  // Check if a climb is favorited
   isFavorited: (uuid: string) => boolean;
-  // Toggle favorite status
   toggleFavorite: (uuid: string) => Promise<boolean>;
-  // Loading state
   isLoading: boolean;
-  // Is authenticated
   isAuthenticated: boolean;
 }
 
-export const FavoritesContext = createContext<FavoritesContextValue | null>(null);
+const [FavoritesCtx, useFavoritesContext] = createTypedContext<FavoritesContextValue>('Favorites');
+
+export const FavoritesContext = FavoritesCtx;
+export { useFavoritesContext };
 
 interface FavoritesProviderProps {
   favorites: Set<string>;
@@ -24,11 +24,6 @@ interface FavoritesProviderProps {
   children: React.ReactNode;
 }
 
-/**
- * Simple provider that passes hoisted favorites data to child components.
- * The favorites query is made at the page/list level where we know all climb UUIDs,
- * and this context just passes that data down.
- */
 export function FavoritesProvider({
   isFavorited,
   toggleFavorite,
@@ -47,18 +42,6 @@ export function FavoritesProvider({
   );
 
   return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;
-}
-
-/**
- * Hook to access favorites data from context.
- * Must be used within a FavoritesProvider.
- */
-export function useFavoritesContext(): FavoritesContextValue {
-  const context = useContext(FavoritesContext);
-  if (!context) {
-    throw new Error('useFavoritesContext must be used within a FavoritesProvider');
-  }
-  return context;
 }
 
 // Re-export for backwards compatibility during migration

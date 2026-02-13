@@ -1,10 +1,9 @@
 import { dbz } from '@/app/lib/db/db';
 import { BoardName, LayoutId, Size } from '@/app/lib/types';
 import { matchSetNameToSlugParts } from './slug-matching';
-import { generateSlugFromText, generateDescriptionSlug } from './url-utils';
+import { generateSlugFromText, generateDescriptionSlug, generateLayoutSlug } from './url-utils';
 import { UNIFIED_TABLES } from '@/app/lib/db/queries/util/table-select';
 import { eq, and, isNull } from 'drizzle-orm';
-import { BOARD_NAME_PREFIX_REGEX } from '@/app/lib/board-constants';
 
 // Re-export for backwards compatibility
 export { matchSetNameToSlugParts } from './slug-matching';
@@ -36,28 +35,7 @@ export const getLayoutBySlug = async (board_name: BoardName, slug: string): Prom
 
   const layout = rows.find((l) => {
     if (!l.name) return false;
-    const baseSlug = l.name
-      .toLowerCase()
-      .trim()
-      .replace(BOARD_NAME_PREFIX_REGEX, '') // Remove board name prefix
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-
-    let layoutSlug = baseSlug;
-
-    // Handle Tension board specific cases
-    if (baseSlug === 'original-layout') {
-      layoutSlug = 'original';
-    }
-
-    // Replace numbers with words for better readability
-    if (baseSlug.startsWith('2-')) {
-      layoutSlug = baseSlug.replace('2-', 'two-');
-    }
-
-    return layoutSlug === slug;
+    return generateLayoutSlug(l.name) === slug;
   });
 
   if (!layout || !layout.name) return null;

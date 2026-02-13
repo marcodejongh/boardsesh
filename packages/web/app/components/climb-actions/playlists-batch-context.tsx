@@ -1,40 +1,36 @@
 'use client';
 
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { useMemo } from 'react';
+import { createTypedContext } from '@/app/lib/create-typed-context';
 import type { Playlist } from '@/app/lib/graphql/operations/playlists';
 
 // Re-export Playlist type for convenience
 export type { Playlist } from '@/app/lib/graphql/operations/playlists';
 
 interface PlaylistsContextValue {
-  // List of user's playlists for this board+layout
   playlists: Playlist[];
-  // Check if a climb is in specific playlists (returns playlist IDs)
   getPlaylistsForClimb: (climbUuid: string) => Set<string>;
-  // Add climb to playlist
   addToPlaylist: (playlistId: string, climbUuid: string, angle: number) => Promise<void>;
-  // Remove climb from playlist
   removeFromPlaylist: (playlistId: string, climbUuid: string) => Promise<void>;
-  // Create new playlist
   createPlaylist: (
     name: string,
     description?: string,
     color?: string,
     icon?: string
   ) => Promise<Playlist>;
-  // Loading state
   isLoading: boolean;
-  // Is authenticated
   isAuthenticated: boolean;
-  // Refresh playlists
   refreshPlaylists: () => Promise<void>;
 }
 
-export const PlaylistsContext = createContext<PlaylistsContextValue | null>(null);
+const [PlaylistsCtx, usePlaylistsContext] = createTypedContext<PlaylistsContextValue>('Playlists');
+
+export const PlaylistsContext = PlaylistsCtx;
+export { usePlaylistsContext };
 
 interface PlaylistsProviderProps {
   playlists: Playlist[];
-  playlistMemberships: Map<string, Set<string>>; // climbUuid -> Set<playlistId>
+  playlistMemberships: Map<string, Set<string>>;
   addToPlaylist: (playlistId: string, climbUuid: string, angle: number) => Promise<void>;
   removeFromPlaylist: (playlistId: string, climbUuid: string) => Promise<void>;
   createPlaylist: (
@@ -49,10 +45,6 @@ interface PlaylistsProviderProps {
   children: React.ReactNode;
 }
 
-/**
- * Provider that passes hoisted playlist data to child components.
- * Similar to FavoritesProvider pattern.
- */
 export function PlaylistsProvider({
   playlists,
   playlistMemberships,
@@ -95,16 +87,4 @@ export function PlaylistsProvider({
   );
 
   return <PlaylistsContext.Provider value={value}>{children}</PlaylistsContext.Provider>;
-}
-
-/**
- * Hook to access playlists data from context.
- * Must be used within a PlaylistsProvider.
- */
-export function usePlaylistsContext(): PlaylistsContextValue {
-  const context = useContext(PlaylistsContext);
-  if (!context) {
-    throw new Error('usePlaylistsContext must be used within a PlaylistsProvider');
-  }
-  return context;
 }

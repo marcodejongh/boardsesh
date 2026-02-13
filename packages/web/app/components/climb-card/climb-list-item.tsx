@@ -18,8 +18,8 @@ import { useFavorite } from '../climb-actions';
 import { useSwipeActions } from '@/app/hooks/use-swipe-actions';
 import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getSoftGradeColor, getGradeTintColor } from '@/app/lib/grade-colors';
-import { useColorMode } from '@/app/hooks/use-color-mode';
+import { getSoftGradeColor, getGradeTintColor, extractVGrade } from '@/app/lib/grade-colors';
+import { useIsDarkMode } from '@/app/hooks/use-is-dark-mode';
 
 // Maximum swipe distance
 const MAX_SWIPE = 120;
@@ -32,8 +32,7 @@ type ClimbListItemProps = {
 };
 
 const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDetails, selected, onSelect }) => {
-  const { mode } = useColorMode();
-  const isDark = mode === 'dark';
+  const isDark = useIsDarkMode();
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const queueContext = useOptionalQueueContext();
   const addToQueue = queueContext?.addToQueue;
@@ -55,9 +54,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     onSwipeRight: handleSwipeRight,
   });
 
-  // Extract V grade for colorized display
-  const vGradeMatch = climb.difficulty?.match(/V\d+/i);
-  const vGrade = vGradeMatch ? vGradeMatch[0].toUpperCase() : null;
+  const vGrade = extractVGrade(climb.difficulty);
   const gradeColor = getSoftGradeColor(climb.difficulty, isDark);
   const hasQuality = climb.quality_average && climb.quality_average !== '0';
 

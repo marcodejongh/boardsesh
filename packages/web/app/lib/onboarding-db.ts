@@ -1,7 +1,5 @@
-import { openDB, IDBPDatabase } from 'idb';
+import { createIndexedDBStore } from './idb-helper';
 
-const DB_NAME = 'boardsesh-onboarding';
-const DB_VERSION = 1;
 const STORE_NAME = 'onboarding';
 
 // Increment this when new steps are added to the onboarding tour.
@@ -13,20 +11,7 @@ export interface OnboardingStatus {
   completedAt: string;
 }
 
-let dbPromise: Promise<IDBPDatabase> | null = null;
-
-const initDB = async (): Promise<IDBPDatabase> => {
-  if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME);
-        }
-      },
-    });
-  }
-  return dbPromise;
-};
+const getDB = createIndexedDBStore('boardsesh-onboarding', STORE_NAME);
 
 /**
  * Get the storage key for onboarding status.
@@ -42,7 +27,8 @@ const getStorageKey = (userId?: string | number | null): string => {
  */
 export const getOnboardingStatus = async (userId?: string | number | null): Promise<OnboardingStatus | null> => {
   try {
-    const db = await initDB();
+    const db = await getDB();
+    if (!db) return null;
     const key = getStorageKey(userId);
     return await db.get(STORE_NAME, key);
   } catch (error) {
@@ -56,7 +42,8 @@ export const getOnboardingStatus = async (userId?: string | number | null): Prom
  */
 export const saveOnboardingStatus = async (userId?: string | number | null): Promise<void> => {
   try {
-    const db = await initDB();
+    const db = await getDB();
+    if (!db) return;
     const key = getStorageKey(userId);
     const status: OnboardingStatus = {
       completedVersion: ONBOARDING_VERSION,

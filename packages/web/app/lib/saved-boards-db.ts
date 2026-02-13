@@ -1,8 +1,6 @@
-import { openDB, IDBPDatabase } from 'idb';
+import { createIndexedDBStore } from './idb-helper';
 import { BoardName } from '@/app/lib/types';
 
-const DB_NAME = 'boardsesh-config';
-const DB_VERSION = 1;
 const STORE_NAME = 'board-configurations';
 
 export type StoredBoardConfig = {
@@ -16,27 +14,15 @@ export type StoredBoardConfig = {
   lastUsed?: string;
 };
 
-let dbPromise: Promise<IDBPDatabase> | null = null;
-
-const initDB = async (): Promise<IDBPDatabase | null> => {
-  if (typeof window === 'undefined' || !window.indexedDB) {
-    return null;
+const getDB = createIndexedDBStore('boardsesh-config', STORE_NAME, 1, (db) => {
+  if (!db.objectStoreNames.contains(STORE_NAME)) {
+    db.createObjectStore(STORE_NAME, { keyPath: 'name' });
   }
-  if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: 'name' });
-        }
-      },
-    });
-  }
-  return dbPromise;
-};
+});
 
 export const loadSavedBoards = async (): Promise<StoredBoardConfig[]> => {
   try {
-    const db = await initDB();
+    const db = await getDB();
     if (!db) return [];
     const allConfigs = await db.getAll(STORE_NAME);
     return allConfigs.sort(
@@ -50,7 +36,7 @@ export const loadSavedBoards = async (): Promise<StoredBoardConfig[]> => {
 
 export const saveBoardConfig = async (config: StoredBoardConfig): Promise<void> => {
   try {
-    const db = await initDB();
+    const db = await getDB();
     if (!db) return;
     await db.put(STORE_NAME, config);
   } catch (error) {
@@ -60,7 +46,7 @@ export const saveBoardConfig = async (config: StoredBoardConfig): Promise<void> 
 
 export const deleteBoardConfig = async (configName: string): Promise<void> => {
   try {
-    const db = await initDB();
+    const db = await getDB();
     if (!db) return;
     await db.delete(STORE_NAME, configName);
   } catch (error) {

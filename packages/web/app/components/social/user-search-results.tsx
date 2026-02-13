@@ -11,7 +11,8 @@ import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import { PersonOutlined } from '@mui/icons-material';
-import FollowButton from './follow-button';
+import FollowButton from '@/app/components/ui/follow-button';
+import { FOLLOW_USER, UNFOLLOW_USER } from '@/app/lib/graphql/operations';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   SEARCH_USERS,
@@ -139,8 +140,12 @@ export default function UserSearchResults({ query, authToken }: UserSearchResult
             }}
             secondaryAction={
               <FollowButton
-                userId={result.user.id}
+                entityId={result.user.id}
                 initialIsFollowing={result.user.isFollowedByMe}
+                followMutation={FOLLOW_USER}
+                unfollowMutation={UNFOLLOW_USER}
+                entityLabel="user"
+                getFollowVariables={(id) => ({ input: { userId: id } })}
               />
             }
           >

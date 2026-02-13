@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useSwipeable } from 'react-swipeable';
+import { useSwipeDirection } from './use-swipe-direction';
 
 const EXIT_DURATION = 300; // ms for slide-off animation
 const SNAP_BACK_DURATION = 200; // ms for snap-back animation
@@ -39,16 +40,16 @@ export function useCardSwipeNavigation({
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationDirection, setAnimationDirection] = useState<'left' | 'right' | null>(null);
   const [enterDirection, setEnterDirection] = useState<'from-left' | 'from-right' | null>(null);
-  const isHorizontalSwipeRef = useRef<boolean | null>(null);
+  const { detect: detectDirection, reset: resetDirection } = useSwipeDirection();
   const animatingRef = useRef(false);
 
   const resetSwipe = useCallback(() => {
     setSwipeOffset(0);
     setIsAnimating(false);
     setAnimationDirection(null);
-    isHorizontalSwipeRef.current = null;
+    resetDirection();
     animatingRef.current = false;
-  }, []);
+  }, [resetDirection]);
 
   const clearEnterAnimation = useCallback(() => {
     setEnterDirection(null);
@@ -95,7 +96,7 @@ export function useCardSwipeNavigation({
           setSwipeOffset(0);
           setIsAnimating(false);
           setAnimationDirection(null);
-          isHorizontalSwipeRef.current = null;
+          resetDirection();
           // Set enter direction for thumbnail crossfade
           setEnterDirection(direction === 'left' ? 'from-right' : 'from-left');
           // Unblock swipes immediately — peek text provides visual continuity
@@ -103,7 +104,7 @@ export function useCardSwipeNavigation({
         }, CLIP_EXIT_DURATION);
       }
     },
-    [onSwipeNext, onSwipePrevious, resetSwipe, delayNavigation],
+    [onSwipeNext, onSwipePrevious, resetSwipe, resetDirection, delayNavigation],
   );
 
   const swipeHandlers = useSwipeable({
@@ -112,18 +113,12 @@ export function useCardSwipeNavigation({
 
       const { deltaX, deltaY } = eventData;
 
-      // On first movement, determine swipe direction
-      if (isHorizontalSwipeRef.current === null) {
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-        if (absX > 10 || absY > 10) {
-          isHorizontalSwipeRef.current = absX > absY;
-        }
-        return;
-      }
+      // Determine swipe direction on first significant movement
+      const isHorizontal = detectDirection(deltaX, deltaY);
+      if (isHorizontal === null) return;
 
       // If vertical swipe, don't interfere
-      if (!isHorizontalSwipeRef.current) return;
+      if (!isHorizontal) return;
 
       // Constrain swipe if we can't go in that direction
       let constrainedOffset = deltaX;
@@ -133,7 +128,7 @@ export function useCardSwipeNavigation({
       setSwipeOffset(constrainedOffset);
     },
     onSwipedLeft: (eventData) => {
-      isHorizontalSwipeRef.current = null;
+      resetDirection();
       if (animatingRef.current) return;
 
       if (canSwipeNext && Math.abs(eventData.deltaX) >= threshold) {
@@ -143,7 +138,7 @@ export function useCardSwipeNavigation({
       }
     },
     onSwipedRight: (eventData) => {
-      isHorizontalSwipeRef.current = null;
+      resetDirection();
       if (animatingRef.current) return;
 
       if (canSwipePrevious && Math.abs(eventData.deltaX) >= threshold) {
@@ -153,7 +148,7 @@ export function useCardSwipeNavigation({
       }
     },
     onTouchEndOrOnMouseUp: () => {
-      isHorizontalSwipeRef.current = null;
+      resetDirection();
       if (!animatingRef.current && Math.abs(swipeOffset) < threshold) {
         setSwipeOffset(0);
       }
