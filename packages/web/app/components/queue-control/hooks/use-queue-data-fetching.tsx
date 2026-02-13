@@ -156,20 +156,18 @@ export const useQueueDataFetching = ({
 
   const climbUuidsString = useMemo(() => JSON.stringify(climbUuids), [climbUuids]);
 
+  // Update the logbook query's climbUuids when the set of visible climbs changes.
+  // getLogbook just sets state; TanStack Query handles the actual fetch and
+  // automatically retries when auth becomes available (via its `enabled` flag).
   useEffect(() => {
     if (climbUuidsString === fetchedUuidsRef.current) {
-      return; // Skip if we've already fetched these exact UUIDs
+      return; // Skip if UUIDs haven't changed
     }
+    fetchedUuidsRef.current = climbUuidsString;
 
-    const climbUuids = JSON.parse(climbUuidsString);
-    if (climbUuids.length > 0 && getLogbook) {
-      // Only mark as fetched if the fetch actually succeeded
-      // This ensures we retry when wsAuthToken becomes available
-      getLogbook(climbUuids).then((success) => {
-        if (success) {
-          fetchedUuidsRef.current = climbUuidsString;
-        }
-      });
+    const uuids = JSON.parse(climbUuidsString);
+    if (uuids.length > 0 && getLogbook) {
+      getLogbook(uuids);
     }
   }, [climbUuidsString, getLogbook]);
 

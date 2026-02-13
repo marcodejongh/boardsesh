@@ -9,8 +9,7 @@ import QueryClientProvider from './components/providers/query-client-provider';
 import { NavigationLoadingProvider } from './components/providers/navigation-loading-provider';
 import PersistentSessionWrapper from './components/providers/persistent-session-wrapper';
 import { SnackbarProvider } from './components/providers/snackbar-provider';
-import { NotificationProvider } from './components/providers/notification-provider';
-import { WsAuthProvider } from './components/providers/ws-auth-provider';
+import { NotificationSubscriptionManager } from './components/providers/notification-subscription-manager';
 import './components/index.css';
 import type { Viewport } from 'next';
 
@@ -31,13 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AppRouterCacheProvider>
               <ColorModeProvider>
                 <PersistentSessionWrapper>
-                  <WsAuthProvider>
-                    <SnackbarProvider>
-                      <NotificationProvider>
-                        <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
-                      </NotificationProvider>
-                    </SnackbarProvider>
-                  </WsAuthProvider>
+                  <SnackbarProvider>
+                    <NavigationLoadingProvider>
+                      <NotificationSubscriptionManager>{children}</NotificationSubscriptionManager>
+                    </NavigationLoadingProvider>
+                  </SnackbarProvider>
                 </PersistentSessionWrapper>
               </ColorModeProvider>
             </AppRouterCacheProvider>
