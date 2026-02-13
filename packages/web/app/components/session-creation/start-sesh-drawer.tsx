@@ -13,7 +13,7 @@ import { useCreateSession } from '@/app/hooks/use-create-session';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { constructBoardSlugUrl } from '@/app/lib/url-utils';
+import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import AuthModal from '../auth/auth-modal';
 import type { UserBoard } from '@boardsesh/shared-schema';
 
@@ -59,7 +59,7 @@ export default function StartSeshDrawer({ open, onClose }: StartSeshDrawerProps)
       const sessionId = await createSession(formData, boardPath);
 
       // Navigate to board page with session
-      const boardUrl = constructBoardSlugUrl(selectedBoard.slug, selectedBoard.angle);
+      const boardUrl = constructBoardSlugListUrl(selectedBoard.slug, selectedBoard.angle);
       router.push(`${boardUrl}?session=${sessionId}`);
 
       handleClose();
