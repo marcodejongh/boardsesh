@@ -32,6 +32,8 @@ const BOARD_FIELDS = `
   longitude
   isPublic
   isOwned
+  angle
+  isAngleAdjustable
   createdAt
   layoutName
   sizeName

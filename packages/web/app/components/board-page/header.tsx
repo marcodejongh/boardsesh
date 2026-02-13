@@ -29,6 +29,7 @@ type BoardSeshHeaderProps = {
   boardDetails: BoardDetails;
   angle?: number;
   boardConfigs?: BoardConfigData;
+  isAngleAdjustable?: boolean;
 };
 
 function usePageMode(): PageMode {
@@ -43,7 +44,7 @@ function usePageMode(): PageMode {
   }, [pathname]);
 }
 
-export default function BoardSeshHeader({ boardDetails, angle, boardConfigs }: BoardSeshHeaderProps) {
+export default function BoardSeshHeader({ boardDetails, angle, boardConfigs, isAngleAdjustable }: BoardSeshHeaderProps) {
   const { currentClimb, totalSearchResultCount, isFetchingClimbs } = useQueueContext();
   const { uiSearchParams, clearClimbSearchParams } = useUISearchParams();
   const pageMode = usePageMode();
@@ -127,7 +128,7 @@ export default function BoardSeshHeader({ boardDetails, angle, boardConfigs }: B
 
         {/* Right Section */}
         <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} boardDetails={boardDetails} currentAngle={angle} currentClimb={currentClimb} />}
+          {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} boardDetails={boardDetails} currentAngle={angle} currentClimb={currentClimb} isAngleAdjustable={isAngleAdjustable} />}
 
           {/* Desktop: show Create Climb button */}
           {createClimbUrl && (

@@ -1139,6 +1139,10 @@ export const typeDefs = /* GraphQL */ `
     isPublic: Boolean!
     "Whether the user owns the physical board"
     isOwned: Boolean!
+    "Default angle for this board"
+    angle: Int!
+    "Whether the board's angle is physically adjustable"
+    isAngleAdjustable: Boolean!
     "When created"
     createdAt: String!
     "Human-readable layout name"
@@ -1247,6 +1251,10 @@ export const typeDefs = /* GraphQL */ `
     isOwned: Boolean
     "Optional gym UUID to link board to"
     gymUuid: String
+    "Default angle for this board (default 40)"
+    angle: Int
+    "Whether the board's angle is physically adjustable (default true)"
+    isAngleAdjustable: Boolean
   }
 
   """
@@ -1271,6 +1279,10 @@ export const typeDefs = /* GraphQL */ `
     isPublic: Boolean
     "New ownership flag"
     isOwned: Boolean
+    "New default angle"
+    angle: Int
+    "New angle adjustable flag"
+    isAngleAdjustable: Boolean
   }
 
   """

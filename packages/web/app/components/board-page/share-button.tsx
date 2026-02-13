@@ -7,7 +7,6 @@ import EmojiEvents from '@mui/icons-material/EmojiEvents';
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
 import LoginOutlined from '@mui/icons-material/LoginOutlined';
-import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
 import CancelOutlined from '@mui/icons-material/CancelOutlined';
 import LightbulbOutlined from '@mui/icons-material/LightbulbOutlined';
 import Lightbulb from '@mui/icons-material/Lightbulb';
@@ -21,9 +20,7 @@ import Badge from '@mui/material/Badge';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import { QRCodeSVG } from 'qrcode.react';
-import MuiSwitch from '@mui/material/Switch';
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -33,6 +30,10 @@ import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { TabPanel } from '@/app/components/ui/tab-panel';
 import { themeTokens } from '@/app/theme/theme-config';
 import AuthModal from '../auth/auth-modal';
+import SessionCreationForm from '../session-creation/session-creation-form';
+import type { SessionCreationFormData } from '../session-creation/session-creation-form';
+import { useCreateSession } from '@/app/hooks/use-create-session';
+import { getBaseBoardPath } from '@/app/lib/url-utils';
 
 const getShareUrl = (pathname: string, sessionId: string | null) => {
   try {
@@ -189,12 +190,11 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
   const controllerUrl = searchParams.get('controllerUrl');
   const isControllerMode = !!controllerUrl;
 
+  const { createSession: createSessionMutation, isCreating } = useCreateSession();
+
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isStartingSession, setIsStartingSession] = useState(false);
   const [joinSessionId, setJoinSessionId] = useState('');
-  const [discoverable, setDiscoverable] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [sessionName, setSessionName] = useState('');
   const [activeNoSessionTab, setActiveNoSessionTab] = useState('start');
   const [activeSessionTab, setActiveSessionTab] = useState('session');
 
@@ -225,22 +225,24 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
       });
   };
 
-  const handleStartSession = async () => {
+  const handleStartSessionEnhanced = async (formData: SessionCreationFormData) => {
     if (!isLoggedIn) {
       setShowAuthModal(true);
       return;
     }
 
-    setIsStartingSession(true);
     try {
-      await startSession({ discoverable, name: sessionName.trim() || undefined });
+      const boardPath = getBaseBoardPath(pathname);
+      const newSessionId = await createSessionMutation(formData, boardPath);
+      await startSession({
+        sessionId: newSessionId,
+        discoverable: formData.discoverable,
+        name: formData.name,
+      });
       showMessage('Party mode started!', 'success');
-      setSessionName('');
     } catch (error) {
       console.error('Failed to start session:', error);
       showMessage('Failed to start party mode', 'error');
-    } finally {
-      setIsStartingSession(false);
     }
   };
 
@@ -441,40 +443,11 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
       )}
 
       {isLoggedIn && (
-        <>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Typography variant="body2" component="span" fontWeight={600}>Session Name (optional)</Typography>
-            <TextField
-              placeholder="e.g., Tuesday Night Climbs"
-              value={sessionName}
-              onChange={(e) => setSessionName(e.target.value)}
-              slotProps={{ htmlInput: { maxLength: 50 } }}
-              variant="outlined"
-              size="small"
-            />
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Stack spacing={0}>
-              <Typography variant="body2" component="span" fontWeight={600}>Allow others to discover this session</Typography>
-              <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: '12px' }}>
-                Others nearby can find and join your session
-              </Typography>
-            </Stack>
-            <MuiSwitch checked={discoverable} onChange={(_, checked) => setDiscoverable(checked)} />
-          </Box>
-
-          <MuiButton
-            variant="contained"
-            size="large"
-            startIcon={isStartingSession ? <CircularProgress size={16} /> : <PlayCircleOutlineOutlined />}
-            onClick={handleStartSession}
-            disabled={isStartingSession}
-            fullWidth
-          >
-            Start Party Mode
-          </MuiButton>
-        </>
+        <SessionCreationForm
+          onSubmit={handleStartSessionEnhanced}
+          isSubmitting={isCreating}
+          submitLabel="Start Party Mode"
+        />
       )}
     </Box>
   );

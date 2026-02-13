@@ -13,6 +13,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import type { UserBoard } from '@boardsesh/shared-schema';
+import type { BoardName } from '@/app/lib/types';
+import { ANGLES } from '@/app/lib/board-data';
 import BoardForm from './board-form';
 import GymSelector from '@/app/components/gym-entity/gym-selector';
 
@@ -40,8 +42,10 @@ export default function CreateBoardForm({
   const router = useRouter();
   const [selectedGymUuid, setSelectedGymUuid] = useState<string | null>(null);
 
+  const availableAngles = ANGLES[boardType as BoardName] ?? [];
+
   const handleSubmit = useCallback(
-    async (values: { name: string; description: string; locationName: string; isPublic: boolean; isOwned: boolean }) => {
+    async (values: { name: string; description: string; locationName: string; isPublic: boolean; isOwned: boolean; angle?: number; isAngleAdjustable?: boolean }) => {
       if (!token) {
         showMessage('You must be signed in to create a board', 'error');
         return;
@@ -68,6 +72,8 @@ export default function CreateBoardForm({
               isPublic: values.isPublic,
               isOwned: values.isOwned,
               gymUuid: selectedGymUuid || undefined,
+              angle: values.angle,
+              isAngleAdjustable: values.isAngleAdjustable,
             },
           },
         );
@@ -106,6 +112,7 @@ export default function CreateBoardForm({
         }}
         namePlaceholder="e.g., Home Board, Gym Name"
         locationPlaceholder="e.g., City, Gym Name"
+        availableAngles={availableAngles}
         onSubmit={handleSubmit}
         onCancel={onCancel}
       />

@@ -23,9 +23,10 @@ type AngleSelectorProps = {
   boardDetails: BoardDetails;
   currentAngle: number;
   currentClimb: Climb | null;
+  isAngleAdjustable?: boolean;
 };
 
-export default function AngleSelector({ boardName, boardDetails, currentAngle, currentClimb }: AngleSelectorProps) {
+export default function AngleSelector({ boardName, boardDetails, currentAngle, currentClimb, isAngleAdjustable = true }: AngleSelectorProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -67,6 +68,8 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
   }, [isDrawerOpen]);
 
   const handleAngleChange = (newAngle: number) => {
+    if (!isAngleAdjustable) return;
+
     track('Angle Changed', {
       angle: newAngle,
     });

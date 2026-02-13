@@ -91,7 +91,7 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
               <PartyProvider>
                 <BluetoothProvider boardDetails={boardDetails}>
                   <UISearchParamsProvider>
-                    <BoardSeshHeader boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} />
+                    <BoardSeshHeader boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} isAngleAdjustable={board.isAngleAdjustable} />
 
                     <main
                       id="content-for-scrollable"

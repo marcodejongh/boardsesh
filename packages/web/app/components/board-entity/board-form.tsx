@@ -8,6 +8,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import MuiButton from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import MuiTypography from '@mui/material/Typography';
+import MenuItem from '@mui/material/MenuItem';
 
 interface BoardFormFieldValues {
   name: string;
@@ -16,6 +17,8 @@ interface BoardFormFieldValues {
   locationName: string;
   isPublic: boolean;
   isOwned: boolean;
+  angle?: number;
+  isAngleAdjustable?: boolean;
 }
 
 interface BoardFormProps {
@@ -35,6 +38,8 @@ interface BoardFormProps {
   descriptionPlaceholder?: string;
   /** Placeholder for the location field */
   locationPlaceholder?: string;
+  /** Available angles for this board type */
+  availableAngles?: number[];
   /** Called with form values on submit. Should throw on failure. */
   onSubmit: (values: BoardFormFieldValues) => Promise<void>;
   /** Optional cancel handler */
@@ -54,6 +59,7 @@ export default function BoardForm({
   namePlaceholder,
   descriptionPlaceholder = 'Optional description',
   locationPlaceholder,
+  availableAngles,
   onSubmit,
   onCancel,
 }: BoardFormProps) {
@@ -63,6 +69,8 @@ export default function BoardForm({
   const [locationName, setLocationName] = useState(initialValues.locationName);
   const [isPublic, setIsPublic] = useState(initialValues.isPublic);
   const [isOwned, setIsOwned] = useState(initialValues.isOwned);
+  const [angle, setAngle] = useState(initialValues.angle ?? 40);
+  const [isAngleAdjustable, setIsAngleAdjustable] = useState(initialValues.isAngleAdjustable ?? true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,6 +85,8 @@ export default function BoardForm({
         locationName: locationName.trim(),
         isPublic,
         isOwned,
+        angle,
+        isAngleAdjustable,
       });
     } finally {
       setIsSubmitting(false);
@@ -128,6 +138,28 @@ export default function BoardForm({
         fullWidth
         size="small"
         placeholder={locationPlaceholder}
+      />
+
+      {availableAngles && availableAngles.length > 0 && (
+        <TextField
+          label="Default Angle"
+          value={angle}
+          onChange={(e) => setAngle(Number(e.target.value))}
+          select
+          fullWidth
+          size="small"
+        >
+          {availableAngles.map((a) => (
+            <MenuItem key={a} value={a}>
+              {a}°
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
+
+      <FormControlLabel
+        control={<Switch checked={isAngleAdjustable} onChange={(e) => setIsAngleAdjustable(e.target.checked)} />}
+        label="Angle is adjustable"
       />
 
       <FormControlLabel
