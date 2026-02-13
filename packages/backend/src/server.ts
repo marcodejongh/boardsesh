@@ -288,6 +288,8 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
 
   // Periodic auto-end for stale inactive sessions (every 5 minutes)
   const SESSION_AUTO_END_MINUTES = parseInt(process.env.SESSION_AUTO_END_MINUTES || '30', 10);
+  const AUTO_END_MAX_RETRIES = 3;
+  const autoEndFailures = new Map<string, number>();
 
   const autoEndInterval = setInterval(async () => {
     try {
@@ -310,9 +312,20 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
       }
 
       for (const row of stale) {
-        await roomManager.endSession(row.id).catch((err) =>
-          console.error(`[Server] Auto-end failed for ${row.id}:`, err)
-        );
+        const priorFailures = autoEndFailures.get(row.id) ?? 0;
+        if (priorFailures >= AUTO_END_MAX_RETRIES) {
+          continue;
+        }
+
+        await roomManager.endSession(row.id).catch((err) => {
+          const failures = priorFailures + 1;
+          autoEndFailures.set(row.id, failures);
+          if (failures >= AUTO_END_MAX_RETRIES) {
+            console.error(`[Server] Auto-end permanently failed for ${row.id} after ${AUTO_END_MAX_RETRIES} attempts:`, err);
+          } else {
+            console.error(`[Server] Auto-end failed for ${row.id} (attempt ${failures}/${AUTO_END_MAX_RETRIES}):`, err);
+          }
+        });
       }
     } catch (error) {
       console.error('[Server] Error in session auto-end job:', error);

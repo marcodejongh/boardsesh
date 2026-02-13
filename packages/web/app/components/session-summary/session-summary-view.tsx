@@ -98,7 +98,7 @@ export default function SessionSummaryView({ summary }: SessionSummaryViewProps)
         <Card>
           <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <EmojiEventsOutlined fontSize="small" sx={{ color: '#FFD700' }} />
+              <EmojiEventsOutlined fontSize="small" sx={{ color: 'warning.main' }} />
               <Typography variant="body2" color="text.secondary">
                 Hardest send:
               </Typography>

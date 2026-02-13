@@ -107,10 +107,10 @@ export async function generateSessionSummary(sessionId: string): Promise<Session
     attempts: number;
   }>);
 
-  // Build grade distribution (filter out null grades)
+  // Build grade distribution (filter out null grades using type guard)
   const gradeDistribution = gradeDistRows
-    .filter((r) => r.grade != null)
-    .map((r) => ({ grade: r.grade!, count: r.count }));
+    .filter((r): r is typeof r & { grade: string } => r.grade != null)
+    .map((r) => ({ grade: r.grade, count: r.count }));
 
   // Build hardest climb (climb name already JOINed — no separate query needed)
   let hardestClimb = null;
