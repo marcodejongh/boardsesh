@@ -144,7 +144,7 @@ export default function HomePageContent({
             startIcon={<PlayCircleOutlineOutlined />}
             onClick={() => setStartSeshOpen(true)}
           >
-            Start Sesh
+            Sesh
           </Button>
         </Box>
       </Box>
