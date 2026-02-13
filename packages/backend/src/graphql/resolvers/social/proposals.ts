@@ -422,7 +422,8 @@ async function analyzeGradeOutlier(
 ): Promise<{ isOutlier: boolean; currentGrade: number; neighborAverage: number; neighborCount: number; gradeDifference: number } | null> {
   try {
     // Query climb stats across all angles for this climb (unified table)
-    const stats = await db.execute(sql`
+    type ClimbStatRow = { angle: number; display_difficulty: number; ascensionist_count: number };
+    const stats = await db.execute<ClimbStatRow>(sql`
       SELECT angle, display_difficulty, ascensionist_count
       FROM board_climb_stats
       WHERE climb_uuid = ${climbUuid}
@@ -430,7 +431,7 @@ async function analyzeGradeOutlier(
       ORDER BY angle
     `);
 
-    const rows = (stats as unknown as { rows: Array<{ angle: number; display_difficulty: number; ascensionist_count: number }> }).rows;
+    const rows = Array.isArray(stats) ? stats : (stats as { rows: ClimbStatRow[] }).rows;
     if (!rows || rows.length < 2) return null;
 
     // Find the current angle's data
@@ -789,7 +790,8 @@ export const socialProposalMutations = {
         try {
           // Use unified board_climb_stats table with board_type filter
           // Join board_difficulty_grades for accurate grade name
-          const result = await db.execute(sql`
+          type GradeNameRow = { grade_name: string | null };
+          const result = await db.execute<GradeNameRow>(sql`
             SELECT dg.boulder_name as grade_name
             FROM board_climb_stats cs
             LEFT JOIN board_difficulty_grades dg
@@ -800,7 +802,7 @@ export const socialProposalMutations = {
               AND cs.board_type = ${boardType}
             LIMIT 1
           `);
-          const rows = (result as unknown as { rows: Array<{ grade_name: string | null }> }).rows;
+          const rows = Array.isArray(result) ? result : (result as { rows: GradeNameRow[] }).rows;
           currentValue = rows[0]?.grade_name || 'Unknown';
         } catch {
           currentValue = 'Unknown';

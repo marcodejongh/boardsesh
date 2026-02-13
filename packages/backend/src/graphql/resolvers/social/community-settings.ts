@@ -81,6 +81,7 @@ export const socialCommunitySettingsQueries = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
+    applyRateLimit(ctx);
 
     const settings = await db
       .select()
