@@ -40,7 +40,7 @@ export const controllerMutations = {
     ctx: ConnectionContext
   ): Promise<ControllerRegistration> => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 10); // Lower limit for controller registration
+    await applyRateLimit(ctx, 10); // Lower limit for controller registration
 
     if (!ctx.userId) {
       throw new Error('User ID not available');
@@ -78,7 +78,7 @@ export const controllerMutations = {
     ctx: ConnectionContext
   ): Promise<boolean> => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx);
+    await applyRateLimit(ctx);
 
     if (!ctx.userId) {
       throw new Error('User ID not available');
@@ -117,7 +117,7 @@ export const controllerMutations = {
     },
     ctx: ConnectionContext
   ): Promise<ClimbMatchResult> => {
-    applyRateLimit(ctx, 30); // Moderate limit for LED position updates
+    await applyRateLimit(ctx, 30); // Moderate limit for LED position updates
 
     // Verify controller is authenticated and authorized for this session
     const { controllerId } = await requireControllerAuthorizedForSession(ctx, sessionId);
@@ -300,7 +300,7 @@ export const controllerMutations = {
     { sessionId }: { sessionId: string },
     ctx: ConnectionContext
   ): Promise<boolean> => {
-    applyRateLimit(ctx, 120); // Allow frequent heartbeats
+    await applyRateLimit(ctx, 120); // Allow frequent heartbeats
 
     // Validate API key authentication via context
     const { controllerId, controllerApiKey } = requireControllerAuth(ctx);
@@ -325,7 +325,7 @@ export const controllerMutations = {
     ctx: ConnectionContext
   ): Promise<boolean> => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx);
+    await applyRateLimit(ctx);
 
     if (!ctx.userId) {
       throw new Error('User ID not available');
@@ -372,7 +372,7 @@ export const controllerMutations = {
     { sessionId, direction, currentClimbUuid, queueItemUuid }: { sessionId: string; direction: string; currentClimbUuid?: string; queueItemUuid?: string },
     ctx: ConnectionContext
   ): Promise<ClimbQueueItem | null> => {
-    applyRateLimit(ctx, 30);
+    await applyRateLimit(ctx, 30);
 
     // Verify controller is authenticated and authorized for this session
     const { controllerId } = await requireControllerAuthorizedForSession(ctx, sessionId);
@@ -487,7 +487,7 @@ export const controllerMutations = {
     { input }: { input: SendDeviceLogsInput },
     ctx: ConnectionContext
   ): Promise<SendDeviceLogsResponse> => {
-    applyRateLimit(ctx, 100); // Allow frequent log batches
+    await applyRateLimit(ctx, 100); // Allow frequent log batches
 
     const { controllerId } = requireControllerAuth(ctx);
 

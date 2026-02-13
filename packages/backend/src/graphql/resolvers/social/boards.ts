@@ -625,7 +625,7 @@ export const socialBoardMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 10);
+    await applyRateLimit(ctx, 10);
 
     const validatedInput = validateInput(CreateBoardInputSchema, input, 'input');
     const userId = ctx.userId!;
@@ -692,7 +692,7 @@ export const socialBoardMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 20);
+    await applyRateLimit(ctx, 20);
 
     const validatedInput = validateInput(UpdateBoardInputSchema, input, 'input');
     const userId = ctx.userId!;
@@ -784,7 +784,7 @@ export const socialBoardMutations = {
     ctx: ConnectionContext,
   ): Promise<boolean> => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 10);
+    await applyRateLimit(ctx, 10);
 
     validateInput(UUIDSchema, boardUuid, 'boardUuid');
     const userId = ctx.userId!;
@@ -820,7 +820,7 @@ export const socialBoardMutations = {
     ctx: ConnectionContext,
   ): Promise<boolean> => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 20);
+    await applyRateLimit(ctx, 20);
 
     const validatedInput = validateInput(FollowBoardInputSchema, input, 'input');
     const userId = ctx.userId!;
@@ -864,7 +864,7 @@ export const socialBoardMutations = {
     ctx: ConnectionContext,
   ): Promise<boolean> => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 20);
+    await applyRateLimit(ctx, 20);
 
     const validatedInput = validateInput(FollowBoardInputSchema, input, 'input');
     const userId = ctx.userId!;

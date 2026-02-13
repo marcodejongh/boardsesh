@@ -22,7 +22,7 @@ export const queueMutations = {
     { item, position }: { item: ClimbQueueItem; position?: number },
     ctx: ConnectionContext
   ) => {
-    applyRateLimit(ctx); // Apply default rate limit
+    await applyRateLimit(ctx); // Apply default rate limit
     const sessionId = requireSession(ctx);
 
     // Validate input
@@ -100,7 +100,7 @@ export const queueMutations = {
    * Also clears current climb if it was removed
    */
   removeQueueItem: async (_: unknown, { uuid }: { uuid: string }, ctx: ConnectionContext) => {
-    applyRateLimit(ctx);
+    await applyRateLimit(ctx);
     const sessionId = requireSession(ctx);
 
     // Validate input
@@ -134,7 +134,7 @@ export const queueMutations = {
     { uuid, oldIndex, newIndex }: { uuid: string; oldIndex: number; newIndex: number },
     ctx: ConnectionContext
   ) => {
-    applyRateLimit(ctx);
+    await applyRateLimit(ctx);
     const sessionId = requireSession(ctx);
 
     // Validate inputs
@@ -181,7 +181,7 @@ export const queueMutations = {
     { item, shouldAddToQueue, correlationId }: { item: ClimbQueueItem | null; shouldAddToQueue?: boolean; correlationId?: string },
     ctx: ConnectionContext
   ) => {
-    applyRateLimit(ctx);
+    await applyRateLimit(ctx);
     const sessionId = requireSession(ctx);
 
     // Validate input
@@ -238,7 +238,7 @@ export const queueMutations = {
    * Updates both the current climb and the queue item if present
    */
   mirrorCurrentClimb: async (_: unknown, { mirrored }: { mirrored: boolean }, ctx: ConnectionContext) => {
-    applyRateLimit(ctx);
+    await applyRateLimit(ctx);
     const sessionId = requireSession(ctx);
 
     const currentState = await roomManager.getQueueState(sessionId);
@@ -279,7 +279,7 @@ export const queueMutations = {
     { uuid, item }: { uuid: string; item: ClimbQueueItem },
     ctx: ConnectionContext
   ) => {
-    applyRateLimit(ctx);
+    await applyRateLimit(ctx);
     const sessionId = requireSession(ctx);
 
     // Validate input
@@ -316,7 +316,7 @@ export const queueMutations = {
     { queue, currentClimbQueueItem }: { queue: ClimbQueueItem[]; currentClimbQueueItem?: ClimbQueueItem },
     ctx: ConnectionContext
   ) => {
-    applyRateLimit(ctx, 30); // Lower limit for bulk operations
+    await applyRateLimit(ctx, 30); // Lower limit for bulk operations
     const sessionId = requireSession(ctx);
 
     // Validate queue size to prevent memory exhaustion

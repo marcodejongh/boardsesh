@@ -1,5 +1,6 @@
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { checkRateLimit } from '../../../utils/rate-limiter';
+import { checkRateLimitRedis } from '../../../utils/redis-rate-limiter';
 import { getContext } from '../../context';
 import { getDistributedState } from '../../../services/distributed-state';
 import { db } from '../../../db/client';
@@ -117,11 +118,43 @@ export async function requireSessionMember(
 
 /**
  * Apply rate limiting to a connection.
+ *
+ * Two-tier enforcement strategy:
+ *
+ * 1. **In-memory** (all users): Fast synchronous check, per-instance.
+ *    For authenticated users the key is `userId:operation`; for
+ *    unauthenticated users the key is `connectionId`. This provides
+ *    immediate per-process protection and works even when Redis is down.
+ *
+ * 2. **Redis** (authenticated users only): Distributed enforcement
+ *    across multiple backend instances. Uses an atomic Lua script
+ *    (INCR + EXPIRE) so counts are consistent cluster-wide.
+ *
+ * Authenticated users are checked by *both* tiers intentionally:
+ * the in-memory check is a fast short-circuit that avoids a Redis
+ * round-trip when the user is clearly over the limit on this instance,
+ * while Redis ensures the limit holds across all instances.
+ *
+ * Unauthenticated users only get in-memory limiting because they
+ * don't have a stable userId for cross-instance tracking.
+ *
  * @param ctx - Connection context
  * @param limit - Optional custom limit (default: 60 requests per minute)
+ * @param operation - Operation name for Redis key namespacing (default: 'default')
  */
-export function applyRateLimit(ctx: ConnectionContext, limit?: number): void {
-  checkRateLimit(ctx.connectionId, limit);
+export async function applyRateLimit(ctx: ConnectionContext, limit?: number, operation = 'default'): Promise<void> {
+  const maxRequests = limit ?? 60;
+
+  // Tier 1: Synchronous in-memory rate limiting (fast path, per-instance)
+  const key = ctx.isAuthenticated && ctx.userId
+    ? `${ctx.userId}:${operation}`
+    : ctx.connectionId;
+  checkRateLimit(key, maxRequests);
+
+  // Tier 2: Distributed Redis rate limiting (authenticated users only)
+  if (ctx.isAuthenticated && ctx.userId) {
+    await checkRateLimitRedis(ctx.userId, operation, maxRequests, 60_000);
+  }
 }
 
 /**

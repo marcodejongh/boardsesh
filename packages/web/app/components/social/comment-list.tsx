@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
-import MuiButton from '@mui/material/Button';
 import MuiTypography from '@mui/material/Typography';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -97,6 +96,42 @@ export default function CommentList({ entityType, entityId, refreshKey = 0, curr
     setTotalCount((prev) => prev - 1);
   }, []);
 
+  // Inline IntersectionObserver — same pattern as climbs-list.tsx
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const handleLoadMoreRef = useRef(handleLoadMore);
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  handleLoadMoreRef.current = handleLoadMore;
+  hasMoreRef.current = hasMore;
+  isLoadingMoreRef.current = isLoadingMore;
+
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [target] = entries;
+      if (target.isIntersecting && hasMoreRef.current && !isLoadingMoreRef.current) {
+        handleLoadMoreRef.current();
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const element = sentinelRef.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '200px',
+      threshold: 0,
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [handleObserver]);
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
@@ -157,15 +192,8 @@ export default function CommentList({ entityType, entityId, refreshKey = 0, curr
             />
           ))}
           {hasMore && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
-              <MuiButton
-                onClick={handleLoadMore}
-                disabled={isLoadingMore}
-                size="small"
-                sx={{ textTransform: 'none' }}
-              >
-                {isLoadingMore ? <CircularProgress size={16} /> : 'Load more'}
-              </MuiButton>
+            <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 1, minHeight: 20 }}>
+              {isLoadingMore && <CircularProgress size={16} />}
             </Box>
           )}
         </>

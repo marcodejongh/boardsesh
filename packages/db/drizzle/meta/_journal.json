@@ -365,6 +365,20 @@
       "when": 1771027200000,
       "tag": "0052_add_postgis_location",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1770973343708,
+      "tag": "0052_broad_red_ghost",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1770974017917,
+      "tag": "0053_add_vote_counts",
+      "breakpoints": true
     }
   ]
 }

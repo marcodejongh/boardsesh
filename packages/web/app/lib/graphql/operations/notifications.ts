@@ -2,6 +2,8 @@ import { gql } from 'graphql-request';
 import type {
   Notification,
   NotificationConnection,
+  GroupedNotification,
+  GroupedNotificationConnection,
   NotificationType,
   SocialEntityType,
 } from '@boardsesh/shared-schema';
@@ -35,6 +37,34 @@ export const GET_NOTIFICATIONS = gql`
   }
 `;
 
+export const GET_GROUPED_NOTIFICATIONS = gql`
+  query GetGroupedNotifications($limit: Int, $offset: Int) {
+    groupedNotifications(limit: $limit, offset: $offset) {
+      groups {
+        uuid
+        type
+        entityType
+        entityId
+        actorCount
+        actors {
+          id
+          displayName
+          avatarUrl
+        }
+        commentBody
+        climbName
+        climbUuid
+        boardType
+        isRead
+        createdAt
+      }
+      totalCount
+      unreadCount
+      hasMore
+    }
+  }
+`;
+
 export const GET_UNREAD_NOTIFICATION_COUNT = gql`
   query GetUnreadNotificationCount {
     unreadNotificationCount
@@ -48,6 +78,12 @@ export const GET_UNREAD_NOTIFICATION_COUNT = gql`
 export const MARK_NOTIFICATION_READ = gql`
   mutation MarkNotificationRead($notificationUuid: ID!) {
     markNotificationRead(notificationUuid: $notificationUuid)
+  }
+`;
+
+export const MARK_GROUP_NOTIFICATIONS_READ = gql`
+  mutation MarkGroupNotificationsRead($type: NotificationType!, $entityType: SocialEntityType, $entityId: String) {
+    markGroupNotificationsRead(type: $type, entityType: $entityType, entityId: $entityId)
   }
 `;
 
@@ -154,6 +190,15 @@ export interface GetNotificationsQueryResponse {
   notifications: NotificationConnection;
 }
 
+export interface GetGroupedNotificationsQueryVariables {
+  limit?: number;
+  offset?: number;
+}
+
+export interface GetGroupedNotificationsQueryResponse {
+  groupedNotifications: GroupedNotificationConnection;
+}
+
 export interface GetUnreadNotificationCountQueryResponse {
   unreadNotificationCount: number;
 }
@@ -164,6 +209,16 @@ export interface MarkNotificationReadMutationVariables {
 
 export interface MarkNotificationReadMutationResponse {
   markNotificationRead: boolean;
+}
+
+export interface MarkGroupNotificationsReadMutationVariables {
+  type: string;
+  entityType?: string | null;
+  entityId?: string | null;
+}
+
+export interface MarkGroupNotificationsReadMutationResponse {
+  markGroupNotificationsRead: number;
 }
 
 export interface MarkAllNotificationsReadMutationResponse {
