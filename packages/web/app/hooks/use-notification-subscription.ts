@@ -155,12 +155,16 @@ export function useNotificationSubscription() {
                 }
 
                 // Rebuild pages: prepend new group to first page, remove duplicate from any page
+                const existingUuid = matchIdx >= 0 ? allGroups[matchIdx].uuid : null;
+                const withoutExisting = (groups: GroupedNotification[]) =>
+                  existingUuid ? groups.filter((g) => g.uuid !== existingUuid) : groups;
+
                 const updatedPages = old.pages.map((page, pageIdx) => ({
                   ...page,
                   groups:
                     pageIdx === 0
-                      ? [newGroup, ...page.groups.filter((g) => g.uuid !== (matchIdx >= 0 ? allGroups[matchIdx].uuid : ''))]
-                      : page.groups.filter((g) => g.uuid !== (matchIdx >= 0 ? allGroups[matchIdx].uuid : '')),
+                      ? [newGroup, ...withoutExisting(page.groups)]
+                      : withoutExisting(page.groups),
                 }));
 
                 return { ...old, pages: updatedPages };

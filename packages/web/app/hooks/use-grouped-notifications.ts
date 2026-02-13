@@ -1,6 +1,6 @@
 'use client';
 
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useWsAuthToken } from './use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -23,14 +23,14 @@ export function useGroupedNotifications() {
   const { token, isAuthenticated } = useWsAuthToken();
   const queryClient = useQueryClient();
 
-  const query = useInfiniteQuery<GroupedNotificationConnection>({
+  const query = useInfiniteQuery<GroupedNotificationConnection, Error, InfiniteData<GroupedNotificationConnection>, typeof GROUPED_NOTIFICATIONS_QUERY_KEY, number>({
     queryKey: GROUPED_NOTIFICATIONS_QUERY_KEY,
     queryFn: async ({ pageParam }) => {
       const client = createGraphQLHttpClient(token!);
       const data = await client.request<
         GetGroupedNotificationsQueryResponse,
         GetGroupedNotificationsQueryVariables
-      >(GET_GROUPED_NOTIFICATIONS, { limit: PAGE_SIZE, offset: pageParam as number });
+      >(GET_GROUPED_NOTIFICATIONS, { limit: PAGE_SIZE, offset: pageParam });
 
       // Sync unread count from the grouped response
       queryClient.setQueryData(UNREAD_COUNT_QUERY_KEY, data.groupedNotifications.unreadCount);
@@ -40,7 +40,7 @@ export function useGroupedNotifications() {
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) => {
       if (!lastPage.hasMore) return undefined;
-      return (lastPageParam as number) + lastPage.groups.length;
+      return lastPageParam + lastPage.groups.length;
     },
     enabled: isAuthenticated && !!token,
     staleTime: 60 * 1000,
