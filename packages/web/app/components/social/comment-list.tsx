@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import MuiTypography from '@mui/material/Typography';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -10,7 +10,6 @@ import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutl
 import type { Comment as CommentType, SocialEntityType, SortMode } from '@boardsesh/shared-schema';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 import {
   GET_COMMENTS,
   type GetCommentsQueryVariables,
@@ -97,11 +96,41 @@ export default function CommentList({ entityType, entityId, refreshKey = 0, curr
     setTotalCount((prev) => prev - 1);
   }, []);
 
-  const sentinelRef = useInfiniteScroll({
-    onLoadMore: handleLoadMore,
-    hasMore,
-    isLoading: isLoadingMore,
-  });
+  // Inline IntersectionObserver — same pattern as climbs-list.tsx
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const handleLoadMoreRef = useRef(handleLoadMore);
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  handleLoadMoreRef.current = handleLoadMore;
+  hasMoreRef.current = hasMore;
+  isLoadingMoreRef.current = isLoadingMore;
+
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [target] = entries;
+      if (target.isIntersecting && hasMoreRef.current && !isLoadingMoreRef.current) {
+        handleLoadMoreRef.current();
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const element = sentinelRef.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '200px',
+      threshold: 0,
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [handleObserver]);
 
   if (isLoading) {
     return (

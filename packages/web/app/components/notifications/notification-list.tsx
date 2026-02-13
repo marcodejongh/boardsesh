@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import MuiButton from '@mui/material/Button';
@@ -10,7 +10,6 @@ import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutl
 import { useRouter } from 'next/navigation';
 import type { GroupedNotification } from '@boardsesh/shared-schema';
 import { useNotifications } from '@/app/components/providers/notification-provider';
-import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 import NotificationItem from './notification-item';
 
 const PAGE_SIZE = 20;
@@ -59,11 +58,41 @@ export default function NotificationList() {
     [markGroupAsRead, router],
   );
 
-  const sentinelRef = useInfiniteScroll({
-    onLoadMore: handleLoadMore,
-    hasMore,
-    isLoading: isLoadingMore,
-  });
+  // Inline IntersectionObserver — same pattern as climbs-list.tsx
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const handleLoadMoreRef = useRef(handleLoadMore);
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  handleLoadMoreRef.current = handleLoadMore;
+  hasMoreRef.current = hasMore;
+  isLoadingMoreRef.current = isLoadingMore;
+
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [target] = entries;
+      if (target.isIntersecting && hasMoreRef.current && !isLoadingMoreRef.current) {
+        handleLoadMoreRef.current();
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const element = sentinelRef.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '200px',
+      threshold: 0,
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [handleObserver]);
 
   if (isLoading) {
     return (

@@ -2,7 +2,8 @@ import { eq, and, isNull, count, sql } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
-import { requireAuthenticated, applyRateLimit } from '../shared/helpers';
+import { requireAuthenticated, applyRateLimit, validateInput } from '../shared/helpers';
+import { GroupedNotificationsInputSchema } from '../../../validation/schemas';
 import { pubsub } from '../../../pubsub/index';
 import { createAsyncIterator } from '../shared/async-iterators';
 import type { NotificationEvent } from '@boardsesh/shared-schema';
@@ -114,13 +115,19 @@ export const socialNotificationQueries = {
 
   groupedNotifications: async (
     _: unknown,
-    { limit = 20, offset = 0 }: { limit?: number; offset?: number },
+    args: { limit?: number; offset?: number },
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
     const userId = ctx.userId!;
 
-    // Group notifications by (type, entity_type, entity_id) and return aggregated results
+    const validated = validateInput(GroupedNotificationsInputSchema, args, 'groupedNotifications');
+    const limit = validated.limit ?? 20;
+    const offset = validated.offset ?? 0;
+
+    // Group notifications by (type, entity_type, entity_id) and return aggregated results.
+    // Uses COUNT(*) OVER() window function to get total group count in a single query
+    // instead of a separate N+1 count subquery.
     interface GroupedRow {
       type: string;
       entityType: string | null;
@@ -133,10 +140,11 @@ export const socialNotificationQueries = {
       actorIds: string[];
       actorDisplayNames: (string | null)[];
       actorAvatarUrls: (string | null)[];
+      totalGroupCount: string;
     }
 
     const rawResult = await db.execute(sql`
-      WITH grouped AS (
+      WITH all_groups AS (
         SELECT
           n."type",
           n."entity_type",
@@ -151,28 +159,37 @@ export const socialNotificationQueries = {
         LEFT JOIN "comments" c ON n."comment_id" = c."id"
         WHERE n."recipient_id" = ${userId}
         GROUP BY n."type", n."entity_type", n."entity_id"
+      ),
+      paged AS (
+        SELECT
+          *,
+          COUNT(*) OVER() as "totalGroupCount"
+        FROM all_groups
         ORDER BY "latestCreatedAt" DESC
         LIMIT ${limit}
         OFFSET ${offset}
       )
       SELECT
-        g.*,
+        p.*,
         array(
           SELECT COALESCE(up."display_name", u."name")
-          FROM unnest(g."actorIds") AS aid(id)
+          FROM unnest(p."actorIds") AS aid(id)
           LEFT JOIN "users" u ON u."id" = aid.id
           LEFT JOIN "user_profiles" up ON up."user_id" = aid.id
         ) as "actorDisplayNames",
         array(
           SELECT COALESCE(up."avatar_url", u."image")
-          FROM unnest(g."actorIds") AS aid(id)
+          FROM unnest(p."actorIds") AS aid(id)
           LEFT JOIN "users" u ON u."id" = aid.id
           LEFT JOIN "user_profiles" up ON up."user_id" = aid.id
         ) as "actorAvatarUrls"
-      FROM grouped g
+      FROM paged p
     `);
 
     const rows = (rawResult as unknown as { rows: GroupedRow[] }).rows;
+
+    // Total group count from window function (same value on every row)
+    const totalCount = rows.length > 0 ? Number(rows[0].totalGroupCount) : 0;
 
     const groups = rows.map((row) => {
       const actorIds = row.actorIds || [];
@@ -206,19 +223,6 @@ export const socialNotificationQueries = {
           : String(row.latestCreatedAt),
       };
     });
-
-    // Total group count
-    const totalCountResult = await db.execute(sql`
-      SELECT COUNT(*) as "count" FROM (
-        SELECT 1
-        FROM "notifications"
-        WHERE "recipient_id" = ${userId}
-        GROUP BY "type", "entity_type", "entity_id"
-      ) sub
-    `);
-    const totalCount = Number(
-      (totalCountResult as unknown as { rows: { count: string }[] }).rows[0]?.count || 0,
-    );
 
     // Unread count (individual notifications, not groups)
     const unreadCountResult = await db

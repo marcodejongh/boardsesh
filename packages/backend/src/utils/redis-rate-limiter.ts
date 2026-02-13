@@ -2,7 +2,25 @@ import { redisClientManager } from '../redis/client';
 import { checkRateLimit } from './rate-limiter';
 
 /**
- * Distributed rate limiter using Redis INCR + EXPIRE.
+ * Lua script for atomic INCR + EXPIRE.
+ * Prevents race condition where process crash between INCR and EXPIRE
+ * would leave a key without TTL, persisting forever.
+ *
+ * KEYS[1] = rate limit key
+ * ARGV[1] = expire time in seconds
+ *
+ * Returns the new count after increment.
+ */
+const RATE_LIMIT_SCRIPT = `
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return count
+`;
+
+/**
+ * Distributed rate limiter using an atomic Lua script (INCR + EXPIRE).
  * Falls back to in-memory rate limiter if Redis is unavailable.
  *
  * Key format: ratelimit:{userId}:{operation}:{windowBucket}
@@ -27,12 +45,13 @@ export async function checkRateLimitRedis(
     const key = `ratelimit:${userId}:${operation}:${windowBucket}`;
     const expireSeconds = Math.ceil(windowMs / 1000);
 
-    // Atomic INCR + EXPIRE
-    const count = await publisher.incr(key);
-    if (count === 1) {
-      // First request in this window — set expiry
-      await publisher.expire(key, expireSeconds);
-    }
+    // Atomic INCR + EXPIRE via Lua script
+    const count = await publisher.eval(
+      RATE_LIMIT_SCRIPT,
+      1,
+      key,
+      expireSeconds.toString(),
+    ) as number;
 
     if (count > maxRequests) {
       const retryAfterSeconds = Math.ceil(

@@ -599,6 +599,18 @@ export const ActivityFeedInputSchema = z.object({
 });
 
 // ============================================
+// Notification Schemas
+// ============================================
+
+/**
+ * Grouped notifications query input validation schema
+ */
+export const GroupedNotificationsInputSchema = z.object({
+  limit: z.number().int().min(1).max(50).optional().default(20),
+  offset: z.number().int().min(0).optional().default(0),
+});
+
+// ============================================
 // Community Proposals + Admin Roles Schemas
 // ============================================
 

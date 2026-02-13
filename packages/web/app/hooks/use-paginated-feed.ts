@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { useInfiniteScroll } from './use-infinite-scroll';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 interface PaginatedFeedResult<T> {
   items: T[];
@@ -27,6 +26,8 @@ interface UsePaginatedFeedOptions<T> {
  * Consolidates the duplicated pagination pattern used by:
  * - FollowingAscentsFeed
  * - GlobalAscentsFeed
+ *
+ * Uses the same IntersectionObserver pattern as the climb list.
  */
 export function usePaginatedFeed<T>({
   fetchFn,
@@ -75,11 +76,41 @@ export function usePaginatedFeed<T>({
     fetchPage(items.length);
   }, [fetchPage, items.length]);
 
-  const sentinelRef = useInfiniteScroll({
-    onLoadMore: loadMore,
-    hasMore,
-    isLoading: loadingMore,
-  });
+  // Inline IntersectionObserver — same pattern as climbs-list.tsx
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef(loadMore);
+  const hasMoreRef = useRef(hasMore);
+  const loadingMoreRef = useRef(loadingMore);
+  loadMoreRef.current = loadMore;
+  hasMoreRef.current = hasMore;
+  loadingMoreRef.current = loadingMore;
+
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [target] = entries;
+      if (target.isIntersecting && hasMoreRef.current && !loadingMoreRef.current) {
+        loadMoreRef.current();
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const element = sentinelRef.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '200px',
+      threshold: 0,
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [handleObserver]);
 
   return {
     items,
