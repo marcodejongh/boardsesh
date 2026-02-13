@@ -1,7 +1,7 @@
 import type { ConnectionContext, EventsReplayResponse } from '@boardsesh/shared-schema';
 import { roomManager, type DiscoverableSession } from '../../../services/room-manager';
 import { pubsub } from '../../../pubsub/index';
-import { validateInput, requireSessionMember } from '../shared/helpers';
+import { validateInput, requireSessionMember, requireAuthenticated } from '../shared/helpers';
 import { SessionIdSchema, LatitudeSchema, LongitudeSchema, RadiusMetersSchema } from '../../../validation/schemas';
 import { generateSessionSummary } from './session-summary';
 
@@ -117,7 +117,8 @@ export const sessionQueries = {
    * Get a session summary with stats, grade distribution, and participants.
    * Available for ended sessions or active sessions with ticks.
    */
-  sessionSummary: async (_: unknown, { sessionId }: { sessionId: string }) => {
+  sessionSummary: async (_: unknown, { sessionId }: { sessionId: string }, ctx: ConnectionContext) => {
+    requireAuthenticated(ctx);
     validateInput(SessionIdSchema, sessionId, 'sessionId');
     return generateSessionSummary(sessionId);
   },

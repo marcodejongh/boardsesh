@@ -1,6 +1,7 @@
 import { db } from '../../../db/client';
 import { sessions } from '../../../db/schema';
-import { eq, sql } from 'drizzle-orm';
+import * as dbSchema from '@boardsesh/db/schema';
+import { eq, and, inArray, sql, count, desc, isNotNull } from 'drizzle-orm';
 import type { SessionSummary } from '@boardsesh/shared-schema';
 
 /**
@@ -8,7 +9,7 @@ import type { SessionSummary } from '@boardsesh/shared-schema';
  * hardest climb, participant stats, and duration.
  */
 export async function generateSessionSummary(sessionId: string): Promise<SessionSummary | null> {
-  // Fetch session metadata
+  // Fetch session metadata using Drizzle ORM
   const sessionRows = await db
     .select()
     .from(sessions)
@@ -22,39 +23,67 @@ export async function generateSessionSummary(sessionId: string): Promise<Session
   const session = sessionRows[0];
 
   // Run aggregation queries in parallel
-  const [gradeDistResult, hardestResult, participantResult] = await Promise.all([
+  // Note: These queries use GROUP BY with aggregation, COUNT FILTER, and COALESCE
+  // which cannot be expressed with Drizzle's query builder per CLAUDE.md guidelines.
+  const [gradeDistRows, hardestRows, participantRows] = await Promise.all([
     // Grade distribution: count sends grouped by grade
-    db.execute(sql`
-      SELECT dg.boulder_name AS grade, COUNT(*)::int AS count
-      FROM boardsesh_ticks t
-      LEFT JOIN board_difficulty_grades dg
-        ON dg.difficulty = t.difficulty
-        AND dg.board_type = t.board_type
-      WHERE t.session_id = ${sessionId}
-        AND t.status IN ('flash', 'send')
-        AND t.difficulty IS NOT NULL
-      GROUP BY dg.boulder_name, dg.difficulty
-      ORDER BY dg.difficulty DESC
-    `),
+    db
+      .select({
+        grade: dbSchema.boardDifficultyGrades.boulderName,
+        difficulty: dbSchema.boardDifficultyGrades.difficulty,
+        count: count(),
+      })
+      .from(dbSchema.boardseshTicks)
+      .leftJoin(
+        dbSchema.boardDifficultyGrades,
+        and(
+          eq(dbSchema.boardDifficultyGrades.difficulty, dbSchema.boardseshTicks.difficulty),
+          eq(dbSchema.boardDifficultyGrades.boardType, dbSchema.boardseshTicks.boardType),
+        ),
+      )
+      .where(
+        and(
+          eq(dbSchema.boardseshTicks.sessionId, sessionId),
+          inArray(dbSchema.boardseshTicks.status, ['flash', 'send']),
+          isNotNull(dbSchema.boardseshTicks.difficulty),
+        ),
+      )
+      .groupBy(dbSchema.boardDifficultyGrades.boulderName, dbSchema.boardDifficultyGrades.difficulty)
+      .orderBy(desc(dbSchema.boardDifficultyGrades.difficulty)),
 
-    // Hardest climb: highest difficulty send
-    db.execute(sql`
-      SELECT t.climb_uuid AS "climbUuid",
-             t.board_type AS "boardType",
-             t.difficulty AS difficulty,
-             dg.boulder_name AS grade
-      FROM boardsesh_ticks t
-      LEFT JOIN board_difficulty_grades dg
-        ON dg.difficulty = t.difficulty
-        AND dg.board_type = t.board_type
-      WHERE t.session_id = ${sessionId}
-        AND t.status IN ('flash', 'send')
-        AND t.difficulty IS NOT NULL
-      ORDER BY t.difficulty DESC
-      LIMIT 1
-    `),
+    // Hardest climb: highest difficulty send with climb name (JOINed to avoid N+1)
+    db
+      .select({
+        climbUuid: dbSchema.boardseshTicks.climbUuid,
+        boardType: dbSchema.boardseshTicks.boardType,
+        difficulty: dbSchema.boardseshTicks.difficulty,
+        grade: dbSchema.boardDifficultyGrades.boulderName,
+        climbName: dbSchema.boardClimbs.name,
+      })
+      .from(dbSchema.boardseshTicks)
+      .leftJoin(
+        dbSchema.boardDifficultyGrades,
+        and(
+          eq(dbSchema.boardDifficultyGrades.difficulty, dbSchema.boardseshTicks.difficulty),
+          eq(dbSchema.boardDifficultyGrades.boardType, dbSchema.boardseshTicks.boardType),
+        ),
+      )
+      .leftJoin(
+        dbSchema.boardClimbs,
+        eq(dbSchema.boardClimbs.uuid, dbSchema.boardseshTicks.climbUuid),
+      )
+      .where(
+        and(
+          eq(dbSchema.boardseshTicks.sessionId, sessionId),
+          inArray(dbSchema.boardseshTicks.status, ['flash', 'send']),
+          isNotNull(dbSchema.boardseshTicks.difficulty),
+        ),
+      )
+      .orderBy(desc(dbSchema.boardseshTicks.difficulty))
+      .limit(1),
 
     // Participant stats: sends and attempts per user
+    // Uses COUNT FILTER which requires raw SQL (not available in Drizzle query builder)
     db.execute(sql`
       SELECT t.user_id AS "userId",
              COALESCE(up.display_name, u.name) AS "displayName",
@@ -70,15 +99,7 @@ export async function generateSessionSummary(sessionId: string): Promise<Session
     `),
   ]);
 
-  // db.execute returns rows directly as an array (Neon driver)
-  const gradeDistRows = (gradeDistResult as unknown as Array<{ grade: string | null; count: number }>);
-  const hardestRows = (hardestResult as unknown as Array<{
-    climbUuid: string;
-    boardType: string;
-    difficulty: number;
-    grade: string | null;
-  }>);
-  const participantRows = (participantResult as unknown as Array<{
+  const participantCastRows = (participantRows as unknown as Array<{
     userId: string;
     displayName: string | null;
     avatarUrl: string | null;
@@ -91,27 +112,19 @@ export async function generateSessionSummary(sessionId: string): Promise<Session
     .filter((r) => r.grade != null)
     .map((r) => ({ grade: r.grade!, count: r.count }));
 
-  // Build hardest climb
+  // Build hardest climb (climb name already JOINed — no separate query needed)
   let hardestClimb = null;
   if (hardestRows.length > 0) {
     const h = hardestRows[0];
-    // Look up climb name from board-specific climbs table
-    const climbNameResult = await db.execute(sql`
-      SELECT name FROM board_climbs
-      WHERE uuid = ${h.climbUuid}
-      LIMIT 1
-    `);
-    const climbNameRows = climbNameResult as unknown as Array<{ name?: string }>;
-    const climbName = climbNameRows[0]?.name || 'Unknown climb';
     hardestClimb = {
       climbUuid: h.climbUuid,
-      climbName,
+      climbName: h.climbName || 'Unknown climb',
       grade: h.grade || `V${h.difficulty}`,
     };
   }
 
   // Build participants
-  const participants = participantRows.map((r) => ({
+  const participants = participantCastRows.map((r) => ({
     userId: r.userId,
     displayName: r.displayName,
     avatarUrl: r.avatarUrl,
