@@ -46,6 +46,9 @@ export function useSaveTick(boardName: BoardName) {
       if (sessionStatus !== 'authenticated') {
         throw new Error('Not authenticated');
       }
+      if (!token) {
+        throw new Error('Auth token not available');
+      }
 
       const client = createGraphQLHttpClient(token);
       const variables: SaveTickMutationVariables = {

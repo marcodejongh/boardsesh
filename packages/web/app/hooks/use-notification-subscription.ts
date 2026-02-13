@@ -46,6 +46,8 @@ export function useNotificationSubscription() {
   const queryClient = useQueryClient();
   const showMessageRef = useRef(showMessage);
   showMessageRef.current = showMessage;
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
@@ -55,7 +57,9 @@ export function useNotificationSubscription() {
 
     const refreshUnreadCount = async () => {
       try {
-        const client = createGraphQLHttpClient(token);
+        const currentToken = tokenRef.current;
+        if (!currentToken) return;
+        const client = createGraphQLHttpClient(currentToken);
         const data = await client.request<GetUnreadNotificationCountQueryResponse>(
           GET_UNREAD_NOTIFICATION_COUNT,
         );

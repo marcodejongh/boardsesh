@@ -28,7 +28,7 @@ export default function GymSelector({ selectedGymUuid, onSelect }: GymSelectorPr
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['myGyms', token],
+    queryKey: ['myGyms'],
     queryFn: async () => {
       const client = createGraphQLHttpClient(token!);
       const response = await client.request<GetMyGymsQueryResponse, GetMyGymsQueryVariables>(
@@ -44,7 +44,7 @@ export default function GymSelector({ selectedGymUuid, onSelect }: GymSelectorPr
   const gyms = data ?? [];
 
   const handleGymCreated = (gym: Gym) => {
-    queryClient.setQueryData<Gym[]>(['myGyms', token], (prev) => (prev ? [gym, ...prev] : [gym]));
+    queryClient.setQueryData<Gym[]>(['myGyms'], (prev) => (prev ? [gym, ...prev] : [gym]));
     onSelect(gym.uuid);
     setShowCreateForm(false);
   };

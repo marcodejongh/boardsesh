@@ -38,9 +38,9 @@ export function useGroupedNotifications() {
       return data.groupedNotifications;
     },
     initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
       if (!lastPage.hasMore) return undefined;
-      return allPages.reduce((sum, page) => sum + page.groups.length, 0);
+      return (lastPageParam as number) + lastPage.groups.length;
     },
     enabled: isAuthenticated && !!token,
     staleTime: 60 * 1000,

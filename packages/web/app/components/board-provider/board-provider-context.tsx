@@ -21,7 +21,7 @@ interface BoardContextType {
   error: string | null;
   isInitialized: boolean;
   logbook: LogbookEntry[];
-  getLogbook: (climbUuids: ClimbUuid[]) => Promise<boolean>;
+  getLogbook: (climbUuids: ClimbUuid[]) => Promise<void>;
   saveTick: (options: SaveTickOptions) => Promise<void>;
   saveClimb: (options: Omit<SaveClimbOptions, 'setter_id' | 'user_id'>) => Promise<SaveClimbResponse>;
 }
@@ -46,9 +46,8 @@ export function BoardProvider({ boardName, children }: { boardName: BoardName; c
   }, [sessionStatus]);
 
   // getLogbook now just sets the climbUuids state; TanStack Query handles the fetch
-  const getLogbook = useCallback(async (uuids: ClimbUuid[]): Promise<boolean> => {
+  const getLogbook = useCallback(async (uuids: ClimbUuid[]): Promise<void> => {
     setClimbUuids(uuids);
-    return true;
   }, []);
 
   // Wrapper to maintain backward-compatible API
