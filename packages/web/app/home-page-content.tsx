@@ -6,6 +6,8 @@ import Typography from '@mui/material/Typography';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import SearchOutlined from '@mui/icons-material/SearchOutlined';
+import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
+import Button from '@mui/material/Button';
 import ActivityFeed from '@/app/components/activity-feed/activity-feed';
 import FeedSortSelector from '@/app/components/activity-feed/feed-sort-selector';
 import searchPillStyles from '@/app/components/search-drawer/search-pill.module.css';
@@ -13,6 +15,7 @@ import UnifiedSearchDrawer from '@/app/components/search-drawer/unified-search-d
 import UserDrawer from '@/app/components/user-drawer/user-drawer';
 import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
 import PersistentQueueControlBar from '@/app/components/queue-control/persistent-queue-control-bar';
+import StartSeshDrawer from '@/app/components/session-creation/start-sesh-drawer';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -52,6 +55,7 @@ export default function HomePageContent({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [startSeshOpen, setStartSeshOpen] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
   const [subscriptions, setSubscriptions] = useState<NewClimbSubscription[]>([]);
 
@@ -133,6 +137,16 @@ export default function HomePageContent({
           <SearchOutlined className={searchPillStyles.icon} />
           <span className={searchPillStyles.text}>Search</span>
         </button>
+        <Box sx={{ ml: 'auto' }}>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<PlayCircleOutlineOutlined />}
+            onClick={() => setStartSeshOpen(true)}
+          >
+            Start Sesh
+          </Button>
+        </Box>
       </Box>
 
       {/* Feed */}
@@ -209,6 +223,11 @@ export default function HomePageContent({
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         defaultCategory="boards"
+      />
+
+      <StartSeshDrawer
+        open={startSeshOpen}
+        onClose={() => setStartSeshOpen(false)}
       />
     </Box>
   );
