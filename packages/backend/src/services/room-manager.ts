@@ -54,6 +54,10 @@ export type DiscoverableSession = {
   participantCount: number;
   distance: number;
   isActive: boolean;
+  goal?: string | null;
+  isPublic?: boolean;
+  isPermanent?: boolean;
+  color?: string | null;
 };
 
 class RoomManager {
@@ -905,8 +909,12 @@ class RoomManager {
     userId: string,
     latitude: number,
     longitude: number,
-    name?: string
+    name?: string,
+    goal?: string,
+    isPermanent?: boolean,
+    color?: string
   ): Promise<Session> {
+    const now = new Date();
     const result = await db
       .insert(sessions)
       .values({
@@ -917,7 +925,11 @@ class RoomManager {
         discoverable: true,
         createdByUserId: userId,
         name: name || null,
-        lastActivity: new Date(),
+        lastActivity: now,
+        goal: goal || null,
+        isPermanent: isPermanent || false,
+        color: color || null,
+        startedAt: now,
       })
       .onConflictDoUpdate({
         target: sessions.id,
@@ -928,7 +940,11 @@ class RoomManager {
           discoverable: true,
           createdByUserId: userId,
           name: name || null,
-          lastActivity: new Date(),
+          lastActivity: now,
+          goal: goal || null,
+          isPermanent: isPermanent || false,
+          color: color || null,
+          startedAt: now,
         },
       })
       .returning();
@@ -1010,6 +1026,10 @@ class RoomManager {
         participantCount,
         distance,
         isActive,
+        goal: session.goal || null,
+        isPublic: session.isPublic,
+        isPermanent: session.isPermanent,
+        color: session.color || null,
       });
     }
 
@@ -1359,9 +1379,10 @@ class RoomManager {
     }
 
     // Mark as ended in Postgres
+    const now = new Date();
     await db
       .update(sessions)
-      .set({ status: 'ended', lastActivity: new Date() })
+      .set({ status: 'ended', lastActivity: now, endedAt: now })
       .where(eq(sessions.id, sessionId));
 
     // Remove from memory

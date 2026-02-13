@@ -179,6 +179,18 @@ export const typeDefs = /* GraphQL */ `
     isLeader: Boolean!
     "Unique identifier for this client's connection"
     clientId: ID!
+    "Optional session goal text"
+    goal: String
+    "Whether session is publicly discoverable"
+    isPublic: Boolean!
+    "When the session was started (ISO 8601)"
+    startedAt: String
+    "When the session was ended (ISO 8601)"
+    endedAt: String
+    "Whether session is exempt from auto-end"
+    isPermanent: Boolean!
+    "Hex color for multi-session display"
+    color: String
   }
 
   """
@@ -205,6 +217,14 @@ export const typeDefs = /* GraphQL */ `
     distance: Float
     "Whether the session is still active"
     isActive: Boolean!
+    "Optional session goal"
+    goal: String
+    "Whether session is publicly discoverable"
+    isPublic: Boolean
+    "Whether session is exempt from auto-end"
+    isPermanent: Boolean
+    "Hex color for multi-session display"
+    color: String
   }
 
   """
@@ -221,6 +241,82 @@ export const typeDefs = /* GraphQL */ `
     name: String
     "Whether this session should appear in nearby searches"
     discoverable: Boolean!
+    "Optional session goal text"
+    goal: String
+    "Whether session is exempt from auto-end"
+    isPermanent: Boolean
+    "Board entity IDs for multi-board sessions"
+    boardIds: [Int!]
+    "Hex color for multi-session display"
+    color: String
+  }
+
+  # ============================================
+  # Session Summary Types
+  # ============================================
+
+  """
+  Grade count for session summary grade distribution.
+  """
+  type SessionGradeCount {
+    "Grade name (e.g., 'V5')"
+    grade: String!
+    "Number of sends at this grade"
+    count: Int!
+  }
+
+  """
+  Hardest climb sent during a session.
+  """
+  type SessionHardestClimb {
+    "Climb UUID"
+    climbUuid: String!
+    "Climb name"
+    climbName: String!
+    "Grade name"
+    grade: String!
+  }
+
+  """
+  Participant stats in a session summary.
+  """
+  type SessionParticipant {
+    "User ID"
+    userId: String!
+    "Display name"
+    displayName: String
+    "Avatar URL"
+    avatarUrl: String
+    "Total sends"
+    sends: Int!
+    "Total attempts"
+    attempts: Int!
+  }
+
+  """
+  Summary of a completed session including stats, grade distribution, and participants.
+  """
+  type SessionSummary {
+    "Session ID"
+    sessionId: ID!
+    "Total successful sends"
+    totalSends: Int!
+    "Total attempts (including sends)"
+    totalAttempts: Int!
+    "Grade distribution of sends"
+    gradeDistribution: [SessionGradeCount!]!
+    "Hardest climb sent during the session"
+    hardestClimb: SessionHardestClimb
+    "Participants with their stats"
+    participants: [SessionParticipant!]!
+    "When the session started"
+    startedAt: String
+    "When the session ended"
+    endedAt: String
+    "Duration in minutes"
+    durationMinutes: Int
+    "Session goal text"
+    goal: String
   }
 
   # ============================================
@@ -2196,6 +2292,8 @@ export const typeDefs = /* GraphQL */ `
     comment: String
     "When this feed item was created (ISO 8601)"
     createdAt: String!
+    "JSON-encoded metadata for type-specific data (e.g., session summary stats)"
+    metadata: String
   }
 
   """
@@ -2363,6 +2461,12 @@ export const typeDefs = /* GraphQL */ `
     Requires authentication.
     """
     mySessions: [DiscoverableSession!]!
+
+    """
+    Get a session summary (stats, grade distribution, participants).
+    Available for ended sessions or active sessions with ticks.
+    """
+    sessionSummary(sessionId: ID!): SessionSummary
 
     # ============================================
     # Board Configuration Queries
@@ -2779,7 +2883,7 @@ export const typeDefs = /* GraphQL */ `
     """
     End a session (leader only).
     """
-    endSession(sessionId: ID!): Boolean!
+    endSession(sessionId: ID!): SessionSummary
 
     """
     Update display name and avatar in the current session.

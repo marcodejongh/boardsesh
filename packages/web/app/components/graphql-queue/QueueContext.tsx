@@ -29,7 +29,13 @@ import {
   type AddClimbToPlaylistMutationResponse,
   type RemoveClimbFromPlaylistMutationResponse,
 } from '@/app/lib/graphql/operations/playlists';
+import {
+  END_SESSION as END_SESSION_GQL,
+  type EndSessionResponse,
+} from '@/app/lib/graphql/operations/sessions';
+import type { SessionSummary } from '@boardsesh/shared-schema';
 import { SUGGESTIONS_THRESHOLD } from '../board-page/constants';
+import SessionSummaryDialog from '../session-summary/session-summary-dialog';
 
 // Extended context type with session management
 export interface GraphQLQueueContextType extends QueueContextType {
@@ -39,6 +45,11 @@ export interface GraphQLQueueContextType extends QueueContextType {
   startSession: (options?: { discoverable?: boolean; name?: string }) => Promise<string>;
   joinSession: (sessionId: string) => Promise<void>;
   endSession: () => void;
+  // Session summary shown after ending a session
+  sessionSummary: SessionSummary | null;
+  dismissSessionSummary: () => void;
+  // Session goal
+  sessionGoal: string | null;
 }
 
 type GraphQLQueueContextProps = {
@@ -86,6 +97,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
   // Get party profile for user ID, and username/avatarUrl from NextAuth session
   const { profile, username, avatarUrl } = usePartyProfile();
+
+  // Auth token for GraphQL HTTP requests (used by endSession and playlists)
+  const { token: wsAuthToken, isAuthenticated: isPlaylistAuthenticated } = useWsAuthToken();
 
   // Get persistent session (managed at root level)
   const persistentSession = usePersistentSession();
@@ -467,7 +481,17 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
     [backendUrl, pathname, router, searchParams, isOffBoardMode],
   );
 
+  // Session summary state (shown after ending a session)
+  const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
+
+  const dismissSessionSummary = useCallback(() => {
+    setSessionSummary(null);
+  }, []);
+
   const endSession = useCallback(() => {
+    // Capture session ID before deactivating
+    const endingSessionId = activeSessionId;
+
     // Deactivate persistent session
     persistentSession.deactivateSession();
 
@@ -481,7 +505,21 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
     // Update state
     setActiveSessionId(null);
-  }, [persistentSession, pathname, router, searchParams, isOffBoardMode]);
+
+    // Call END_SESSION mutation to get summary (non-blocking)
+    if (endingSessionId && wsAuthToken) {
+      const client = createGraphQLHttpClient(wsAuthToken);
+      client.request<EndSessionResponse>(END_SESSION_GQL, { sessionId: endingSessionId })
+        .then((response) => {
+          if (response.endSession) {
+            setSessionSummary(response.endSession);
+          }
+        })
+        .catch((err) => {
+          console.error('[QueueContext] Failed to get session summary:', err);
+        });
+    }
+  }, [persistentSession, pathname, router, searchParams, isOffBoardMode, activeSessionId, wsAuthToken]);
 
   // Whether party mode is active
   const isSessionActive = !!sessionId && hasConnected;
@@ -557,7 +595,6 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
     new Map()
   );
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
-  const { token: wsAuthToken, isAuthenticated: isPlaylistAuthenticated } = useWsAuthToken();
 
   // Fetch user's playlists when authenticated and board details change
   useEffect(() => {
@@ -770,6 +807,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       startSession,
       joinSession: joinSessionHandler,
       endSession,
+      sessionSummary,
+      dismissSessionSummary,
+      sessionGoal: isPersistentSessionActive ? (persistentSession.session?.goal ?? null) : null,
 
       // Session data for party context
       users,
@@ -985,6 +1025,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       startSession,
       joinSessionHandler,
       endSession,
+      sessionSummary,
+      dismissSessionSummary,
       isOffBoardMode,
     ],
   );
@@ -1018,11 +1060,17 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
     return (
       <QueueContext.Provider value={contextValue}>
         {wrappedChildren}
+        <SessionSummaryDialog summary={sessionSummary} onDismiss={dismissSessionSummary} />
       </QueueContext.Provider>
     );
   }
 
-  return <QueueContext.Provider value={contextValue}>{wrappedChildren}</QueueContext.Provider>;
+  return (
+    <QueueContext.Provider value={contextValue}>
+      {wrappedChildren}
+      <SessionSummaryDialog summary={sessionSummary} onDismiss={dismissSessionSummary} />
+    </QueueContext.Provider>
+  );
 };
 
 export const useGraphQLQueueContext = (): GraphQLQueueContextType => {

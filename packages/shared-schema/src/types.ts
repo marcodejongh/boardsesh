@@ -613,7 +613,7 @@ export type FollowingAscentsFeedResult = {
 // Activity Feed Types
 // ============================================
 
-export type ActivityFeedItemType = 'ascent' | 'new_climb' | 'comment' | 'proposal_approved';
+export type ActivityFeedItemType = 'ascent' | 'new_climb' | 'comment' | 'proposal_approved' | 'session_summary';
 
 export type ActivityFeedItem = {
   id: string;
@@ -642,6 +642,7 @@ export type ActivityFeedItem = {
   attemptCount?: number | null;
   comment?: string | null;
   createdAt: string;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type ActivityFeedResult = {
@@ -1152,6 +1153,42 @@ export type ConnectionContext = {
   controllerId?: string;
   controllerApiKey?: string;
   controllerMac?: string; // Controller's MAC address (used as clientId for BLE disconnect logic)
+};
+
+// ============================================
+// Session Summary Types
+// ============================================
+
+export type SessionGradeCount = {
+  grade: string;
+  count: number;
+};
+
+export type SessionHardestClimb = {
+  climbUuid: string;
+  climbName: string;
+  grade: string;
+};
+
+export type SessionParticipant = {
+  userId: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  sends: number;
+  attempts: number;
+};
+
+export type SessionSummary = {
+  sessionId: string;
+  totalSends: number;
+  totalAttempts: number;
+  gradeDistribution: SessionGradeCount[];
+  hardestClimb?: SessionHardestClimb | null;
+  participants: SessionParticipant[];
+  startedAt?: string | null;
+  endedAt?: string | null;
+  durationMinutes?: number | null;
+  goal?: string | null;
 };
 
 // ============================================
