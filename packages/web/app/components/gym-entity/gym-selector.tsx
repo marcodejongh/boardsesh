@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import MuiTypography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddOutlined from '@mui/icons-material/AddOutlined';
+import useSWR from 'swr';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
@@ -22,39 +23,31 @@ interface GymSelectorProps {
 }
 
 export default function GymSelector({ selectedGymUuid, onSelect }: GymSelectorProps) {
-  const [gyms, setGyms] = useState<Gym[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { token } = useWsAuthToken();
 
-  const fetchGyms = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const client = createGraphQLHttpClient(token);
-      const data = await client.request<GetMyGymsQueryResponse, GetMyGymsQueryVariables>(
+  const { data, isLoading, mutate } = useSWR(
+    token ? ['myGyms', token] : null,
+    async () => {
+      const client = createGraphQLHttpClient(token!);
+      const response = await client.request<GetMyGymsQueryResponse, GetMyGymsQueryVariables>(
         GET_MY_GYMS,
         { input: { limit: 50 } },
       );
-      setGyms(data.myGyms.gyms);
-    } catch (error) {
-      console.error('Failed to fetch gyms:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+      return response.myGyms.gyms;
+    },
+    { revalidateOnFocus: false },
+  );
 
-  useEffect(() => {
-    fetchGyms();
-  }, [fetchGyms]);
+  const gyms = data ?? [];
 
   const handleGymCreated = (gym: Gym) => {
-    setGyms((prev) => [gym, ...prev]);
+    mutate((prev) => (prev ? [gym, ...prev] : [gym]), false);
     onSelect(gym.uuid);
     setShowCreateForm(false);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
         <CircularProgress size={16} />

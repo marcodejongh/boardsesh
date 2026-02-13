@@ -13,6 +13,7 @@ import {
   SearchBoardsInputSchema,
   UUIDSchema,
 } from '../../../validation/schemas';
+import { generateUniqueGymSlug } from './gyms';
 
 // ============================================
 // Helpers
@@ -708,66 +709,69 @@ export const socialBoardMutations = {
         .limit(1);
 
       if (!existingGym) {
-        const gymName = validatedInput.locationName || validatedInput.name;
-        const gymUuid = uuidv4();
-        const gymSlug = gymName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .slice(0, 100) || 'gym';
+        // Auto-create a gym for the user. If this fails, fall through
+        // and create the board without a gym link rather than failing entirely.
+        try {
+          const gymName = validatedInput.locationName || validatedInput.name;
+          const gymUuid = uuidv4();
+          const gymSlug = await generateUniqueGymSlug(gymName);
 
-        // Use transaction to atomically create gym + board
-        const board = await db.transaction(async (tx) => {
-          const [newGym] = await tx
-            .insert(dbSchema.gyms)
-            .values({
-              uuid: gymUuid,
-              slug: gymSlug,
-              ownerId: userId,
-              name: gymName,
-              isPublic: validatedInput.isPublic ?? true,
-              latitude: validatedInput.latitude ?? null,
-              longitude: validatedInput.longitude ?? null,
-            })
-            .returning();
+          // Use transaction to atomically create gym + board
+          const board = await db.transaction(async (tx) => {
+            const [newGym] = await tx
+              .insert(dbSchema.gyms)
+              .values({
+                uuid: gymUuid,
+                slug: gymSlug,
+                ownerId: userId,
+                name: gymName,
+                isPublic: validatedInput.isPublic ?? true,
+                latitude: validatedInput.latitude ?? null,
+                longitude: validatedInput.longitude ?? null,
+              })
+              .returning();
 
-          if (validatedInput.latitude != null && validatedInput.longitude != null) {
-            await tx.execute(
-              sql`UPDATE gyms SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${newGym.id}`
-            );
-          }
+            if (validatedInput.latitude != null && validatedInput.longitude != null) {
+              await tx.execute(
+                sql`UPDATE gyms SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${newGym.id}`
+              );
+            }
 
-          const [newBoard] = await tx
-            .insert(dbSchema.userBoards)
-            .values({
-              uuid,
-              slug,
-              ownerId: userId,
-              boardType: validatedInput.boardType,
-              layoutId: validatedInput.layoutId,
-              sizeId: validatedInput.sizeId,
-              setIds: validatedInput.setIds,
-              name: validatedInput.name,
-              description: validatedInput.description ?? null,
-              locationName: validatedInput.locationName ?? null,
-              latitude: validatedInput.latitude ?? null,
-              longitude: validatedInput.longitude ?? null,
-              isPublic: validatedInput.isPublic ?? true,
-              isOwned: validatedInput.isOwned ?? true,
-              gymId: newGym.id,
-            })
-            .returning();
+            const [newBoard] = await tx
+              .insert(dbSchema.userBoards)
+              .values({
+                uuid,
+                slug,
+                ownerId: userId,
+                boardType: validatedInput.boardType,
+                layoutId: validatedInput.layoutId,
+                sizeId: validatedInput.sizeId,
+                setIds: validatedInput.setIds,
+                name: validatedInput.name,
+                description: validatedInput.description ?? null,
+                locationName: validatedInput.locationName ?? null,
+                latitude: validatedInput.latitude ?? null,
+                longitude: validatedInput.longitude ?? null,
+                isPublic: validatedInput.isPublic ?? true,
+                isOwned: validatedInput.isOwned ?? true,
+                gymId: newGym.id,
+              })
+              .returning();
 
-          if (validatedInput.latitude != null && validatedInput.longitude != null) {
-            await tx.execute(
-              sql`UPDATE user_boards SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${newBoard.id}`
-            );
-          }
+            if (validatedInput.latitude != null && validatedInput.longitude != null) {
+              await tx.execute(
+                sql`UPDATE user_boards SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${newBoard.id}`
+              );
+            }
 
-          return newBoard;
-        });
+            return newBoard;
+          });
 
-        return enrichBoard(board, userId);
+          return enrichBoard(board, userId);
+        } catch (error) {
+          // Auto-gym creation failed; continue to create the board without a gym
+          console.error('Auto-gym creation failed, creating board without gym:', error);
+        }
       }
     }
 

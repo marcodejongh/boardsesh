@@ -49,5 +49,7 @@ CREATE INDEX "gyms_owner_idx" ON "gyms" USING btree ("owner_id") WHERE "gyms"."d
 CREATE INDEX "gyms_public_idx" ON "gyms" USING btree ("is_public") WHERE "gyms"."deleted_at" IS NULL;--> statement-breakpoint
 ALTER TABLE "user_boards" ADD CONSTRAINT "user_boards_gym_id_gyms_id_fk" FOREIGN KEY ("gym_id") REFERENCES "public"."gyms"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "user_boards_gym_idx" ON "user_boards" USING btree ("gym_id");--> statement-breakpoint
+-- PostGIS geography column and spatial index added manually because Drizzle
+-- does not natively support the PostGIS geography type. Same pattern as 0052.
 ALTER TABLE gyms ADD COLUMN IF NOT EXISTS location geography(Point, 4326);--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS gyms_location_idx ON gyms USING GIST (location) WHERE deleted_at IS NULL AND is_public = true;

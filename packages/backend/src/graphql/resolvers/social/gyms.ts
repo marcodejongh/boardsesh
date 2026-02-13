@@ -23,8 +23,9 @@ import {
 
 /**
  * Generate a unique slug from a gym name.
+ * Exported for reuse in board auto-gym creation.
  */
-async function generateUniqueGymSlug(name: string): Promise<string> {
+export async function generateUniqueGymSlug(name: string): Promise<string> {
   const baseSlug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -59,6 +60,31 @@ async function generateUniqueGymSlug(name: string): Promise<string> {
   }
 
   return `${baseSlug}-${uuidv4().slice(0, 8)}`;
+}
+
+/**
+ * Map a raw SQL row (snake_case columns) to the Drizzle gym schema shape.
+ * Used for PostGIS proximity queries that bypass the Drizzle query builder.
+ */
+function mapRawGymRow(row: Record<string, unknown>): typeof dbSchema.gyms.$inferSelect {
+  return {
+    id: row.id as number,
+    uuid: row.uuid as string,
+    name: row.name as string,
+    slug: (row.slug as string | null) ?? null,
+    ownerId: row.owner_id as string,
+    address: (row.address as string | null) ?? null,
+    contactEmail: (row.contact_email as string | null) ?? null,
+    contactPhone: (row.contact_phone as string | null) ?? null,
+    latitude: row.latitude != null ? Number(row.latitude) : null,
+    longitude: row.longitude != null ? Number(row.longitude) : null,
+    isPublic: row.is_public as boolean,
+    description: (row.description as string | null) ?? null,
+    imageUrl: (row.image_url as string | null) ?? null,
+    createdAt: row.created_at as Date,
+    updatedAt: row.updated_at as Date,
+    deletedAt: (row.deleted_at as Date | null) ?? null,
+  };
 }
 
 /**
@@ -358,25 +384,7 @@ export const socialGymQueries = {
       );
       const rows = (gymRows as unknown as Array<Record<string, unknown>>);
 
-      type GymRow = typeof dbSchema.gyms.$inferSelect;
-      const mappedGyms = rows.map((row) => ({
-        id: row.id as number,
-        uuid: row.uuid as string,
-        name: row.name as string,
-        slug: (row.slug as string | null) ?? null,
-        ownerId: row.owner_id as string,
-        address: (row.address as string | null) ?? null,
-        contactEmail: (row.contact_email as string | null) ?? null,
-        contactPhone: (row.contact_phone as string | null) ?? null,
-        latitude: row.latitude != null ? Number(row.latitude) : null,
-        longitude: row.longitude != null ? Number(row.longitude) : null,
-        isPublic: row.is_public as boolean,
-        description: (row.description as string | null) ?? null,
-        imageUrl: (row.image_url as string | null) ?? null,
-        createdAt: row.created_at as Date,
-        updatedAt: row.updated_at as Date,
-        deletedAt: (row.deleted_at as Date | null) ?? null,
-      }) as GymRow);
+      const mappedGyms = rows.map(mapRawGymRow);
 
       const enrichedGyms = await Promise.all(
         mappedGyms.map((g) => enrichGym(g, ctx.isAuthenticated ? ctx.userId : undefined)),
