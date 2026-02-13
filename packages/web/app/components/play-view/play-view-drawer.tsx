@@ -210,11 +210,12 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   }, [isOpen, setActiveDrawer]);
 
   const handleClose = useCallback(() => {
+    if (isActionsOpen || isQueueOpen) return;
     setActiveDrawer('none');
     if (window.location.hash === '#playing') {
       window.history.back();
     }
-  }, [setActiveDrawer]);
+  }, [setActiveDrawer, isActionsOpen, isQueueOpen]);
 
   // Card-swipe navigation
   const nextItem = getNextClimbQueueItem();
