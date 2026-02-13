@@ -26,6 +26,10 @@ export type CreateSessionInput = {
   longitude: number;
   name?: string;
   discoverable: boolean;
+  goal?: string;
+  isPermanent?: boolean;
+  boardIds?: number[];
+  color?: string;
 };
 
 /**

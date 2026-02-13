@@ -181,6 +181,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
     startSession,
     joinSession,
     endSession,
+    sessionGoal,
   } = useQueueContext();
   const { status: authStatus } = useSession();
   const searchParams = useSearchParams();
@@ -311,6 +312,24 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
           Leave
         </MuiButton>
       </Box>
+
+      {sessionGoal && (
+        <Box
+          sx={{
+            padding: '8px 12px',
+            background: 'var(--neutral-50)',
+            borderRadius: themeTokens.borderRadius.md,
+            border: '1px solid var(--neutral-200)',
+          }}
+        >
+          <Typography variant="caption" color="text.secondary" fontWeight={600}>
+            Goal
+          </Typography>
+          <Typography variant="body2">
+            {sessionGoal}
+          </Typography>
+        </Box>
+      )}
 
       {users && users.length > 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>

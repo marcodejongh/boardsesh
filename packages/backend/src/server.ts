@@ -4,8 +4,9 @@ import { pubsub } from './pubsub/index';
 import { roomManager } from './services/room-manager';
 import { redisClientManager } from './redis/client';
 import { eventBroker, NotificationWorker } from './events/index';
-import { sql } from 'drizzle-orm';
+import { sql, eq, and, lt, isNull } from 'drizzle-orm';
 import { db } from './db/client';
+import { sessions } from './db/schema';
 import { initCors, applyCorsHeaders } from './handlers/cors';
 import { handleHealthCheck } from './handlers/health';
 import { handleSessionJoin } from './handlers/join';
@@ -284,6 +285,40 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     }
   }, 120000); // 2 minutes
   intervals.push(ttlRefreshInterval);
+
+  // Periodic auto-end for stale inactive sessions (every 5 minutes)
+  const SESSION_AUTO_END_MINUTES = parseInt(process.env.SESSION_AUTO_END_MINUTES || '30', 10);
+
+  const autoEndInterval = setInterval(async () => {
+    try {
+      const threshold = new Date(Date.now() - SESSION_AUTO_END_MINUTES * 60 * 1000);
+      const stale = await db
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.status, 'inactive'),
+            eq(sessions.isPermanent, false),
+            lt(sessions.lastActivity, threshold),
+            isNull(sessions.endedAt)
+          )
+        )
+        .limit(50);
+
+      if (stale.length > 0) {
+        console.log(`[Server] Auto-ending ${stale.length} stale sessions (inactive > ${SESSION_AUTO_END_MINUTES}min)`);
+      }
+
+      for (const row of stale) {
+        await roomManager.endSession(row.id).catch((err) =>
+          console.error(`[Server] Auto-end failed for ${row.id}:`, err)
+        );
+      }
+    } catch (error) {
+      console.error('[Server] Error in session auto-end job:', error);
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+  intervals.push(autoEndInterval);
 
   return { wss, httpServer };
 }

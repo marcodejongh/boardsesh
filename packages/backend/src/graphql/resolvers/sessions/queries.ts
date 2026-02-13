@@ -1,8 +1,9 @@
 import type { ConnectionContext, EventsReplayResponse } from '@boardsesh/shared-schema';
 import { roomManager, type DiscoverableSession } from '../../../services/room-manager';
 import { pubsub } from '../../../pubsub/index';
-import { validateInput, requireSessionMember } from '../shared/helpers';
+import { validateInput, requireSessionMember, requireAuthenticated } from '../shared/helpers';
 import { SessionIdSchema, LatitudeSchema, LongitudeSchema, RadiusMetersSchema } from '../../../validation/schemas';
+import { generateSessionSummary } from './session-summary';
 
 export const sessionQueries = {
   /**
@@ -27,6 +28,12 @@ export const sessionQueries = {
       // These need connection context, but for Query we return defaults
       isLeader: false,
       clientId: '',
+      goal: sessionInfo?.goal || null,
+      isPublic: sessionInfo?.isPublic ?? true,
+      startedAt: sessionInfo?.startedAt?.toISOString() || null,
+      endedAt: sessionInfo?.endedAt?.toISOString() || null,
+      isPermanent: sessionInfo?.isPermanent ?? false,
+      color: sessionInfo?.color || null,
     };
   },
 
@@ -99,6 +106,20 @@ export const sessionQueries = {
       participantCount: roomManager.getSessionClients(s.id).length,
       distance: 0, // Not applicable for own sessions
       isActive: true, // User's own sessions are always considered active
+      goal: s.goal || null,
+      isPublic: s.isPublic,
+      isPermanent: s.isPermanent,
+      color: s.color || null,
     }));
+  },
+
+  /**
+   * Get a session summary with stats, grade distribution, and participants.
+   * Available for ended sessions or active sessions with ticks.
+   */
+  sessionSummary: async (_: unknown, { sessionId }: { sessionId: string }, ctx: ConnectionContext) => {
+    requireAuthenticated(ctx);
+    validateInput(SessionIdSchema, sessionId, 'sessionId');
+    return generateSessionSummary(sessionId);
   },
 };

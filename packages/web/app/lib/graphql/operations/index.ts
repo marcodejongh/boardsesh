@@ -9,3 +9,4 @@ export * from './gyms';
 export * from './notifications';
 export * from './activity-feed';
 export * from './new-climb-feed';
+export * from './sessions';

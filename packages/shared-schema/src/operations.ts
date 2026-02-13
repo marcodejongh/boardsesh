@@ -49,6 +49,12 @@ export const JOIN_SESSION = `
       boardPath
       clientId
       isLeader
+      goal
+      isPublic
+      startedAt
+      endedAt
+      isPermanent
+      color
       users {
         id
         username
@@ -72,6 +78,36 @@ export const JOIN_SESSION = `
 export const LEAVE_SESSION = `
   mutation LeaveSession {
     leaveSession
+  }
+`;
+
+export const END_SESSION = `
+  mutation EndSession($sessionId: ID!) {
+    endSession(sessionId: $sessionId) {
+      sessionId
+      totalSends
+      totalAttempts
+      gradeDistribution {
+        grade
+        count
+      }
+      hardestClimb {
+        climbUuid
+        climbName
+        grade
+      }
+      participants {
+        userId
+        displayName
+        avatarUrl
+        sends
+        attempts
+      }
+      startedAt
+      endedAt
+      durationMinutes
+      goal
+    }
   }
 `;
 
@@ -140,6 +176,12 @@ export const CREATE_SESSION = `
       boardPath
       clientId
       isLeader
+      goal
+      isPublic
+      startedAt
+      endedAt
+      isPermanent
+      color
       users {
         id
         username

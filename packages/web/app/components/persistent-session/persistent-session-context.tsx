@@ -80,6 +80,12 @@ export interface Session {
   queueState: QueueState;
   isLeader: boolean;
   clientId: string;
+  goal?: string | null;
+  isPublic?: boolean;
+  startedAt?: string | null;
+  endedAt?: string | null;
+  isPermanent?: boolean;
+  color?: string | null;
 }
 
 // Active session info stored at root level

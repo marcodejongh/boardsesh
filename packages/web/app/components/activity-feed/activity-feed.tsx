@@ -21,6 +21,7 @@ import type { ActivityFeedItem, SortMode, TimePeriod } from '@boardsesh/shared-s
 import FeedItemAscent from './feed-item-ascent';
 import FeedItemNewClimb from './feed-item-new-climb';
 import FeedItemComment from './feed-item-comment';
+import SessionSummaryFeedItem from './session-summary-feed-item';
 
 interface ActivityFeedProps {
   isAuthenticated: boolean;
@@ -40,6 +41,8 @@ function renderFeedItem(item: ActivityFeedItem) {
       return <FeedItemNewClimb key={item.id} item={item} />;
     case 'comment':
       return <FeedItemComment key={item.id} item={item} />;
+    case 'session_summary':
+      return <SessionSummaryFeedItem key={item.id} item={item} />;
     default:
       return <FeedItemAscent key={item.id} item={item} />;
   }
