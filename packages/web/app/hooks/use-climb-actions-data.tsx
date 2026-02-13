@@ -12,12 +12,13 @@ import {
   type ToggleFavoriteMutationResponse,
 } from '@/app/lib/graphql/operations/favorites';
 import {
-  GET_USER_PLAYLISTS,
+  GET_ALL_USER_PLAYLISTS,
   GET_PLAYLISTS_FOR_CLIMB,
   ADD_CLIMB_TO_PLAYLIST,
   REMOVE_CLIMB_FROM_PLAYLIST,
   CREATE_PLAYLIST,
-  type GetUserPlaylistsQueryResponse,
+  type GetAllUserPlaylistsQueryResponse,
+  type GetAllUserPlaylistsInput,
   type GetPlaylistsForClimbQueryResponse,
   type AddClimbToPlaylistMutationResponse,
   type RemoveClimbFromPlaylistMutationResponse,
@@ -70,7 +71,7 @@ export function useClimbActionsData({
         throw new Error(`Failed to fetch favorites: ${errorMessage}`);
       }
     },
-    enabled: isAuthenticated && !isAuthLoading && sortedClimbUuids.length > 0,
+    enabled: isAuthenticated && !isAuthLoading && sortedClimbUuids.length > 0 && !!boardName,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -137,18 +138,18 @@ export function useClimbActionsData({
   );
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
 
-  // Fetch user's playlists
+  // Fetch user's playlists (all boards)
   useEffect(() => {
-    if (!token || !isAuthenticated || boardName === 'moonboard') return;
+    if (!token || !isAuthenticated) return;
 
     const fetchPlaylists = async () => {
       try {
         setPlaylistsLoading(true);
         const client = createGraphQLHttpClient(token);
-        const response = await client.request<GetUserPlaylistsQueryResponse>(GET_USER_PLAYLISTS, {
-          input: { boardType: boardName, layoutId },
+        const response = await client.request<GetAllUserPlaylistsQueryResponse>(GET_ALL_USER_PLAYLISTS, {
+          input: {},
         });
-        setPlaylists(response.userPlaylists);
+        setPlaylists(response.allUserPlaylists);
       } catch (error) {
         console.error('Failed to fetch playlists:', error);
         setPlaylists([]);
@@ -158,7 +159,7 @@ export function useClimbActionsData({
     };
 
     fetchPlaylists();
-  }, [token, isAuthenticated, boardName, layoutId]);
+  }, [token, isAuthenticated]);
 
   // Fetch playlist memberships for visible climbs
   const climbUuidsKey = useMemo(() => sortedClimbUuids.join(','), [sortedClimbUuids]);
@@ -183,7 +184,7 @@ export function useClimbActionsData({
       return memberships;
     },
     enabled:
-      isAuthenticated && !isAuthLoading && sortedClimbUuids.length > 0 && boardName !== 'moonboard',
+      isAuthenticated && !isAuthLoading && sortedClimbUuids.length > 0 && !!boardName && layoutId > 0 && boardName !== 'moonboard',
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -262,16 +263,16 @@ export function useClimbActionsData({
     try {
       setPlaylistsLoading(true);
       const client = createGraphQLHttpClient(token);
-      const response = await client.request<GetUserPlaylistsQueryResponse>(GET_USER_PLAYLISTS, {
-        input: { boardType: boardName, layoutId },
+      const response = await client.request<GetAllUserPlaylistsQueryResponse>(GET_ALL_USER_PLAYLISTS, {
+        input: {},
       });
-      setPlaylists(response.userPlaylists);
+      setPlaylists(response.allUserPlaylists);
     } catch (error) {
       console.error('Failed to refresh playlists:', error);
     } finally {
       setPlaylistsLoading(false);
     }
-  }, [token, boardName, layoutId]);
+  }, [token]);
 
   return {
     favoritesProviderProps: {

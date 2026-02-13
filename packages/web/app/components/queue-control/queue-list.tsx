@@ -19,7 +19,7 @@ import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { themeTokens } from '@/app/theme/theme-config';
 import { SUGGESTIONS_THRESHOLD } from '../board-page/constants';
-import { useBoardProvider } from '../board-provider/board-provider-context';
+import { useOptionalBoardProvider } from '../board-provider/board-provider-context';
 import { LogAscentDrawer } from '../logbook/log-ascent-drawer';
 import AuthModal from '../auth/auth-modal';
 import styles from './queue-list.module.css';
@@ -55,7 +55,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
     removeFromQueue,
   } = useQueueContext();
 
-  const { isAuthenticated } = useBoardProvider();
+  const isAuthenticated = useOptionalBoardProvider()?.isAuthenticated ?? false;
 
   // Tick drawer state
   const [tickDrawerVisible, setTickDrawerVisible] = useState(false);

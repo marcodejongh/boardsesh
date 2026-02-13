@@ -28,7 +28,7 @@ import { useSwipeActions } from '@/app/hooks/use-swipe-actions';
 import { ClimbQueueItem } from './types';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
-import { useBoardProvider } from '../board-provider/board-provider-context';
+import { useOptionalBoardProvider } from '../board-provider/board-provider-context';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useColorMode } from '@/app/hooks/use-color-mode';
@@ -53,7 +53,9 @@ type QueueListItemProps = {
 };
 
 export const AscentStatus = ({ climbUuid, fontSize }: { climbUuid: ClimbUuid; fontSize?: number }) => {
-  const { logbook, boardName } = useBoardProvider();
+  const boardProvider = useOptionalBoardProvider();
+  const logbook = boardProvider?.logbook ?? [];
+  const boardName = boardProvider?.boardName ?? 'kilter';
 
   const ascentsForClimb = useMemo(
     () => logbook.filter((ascent) => ascent.climb_uuid === climbUuid),
