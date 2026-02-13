@@ -14,6 +14,8 @@ export type ResolvedBoard = {
   isPublic: boolean;
   isOwned: boolean;
   ownerId: string;
+  angle: number;
+  isAngleAdjustable: boolean;
 };
 
 /**
@@ -49,6 +51,8 @@ export const resolveBoardBySlug = cache(async (slug: string): Promise<ResolvedBo
         locationName
         isPublic
         isOwned
+        angle
+        isAngleAdjustable
       }
     }
   `;

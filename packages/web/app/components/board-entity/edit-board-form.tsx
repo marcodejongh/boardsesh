@@ -10,6 +10,8 @@ import {
   type UpdateBoardMutationResponse,
 } from '@/app/lib/graphql/operations';
 import type { UserBoard } from '@boardsesh/shared-schema';
+import type { BoardName } from '@/app/lib/types';
+import { ANGLES } from '@/app/lib/board-data';
 import BoardForm from './board-form';
 
 interface EditBoardFormProps {
@@ -22,8 +24,10 @@ export default function EditBoardForm({ board, onSuccess, onCancel }: EditBoardF
   const { token } = useWsAuthToken();
   const { showMessage } = useSnackbar();
 
+  const availableAngles = ANGLES[board.boardType as BoardName] ?? [];
+
   const handleSubmit = useCallback(
-    async (values: { name: string; slug?: string; description: string; locationName: string; isPublic: boolean; isOwned: boolean }) => {
+    async (values: { name: string; slug?: string; description: string; locationName: string; isPublic: boolean; isOwned: boolean; angle?: number; isAngleAdjustable?: boolean }) => {
       if (!token) {
         showMessage('You must be signed in', 'error');
         return;
@@ -47,6 +51,8 @@ export default function EditBoardForm({ board, onSuccess, onCancel }: EditBoardF
               locationName: values.locationName || undefined,
               isPublic: values.isPublic,
               isOwned: values.isOwned,
+              angle: values.angle,
+              isAngleAdjustable: values.isAngleAdjustable,
             },
           },
         );
@@ -72,8 +78,11 @@ export default function EditBoardForm({ board, onSuccess, onCancel }: EditBoardF
         locationName: board.locationName ?? '',
         isPublic: board.isPublic,
         isOwned: board.isOwned,
+        angle: board.angle,
+        isAngleAdjustable: board.isAngleAdjustable,
       }}
       showSlugField
+      availableAngles={availableAngles}
       onSubmit={handleSubmit}
       onCancel={onCancel}
     />

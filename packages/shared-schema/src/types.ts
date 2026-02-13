@@ -307,6 +307,8 @@ export type UserBoard = {
   longitude?: number | null;
   isPublic: boolean;
   isOwned: boolean;
+  angle: number;
+  isAngleAdjustable: boolean;
   createdAt: string;
   layoutName?: string | null;
   sizeName?: string | null;
@@ -361,6 +363,8 @@ export type CreateBoardInput = {
   isPublic?: boolean;
   isOwned?: boolean;
   gymUuid?: string;
+  angle?: number;
+  isAngleAdjustable?: boolean;
 };
 
 export type UpdateBoardInput = {
@@ -373,6 +377,8 @@ export type UpdateBoardInput = {
   longitude?: number;
   isPublic?: boolean;
   isOwned?: boolean;
+  angle?: number;
+  isAngleAdjustable?: boolean;
 };
 
 export type BoardLeaderboardInput = {

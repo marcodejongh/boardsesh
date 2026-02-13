@@ -788,6 +788,8 @@ export const CreateBoardInputSchema = z.object({
   isPublic: z.boolean().optional(),
   isOwned: z.boolean().optional(),
   gymUuid: UUIDSchema.optional(),
+  angle: z.number().int().min(0).max(70).optional(),
+  isAngleAdjustable: z.boolean().optional(),
 });
 
 /**
@@ -803,6 +805,8 @@ export const UpdateBoardInputSchema = z.object({
   longitude: LongitudeSchema.optional().nullable(),
   isPublic: z.boolean().optional(),
   isOwned: z.boolean().optional(),
+  angle: z.number().int().min(0).max(70).optional(),
+  isAngleAdjustable: z.boolean().optional(),
 });
 
 /**

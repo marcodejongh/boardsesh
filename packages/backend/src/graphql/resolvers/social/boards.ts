@@ -192,6 +192,8 @@ async function enrichBoard(
     longitude: board.longitude,
     isPublic: board.isPublic,
     isOwned: board.isOwned,
+    angle: Number(board.angle),
+    isAngleAdjustable: board.isAngleAdjustable,
     createdAt: board.createdAt.toISOString(),
     // Computed name fields (TODO: resolve from board-specific layout/size/set tables if needed)
     layoutName: null,
@@ -385,6 +387,8 @@ export const socialBoardQueries = {
         longitude: row.longitude != null ? Number(row.longitude) : null,
         isPublic: row.is_public as boolean,
         isOwned: row.is_owned as boolean,
+        angle: row.angle != null ? Number(row.angle) : 40,
+        isAngleAdjustable: row.is_angle_adjustable as boolean ?? true,
         createdAt: row.created_at as Date,
         updatedAt: row.updated_at as Date,
         deletedAt: (row.deleted_at as Date | null) ?? null,
@@ -754,6 +758,8 @@ export const socialBoardMutations = {
                 longitude: validatedInput.longitude ?? null,
                 isPublic: validatedInput.isPublic ?? true,
                 isOwned: validatedInput.isOwned ?? true,
+                angle: validatedInput.angle ?? 40,
+                isAngleAdjustable: validatedInput.isAngleAdjustable ?? true,
                 gymId: newGym.id,
               })
               .returning();
@@ -792,6 +798,8 @@ export const socialBoardMutations = {
         longitude: validatedInput.longitude ?? null,
         isPublic: validatedInput.isPublic ?? true,
         isOwned: validatedInput.isOwned ?? true,
+        angle: validatedInput.angle ?? 40,
+        isAngleAdjustable: validatedInput.isAngleAdjustable ?? true,
         gymId,
       })
       .returning();
@@ -847,6 +855,8 @@ export const socialBoardMutations = {
     if (validatedInput.longitude !== undefined) updateValues.longitude = validatedInput.longitude;
     if (validatedInput.isPublic !== undefined) updateValues.isPublic = validatedInput.isPublic;
     if (validatedInput.isOwned !== undefined) updateValues.isOwned = validatedInput.isOwned;
+    if (validatedInput.angle !== undefined) updateValues.angle = validatedInput.angle;
+    if (validatedInput.isAngleAdjustable !== undefined) updateValues.isAngleAdjustable = validatedInput.isAngleAdjustable;
 
     // Handle slug update
     if (validatedInput.slug !== undefined) {
