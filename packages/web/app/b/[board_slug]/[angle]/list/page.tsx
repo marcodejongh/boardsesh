@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { SearchRequestPagination, BoardDetails } from '@/app/lib/types';
 import { parsedRouteSearchParamsToSearchParams } from '@/app/lib/url-utils';
 import { resolveBoardBySlug, boardToRouteParams } from '@/app/lib/board-slug-utils';
-import ClimbsList from '@/app/components/board-page/climbs-list';
+import BoardPageClimbsList from '@/app/components/board-page/board-page-climbs-list';
 import { cachedSearchClimbs } from '@/app/lib/graphql/server-cached-client';
 import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
@@ -94,5 +94,5 @@ export default async function BoardSlugListPage(props: BoardSlugListPageProps) {
     };
   }
 
-  return <ClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={searchResponse.searchClimbs.climbs} />;
+  return <BoardPageClimbsList {...parsedParams} boardDetails={boardDetails} initialClimbs={searchResponse.searchClimbs.climbs} />;
 }

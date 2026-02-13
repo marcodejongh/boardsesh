@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import MuiAlert from '@mui/material/Alert';
 import MuiButton from '@mui/material/Button';
+import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
@@ -18,14 +20,18 @@ import {
   EditOutlined,
   DeleteOutlined,
 } from '@mui/icons-material';
-import { BoardDetails } from '@/app/lib/types';
-import { executeGraphQL } from '@/app/lib/graphql/client';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { Climb, BoardDetails } from '@/app/lib/types';
+import { executeGraphQL, createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_PLAYLIST,
+  GET_PLAYLIST_CLIMBS,
   DELETE_PLAYLIST,
   UPDATE_PLAYLIST_LAST_ACCESSED,
   GetPlaylistQueryResponse,
   GetPlaylistQueryVariables,
+  GetPlaylistClimbsQueryResponse,
+  type GetPlaylistClimbsQueryVariables,
   Playlist,
   UpdatePlaylistLastAccessedMutationVariables,
   UpdatePlaylistLastAccessedMutationResponse,
@@ -34,14 +40,19 @@ import {
 } from '@/app/lib/graphql/operations/playlists';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
+import { EmptyState } from '@/app/components/ui/empty-state';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
+import { FavoritesProvider } from '@/app/components/climb-actions/favorites-batch-context';
+import { PlaylistsProvider } from '@/app/components/climb-actions/playlists-batch-context';
+import { ClimbCardSkeleton } from '@/app/components/board-page/board-page-skeleton';
+import ClimbsList from '@/app/components/board-page/climbs-list';
 import { getBoardDetailsForPlaylist, getDefaultAngleForBoard } from '@/app/lib/board-config-for-playlist';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useRouter } from 'next/navigation';
 import BackButton from '@/app/components/back-button';
 import { PlaylistGeneratorDrawer } from '@/app/components/playlist-generator';
 import PlaylistEditDrawer from '@/app/components/library/playlist-edit-drawer';
-import PlaylistClimbsList from './playlist-climbs-list';
 import CommentSection from '@/app/components/social/comment-section';
 import styles from '@/app/components/library/playlist-view.module.css';
 
@@ -61,6 +72,18 @@ const PLAYLIST_COLORS = [
   themeTokens.colors.amber,
 ];
 
+const skeletonCardBoxSx = { width: { xs: '100%', lg: '50%' } };
+
+const ClimbsListSkeleton = ({ aspectRatio }: { aspectRatio: number }) => (
+  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+    {Array.from({ length: 6 }, (_, i) => (
+      <Box sx={skeletonCardBoxSx} key={i}>
+        <ClimbCardSkeleton aspectRatio={aspectRatio} />
+      </Box>
+    ))}
+  </Box>
+);
+
 type PlaylistDetailContentProps = {
   playlistUuid: string;
 };
@@ -77,6 +100,7 @@ export default function PlaylistDetailContent({
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [listRefreshKey, setListRefreshKey] = useState(0);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [selectedClimbUuid, setSelectedClimbUuid] = useState<string | null>(null);
   const lastAccessedUpdatedRef = useRef(false);
   const { token, isLoading: tokenLoading } = useWsAuthToken();
 
@@ -136,6 +160,98 @@ export default function PlaylistDetailContent({
       });
     }
   }, [playlist, token, playlistUuid]);
+
+  // === Playlist climbs data fetching ===
+
+  const {
+    data: climbsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetching: isFetchingClimbs,
+    isFetchingNextPage,
+    isLoading: isClimbsLoading,
+    error: climbsError,
+  } = useInfiniteQuery({
+    queryKey: [
+      'playlistClimbs',
+      playlistUuid,
+      boardDetails?.board_name,
+      boardDetails?.layout_id,
+      boardDetails?.size_id,
+      angle,
+      listRefreshKey,
+    ],
+    queryFn: async ({ pageParam = 0 }) => {
+      if (!boardDetails) throw new Error('Board details not available');
+      const client = createGraphQLHttpClient(token);
+      const response = await client.request<GetPlaylistClimbsQueryResponse>(
+        GET_PLAYLIST_CLIMBS,
+        {
+          input: {
+            playlistId: playlistUuid,
+            boardName: boardDetails.board_name,
+            layoutId: boardDetails.layout_id,
+            sizeId: boardDetails.size_id,
+            setIds: boardDetails.set_ids.join(','),
+            angle: angle,
+            page: pageParam,
+            pageSize: 20,
+          },
+        } satisfies GetPlaylistClimbsQueryVariables,
+      );
+      return response.playlistClimbs;
+    },
+    enabled: !tokenLoading && !!token && !!boardDetails,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.length;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const allClimbs: Climb[] = climbsData?.pages.flatMap((page) => page.climbs as Climb[]) ?? [];
+
+  // Filter out cross-layout climbs
+  const { visibleClimbs, hiddenCount } = useMemo(() => {
+    const visible: Climb[] = [];
+    let hidden = 0;
+
+    for (const climb of allClimbs) {
+      const isCrossLayout = climb.layoutId != null && climb.layoutId !== boardDetails?.layout_id;
+      if (isCrossLayout) {
+        hidden++;
+      } else {
+        visible.push({ ...climb, angle });
+      }
+    }
+
+    return { visibleClimbs: visible, hiddenCount: hidden };
+  }, [allClimbs, boardDetails?.layout_id, angle]);
+
+  // Climb UUIDs for favorites/playlists provider
+  const climbUuids = useMemo(
+    () => visibleClimbs.map((climb) => climb.uuid),
+    [visibleClimbs],
+  );
+
+  // Favorites and playlists data fetching
+  const { favoritesProviderProps, playlistsProviderProps } = useClimbActionsData({
+    boardName: boardDetails?.board_name ?? '',
+    layoutId: boardDetails?.layout_id ?? 0,
+    angle,
+    climbUuids,
+  });
+
+  const handleClimbSelect = useCallback((climb: Climb) => {
+    setSelectedClimbUuid(climb.uuid);
+  }, []);
+
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleEditSuccess = useCallback((updatedPlaylist: Playlist) => {
     setPlaylist(updatedPlaylist);
@@ -198,6 +314,78 @@ export default function PlaylistDetailContent({
       </div>
     );
   }
+
+  // Render the climbs section content
+  const renderClimbsSection = () => {
+    if (!boardDetails) {
+      return (
+        <div className={styles.errorContainer}>
+          <Typography variant="body2" color="text.secondary">
+            Unable to load climb previews for this board configuration.
+          </Typography>
+        </div>
+      );
+    }
+
+    const aspectRatio = boardDetails.boardWidth / boardDetails.boardHeight;
+
+    if ((isClimbsLoading || tokenLoading) && allClimbs.length === 0) {
+      return (
+        <div className={styles.climbsSection}>
+          <ClimbsListSkeleton aspectRatio={aspectRatio} />
+        </div>
+      );
+    }
+
+    if (climbsError) {
+      return (
+        <div className={styles.climbsSection}>
+          <EmptyState description="Failed to load climbs" />
+        </div>
+      );
+    }
+
+    if (visibleClimbs.length === 0 && hiddenCount === 0 && !isFetchingClimbs) {
+      return (
+        <div className={styles.climbsSection}>
+          <EmptyState description="No climbs in this playlist yet" />
+        </div>
+      );
+    }
+
+    // Build header with hidden-count alert and all-hidden empty state
+    const climbsHeader = (
+      <>
+        {hiddenCount > 0 && (
+          <MuiAlert severity="info" className={styles.hiddenClimbsNotice}>
+            {`Not showing ${hiddenCount} ${hiddenCount === 1 ? 'climb' : 'climbs'} from other layouts`}
+          </MuiAlert>
+        )}
+        {visibleClimbs.length === 0 && hiddenCount > 0 && !isFetchingClimbs && (
+          <EmptyState description="All climbs in this playlist are from other layouts" />
+        )}
+      </>
+    );
+
+    return (
+      <div className={styles.climbsSection}>
+        <FavoritesProvider {...favoritesProviderProps}>
+          <PlaylistsProvider {...playlistsProviderProps}>
+            <ClimbsList
+              boardDetails={boardDetails}
+              climbs={visibleClimbs}
+              selectedClimbUuid={selectedClimbUuid}
+              isFetching={isFetchingClimbs}
+              hasMore={hasNextPage ?? false}
+              onClimbSelect={handleClimbSelect}
+              onLoadMore={handleLoadMore}
+              header={climbsHeader}
+            />
+          </PlaylistsProvider>
+        </FavoritesProvider>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -285,22 +473,7 @@ export default function PlaylistDetailContent({
         </div>
 
         {/* Climbs List */}
-        {boardDetails && (
-          <PlaylistClimbsList
-            key={listRefreshKey}
-            playlistUuid={playlistUuid}
-            boardDetails={boardDetails}
-            angle={angle}
-          />
-        )}
-
-        {!boardDetails && (
-          <div className={styles.errorContainer}>
-            <Typography variant="body2" color="text.secondary">
-              Unable to load climb previews for this board configuration.
-            </Typography>
-          </div>
-        )}
+        {renderClimbsSection()}
 
         {/* Discussion */}
         {playlist.isPublic && (
