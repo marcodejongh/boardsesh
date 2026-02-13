@@ -117,6 +117,8 @@ export default function SessionCreationForm({
                 '& .MuiChip-label': { display: 'none' },
                 cursor: 'pointer',
                 '&:hover': { bgcolor: c },
+                '&:focus': { bgcolor: c },
+                '&:active': { bgcolor: c },
               }}
               label=""
             />

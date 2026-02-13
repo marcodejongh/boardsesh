@@ -25,7 +25,7 @@ import { themeTokens } from '@/app/theme/theme-config';
 interface StartSeshDrawerProps {
   open: boolean;
   onClose: () => void;
-  boardConfigs: BoardConfigData;
+  boardConfigs?: BoardConfigData;
 }
 
 export default function StartSeshDrawer({ open, onClose, boardConfigs }: StartSeshDrawerProps) {
@@ -33,7 +33,7 @@ export default function StartSeshDrawer({ open, onClose, boardConfigs }: StartSe
   const router = useRouter();
   const { showMessage } = useSnackbar();
   const { createSession, isCreating } = useCreateSession();
-  const { boards, isLoading: isLoadingBoards } = useMyBoards(open);
+  const { boards, isLoading: isLoadingBoards, error: boardsError } = useMyBoards(open);
 
   const [selectedBoard, setSelectedBoard] = useState<(typeof boards)[number] | null>(null);
   const [selectedCustomPath, setSelectedCustomPath] = useState<string | null>(null);
@@ -150,9 +150,9 @@ export default function StartSeshDrawer({ open, onClose, boardConfigs }: StartSe
           ))
         )}
       </Box>
-      {selectedBoard && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          {selectedBoard.name}
+      {boardsError && (
+        <Typography variant="body2" color="error" sx={{ mt: 0.5 }}>
+          {boardsError}
         </Typography>
       )}
       {selectedCustomPath && (
@@ -208,12 +208,14 @@ export default function StartSeshDrawer({ open, onClose, boardConfigs }: StartSe
         )}
       </SwipeableDrawer>
 
-      <BoardSelectorDrawer
-        open={showBoardDrawer}
-        onClose={() => setShowBoardDrawer(false)}
-        boardConfigs={boardConfigs}
-        onBoardSelected={handleCustomSelect}
-      />
+      {boardConfigs && (
+        <BoardSelectorDrawer
+          open={showBoardDrawer}
+          onClose={() => setShowBoardDrawer(false)}
+          boardConfigs={boardConfigs}
+          onBoardSelected={handleCustomSelect}
+        />
+      )}
 
       <AuthModal
         open={showAuthModal}
