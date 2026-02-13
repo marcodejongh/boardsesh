@@ -123,7 +123,7 @@ export const favoriteClimbsQuery = {
       quality_average: result.quality_average?.toString() || '0',
       stars: Math.round((Number(result.quality_average) || 0) * 5),
       difficulty_error: result.difficulty_error?.toString() || '0',
-      benchmark_difficulty: result.benchmark_difficulty?.toString() || null,
+      benchmark_difficulty: result.benchmark_difficulty && result.benchmark_difficulty > 0 ? result.benchmark_difficulty.toString() : null,
       litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', boardName)[0],
     }));
 
