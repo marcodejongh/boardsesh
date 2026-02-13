@@ -228,6 +228,7 @@ export default function HomePageContent({
       <StartSeshDrawer
         open={startSeshOpen}
         onClose={() => setStartSeshOpen(false)}
+        boardConfigs={boardConfigs}
       />
     </Box>
   );

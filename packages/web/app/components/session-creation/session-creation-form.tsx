@@ -38,7 +38,7 @@ export default function SessionCreationForm({
   onSubmit,
   isGymAdmin = false,
   isSubmitting = false,
-  submitLabel = 'Start Sesh',
+  submitLabel = 'Sesh',
   headerContent,
 }: SessionCreationFormProps) {
   const [name, setName] = useState('');
@@ -113,9 +113,10 @@ export default function SessionCreationForm({
                 height: 32,
                 borderRadius: '50%',
                 border: color === c ? '3px solid' : '2px solid transparent',
-                borderColor: color === c ? 'text.primary' : 'transparent',
+                borderColor: color === c ? 'common.white' : 'transparent',
                 '& .MuiChip-label': { display: 'none' },
                 cursor: 'pointer',
+                '&:hover': { bgcolor: c },
               }}
               label=""
             />

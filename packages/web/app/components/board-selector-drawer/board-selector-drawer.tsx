@@ -185,9 +185,13 @@ export default function BoardSelectorDrawer({
         setNames,
         angle,
       });
-      onBoardSelected?.(url);
-      router.push(url);
-      onClose();
+      if (onBoardSelected) {
+        onBoardSelected(url);
+        onClose();
+      } else {
+        router.push(url);
+        onClose();
+      }
     },
     [router, onClose, onBoardSelected],
   );
@@ -302,8 +306,14 @@ export default function BoardSelectorDrawer({
                     key={board.uuid}
                     board={board}
                     onSelect={() => {
-                      router.push(constructBoardSlugListUrl(board.slug, 40));
-                      onClose();
+                      const url = constructBoardSlugListUrl(board.slug, 40);
+                      if (onBoardSelected) {
+                        onBoardSelected(url);
+                        onClose();
+                      } else {
+                        router.push(url);
+                        onClose();
+                      }
                     }}
                   />
                 ))}
