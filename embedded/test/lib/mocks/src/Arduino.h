@@ -52,9 +52,10 @@ inline typename std::common_type<T, U>::type max(T a, U b) {
 #define LOW 0
 #define HIGH 1
 
-// Time functions (mock implementations)
+// Time functions (mock implementations with controllable state)
+inline unsigned long mockMillis = 0;
 inline unsigned long millis() {
-    return 0;
+    return mockMillis;
 }
 inline unsigned long micros() {
     return 0;

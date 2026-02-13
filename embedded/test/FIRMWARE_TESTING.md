@@ -12,6 +12,8 @@ The firmware uses **PlatformIO's native test environment** with the **Unity test
 embedded/
 ├── libs/                     # Shared PlatformIO libraries
 │   ├── aurora-protocol/      # BLE protocol decoder
+│   ├── ble-proxy/            # BLE client connection to boards
+│   ├── climb-history/        # Circular buffer climb history
 │   ├── config-manager/       # NVS configuration storage
 │   ├── esp-web-server/       # HTTP configuration server
 │   ├── graphql-ws-client/    # WebSocket GraphQL client
@@ -24,15 +26,19 @@ embedded/
 └── test/                     # Unit tests
     ├── platformio.ini        # Test configuration
     ├── lib/mocks/            # Hardware mocks for native testing
-    │   ├── Arduino.h         # Arduino API mock
+    │   ├── Arduino.h         # Arduino API mock (with controllable millis)
     │   ├── ArduinoJson.h     # JSON library mock
     │   ├── FastLED.h         # FastLED mock
-    │   ├── NimBLEDevice.h    # NimBLE mock
+    │   ├── NimBLEDevice.h    # NimBLE mock (server + client)
     │   ├── Preferences.h     # NVS mock
     │   ├── WebServer.h       # WebServer mock
     │   ├── WebSocketsClient.h # WebSocket mock
     │   └── WiFi.h            # ESP32 WiFi mock
+    ├── lib/grade-colors/     # V-grade color scheme (header-only)
     ├── test_aurora_protocol/ # Aurora protocol tests
+    ├── test_ble_client/      # BLE client connection tests
+    ├── test_climb_history/   # Climb history tests
+    ├── test_grade_colors/    # Grade color mapping tests
     ├── test_log_buffer/      # Log buffer tests
     ├── test_led_controller/  # LED controller tests
     ├── test_config_manager/  # Config manager tests
@@ -310,9 +316,79 @@ HTTP server for configuration web interface.
 
 ---
 
+### 9. ble-proxy (BLE Client) :white_check_mark:
+**Location:** `libs/ble-proxy/`
+**Test File:** `test/test_ble_client/test_ble_client.cpp`
+
+BLE client connection management for connecting to Aurora climbing boards via Nordic UART Service.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Initial state | :white_check_mark: | IDLE state, not connected, empty address |
+| Successful connection | :white_check_mark: | connect() returns true, state transitions |
+| Connect failure handling | :white_check_mark: | Callback with false, DISCONNECTED state |
+| Connect guard | :white_check_mark: | Prevents duplicate connections |
+| Explicit disconnect | :white_check_mark: | Sets IDLE, clears reconnect timer |
+| BLE link loss (onDisconnect) | :white_check_mark: | Sets DISCONNECTED, nullifies characteristics |
+| Loop/reconnection | :white_check_mark: | Timer-based reconnect attempts |
+| Send data | :white_check_mark: | Fails when not connected or no RX char |
+| Address tracking | :white_check_mark: | Empty when disconnected |
+| Multiple connections | :white_check_mark: | Connect/disconnect cycles, different addresses |
+| Callback registration | :white_check_mark: | Connect and data callbacks, null safety |
+
+**Test Count:** 33 tests
+
+**Note:** Uses `NimBLEDevice.h` client-side mock. Key regression test: connect failure must call connectCallback with false.
+
+---
+
+### 10. climb-history :white_check_mark:
+**Location:** `libs/climb-history/`
+**Test File:** `test/test_climb_history/test_climb_history.cpp`
+
+Circular buffer climb history with NVS persistence for tracking recent climbs.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Add/get climbs | :white_check_mark: | addClimb, getCurrentClimb, getCount |
+| History shifting | :white_check_mark: | LIFO order, preserves grades/uuids |
+| Max capacity overflow | :white_check_mark: | Oldest entry discarded, exact fill |
+| Duplicate detection | :white_check_mark: | Same UUID updates current, not history |
+| Clear current | :white_check_mark: | Marks no current, keeps history entries |
+| Index bounds checking | :white_check_mark: | Negative, out-of-bounds, empty slots |
+| Null input handling | :white_check_mark: | Null name/uuid ignored, null grade OK |
+| String truncation | :white_check_mark: | Long name/grade/uuid truncated safely |
+| Clear all | :white_check_mark: | Removes all history and NVS data |
+| Stress testing | :white_check_mark: | Rapid add/clear cycles |
+
+**Test Count:** 43 tests
+
+**Note:** NVS persistence is exercised through addClimb() which calls save() automatically. Full deserialization round-trip tests require enhanced ArduinoJson mock support for root-level arrays.
+
+---
+
+### 11. grade-colors :white_check_mark:
+**Location:** `test/lib/grade-colors/` (header-only library)
+**Test File:** `test/test_grade_colors/test_grade_colors.cpp`
+
+V-grade color scheme mapping for climbing grade visualization on LEDs and displays.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| V-grade to color mapping | :white_check_mark: | V0-V17, out-of-range, negative |
+| Font grade to color | :white_check_mark: | 4a through 8c+, invalid inputs |
+| Combined grade format | :white_check_mark: | Extracts V-grade from combined strings |
+| Light/dark detection | :white_check_mark: | isLightColor for contrast decisions |
+| Text color selection | :white_check_mark: | Black/white based on background luminance |
+| Edge cases | :white_check_mark: | Null, empty, single char, invalid strings |
+
+**Test Count:** 43 tests
+
+---
+
 ## Testing Priority Order
 
-All 8 shared library modules now have complete test coverage:
+All 11 shared library modules now have complete test coverage:
 
 1. ~~**aurora-protocol**~~ :white_check_mark: Complete (29 tests)
 2. ~~**log-buffer**~~ :white_check_mark: Complete (31 tests)
@@ -322,8 +398,11 @@ All 8 shared library modules now have complete test coverage:
 6. ~~**graphql-ws-client**~~ :white_check_mark: Complete (25 tests)
 7. ~~**nordic-uart-ble**~~ :white_check_mark: Complete (30 tests)
 8. ~~**esp-web-server**~~ :white_check_mark: Complete (33 tests)
+9. ~~**ble-proxy**~~ :white_check_mark: Complete (33 tests)
+10. ~~**climb-history**~~ :white_check_mark: Complete (43 tests)
+11. ~~**grade-colors**~~ :white_check_mark: Complete (43 tests)
 
-**Total: 245 tests across 8 modules**
+**Total: 364 tests across 11 modules**
 
 ## CI Integration
 
