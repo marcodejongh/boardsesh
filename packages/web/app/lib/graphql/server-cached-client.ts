@@ -156,3 +156,23 @@ export async function cachedSearchClimbs<T = unknown>(
 
   return cachedFn();
 }
+
+/**
+ * Cached server-side trending feed query.
+ * Used for SSR on the home page for unauthenticated users.
+ */
+export async function cachedTrendingFeed(
+  sortBy: string = 'new',
+  boardUuid?: string,
+) {
+  const { GET_TRENDING_FEED } = await import('@/app/lib/graphql/operations/activity-feed');
+
+  const query = createCachedGraphQLQuery<{ trendingFeed: { items: import('@boardsesh/shared-schema').ActivityFeedItem[]; cursor: string | null; hasMore: boolean } }>(
+    GET_TRENDING_FEED,
+    'trending-feed',
+    300, // 5 min cache
+  );
+
+  const result = await query({ input: { sortBy, boardUuid, limit: 20 } });
+  return result.trendingFeed;
+}

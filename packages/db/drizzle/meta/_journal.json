@@ -358,6 +358,13 @@
       "when": 1770782294647,
       "tag": "0050_military_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1771027200000,
+      "tag": "0052_add_postgis_location",
+      "breakpoints": true
     }
   ]
 }

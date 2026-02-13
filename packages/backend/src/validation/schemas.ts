@@ -804,6 +804,19 @@ export const FollowBoardInputSchema = z.object({
 export const SearchBoardsInputSchema = z.object({
   query: z.string().max(200).optional(),
   boardType: BoardNameSchema.optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  radiusKm: z.number().min(0.1).max(500).optional().default(50),
+  limit: z.number().int().min(1).max(50).optional().default(20),
+  offset: z.number().int().min(0).optional().default(0),
+});
+
+/**
+ * Search playlists input validation schema
+ */
+export const SearchPlaylistsInputSchema = z.object({
+  query: z.string().min(1).max(200),
+  boardType: BoardNameSchema.optional(),
   limit: z.number().int().min(1).max(50).optional().default(20),
   offset: z.number().int().min(0).optional().default(0),
 });

@@ -310,10 +310,84 @@ export const socialBoardQueries = {
     ctx: ConnectionContext,
   ) => {
     const validatedInput = validateInput(SearchBoardsInputSchema, input, 'input');
-    const { query, boardType } = validatedInput;
+    const { query, boardType, latitude, longitude, radiusKm } = validatedInput;
     const limit = validatedInput.limit ?? 20;
     const offset = validatedInput.offset ?? 0;
+    const useProximity = latitude !== undefined && longitude !== undefined;
 
+    if (useProximity) {
+      // PostGIS proximity search path
+      const radiusMeters = (radiusKm ?? 50) * 1000;
+      const lon = Number(longitude);
+      const lat = Number(latitude);
+
+      // Escape ILIKE wildcards once for reuse in both count and main queries
+      const escapedQuery = query ? query.replace(/[%_\\]/g, '\\$&') : null;
+      const likePattern = escapedQuery ? `%${escapedQuery}%` : null;
+
+      // Build count query with proper parameterization
+      const countSql = sql`SELECT count(*)::int as count FROM user_boards WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${lon}, ${lat})::geography, ${radiusMeters})`;
+
+      if (boardType) {
+        countSql.append(sql` AND board_type = ${boardType}`);
+      }
+      if (likePattern) {
+        countSql.append(sql` AND (name ILIKE ${likePattern} OR location_name ILIKE ${likePattern})`);
+      }
+
+      const countRows = await db.execute(countSql);
+      const totalCount = Number(((countRows as unknown as Array<Record<string, unknown>>)[0])?.count || 0);
+
+      // Build the main query with distance ordering
+      const mainSql = sql`SELECT *, ST_Distance(location, ST_MakePoint(${lon}, ${lat})::geography) as distance_meters FROM user_boards WHERE is_public = true AND deleted_at IS NULL AND location IS NOT NULL AND ST_DWithin(location, ST_MakePoint(${lon}, ${lat})::geography, ${radiusMeters})`;
+
+      if (boardType) {
+        mainSql.append(sql` AND board_type = ${boardType}`);
+      }
+      if (likePattern) {
+        mainSql.append(sql` AND (name ILIKE ${likePattern} OR location_name ILIKE ${likePattern})`);
+      }
+
+      mainSql.append(sql` ORDER BY distance_meters ASC LIMIT ${limit} OFFSET ${offset}`);
+
+      const boardRows = await db.execute(mainSql);
+      const boards = (boardRows as unknown as Array<Record<string, unknown>>);
+
+      // Map raw rows to board shape expected by enrichBoard
+      type BoardRow = typeof dbSchema.userBoards.$inferSelect;
+      const mappedBoards = boards.map((row) => ({
+        id: row.id as number,
+        uuid: row.uuid as string,
+        slug: (row.slug as string) || '',
+        ownerId: row.owner_id as string,
+        boardType: row.board_type as string,
+        layoutId: row.layout_id as number,
+        sizeId: row.size_id as number,
+        setIds: row.set_ids as string,
+        name: row.name as string,
+        description: (row.description as string | null) ?? null,
+        locationName: (row.location_name as string | null) ?? null,
+        latitude: row.latitude != null ? Number(row.latitude) : null,
+        longitude: row.longitude != null ? Number(row.longitude) : null,
+        isPublic: row.is_public as boolean,
+        isOwned: row.is_owned as boolean,
+        createdAt: row.created_at as Date,
+        updatedAt: row.updated_at as Date,
+        deletedAt: (row.deleted_at as Date | null) ?? null,
+      }) as BoardRow);
+
+      const enrichedBoards = await Promise.all(
+        mappedBoards.map((b) => enrichBoard(b, ctx.isAuthenticated ? ctx.userId : undefined)),
+      );
+
+      return {
+        boards: enrichedBoards,
+        totalCount,
+        hasMore: offset + mappedBoards.length < totalCount,
+      };
+    }
+
+    // Text-only search path (no proximity)
     const conditions = [
       eq(dbSchema.userBoards.isPublic, true),
       isNull(dbSchema.userBoards.deletedAt),
@@ -599,6 +673,13 @@ export const socialBoardMutations = {
       })
       .returning();
 
+    // Populate PostGIS location column if lat/lon provided
+    if (validatedInput.latitude != null && validatedInput.longitude != null) {
+      await db.execute(
+        sql`UPDATE user_boards SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${board.id}`
+      );
+    }
+
     return enrichBoard(board, userId);
   },
 
@@ -675,6 +756,21 @@ export const socialBoardMutations = {
       .set(updateValues)
       .where(eq(dbSchema.userBoards.id, board.id))
       .returning();
+
+    // Update PostGIS location column
+    if (validatedInput.latitude !== undefined || validatedInput.longitude !== undefined) {
+      const lat = validatedInput.latitude ?? updated.latitude;
+      const lon = validatedInput.longitude ?? updated.longitude;
+      if (lat != null && lon != null) {
+        await db.execute(
+          sql`UPDATE user_boards SET location = ST_MakePoint(${lon}, ${lat})::geography WHERE id = ${updated.id}`
+        );
+      } else {
+        await db.execute(
+          sql`UPDATE user_boards SET location = NULL WHERE id = ${updated.id}`
+        );
+      }
+    }
 
     return enrichBoard(updated, userId);
   },
