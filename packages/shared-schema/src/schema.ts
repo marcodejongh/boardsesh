@@ -426,6 +426,8 @@ export const typeDefs = /* GraphQL */ `
     displayName: String
     "URL to user's avatar image"
     avatarUrl: String
+    "URL to user's Instagram profile"
+    instagramUrl: String
   }
 
   """
@@ -436,6 +438,8 @@ export const typeDefs = /* GraphQL */ `
     displayName: String
     "New avatar URL"
     avatarUrl: String
+    "New Instagram profile URL"
+    instagramUrl: String
   }
 
   """
@@ -468,6 +472,12 @@ export const typeDefs = /* GraphQL */ `
     syncedAt: String
     "Whether a valid token is stored"
     hasToken: Boolean!
+    "Sync status: active, error, expired, syncing"
+    syncStatus: String
+    "Error message if sync failed"
+    syncError: String
+    "When credentials were created (ISO 8601)"
+    createdAt: String
   }
 
   """
@@ -1991,6 +2001,8 @@ export const typeDefs = /* GraphQL */ `
     displayName: String
     "Avatar URL"
     avatarUrl: String
+    "URL to user's Instagram profile"
+    instagramUrl: String
     "Number of followers"
     followerCount: Int!
     "Number of users being followed"
@@ -2450,6 +2462,186 @@ export const typeDefs = /* GraphQL */ `
     synced: Boolean!
   }
 
+  # ============================================
+  # Beta Link Types
+  # ============================================
+
+  """
+  A beta video link for a climb.
+  """
+  type BetaLink {
+    climbUuid: String!
+    link: String!
+    foreignUsername: String
+    angle: Int
+    thumbnail: String
+    isListed: Boolean
+    createdAt: String
+  }
+
+  # ============================================
+  # Climb Stats Types
+  # ============================================
+
+  """
+  Climb statistics for a specific angle.
+  """
+  type ClimbStatsForAngle {
+    angle: Int!
+    ascensionistCount: Int!
+    qualityAverage: String
+    difficultyAverage: Float
+    displayDifficulty: Float
+    faUsername: String
+    faAt: String
+    difficulty: String
+  }
+
+  # ============================================
+  # Hold Classification Types
+  # ============================================
+
+  """
+  A user's classification of a hold on a board.
+  """
+  type HoldClassification {
+    id: ID!
+    userId: String!
+    boardType: String!
+    layoutId: Int!
+    sizeId: Int!
+    holdId: Int!
+    holdType: String
+    handRating: Int
+    footRating: Int
+    pullDirection: Int
+    createdAt: String
+    updatedAt: String
+  }
+
+  input GetHoldClassificationsInput {
+    boardType: String!
+    layoutId: Int!
+    sizeId: Int!
+  }
+
+  input SaveHoldClassificationInput {
+    boardType: String!
+    layoutId: Int!
+    sizeId: Int!
+    holdId: Int!
+    holdType: String
+    handRating: Int
+    footRating: Int
+    pullDirection: Int
+  }
+
+  # ============================================
+  # User Board Mapping Types
+  # ============================================
+
+  """
+  Mapping between a Boardsesh user and their Aurora board account.
+  """
+  type UserBoardMapping {
+    id: ID!
+    userId: String!
+    boardType: String!
+    boardUserId: Int!
+    boardUsername: String
+    createdAt: String
+  }
+
+  input SaveUserBoardMappingInput {
+    boardType: String!
+    boardUserId: Int!
+    boardUsername: String
+  }
+
+  # ============================================
+  # Unsynced Counts Types
+  # ============================================
+
+  """
+  Count of unsynced items for a specific board type.
+  """
+  type BoardUnsyncedCount {
+    ascents: Int!
+    climbs: Int!
+  }
+
+  """
+  Unsynced item counts across all board types.
+  """
+  type UnsyncedCounts {
+    kilter: BoardUnsyncedCount!
+    tension: BoardUnsyncedCount!
+  }
+
+  """
+  Setter statistics for a board configuration.
+  """
+  type SetterStat {
+    setterUsername: String!
+    climbCount: Int!
+  }
+
+  """
+  Input for setter stats query.
+  """
+  input SetterStatsInput {
+    boardName: String!
+    layoutId: Int!
+    sizeId: Int!
+    setIds: String!
+    angle: Int!
+    search: String
+  }
+
+  """
+  Hold heatmap statistics for a single hold.
+  """
+  type HoldHeatmapStat {
+    holdId: Int!
+    totalUses: Int!
+    startingUses: Int!
+    totalAscents: Int!
+    handUses: Int!
+    footUses: Int!
+    finishUses: Int!
+    averageDifficulty: Float
+    userAscents: Int
+    userAttempts: Int
+  }
+
+  """
+  Input for hold heatmap query.
+  Reuses the same filter parameters as climb search.
+  """
+  input HoldHeatmapInput {
+    boardName: String!
+    layoutId: Int!
+    sizeId: Int!
+    setIds: String!
+    angle: Int!
+    gradeAccuracy: String
+    minGrade: Int
+    maxGrade: Int
+    minAscents: Int
+    minRating: Float
+    sortBy: String
+    sortOrder: String
+    name: String
+    settername: [String!]
+    onlyClassics: Boolean
+    onlyTallClimbs: Boolean
+    holdsFilter: JSON
+    hideAttempted: Boolean
+    hideCompleted: Boolean
+    showOnlyAttempted: Boolean
+    showOnlyCompleted: Boolean
+  }
+
   """
   Root query type for all read operations.
   """
@@ -2659,6 +2851,50 @@ export const typeDefs = /* GraphQL */ `
 
     # Get current user's registered controllers
     myControllers: [ControllerInfo!]!
+
+    # ============================================
+    # Data Query Endpoints (migrated from Next.js)
+    # ============================================
+
+    """
+    Get beta video links for a climb.
+    """
+    betaLinks(boardName: String!, climbUuid: String!): [BetaLink!]!
+
+    """
+    Get climb statistics across all angles.
+    """
+    climbStatsForAllAngles(boardName: String!, climbUuid: String!): [ClimbStatsForAngle!]!
+
+    """
+    Get hold classifications for the current user and board configuration.
+    Requires authentication.
+    """
+    holdClassifications(input: GetHoldClassificationsInput!): [HoldClassification!]!
+
+    """
+    Get user board mappings for the current user.
+    Requires authentication.
+    """
+    userBoardMappings: [UserBoardMapping!]!
+
+    """
+    Get count of unsynced items for the current user's Aurora accounts.
+    Requires authentication.
+    """
+    unsyncedCounts: UnsyncedCounts!
+
+    """
+    Get setter statistics for a board configuration.
+    Returns top setters by climb count.
+    """
+    setterStats(input: SetterStatsInput!): [SetterStat!]!
+
+    """
+    Get hold heatmap data for a board configuration.
+    Returns hold usage statistics with optional user-specific data.
+    """
+    holdHeatmap(input: HoldHeatmapInput!): [HoldHeatmapStat!]!
 
     # ============================================
     # Social / Follow Queries
@@ -3044,6 +3280,23 @@ export const typeDefs = /* GraphQL */ `
     registerController(input: RegisterControllerInput!): ControllerRegistration!
     # Delete a registered controller - requires auth
     deleteController(controllerId: ID!): Boolean!
+
+    # ============================================
+    # Data Mutation Endpoints (migrated from Next.js)
+    # ============================================
+
+    """
+    Save or update a hold classification.
+    Requires authentication.
+    """
+    saveHoldClassification(input: SaveHoldClassificationInput!): HoldClassification!
+
+    """
+    Save a user board mapping.
+    Requires authentication.
+    """
+    saveUserBoardMapping(input: SaveUserBoardMappingInput!): Boolean!
+
     # ============================================
     # Social / Follow Mutations (require auth)
     # ============================================

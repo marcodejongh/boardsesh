@@ -12,7 +12,9 @@ import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import PlayArrowOutlined from '@mui/icons-material/PlayArrowOutlined';
 import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
 import { Instagram, PersonOutlined } from '@mui/icons-material';
-import { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
+import type { BetaLink } from '@boardsesh/shared-schema';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { GET_BETA_LINKS, type GetBetaLinksQueryResponse, type GetBetaLinksQueryVariables } from '@/app/lib/graphql/operations';
 import { themeTokens } from '@/app/theme/theme-config';
 
 const THUMB_SIZE = themeTokens.spacing[16]; // 64px
@@ -46,10 +48,11 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
 
     const fetchBeta = async () => {
       try {
-        const res = await fetch(`/api/v1/${boardName}/beta/${climbUuid}`);
-        if (!res.ok) return;
-        const data: BetaLink[] = await res.json();
-        if (!cancelled) setBetaLinks(data);
+        const data = await executeGraphQL<GetBetaLinksQueryResponse, GetBetaLinksQueryVariables>(
+          GET_BETA_LINKS,
+          { boardName, climbUuid },
+        );
+        if (!cancelled) setBetaLinks(data.betaLinks);
       } catch (error) {
         console.error('Failed to fetch beta links:', error);
       }
@@ -125,7 +128,7 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
                 <Box
                   component="img"
                   src={link.thumbnail}
-                  alt={`Beta by ${link.foreign_username || 'unknown'}`}
+                  alt={`Beta by ${link.foreignUsername || 'unknown'}`}
                   sx={{
                     width: '100%',
                     height: '100%',
@@ -152,7 +155,7 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
                 <PlayArrowOutlined sx={{ color: 'white', fontSize: themeTokens.typography.fontSize['2xl'] }} />
               </Box>
               {/* Username chip */}
-              {link.foreign_username && (
+              {link.foreignUsername && (
                 <Typography
                   variant="caption"
                   sx={{
@@ -172,7 +175,7 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
                     lineHeight: 1.4,
                   }}
                 >
-                  @{link.foreign_username}
+                  @{link.foreignUsername}
                 </Typography>
               )}
             </Box>
@@ -191,10 +194,10 @@ const PlayViewBetaSlider: React.FC<PlayViewBetaSliderProps> = ({ boardName, clim
         >
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {selectedVideo.foreign_username && (
+              {selectedVideo.foreignUsername && (
                 <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <PersonOutlined sx={{ fontSize: themeTokens.typography.fontSize.base }} />
-                  @{selectedVideo.foreign_username}
+                  @{selectedVideo.foreignUsername}
                 </Typography>
               )}
               {selectedVideo.angle && (

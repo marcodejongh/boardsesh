@@ -13,8 +13,10 @@ import { track } from '@vercel/analytics';
 import { useQuery } from '@tanstack/react-query';
 import { ANGLES } from '@/app/lib/board-data';
 import { BoardName, BoardDetails, Climb } from '@/app/lib/types';
-import { ClimbStatsForAngle } from '@/app/lib/data/queries';
+import type { ClimbStatsForAngle } from '@boardsesh/shared-schema';
 import { themeTokens } from '@/app/theme/theme-config';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { GET_CLIMB_STATS_FOR_ALL_ANGLES, type GetClimbStatsForAllAnglesQueryResponse, type GetClimbStatsForAllAnglesQueryVariables } from '@/app/lib/graphql/operations';
 import DrawerClimbHeader from '../climb-card/drawer-climb-header';
 import styles from './angle-selector.module.css';
 
@@ -35,7 +37,14 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
   // Fetch climb stats for all angles when there's a current climb
   const { data: climbStats, isLoading } = useQuery<ClimbStatsForAngle[]>({
     queryKey: ['climbStats', boardName, currentClimb?.uuid],
-    queryFn: () => fetch(`/api/v1/${boardName}/climb-stats/${currentClimb!.uuid}`).then(res => res.json()),
+    queryFn: async () => {
+      if (!currentClimb) return [];
+      const data = await executeGraphQL<GetClimbStatsForAllAnglesQueryResponse, GetClimbStatsForAllAnglesQueryVariables>(
+        GET_CLIMB_STATS_FOR_ALL_ANGLES,
+        { boardName, climbUuid: currentClimb.uuid },
+      );
+      return data.climbStatsForAllAngles;
+    },
     enabled: !!currentClimb,
     staleTime: 5 * 60 * 1000,
   });
@@ -118,13 +127,13 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
                   <Typography variant="body2" component="span" sx={{ fontSize: 12, fontWeight: 500 }}>{stats.difficulty}</Typography>
                 )}
                 <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {stats.quality_average !== null && Number(stats.quality_average) > 0 && (
+                  {stats.qualityAverage !== null && Number(stats.qualityAverage) > 0 && (
                     <Typography variant="body2" component="span" sx={{ fontSize: 11, color: themeTokens.colors.warning }}>
-                      ★{Number(stats.quality_average).toFixed(1)}
+                      ★{Number(stats.qualityAverage).toFixed(1)}
                     </Typography>
                   )}
                   <Typography variant="body2" component="span" color="text.secondary" sx={{ fontSize: 10 }}>
-                    {stats.ascensionist_count} sends
+                    {stats.ascensionistCount} sends
                   </Typography>
                 </Box>
               </Box>

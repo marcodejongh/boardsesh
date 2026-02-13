@@ -24,6 +24,14 @@ import BackButton from '@/app/components/back-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '@/app/components/party-manager/party-profile-context';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import {
+  GET_PROFILE,
+  UPDATE_PROFILE,
+  type GetProfileQueryResponse,
+  type UpdateProfileMutationResponse,
+  type UpdateProfileMutationVariables,
+} from '@/app/lib/graphql/operations';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -51,13 +59,9 @@ function getBackendHttpUrl(): string | null {
 interface UserProfile {
   id: string;
   email: string;
-  name: string | null;
-  image: string | null;
-  profile: {
-    displayName: string | null;
-    avatarUrl: string | null;
-    instagramUrl: string | null;
-  } | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  instagramUrl: string | null;
 }
 
 export default function SettingsPageContent() {
@@ -82,12 +86,12 @@ export default function SettingsPageContent() {
     }
   }, [status, router]);
 
-  // Fetch profile on mount
+  // Fetch profile on mount (requires authToken for GraphQL)
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (status === 'authenticated' && authToken) {
       fetchProfile();
     }
-  }, [status]);
+  }, [status, authToken]);
 
   // Clean up preview URL when component unmounts
   useEffect(() => {
@@ -100,17 +104,16 @@ export default function SettingsPageContent() {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch('/api/internal/profile');
-      if (!response.ok) {
-        throw new Error('Failed to fetch profile');
+      const data = await executeGraphQL<GetProfileQueryResponse>(GET_PROFILE, {}, authToken);
+      if (!data.profile) {
+        throw new Error('Profile not found');
       }
-      const data = await response.json();
-      setProfile(data);
+      setProfile(data.profile);
       setFormValues({
-        displayName: data.profile?.displayName || data.name || '',
-        instagramUrl: data.profile?.instagramUrl || '',
+        displayName: data.profile.displayName || '',
+        instagramUrl: data.profile.instagramUrl || '',
       });
-      setPreviewUrl(data.profile?.avatarUrl || data.image || undefined);
+      setPreviewUrl(data.profile.avatarUrl || undefined);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
       showMessage('Failed to load profile', 'error');
@@ -165,7 +168,7 @@ export default function SettingsPageContent() {
 
       setSaving(true);
 
-      let avatarUrl = profile?.profile?.avatarUrl || profile?.image || null;
+      let avatarUrl = profile?.avatarUrl || null;
 
       // Upload avatar if there's a new file
       if (selectedFile) {
@@ -214,23 +217,18 @@ export default function SettingsPageContent() {
         }
       }
 
-      // Update profile
-      const response = await fetch('/api/internal/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
+      // Update profile via GraphQL
+      await executeGraphQL<UpdateProfileMutationResponse, UpdateProfileMutationVariables>(
+        UPDATE_PROFILE,
+        {
+          input: {
+            displayName: values.displayName?.trim() || null,
+            avatarUrl,
+            instagramUrl: values.instagramUrl?.trim() || null,
+          },
         },
-        body: JSON.stringify({
-          displayName: values.displayName?.trim() || null,
-          avatarUrl,
-          instagramUrl: values.instagramUrl?.trim() || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update profile');
-      }
+        authToken,
+      );
 
       showMessage('Settings saved successfully', 'success');
       setSelectedFile(null);
