@@ -13,6 +13,7 @@ import {
   SearchBoardsInputSchema,
   UUIDSchema,
 } from '../../../validation/schemas';
+import { generateUniqueGymSlug } from './gyms';
 
 // ============================================
 // Helpers
@@ -94,7 +95,7 @@ async function enrichBoard(
   authenticatedUserId?: string,
 ) {
   // Run all independent queries in parallel to avoid N+1 per board
-  const [ownerResult, tickStatsResult, followerStatsResult, commentStatsResult, followCheckResult] =
+  const [ownerResult, tickStatsResult, followerStatsResult, commentStatsResult, followCheckResult, gymInfoResult] =
     await Promise.all([
       // Get owner profile
       db
@@ -156,6 +157,15 @@ async function enrichBoard(
               )
             )
         : Promise.resolve([]),
+
+      // Get gym info if board is linked to a gym
+      board.gymId
+        ? db
+            .select({ uuid: dbSchema.gyms.uuid, name: dbSchema.gyms.name })
+            .from(dbSchema.gyms)
+            .where(and(eq(dbSchema.gyms.id, board.gymId), isNull(dbSchema.gyms.deletedAt)))
+            .limit(1)
+        : Promise.resolve([]),
     ]);
 
   const ownerInfo = ownerResult[0];
@@ -163,6 +173,7 @@ async function enrichBoard(
   const followerStats = followerStatsResult[0];
   const commentStats = commentStatsResult[0];
   const isFollowedByMe = Number(followCheckResult[0]?.count || 0) > 0;
+  const gymInfo = (gymInfoResult as Array<{ uuid: string; name: string }>)[0];
 
   return {
     uuid: board.uuid,
@@ -192,6 +203,9 @@ async function enrichBoard(
     followerCount: Number(followerStats?.count || 0),
     commentCount: Number(commentStats?.count || 0),
     isFollowedByMe,
+    gymId: board.gymId ?? null,
+    gymUuid: gymInfo?.uuid ?? null,
+    gymName: gymInfo?.name ?? null,
   };
 }
 
@@ -653,6 +667,114 @@ export const socialBoardMutations = {
     const uuid = uuidv4();
     const slug = await generateUniqueSlug(validatedInput.name);
 
+    // Resolve gymId from gymUuid if provided
+    let gymId: number | null = null;
+    if (validatedInput.gymUuid) {
+      const [gym] = await db
+        .select({ id: dbSchema.gyms.id, ownerId: dbSchema.gyms.ownerId })
+        .from(dbSchema.gyms)
+        .where(and(eq(dbSchema.gyms.uuid, validatedInput.gymUuid), isNull(dbSchema.gyms.deletedAt)))
+        .limit(1);
+
+      if (!gym) {
+        throw new Error('Gym not found');
+      }
+
+      // Verify user is owner or admin of the gym
+      if (gym.ownerId !== userId) {
+        const [member] = await db
+          .select({ role: dbSchema.gymMembers.role })
+          .from(dbSchema.gymMembers)
+          .where(
+            and(
+              eq(dbSchema.gymMembers.gymId, gym.id),
+              eq(dbSchema.gymMembers.userId, userId),
+              eq(dbSchema.gymMembers.role, 'admin'),
+            )
+          )
+          .limit(1);
+
+        if (!member) {
+          throw new Error('Not authorized to link board to this gym');
+        }
+      }
+
+      gymId = gym.id;
+    } else {
+      // Auto-create a gym if user has zero gyms
+      const [existingGym] = await db
+        .select({ id: dbSchema.gyms.id })
+        .from(dbSchema.gyms)
+        .where(and(eq(dbSchema.gyms.ownerId, userId), isNull(dbSchema.gyms.deletedAt)))
+        .limit(1);
+
+      if (!existingGym) {
+        // Auto-create a gym for the user. If this fails, fall through
+        // and create the board without a gym link rather than failing entirely.
+        try {
+          const gymName = validatedInput.locationName || validatedInput.name;
+          const gymUuid = uuidv4();
+          const gymSlug = await generateUniqueGymSlug(gymName);
+
+          // Use transaction to atomically create gym + board
+          const board = await db.transaction(async (tx) => {
+            const [newGym] = await tx
+              .insert(dbSchema.gyms)
+              .values({
+                uuid: gymUuid,
+                slug: gymSlug,
+                ownerId: userId,
+                name: gymName,
+                isPublic: validatedInput.isPublic ?? true,
+                latitude: validatedInput.latitude ?? null,
+                longitude: validatedInput.longitude ?? null,
+              })
+              .returning();
+
+            if (validatedInput.latitude != null && validatedInput.longitude != null) {
+              await tx.execute(
+                sql`UPDATE gyms SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${newGym.id}`
+              );
+            }
+
+            const [newBoard] = await tx
+              .insert(dbSchema.userBoards)
+              .values({
+                uuid,
+                slug,
+                ownerId: userId,
+                boardType: validatedInput.boardType,
+                layoutId: validatedInput.layoutId,
+                sizeId: validatedInput.sizeId,
+                setIds: validatedInput.setIds,
+                name: validatedInput.name,
+                description: validatedInput.description ?? null,
+                locationName: validatedInput.locationName ?? null,
+                latitude: validatedInput.latitude ?? null,
+                longitude: validatedInput.longitude ?? null,
+                isPublic: validatedInput.isPublic ?? true,
+                isOwned: validatedInput.isOwned ?? true,
+                gymId: newGym.id,
+              })
+              .returning();
+
+            if (validatedInput.latitude != null && validatedInput.longitude != null) {
+              await tx.execute(
+                sql`UPDATE user_boards SET location = ST_MakePoint(${validatedInput.longitude}, ${validatedInput.latitude})::geography WHERE id = ${newBoard.id}`
+              );
+            }
+
+            return newBoard;
+          });
+
+          return enrichBoard(board, userId);
+        } catch (error) {
+          // Auto-gym creation failed; continue to create the board without a gym
+          console.error('Auto-gym creation failed, creating board without gym:', error);
+        }
+      }
+    }
+
     const [board] = await db
       .insert(dbSchema.userBoards)
       .values({
@@ -670,6 +792,7 @@ export const socialBoardMutations = {
         longitude: validatedInput.longitude ?? null,
         isPublic: validatedInput.isPublic ?? true,
         isOwned: validatedInput.isOwned ?? true,
+        gymId,
       })
       .returning();
 

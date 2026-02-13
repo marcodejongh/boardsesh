@@ -11,6 +11,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from '../auth/users';
+import { gyms } from './gyms';
 
 /**
  * User boards table — represents a named physical board installation
@@ -38,9 +39,12 @@ export const userBoards = pgTable(
     isOwned: boolean('is_owned').default(true).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    gymId: bigint('gym_id', { mode: 'number' }).references(() => gyms.id, { onDelete: 'set null' }),
     deletedAt: timestamp('deleted_at'),
   },
   (table) => ({
+    // Gym lookup
+    gymIdx: index('user_boards_gym_idx').on(table.gymId),
     // Unique partial: one active board per owner per config
     uniqueOwnerConfigIdx: uniqueIndex('user_boards_unique_owner_config')
       .on(table.ownerId, table.boardType, table.layoutId, table.sizeId, table.setIds)
