@@ -4,14 +4,14 @@ import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
 import LoginOutlined from '@mui/icons-material/LoginOutlined';
-import TuneOutlined from '@mui/icons-material/TuneOutlined';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import SessionCreationForm from './session-creation-form';
 import type { SessionCreationFormData } from './session-creation-form';
 import BoardSelectorDrawer from '@/app/components/board-selector-drawer/board-selector-drawer';
+import BoardScrollSection from '@/app/components/board-scroll/board-scroll-section';
+import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
+import CreateBoardCard from '@/app/components/board-scroll/create-board-card';
 import { useCreateSession } from '@/app/hooks/use-create-session';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { useSession } from 'next-auth/react';
@@ -20,7 +20,7 @@ import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import AuthModal from '../auth/auth-modal';
 import { useMyBoards } from '@/app/hooks/use-my-boards';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-import { themeTokens } from '@/app/theme/theme-config';
+import type { StoredBoardConfig } from '@/app/lib/saved-boards-db';
 
 interface StartSeshDrawerProps {
   open: boolean;
@@ -37,6 +37,7 @@ export default function StartSeshDrawer({ open, onClose, boardConfigs }: StartSe
 
   const [selectedBoard, setSelectedBoard] = useState<(typeof boards)[number] | null>(null);
   const [selectedCustomPath, setSelectedCustomPath] = useState<string | null>(null);
+  const [selectedCustomConfig, setSelectedCustomConfig] = useState<StoredBoardConfig | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showBoardDrawer, setShowBoardDrawer] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -47,16 +48,19 @@ export default function StartSeshDrawer({ open, onClose, boardConfigs }: StartSe
     onClose();
     setSelectedBoard(null);
     setSelectedCustomPath(null);
+    setSelectedCustomConfig(null);
     setFormKey((k) => k + 1);
   }, [onClose]);
 
   const handleBoardSelect = (board: (typeof boards)[number]) => {
     setSelectedBoard(board);
     setSelectedCustomPath(null);
+    setSelectedCustomConfig(null);
   };
 
-  const handleCustomSelect = (url: string) => {
+  const handleCustomSelect = (url: string, config?: StoredBoardConfig) => {
     setSelectedCustomPath(url);
+    setSelectedCustomConfig(config ?? null);
     setSelectedBoard(null);
     setShowBoardDrawer(false);
   };
@@ -98,67 +102,34 @@ export default function StartSeshDrawer({ open, onClose, boardConfigs }: StartSe
     }
   };
 
-  const isCustomSelected = selectedCustomPath !== null;
-
   const boardSelector = (
     <Box>
-      <Typography variant="body2" component="span" fontWeight={600} gutterBottom>
-        Select a board
-      </Typography>
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 1,
-          overflowX: 'auto',
-          py: 1,
-          scrollbarWidth: 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
-        }}
-      >
-        <Chip
-          icon={<TuneOutlined />}
-          label="Custom"
-          size="small"
-          variant={isCustomSelected ? 'filled' : 'outlined'}
-          color={isCustomSelected ? 'primary' : 'default'}
-          disabled={!boardConfigs}
+      <BoardScrollSection title="Select a board" loading={isLoadingBoards}>
+        <CreateBoardCard
           onClick={() => setShowBoardDrawer(true)}
-          sx={{
-            flexShrink: 0,
-            fontWeight: isCustomSelected
-              ? themeTokens.typography.fontWeight.semibold
-              : themeTokens.typography.fontWeight.normal,
-          }}
+          label="Custom"
         />
-        {isLoadingBoards ? (
-          <CircularProgress size={20} sx={{ mx: 1, alignSelf: 'center' }} />
-        ) : (
-          boards.map((board) => (
-            <Chip
-              key={board.uuid}
-              label={board.name}
-              size="small"
-              variant={selectedBoard?.uuid === board.uuid ? 'filled' : 'outlined'}
-              color={selectedBoard?.uuid === board.uuid ? 'primary' : 'default'}
-              onClick={() => handleBoardSelect(board)}
-              sx={{
-                flexShrink: 0,
-                fontWeight: selectedBoard?.uuid === board.uuid
-                  ? themeTokens.typography.fontWeight.semibold
-                  : themeTokens.typography.fontWeight.normal,
-              }}
-            />
-          ))
+        {selectedCustomConfig && (
+          <BoardScrollCard
+            key={`custom-${selectedCustomConfig.name}`}
+            storedConfig={selectedCustomConfig}
+            boardConfigs={boardConfigs}
+            selected
+            onClick={() => setShowBoardDrawer(true)}
+          />
         )}
-      </Box>
+        {boards.map((board) => (
+          <BoardScrollCard
+            key={board.uuid}
+            userBoard={board}
+            selected={selectedBoard?.uuid === board.uuid}
+            onClick={() => handleBoardSelect(board)}
+          />
+        ))}
+      </BoardScrollSection>
       {boardsError && (
         <Typography variant="body2" color="error" sx={{ mt: 0.5 }}>
           {boardsError}
-        </Typography>
-      )}
-      {selectedCustomPath && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Custom board configuration
         </Typography>
       )}
     </Box>
@@ -214,6 +185,7 @@ export default function StartSeshDrawer({ open, onClose, boardConfigs }: StartSe
           open={showBoardDrawer}
           onClose={() => setShowBoardDrawer(false)}
           boardConfigs={boardConfigs}
+          placement="top"
           onBoardSelected={handleCustomSelect}
         />
       )}
