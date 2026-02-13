@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect, useMemo } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
@@ -12,12 +12,12 @@ import {
   type ToggleFavoriteMutationResponse,
 } from '@/app/lib/graphql/operations/favorites';
 import {
-  GET_USER_PLAYLISTS,
+  GET_ALL_USER_PLAYLISTS,
   GET_PLAYLISTS_FOR_CLIMB,
   ADD_CLIMB_TO_PLAYLIST,
   REMOVE_CLIMB_FROM_PLAYLIST,
   CREATE_PLAYLIST,
-  type GetUserPlaylistsQueryResponse,
+  type GetAllUserPlaylistsQueryResponse,
   type GetPlaylistsForClimbQueryResponse,
   type AddClimbToPlaylistMutationResponse,
   type RemoveClimbFromPlaylistMutationResponse,
@@ -70,7 +70,7 @@ export function useClimbActionsData({
         throw new Error(`Failed to fetch favorites: ${errorMessage}`);
       }
     },
-    enabled: isAuthenticated && !isAuthLoading && sortedClimbUuids.length > 0,
+    enabled: isAuthenticated && !isAuthLoading && sortedClimbUuids.length > 0 && !!boardName,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -131,34 +131,25 @@ export function useClimbActionsData({
 
   // === Playlists ===
 
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playlistMemberships, setPlaylistMemberships] = useState<Map<string, Set<string>>>(
     new Map(),
   );
-  const [playlistsLoading, setPlaylistsLoading] = useState(false);
 
-  // Fetch user's playlists
-  useEffect(() => {
-    if (!token || !isAuthenticated || boardName === 'moonboard') return;
+  // Fetch user's playlists (all boards)
+  const playlistsQueryKey = useMemo(() => ['userPlaylists', token] as const, [token]);
 
-    const fetchPlaylists = async () => {
-      try {
-        setPlaylistsLoading(true);
-        const client = createGraphQLHttpClient(token);
-        const response = await client.request<GetUserPlaylistsQueryResponse>(GET_USER_PLAYLISTS, {
-          input: { boardType: boardName, layoutId },
-        });
-        setPlaylists(response.userPlaylists);
-      } catch (error) {
-        console.error('Failed to fetch playlists:', error);
-        setPlaylists([]);
-      } finally {
-        setPlaylistsLoading(false);
-      }
-    };
-
-    fetchPlaylists();
-  }, [token, isAuthenticated, boardName, layoutId]);
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+    queryKey: playlistsQueryKey,
+    queryFn: async (): Promise<Playlist[]> => {
+      const client = createGraphQLHttpClient(token);
+      const response = await client.request<GetAllUserPlaylistsQueryResponse>(GET_ALL_USER_PLAYLISTS, {
+        input: {},
+      });
+      return response.allUserPlaylists;
+    },
+    enabled: isAuthenticated && !!token,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Fetch playlist memberships for visible climbs
   const climbUuidsKey = useMemo(() => sortedClimbUuids.join(','), [sortedClimbUuids]);
@@ -183,7 +174,7 @@ export function useClimbActionsData({
       return memberships;
     },
     enabled:
-      isAuthenticated && !isAuthLoading && sortedClimbUuids.length > 0 && boardName !== 'moonboard',
+      isAuthenticated && !isAuthLoading && sortedClimbUuids.length > 0 && !!boardName && layoutId > 0 && boardName !== 'moonboard',
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -207,11 +198,11 @@ export function useClimbActionsData({
         updated.set(climbUuid, current);
         return updated;
       });
-      setPlaylists((prev) =>
-        prev.map((p) => (p.uuid === playlistId ? { ...p, climbCount: p.climbCount + 1 } : p)),
+      queryClient.setQueryData<Playlist[]>(playlistsQueryKey, (prev) =>
+        prev?.map((p) => (p.uuid === playlistId ? { ...p, climbCount: p.climbCount + 1 } : p)),
       );
     },
-    [token],
+    [token, playlistsQueryKey, queryClient],
   );
 
   const removeFromPlaylist = useCallback(
@@ -230,13 +221,13 @@ export function useClimbActionsData({
         }
         return updated;
       });
-      setPlaylists((prev) =>
-        prev.map((p) =>
+      queryClient.setQueryData<Playlist[]>(playlistsQueryKey, (prev) =>
+        prev?.map((p) =>
           p.uuid === playlistId ? { ...p, climbCount: Math.max(0, p.climbCount - 1) } : p,
         ),
       );
     },
-    [token],
+    [token, playlistsQueryKey, queryClient],
   );
 
   const createPlaylist = useCallback(
@@ -251,27 +242,17 @@ export function useClimbActionsData({
       const response = await client.request<CreatePlaylistMutationResponse>(CREATE_PLAYLIST, {
         input: { boardType: boardName, layoutId, name, description, color, icon },
       });
-      setPlaylists((prev) => [response.createPlaylist, ...prev]);
+      queryClient.setQueryData<Playlist[]>(playlistsQueryKey, (prev) =>
+        prev ? [response.createPlaylist, ...prev] : [response.createPlaylist],
+      );
       return response.createPlaylist;
     },
-    [token, boardName, layoutId],
+    [token, boardName, layoutId, playlistsQueryKey, queryClient],
   );
 
   const refreshPlaylists = useCallback(async () => {
-    if (!token) return;
-    try {
-      setPlaylistsLoading(true);
-      const client = createGraphQLHttpClient(token);
-      const response = await client.request<GetUserPlaylistsQueryResponse>(GET_USER_PLAYLISTS, {
-        input: { boardType: boardName, layoutId },
-      });
-      setPlaylists(response.userPlaylists);
-    } catch (error) {
-      console.error('Failed to refresh playlists:', error);
-    } finally {
-      setPlaylistsLoading(false);
-    }
-  }, [token, boardName, layoutId]);
+    await queryClient.invalidateQueries({ queryKey: playlistsQueryKey });
+  }, [queryClient, playlistsQueryKey]);
 
   return {
     favoritesProviderProps: {

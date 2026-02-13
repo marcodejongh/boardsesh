@@ -3,7 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { PAGE_LIMIT } from '../../board-page/constants';
 import { ClimbQueue } from '../types';
 import { ParsedBoardRouteParameters, SearchRequestPagination, SearchClimbsResult } from '@/app/lib/types';
-import { useBoardProvider } from '../../board-provider/board-provider-context';
+import { useOptionalBoardProvider } from '../../board-provider/board-provider-context';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
@@ -23,7 +23,7 @@ export const useQueueDataFetching = ({
   hasDoneFirstFetch,
   setHasDoneFirstFetch,
 }: UseQueueDataFetchingProps) => {
-  const { getLogbook } = useBoardProvider();
+  const getLogbook = useOptionalBoardProvider()?.getLogbook;
   // Use wsAuthToken for GraphQL backend auth (NextAuth session token)
   const { token: wsAuthToken } = useWsAuthToken();
   const fetchedUuidsRef = useRef<string>('');
@@ -156,20 +156,18 @@ export const useQueueDataFetching = ({
 
   const climbUuidsString = useMemo(() => JSON.stringify(climbUuids), [climbUuids]);
 
+  // Update the logbook query's climbUuids when the set of visible climbs changes.
+  // getLogbook just sets state; TanStack Query handles the actual fetch and
+  // automatically retries when auth becomes available (via its `enabled` flag).
   useEffect(() => {
     if (climbUuidsString === fetchedUuidsRef.current) {
-      return; // Skip if we've already fetched these exact UUIDs
+      return; // Skip if UUIDs haven't changed
     }
+    fetchedUuidsRef.current = climbUuidsString;
 
-    const climbUuids = JSON.parse(climbUuidsString);
-    if (climbUuids.length > 0) {
-      // Only mark as fetched if the fetch actually succeeded
-      // This ensures we retry when wsAuthToken becomes available
-      getLogbook(climbUuids).then((success) => {
-        if (success) {
-          fetchedUuidsRef.current = climbUuidsString;
-        }
-      });
+    const uuids = JSON.parse(climbUuidsString);
+    if (uuids.length > 0 && getLogbook) {
+      getLogbook(uuids);
     }
   }, [climbUuidsString, getLogbook]);
 

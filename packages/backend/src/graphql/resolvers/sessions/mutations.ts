@@ -204,38 +204,59 @@ export const sessionMutations = {
       }
     }
 
-    // Join the session as the creator
-    // Pass session name for non-discoverable sessions (discoverable sessions already have name set)
-    const result = await roomManager.joinSession(
-      ctx.connectionId,
-      sessionId,
-      input.boardPath,
-      undefined, // username will be set later
-      undefined, // avatarUrl will be set later
-      undefined, // initialQueue
-      null,      // initialCurrentClimb
-      input.discoverable ? undefined : input.name // Only pass name for non-discoverable (discoverable already set via createDiscoverableSession)
-    );
-    if (DEBUG) console.log(`[createSession] Joined session - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
+    // For HTTP requests (stateless), skip joining the session in-memory.
+    // The creator will join via WebSocket when they navigate to the board page.
+    const isHttpRequest = ctx.connectionId.startsWith('http-');
 
-    // Update context with session info
-    if (DEBUG) console.log(`[createSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
-    updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
-    if (DEBUG) console.log(`[createSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
+    if (!isHttpRequest) {
+      // WebSocket path: join the session as the creator
+      const result = await roomManager.joinSession(
+        ctx.connectionId,
+        sessionId,
+        input.boardPath,
+        undefined, // username will be set later
+        undefined, // avatarUrl will be set later
+        undefined, // initialQueue
+        null,      // initialCurrentClimb
+        input.discoverable ? undefined : input.name
+      );
+      if (DEBUG) console.log(`[createSession] Joined session - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
+
+      updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
+
+      return {
+        id: sessionId,
+        name: input.name || null,
+        boardPath: input.boardPath,
+        users: result.users,
+        queueState: {
+          sequence: result.sequence,
+          stateHash: result.stateHash,
+          queue: result.queue,
+          currentClimbQueueItem: result.currentClimbQueueItem,
+        },
+        isLeader: result.isLeader,
+        clientId: result.clientId,
+        goal: input.goal || null,
+        isPublic: true,
+        startedAt: new Date().toISOString(),
+        endedAt: null,
+        isPermanent: input.isPermanent || false,
+        color: input.color || null,
+      };
+    }
+
+    // HTTP path: return session metadata only; client joins via WebSocket later
+    if (DEBUG) console.log(`[createSession] HTTP request - returning session metadata without joining`);
 
     return {
       id: sessionId,
       name: input.name || null,
       boardPath: input.boardPath,
-      users: result.users,
-      queueState: {
-        sequence: result.sequence,
-        stateHash: result.stateHash,
-        queue: result.queue,
-        currentClimbQueueItem: result.currentClimbQueueItem,
-      },
-      isLeader: result.isLeader,
-      clientId: result.clientId,
+      users: [],
+      queueState: null,
+      isLeader: false,
+      clientId: null,
       goal: input.goal || null,
       isPublic: true,
       startedAt: new Date().toISOString(),

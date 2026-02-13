@@ -31,7 +31,6 @@ import type { ActiveDrawer } from '../queue-control/queue-control-bar';
 import type { BoardDetails, Angle, Climb } from '@/app/lib/types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { useColorMode } from '@/app/hooks/use-color-mode';
 import styles from './play-view-drawer.module.css';
 import drawerStyles from '../swipeable-drawer/swipeable-drawer.module.css';
 import ClimbDetailShellClient from '@/app/components/climb-detail/climb-detail-shell.client';
@@ -104,9 +103,6 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     setCurrentClimbQueueItem,
     viewOnlyMode,
   } = useQueueContext();
-
-  const { mode } = useColorMode();
-  const isDark = mode === 'dark';
 
   const { isFavorited, toggleFavorite } = useFavorite({
     climbUuid: currentClimb?.uuid ?? '',
@@ -249,7 +245,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
       showDragHandle={true}
       styles={{
         body: { padding: 0, overflow: 'hidden' },
-        wrapper: { height: '100%', ...(isDark ? { backgroundColor: '#000000' } : {}) },
+        wrapper: { height: '100%', backgroundColor: 'var(--semantic-background)' },
       }}
     >
       <div className={styles.drawerContent}>

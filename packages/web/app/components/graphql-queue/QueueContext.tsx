@@ -31,7 +31,7 @@ export interface GraphQLQueueContextType extends QueueContextType {
   // Session management
   isSessionActive: boolean;
   sessionId: string | null;
-  startSession: (options?: { discoverable?: boolean; name?: string }) => Promise<string>;
+  startSession: (options?: { discoverable?: boolean; name?: string; sessionId?: string }) => Promise<string>;
   joinSession: (sessionId: string) => Promise<void>;
   endSession: () => void;
   // Session summary shown after ending a session
@@ -398,7 +398,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
   // Session management functions
   const startSession = useCallback(
-    async (options?: { discoverable?: boolean; name?: string }) => {
+    async (options?: { discoverable?: boolean; name?: string; sessionId?: string }) => {
       if (isOffBoardMode) {
         throw new Error('Cannot start a session outside of a board route');
       }
@@ -406,8 +406,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
         throw new Error('Backend URL not configured');
       }
 
-      // Generate a new session ID
-      const newSessionId = uuidv4();
+      // Use pre-created session ID or generate a new one
+      const newSessionId = options?.sessionId || uuidv4();
 
       // Capture current queue state for the new session
       if (state.queue.length > 0 || state.currentClimbQueueItem) {

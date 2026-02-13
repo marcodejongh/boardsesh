@@ -50,8 +50,13 @@ export default function LibraryPageContent({
   const router = useRouter();
   const isAuthenticated = sessionStatus === 'authenticated';
 
+  const [hasMounted, setHasMounted] = useState(false);
   const selectedBoard = boardFilter ?? 'all';
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Data states
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -199,59 +204,8 @@ export default function LibraryPageContent({
     </div>
   );
 
-  // Not authenticated state
-  if (!isAuthenticated && sessionStatus !== 'loading') {
-    return (
-      <>
-        {renderHeader()}
-        <div className={styles.emptyContainer}>
-          <LabelOutlined className={styles.emptyIcon} />
-          <Typography variant="h6" component="h4" sx={{ mb: 1 }}>
-            Sign in to view your library
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300 }}>
-            Create and manage your own climb playlists by signing in.
-          </Typography>
-          <MuiButton
-            variant="contained"
-            startIcon={<LoginOutlined />}
-            onClick={() => setShowAuthModal(true)}
-            sx={{ mt: 2 }}
-          >
-            Sign In
-          </MuiButton>
-        </div>
-
-        {/* Still show discover section for non-authenticated users */}
-        {!discoverLoading && getDiscoverPlaylists().length > 0 && (
-          <PlaylistScrollSection title="Discover">
-            {getDiscoverPlaylists().map((p, i) => (
-              <PlaylistCard
-                key={p.uuid}
-                name={p.name}
-                climbCount={p.climbCount}
-                color={p.color}
-                icon={p.icon}
-                href={getPlaylistUrl(p.uuid)}
-                variant="scroll"
-                index={i}
-              />
-            ))}
-          </PlaylistScrollSection>
-        )}
-
-        <AuthModal
-          open={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          title="Sign in to Boardsesh"
-          description="Sign in to create and manage your climb playlists."
-        />
-      </>
-    );
-  }
-
-  // Error state
-  if (error) {
+  // Error state (only for authenticated users with fetch errors)
+  if (isAuthenticated && error) {
     return (
       <>
         {renderHeader()}
@@ -269,7 +223,7 @@ export default function LibraryPageContent({
     );
   }
 
-  const isLoading = playlistsLoading || tokenLoading || sessionStatus === 'loading';
+  const isLoading = !hasMounted || playlistsLoading || tokenLoading || sessionStatus === 'loading';
   const discoverItems = getDiscoverPlaylists();
 
   // Filter playlists by selected board
@@ -281,16 +235,40 @@ export default function LibraryPageContent({
     <>
       {renderHeader()}
 
-      {/* Recent Playlists Grid */}
-      <PlaylistCardGrid
-        playlists={playlists}
-        selectedBoard={selectedBoard}
-        getPlaylistUrl={getPlaylistUrl}
-        loading={isLoading}
-      />
+      {/* Sign-in banner for non-authenticated users */}
+      {hasMounted && !isAuthenticated && sessionStatus !== 'loading' && (
+        <div className={styles.signInBanner}>
+          <LoginOutlined sx={{ color: 'text.secondary', fontSize: 28 }} />
+          <div className={styles.signInBannerText}>
+            <Typography variant="body2" fontWeight={600}>
+              Sign in to create playlists
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Manage your own climb playlists by signing in.
+            </Typography>
+          </div>
+          <MuiButton
+            variant="contained"
+            size="small"
+            onClick={() => setShowAuthModal(true)}
+          >
+            Sign In
+          </MuiButton>
+        </div>
+      )}
 
-      {/* Empty state if no playlists */}
-      {!isLoading && playlists.length === 0 && (
+      {/* Authenticated: Recent Playlists Grid */}
+      {isAuthenticated && (
+        <PlaylistCardGrid
+          playlists={playlists}
+          selectedBoard={selectedBoard}
+          getPlaylistUrl={getPlaylistUrl}
+          loading={isLoading}
+        />
+      )}
+
+      {/* Empty state if no playlists (authenticated only) */}
+      {isAuthenticated && !isLoading && playlists.length === 0 && (
         <div className={styles.emptyContainer}>
           <LabelOutlined className={styles.emptyIcon} />
           <Typography variant="h6" component="h4" sx={{ mb: 1 }}>
@@ -302,8 +280,8 @@ export default function LibraryPageContent({
         </div>
       )}
 
-      {/* Jump Back In */}
-      {(isLoading || filteredPlaylists.length > 0) && (
+      {/* Jump Back In (authenticated only) */}
+      {isAuthenticated && (isLoading || filteredPlaylists.length > 0) && (
         <PlaylistScrollSection title="Jump Back In" loading={isLoading}>
           {filteredPlaylists.slice(0, 10).map((p, i) => (
             <PlaylistCard

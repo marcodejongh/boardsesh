@@ -26,6 +26,7 @@ export type ClimbsListProps = {
   onLoadMore: () => void;
   header?: React.ReactNode;
   headerInline?: React.ReactNode;
+  hideEndMessage?: boolean;
 };
 
 const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; viewMode: ViewMode }) => {
@@ -51,6 +52,7 @@ const ClimbsList = ({
   onLoadMore,
   header,
   headerInline,
+  hideEndMessage,
 }: ClimbsListProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
@@ -260,7 +262,7 @@ const ClimbsList = ({
             <ClimbsListSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} viewMode="list" />
           )
         )}
-        {!hasMore && climbs.length > 0 && (
+        {!hasMore && climbs.length > 0 && !hideEndMessage && (
           <Box sx={noMoreClimbsBoxSx}>
             No more climbs
           </Box>

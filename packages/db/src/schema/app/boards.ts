@@ -37,6 +37,8 @@ export const userBoards = pgTable(
     longitude: doublePrecision('longitude'),
     isPublic: boolean('is_public').default(true).notNull(),
     isOwned: boolean('is_owned').default(true).notNull(),
+    angle: bigint('angle', { mode: 'number' }).notNull().default(40),
+    isAngleAdjustable: boolean('is_angle_adjustable').notNull().default(true),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     gymId: bigint('gym_id', { mode: 'number' }).references(() => gyms.id, { onDelete: 'set null' }),

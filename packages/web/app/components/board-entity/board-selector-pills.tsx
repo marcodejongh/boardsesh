@@ -79,7 +79,6 @@ export default function BoardSelectorPills({
     } else {
       onBoardSelect?.(board);
     }
-    onBoardSelect?.(board);
   };
 
   const handleAllClick = () => {

@@ -106,6 +106,17 @@ export function getGradeColor(difficulty: string | null | undefined): string | u
 }
 
 /**
+ * Extract V-grade from a difficulty string (e.g., "6a/V3" -> "V3")
+ * @param difficulty - Difficulty string that may contain V-grade
+ * @returns Uppercase V-grade string (e.g., "V3") or null if not found
+ */
+export function extractVGrade(difficulty: string | null | undefined): string | null {
+  if (!difficulty) return null;
+  const vGradeMatch = difficulty.match(/V\d+/i);
+  return vGradeMatch ? vGradeMatch[0].toUpperCase() : null;
+}
+
+/**
  * Get a semi-transparent version of a grade color for backgrounds
  * @param color - Hex color string
  * @param opacity - Opacity value between 0 and 1

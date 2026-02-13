@@ -6,6 +6,8 @@ import Typography from '@mui/material/Typography';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import SearchOutlined from '@mui/icons-material/SearchOutlined';
+import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
+import Button from '@mui/material/Button';
 import ActivityFeed from '@/app/components/activity-feed/activity-feed';
 import FeedSortSelector from '@/app/components/activity-feed/feed-sort-selector';
 import searchPillStyles from '@/app/components/search-drawer/search-pill.module.css';
@@ -13,12 +15,14 @@ import UnifiedSearchDrawer from '@/app/components/search-drawer/unified-search-d
 import UserDrawer from '@/app/components/user-drawer/user-drawer';
 import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
 import PersistentQueueControlBar from '@/app/components/queue-control/persistent-queue-control-bar';
+import StartSeshDrawer from '@/app/components/session-creation/start-sesh-drawer';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import ErrorBoundary from '@/app/components/error-boundary';
-import BoardSelectorPills from '@/app/components/board-entity/board-selector-pills';
+import BoardScrollSection from '@/app/components/board-scroll/board-scroll-section';
+import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
 import type { SortMode, ActivityFeedItem } from '@boardsesh/shared-schema';
 import bottomBarStyles from '@/app/components/bottom-tab-bar/bottom-bar-wrapper.module.css';
 import { NewClimbFeed } from '@/app/components/new-climb-feed';
@@ -29,6 +33,8 @@ import {
   GET_MY_NEW_CLIMB_SUBSCRIPTIONS,
   type GetMyNewClimbSubscriptionsResponse,
 } from '@/app/lib/graphql/operations/new-climb-feed';
+import { useMyBoards } from '@/app/hooks/use-my-boards';
+import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module.css';
 
 const SORT_MODES: SortMode[] = ['new', 'top', 'controversial', 'hot'];
 const TAB_DEFAULTS: Record<string, string> = { tab: 'activity', sort: 'new' };
@@ -52,11 +58,13 @@ export default function HomePageContent({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [startSeshOpen, setStartSeshOpen] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
   const [subscriptions, setSubscriptions] = useState<NewClimbSubscription[]>([]);
 
   const isAuthenticated = status === 'authenticated' && !!session?.user;
   const { token: wsAuthToken } = useWsAuthToken();
+  const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(isAuthenticated);
 
   // Read state from URL params (with fallbacks to server-provided initial values)
   const activeTab = (searchParams.get('tab') === 'newClimbs' ? 'newClimbs' : (searchParams.get('tab') || initialTab)) as 'activity' | 'newClimbs';
@@ -133,18 +141,46 @@ export default function HomePageContent({
           <SearchOutlined className={searchPillStyles.icon} />
           <span className={searchPillStyles.text}>Search</span>
         </button>
+        <Box sx={{ ml: 'auto' }}>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<PlayCircleOutlineOutlined />}
+            onClick={() => setStartSeshOpen(true)}
+          >
+            Sesh
+          </Button>
+        </Box>
       </Box>
 
       {/* Feed */}
       <Box component="main" sx={{ flex: 1, px: 2, py: 2 }}>
-        {isAuthenticated && (
-          <BoardSelectorPills
-            mode="filter"
-            selectedBoardUuid={selectedBoardUuid}
-            onBoardFilter={handleBoardFilter}
-            onBoardSelect={handleBoardSelect}
-            includeAllPill
-          />
+        {isAuthenticated && (myBoards.length > 0 || isLoadingBoards) && (
+          <BoardScrollSection loading={isLoadingBoards} size="small">
+            <div
+              className={`${boardScrollStyles.cardScroll} ${boardScrollStyles.cardScrollSmall}`}
+              onClick={() => {
+                handleBoardFilter(null);
+                setSelectedBoard(null);
+              }}
+            >
+              <div className={`${boardScrollStyles.cardSquare} ${boardScrollStyles.filterSquare} ${!selectedBoardUuid ? boardScrollStyles.cardSquareSelected : ''}`}>
+                <span className={boardScrollStyles.filterLabel}>All</span>
+              </div>
+              <div className={`${boardScrollStyles.cardName} ${!selectedBoardUuid ? boardScrollStyles.cardNameSelected : ''}`}>
+                All Boards
+              </div>
+            </div>
+            {myBoards.map((board) => (
+              <BoardScrollCard
+                key={board.uuid}
+                userBoard={board}
+                size="small"
+                selected={selectedBoardUuid === board.uuid}
+                onClick={() => handleBoardSelect(board)}
+              />
+            ))}
+          </BoardScrollSection>
         )}
         <Tabs
           value={activeTab}
@@ -209,6 +245,12 @@ export default function HomePageContent({
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         defaultCategory="boards"
+      />
+
+      <StartSeshDrawer
+        open={startSeshOpen}
+        onClose={() => setStartSeshOpen(false)}
+        boardConfigs={boardConfigs}
       />
     </Box>
   );

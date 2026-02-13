@@ -380,6 +380,7 @@ export default function PlaylistDetailContent({
               onClimbSelect={handleClimbSelect}
               onLoadMore={handleLoadMore}
               header={climbsHeader}
+              hideEndMessage
             />
           </PlaylistsProvider>
         </FavoritesProvider>

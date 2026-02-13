@@ -2,25 +2,13 @@ import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { GraphQLClient, RequestDocument, Variables } from 'graphql-request';
 import { sortObjectKeys } from '@/app/lib/cache-utils';
+import { getGraphQLHttpUrl } from './client';
 
 /**
  * Cache durations for climb search queries (in seconds)
  */
 const CACHE_DURATION_DEFAULT_SEARCH = 30 * 24 * 60 * 60; // 30 days for default searches
 const CACHE_DURATION_FILTERED_SEARCH = 60 * 60; // 1 hour for filtered searches
-
-/**
- * Get the HTTP GraphQL endpoint URL
- */
-function getGraphQLHttpUrl(): string {
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
-
-  if (!wsUrl) {
-    throw new Error('NEXT_PUBLIC_WS_URL environment variable is not set');
-  }
-
-  return wsUrl.replace(/^ws(s?):\/\//, 'http$1://');
-}
 
 /**
  * Execute a GraphQL query via HTTP (non-cached version for internal use)

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import MuiButton from '@mui/material/Button';
@@ -9,42 +9,28 @@ import CircularProgress from '@mui/material/CircularProgress';
 import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutlined';
 import { useRouter } from 'next/navigation';
 import type { GroupedNotification } from '@boardsesh/shared-schema';
-import { useNotifications } from '@/app/components/providers/notification-provider';
+import { useUnreadNotificationCount } from '@/app/hooks/use-unread-notification-count';
+import { useGroupedNotifications } from '@/app/hooks/use-grouped-notifications';
+import { useMarkGroupAsRead, useMarkAllAsRead } from '@/app/hooks/use-mark-notifications-read';
 import NotificationItem from './notification-item';
 
-const PAGE_SIZE = 20;
-
 export default function NotificationList() {
-  const { groupedNotifications, fetchGroupedNotifications, markGroupAsRead, markAllAsRead, unreadCount } = useNotifications();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
+  const unreadCount = useUnreadNotificationCount();
+  const { groupedNotifications, isLoading, hasMore, isFetchingMore, fetchMore } = useGroupedNotifications();
+  const markGroupAsReadMutation = useMarkGroupAsRead();
+  const markAllAsReadMutation = useMarkAllAsRead();
   const router = useRouter();
 
-  useEffect(() => {
-    setIsLoading(true);
-    fetchGroupedNotifications(PAGE_SIZE, 0)
-      .then((result) => {
-        if (result) {
-          setHasMore(result.hasMore);
-        }
-      })
-      .finally(() => setIsLoading(false));
-  }, [fetchGroupedNotifications]);
-
-  const handleLoadMore = useCallback(async () => {
-    setIsLoadingMore(true);
-    const result = await fetchGroupedNotifications(PAGE_SIZE, groupedNotifications.length);
-    if (result) {
-      setHasMore(result.hasMore);
+  const handleLoadMore = useCallback(() => {
+    if (hasMore && !isFetchingMore) {
+      fetchMore();
     }
-    setIsLoadingMore(false);
-  }, [fetchGroupedNotifications, groupedNotifications.length]);
+  }, [hasMore, isFetchingMore, fetchMore]);
 
   const handleNotificationClick = useCallback(
     (notification: GroupedNotification) => {
       if (!notification.isRead) {
-        markGroupAsRead(notification);
+        markGroupAsReadMutation.mutate(notification);
       }
 
       // Navigate based on notification type
@@ -55,22 +41,22 @@ export default function NotificationList() {
         router.push(`/profile/${notification.actors[0].id}`);
       }
     },
-    [markGroupAsRead, router],
+    [markGroupAsReadMutation, router],
   );
 
   // Inline IntersectionObserver — same pattern as climbs-list.tsx
   const sentinelRef = useRef<HTMLDivElement>(null);
   const handleLoadMoreRef = useRef(handleLoadMore);
   const hasMoreRef = useRef(hasMore);
-  const isLoadingMoreRef = useRef(isLoadingMore);
+  const isFetchingMoreRef = useRef(isFetchingMore);
   handleLoadMoreRef.current = handleLoadMore;
   hasMoreRef.current = hasMore;
-  isLoadingMoreRef.current = isLoadingMore;
+  isFetchingMoreRef.current = isFetchingMore;
 
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
-      if (target.isIntersecting && hasMoreRef.current && !isLoadingMoreRef.current) {
+      if (target.isIntersecting && hasMoreRef.current && !isFetchingMoreRef.current) {
         handleLoadMoreRef.current();
       }
     },
@@ -108,7 +94,7 @@ export default function NotificationList() {
       {groupedNotifications.length > 0 && unreadCount > 0 && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 2, py: 1 }}>
           <MuiButton
-            onClick={markAllAsRead}
+            onClick={() => markAllAsReadMutation.mutate()}
             size="small"
             sx={{ textTransform: 'none' }}
           >
@@ -140,7 +126,7 @@ export default function NotificationList() {
       {/* Infinite scroll sentinel */}
       {hasMore && (
         <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
-          {isLoadingMore && <CircularProgress size={16} />}
+          {isFetchingMore && <CircularProgress size={16} />}
         </Box>
       )}
     </Box>

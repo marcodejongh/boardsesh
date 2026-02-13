@@ -19,7 +19,7 @@ import { useSession } from 'next-auth/react';
 import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import AscentsFeed from '@/app/components/activity-feed';
-import FollowButton from '@/app/components/social/follow-button';
+import FollowButton from '@/app/components/ui/follow-button';
 import FollowerCount from '@/app/components/social/follower-count';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -35,6 +35,8 @@ import {
   GET_USER_PROFILE_STATS,
   type GetUserProfileStatsQueryVariables,
   type GetUserProfileStatsQueryResponse,
+  FOLLOW_USER,
+  UNFOLLOW_USER,
 } from '@/app/lib/graphql/operations';
 import { FONT_GRADE_COLORS, getGradeColorWithOpacity } from '@/app/lib/grade-colors';
 import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
@@ -695,8 +697,12 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
                 </Typography>
                 {!isOwnProfile && (
                   <FollowButton
-                    userId={userId}
+                    entityId={userId}
                     initialIsFollowing={profile?.isFollowedByMe ?? false}
+                    followMutation={FOLLOW_USER}
+                    unfollowMutation={UNFOLLOW_USER}
+                    entityLabel="user"
+                    getFollowVariables={(id) => ({ input: { userId: id } })}
                     onFollowChange={(isFollowing) => {
                       if (profile) {
                         setProfile({

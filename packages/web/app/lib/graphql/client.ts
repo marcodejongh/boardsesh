@@ -6,7 +6,7 @@ const DEBUG = process.env.NODE_ENV === 'development';
  * Get the HTTP GraphQL endpoint URL
  * Converts WebSocket URL to HTTP URL if needed
  */
-function getGraphQLHttpUrl(): string {
+export function getGraphQLHttpUrl(): string {
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
 
   if (!wsUrl) {
@@ -57,9 +57,3 @@ export async function executeGraphQL<T = unknown, V extends Variables = Variable
   return client.request<T>(document, variables);
 }
 
-/**
- * Get the base GraphQL HTTP URL for use with fetch or other clients
- */
-export function getGraphQLUrl(): string {
-  return getGraphQLHttpUrl();
-}

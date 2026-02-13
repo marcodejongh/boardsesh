@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react';
 import Box from '@mui/material/Box';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
-import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import { useEntityMutation } from '@/app/hooks/use-entity-mutation';
 import {
   CREATE_BOARD,
   type CreateBoardMutationVariables,
@@ -13,6 +13,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import type { UserBoard } from '@boardsesh/shared-schema';
+import type { BoardName } from '@/app/lib/types';
+import { ANGLES } from '@/app/lib/board-data';
 import BoardForm from './board-form';
 import GymSelector from '@/app/components/gym-entity/gym-selector';
 
@@ -35,43 +37,46 @@ export default function CreateBoardForm({
   onSuccess,
   onCancel,
 }: CreateBoardFormProps) {
-  const { token, isAuthenticated } = useWsAuthToken();
+  const { isAuthenticated } = useWsAuthToken();
   const { showMessage } = useSnackbar();
   const router = useRouter();
   const [selectedGymUuid, setSelectedGymUuid] = useState<string | null>(null);
 
-  const handleSubmit = useCallback(
-    async (values: { name: string; description: string; locationName: string; isPublic: boolean; isOwned: boolean }) => {
-      if (!token) {
-        showMessage('You must be signed in to create a board', 'error');
-        return;
-      }
+  const availableAngles = ANGLES[boardType as BoardName] ?? [];
 
+  const { execute } = useEntityMutation<CreateBoardMutationResponse, CreateBoardMutationVariables>(
+    CREATE_BOARD,
+    {
+      errorMessage: 'Failed to create board. It may already exist for this configuration.',
+      authRequiredMessage: 'You must be signed in to create a board',
+    },
+  );
+
+  const handleSubmit = useCallback(
+    async (values: { name: string; description: string; locationName: string; isPublic: boolean; isOwned: boolean; angle?: number; isAngleAdjustable?: boolean }) => {
       if (!values.name) {
         showMessage('Board name is required', 'error');
         return;
       }
 
-      try {
-        const client = createGraphQLHttpClient(token);
-        const data = await client.request<CreateBoardMutationResponse, CreateBoardMutationVariables>(
-          CREATE_BOARD,
-          {
-            input: {
-              boardType,
-              layoutId,
-              sizeId,
-              setIds,
-              name: values.name,
-              description: values.description || undefined,
-              locationName: values.locationName || undefined,
-              isPublic: values.isPublic,
-              isOwned: values.isOwned,
-              gymUuid: selectedGymUuid || undefined,
-            },
-          },
-        );
+      const data = await execute({
+        input: {
+          boardType,
+          layoutId,
+          sizeId,
+          setIds,
+          name: values.name,
+          description: values.description || undefined,
+          locationName: values.locationName || undefined,
+          isPublic: values.isPublic,
+          isOwned: values.isOwned,
+          gymUuid: selectedGymUuid || undefined,
+          angle: values.angle,
+          isAngleAdjustable: values.isAngleAdjustable,
+        },
+      });
 
+      if (data) {
         const board = data.createBoard;
         let message = `Board "${board.name}" created!`;
         if (board.gymName && !selectedGymUuid) {
@@ -84,12 +89,9 @@ export default function CreateBoardForm({
         } else {
           router.push(constructBoardSlugListUrl(board.slug, defaultAngle));
         }
-      } catch (error) {
-        console.error('Failed to create board:', error);
-        showMessage('Failed to create board. It may already exist for this configuration.', 'error');
       }
     },
-    [token, boardType, layoutId, sizeId, setIds, defaultAngle, selectedGymUuid, showMessage, router, onSuccess],
+    [execute, boardType, layoutId, sizeId, setIds, defaultAngle, selectedGymUuid, showMessage, router, onSuccess],
   );
 
   return (
@@ -106,6 +108,7 @@ export default function CreateBoardForm({
         }}
         namePlaceholder="e.g., Home Board, Gym Name"
         locationPlaceholder="e.g., City, Gym Name"
+        availableAngles={availableAngles}
         onSubmit={handleSubmit}
         onCancel={onCancel}
       />

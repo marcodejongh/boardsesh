@@ -30,7 +30,7 @@ import { getLastUsedBoard } from '@/app/lib/last-used-board-db';
 import { getRecentSearches } from '@/app/components/search-drawer/recent-searches-storage';
 import BoardSelectorDrawer from '../board-selector-drawer/board-selector-drawer';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-import { useNotifications } from '../providers/notification-provider';
+import { useUnreadNotificationCount } from '@/app/hooks/use-unread-notification-count';
 
 type Tab = 'home' | 'climbs' | 'library' | 'create' | 'notifications';
 
@@ -75,7 +75,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
   const pathname = usePathname();
   const router = useRouter();
 
-  const { unreadCount: notificationUnreadCount } = useNotifications();
+  const notificationUnreadCount = useUnreadNotificationCount();
 
   // PlaylistsContext is only available on board routes (within PlaylistsProvider)
   const playlistsContext = useContext(PlaylistsContext);

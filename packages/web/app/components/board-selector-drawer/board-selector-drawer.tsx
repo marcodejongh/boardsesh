@@ -9,51 +9,39 @@ import MuiSelect, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import EditOutlined from '@mui/icons-material/EditOutlined';
 import { useRouter } from 'next/navigation';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
-import BoardConfigPreview from '../setup-wizard/board-config-preview';
+import BoardScrollSection from '../board-scroll/board-scroll-section';
+import BoardScrollCard from '../board-scroll/board-scroll-card';
+import CreateBoardCard from '../board-scroll/create-board-card';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import { BoardName } from '@/app/lib/types';
 import { SUPPORTED_BOARDS, ANGLES } from '@/app/lib/board-data';
 import { getDefaultSizeForLayout } from '@/app/lib/__generated__/product-sizes-data';
 import { constructClimbListWithSlugs, constructBoardSlugListUrl } from '@/app/lib/url-utils';
-import { loadSavedBoards, saveBoardConfig, deleteBoardConfig, StoredBoardConfig } from '@/app/lib/saved-boards-db';
+import { loadSavedBoards, saveBoardConfig, StoredBoardConfig } from '@/app/lib/saved-boards-db';
 import { setLastUsedBoard } from '@/app/lib/last-used-board-db';
-import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
-import { GET_MY_BOARDS, type GetMyBoardsQueryResponse } from '@/app/lib/graphql/operations';
-import type { UserBoard } from '@boardsesh/shared-schema';
-import Chip from '@mui/material/Chip';
-import Card from '@mui/material/Card';
-import CardActionArea from '@mui/material/CardActionArea';
-import CardContent from '@mui/material/CardContent';
-import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
-import CircularProgress from '@mui/material/CircularProgress';
-import { themeTokens } from '@/app/theme/theme-config';
-import styles from './board-selector-drawer.module.css';
+import { useMyBoards } from '@/app/hooks/use-my-boards';
 
 interface BoardSelectorDrawerProps {
   open: boolean;
   onClose: () => void;
   boardConfigs: BoardConfigData;
-  onBoardSelected?: (url: string) => void;
+  placement?: 'top' | 'bottom';
+  onBoardSelected?: (url: string, config?: StoredBoardConfig) => void;
 }
 
 export default function BoardSelectorDrawer({
   open,
   onClose,
   boardConfigs,
+  placement = 'bottom',
   onBoardSelected,
 }: BoardSelectorDrawerProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'saved' | 'new'>('saved');
   const [savedConfigurations, setSavedConfigurations] = useState<StoredBoardConfig[]>([]);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [serverBoards, setServerBoards] = useState<UserBoard[]>([]);
-  const [isLoadingServerBoards, setIsLoadingServerBoards] = useState(false);
-  const { token, isAuthenticated } = useWsAuthToken();
+  const [showNewBoardForm, setShowNewBoardForm] = useState(false);
+  const { boards: serverBoards, isLoading: isLoadingServerBoards } = useMyBoards(open);
 
   // New board form state
   const [selectedBoard, setSelectedBoard] = useState<BoardName | undefined>(undefined);
@@ -85,28 +73,9 @@ export default function BoardSelectorDrawer({
     if (open) {
       loadSavedBoards().then((configs) => {
         setSavedConfigurations(configs);
-        // Default to "new" tab if no saved boards
-        if (configs.length === 0) {
-          setActiveTab('new');
-          if (!selectedBoard && SUPPORTED_BOARDS.length > 0) {
-            setSelectedBoard(SUPPORTED_BOARDS[0] as BoardName);
-          }
-        }
       });
     }
-  }, [open, selectedBoard]);
-
-  // Fetch server-side board entities (owned + followed)
-  useEffect(() => {
-    if (!open || !isAuthenticated || !token) return;
-    setIsLoadingServerBoards(true);
-    const client = createGraphQLHttpClient(token);
-    client
-      .request<GetMyBoardsQueryResponse>(GET_MY_BOARDS, { input: { limit: 50, offset: 0 } })
-      .then((data) => setServerBoards(data.myBoards.boards))
-      .catch((err) => console.error('Failed to fetch boards:', err))
-      .finally(() => setIsLoadingServerBoards(false));
-  }, [open, isAuthenticated, token]);
+  }, [open]);
 
   // Auto-cascade: layout when board changes
   useEffect(() => {
@@ -175,7 +144,7 @@ export default function BoardSelectorDrawer({
   }, [selectedBoard, selectedLayout, selectedSize, layouts, sizes]);
 
   const handleSelectBoard = useCallback(
-    async (url: string, boardName: string, layoutName: string, sizeName: string, sizeDescription: string | undefined, setNames: string[], angle: number) => {
+    async (url: string, boardName: string, layoutName: string, sizeName: string, sizeDescription: string | undefined, setNames: string[], angle: number, config?: StoredBoardConfig) => {
       await setLastUsedBoard({
         url,
         boardName,
@@ -185,25 +154,64 @@ export default function BoardSelectorDrawer({
         setNames,
         angle,
       });
-      onBoardSelected?.(url);
-      router.push(url);
-      onClose();
+      if (onBoardSelected) {
+        onBoardSelected(url, config);
+        onClose();
+      } else {
+        router.push(url);
+        onClose();
+      }
     },
     [router, onClose, onBoardSelected],
   );
 
-  const handleSavedBoardSelect = useCallback(() => {
-    // Navigation handled by Link in BoardConfigPreview
-  }, []);
-
-  const handleDeleteConfig = useCallback(
-    async (name: string) => {
-      await deleteBoardConfig(name);
-      const updated = await loadSavedBoards();
-      setSavedConfigurations(updated);
+  const handleServerBoardSelect = useCallback(
+    (board: (typeof serverBoards)[number]) => {
+      const url = constructBoardSlugListUrl(board.slug, board.angle);
+      const config: StoredBoardConfig = {
+        name: board.name,
+        board: board.boardType as BoardName,
+        layoutId: board.layoutId,
+        sizeId: board.sizeId,
+        setIds: board.setIds.split(',').map(Number),
+        angle: board.angle,
+        createdAt: board.createdAt,
+      };
+      if (onBoardSelected) {
+        onBoardSelected(url, config);
+        onClose();
+      } else {
+        router.push(url);
+        onClose();
+      }
     },
-    [],
+    [router, onClose, onBoardSelected],
   );
+
+  const handleSavedConfigSelect = useCallback(
+    (config: StoredBoardConfig) => {
+      const layouts = boardConfigs.layouts[config.board] || [];
+      const sizes = boardConfigs.sizes[`${config.board}-${config.layoutId}`] || [];
+      const configSets = boardConfigs.sets[`${config.board}-${config.layoutId}-${config.sizeId}`] || [];
+      const layout = layouts.find((l) => l.id === config.layoutId);
+      const size = sizes.find((s) => s.id === config.sizeId);
+      const setNames = configSets.filter((s) => config.setIds.includes(s.id)).map((s) => s.name);
+      const angle = config.angle || 40;
+
+      if (layout && size && setNames.length > 0) {
+        const url = constructClimbListWithSlugs(config.board, layout.name, size.name, size.description, setNames, angle);
+        handleSelectBoard(url, config.board, layout.name, size.name, size.description, setNames, angle, config);
+      }
+    },
+    [boardConfigs, handleSelectBoard],
+  );
+
+  const handleOpenNewBoardForm = useCallback(() => {
+    if (!selectedBoard && SUPPORTED_BOARDS.length > 0) {
+      setSelectedBoard(SUPPORTED_BOARDS[0] as BoardName);
+    }
+    setShowNewBoardForm(true);
+  }, [selectedBoard]);
 
   const handleStartClimbing = async () => {
     if (!selectedBoard || !selectedLayout || !selectedSize || selectedSets.length === 0 || !targetUrl) {
@@ -231,6 +239,7 @@ export default function BoardSelectorDrawer({
     };
 
     await saveBoardConfig(config);
+    setShowNewBoardForm(false);
     await handleSelectBoard(
       targetUrl,
       selectedBoard,
@@ -239,110 +248,76 @@ export default function BoardSelectorDrawer({
       size?.description,
       selectedSetNames,
       selectedAngle,
+      config,
     );
   };
 
   const isFormComplete = selectedBoard && selectedLayout && selectedSize && selectedSets.length > 0;
+  const hasServerBoards = serverBoards.length > 0;
+  const hasSavedConfigs = savedConfigurations.length > 0;
+  const isEmpty = !isLoadingServerBoards && !hasServerBoards && !hasSavedConfigs;
 
   return (
-    <SwipeableDrawer
-      title="Select Board"
-      placement="bottom"
-      open={open}
-      onClose={onClose}
-      height="85dvh"
-      extra={
-        activeTab === 'saved' && savedConfigurations.length > 0 ? (
-          <IconButton
-            color={isEditMode ? 'primary' : 'default'}
-            size="small"
-            onClick={() => setIsEditMode(!isEditMode)}
-          >
-            <EditOutlined />
-          </IconButton>
-        ) : undefined
-      }
-    >
-      {/* Pill tabs */}
-      <div className={styles.pillContainer}>
-        <button
-          className={`${styles.pill} ${activeTab === 'saved' ? styles.pillActive : ''}`}
-          onClick={() => setActiveTab('saved')}
-        >
-          Saved Boards ({savedConfigurations.length})
-        </button>
-        <button
-          className={`${styles.pill} ${activeTab === 'new' ? styles.pillActive : ''}`}
-          onClick={() => {
-            setActiveTab('new');
-            if (!selectedBoard && SUPPORTED_BOARDS.length > 0) {
-              setSelectedBoard(SUPPORTED_BOARDS[0] as BoardName);
-            }
-          }}
-        >
-          New Board
-        </button>
-      </div>
+    <>
+      <SwipeableDrawer
+        title="Select Board"
+        placement={placement}
+        open={open}
+        onClose={onClose}
+        height="85dvh"
+      >
+        {/* My Boards (server-side) */}
+        {(hasServerBoards || isLoadingServerBoards) && (
+          <BoardScrollSection title="My Boards" loading={isLoadingServerBoards}>
+            <CreateBoardCard onClick={handleOpenNewBoardForm} />
+            {serverBoards.map((board) => (
+              <BoardScrollCard
+                key={board.uuid}
+                userBoard={board}
+                onClick={() => handleServerBoardSelect(board)}
+              />
+            ))}
+          </BoardScrollSection>
+        )}
 
-      {activeTab === 'saved' && (
-        <>
-          {/* Server-side board entities (owned + followed) */}
-          {isLoadingServerBoards ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : serverBoards.length > 0 ? (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ px: 1, mb: 1, display: 'block' }}>
-                My Boards
-              </Typography>
-              <Box className={styles.boardGrid}>
-                {serverBoards.map((board) => (
-                  <ServerBoardCard
-                    key={board.uuid}
-                    board={board}
-                    onSelect={() => {
-                      router.push(constructBoardSlugListUrl(board.slug, 40));
-                      onClose();
-                    }}
-                  />
-                ))}
-              </Box>
-            </Box>
-          ) : null}
+        {/* Recently Used (local configs) */}
+        {hasSavedConfigs && (
+          <BoardScrollSection title="Recently Used">
+            {!hasServerBoards && (
+              <CreateBoardCard onClick={handleOpenNewBoardForm} />
+            )}
+            {savedConfigurations.map((config) => (
+              <BoardScrollCard
+                key={config.name}
+                storedConfig={config}
+                boardConfigs={boardConfigs}
+                onClick={() => handleSavedConfigSelect(config)}
+              />
+            ))}
+          </BoardScrollSection>
+        )}
 
-          {/* Locally saved board configurations */}
-          {savedConfigurations.length > 0 ? (
-            <>
-              {serverBoards.length > 0 && (
-                <Typography variant="caption" color="text.secondary" sx={{ px: 1, mb: 1, display: 'block' }}>
-                  Local Configurations
-                </Typography>
-              )}
-              <Box className={styles.boardGrid}>
-                {savedConfigurations.map((config) => (
-                  <BoardConfigPreview
-                    key={config.name}
-                    config={config}
-                    onDelete={handleDeleteConfig}
-                    onSelect={handleSavedBoardSelect}
-                    boardConfigs={boardConfigs}
-                    isEditMode={isEditMode}
-                  />
-                ))}
-              </Box>
-            </>
-          ) : serverBoards.length === 0 ? (
-            <div className={styles.emptyState}>
-              <Typography variant="body2" color="text.secondary">
-                No saved boards yet. Configure a new board to get started.
-              </Typography>
-            </div>
-          ) : null}
-        </>
-      )}
+        {/* Empty state */}
+        {isEmpty && (
+          <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              No saved boards yet. Create a new board to get started.
+            </Typography>
+            <Button variant="contained" onClick={handleOpenNewBoardForm}>
+              Create New Board
+            </Button>
+          </Box>
+        )}
+      </SwipeableDrawer>
 
-      {activeTab === 'new' && (
+      {/* Nested New Board form drawer */}
+      <SwipeableDrawer
+        title="New Board"
+        placement={placement}
+        open={showNewBoardForm}
+        onClose={() => setShowNewBoardForm(false)}
+        height="85dvh"
+      >
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           <FormControl fullWidth size="small">
             <InputLabel>Board</InputLabel>
@@ -436,50 +411,10 @@ export default function BoardSelectorDrawer({
             onClick={handleStartClimbing}
             disabled={!isFormComplete}
           >
-            Start Climbing
+            Save & Select
           </Button>
         </Box>
-      )}
-    </SwipeableDrawer>
-  );
-}
-
-const BOARD_TYPE_LABELS: Record<string, string> = {
-  kilter: 'Kilter',
-  tension: 'Tension',
-  moonboard: 'MoonBoard',
-  decoy: 'Decoy',
-  touchstone: 'Touchstone',
-  grasshopper: 'Grasshopper',
-  soill: 'So iLL',
-};
-
-function ServerBoardCard({ board, onSelect }: { board: UserBoard; onSelect: () => void }) {
-  return (
-    <Card variant="outlined" sx={{ minWidth: 0, borderRadius: `${themeTokens.borderRadius.md}px` }}>
-      <CardActionArea onClick={onSelect}>
-        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5 }}>
-            <Typography variant="body2" fontWeight={600} noWrap>
-              {board.name}
-            </Typography>
-            <Chip
-              label={BOARD_TYPE_LABELS[board.boardType] || board.boardType}
-              size="small"
-              variant="outlined"
-              sx={{ fontSize: 11, height: 20, flexShrink: 0 }}
-            />
-          </Box>
-          {board.locationName && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-              <LocationOnOutlined sx={{ fontSize: 12, color: 'var(--neutral-400)' }} />
-              <Typography variant="caption" color="text.secondary" noWrap>
-                {board.locationName}
-              </Typography>
-            </Box>
-          )}
-        </CardContent>
-      </CardActionArea>
-    </Card>
+      </SwipeableDrawer>
+    </>
   );
 }

@@ -8,6 +8,18 @@ export function generateUuid(): string {
   return uuidv4().replace(/-/g, '').toUpperCase();
 }
 
+/**
+ * Throws if the response is not ok, including the status code in the error message.
+ * Use for Aurora API responses where a simple error throw is sufficient.
+ * Accepts both native fetch Response and undici Response.
+ */
+export function handleAuroraApiResponse(response: { ok: boolean; status: number }, context?: string): void {
+  if (!response.ok) {
+    const prefix = context ? `${context}: ` : '';
+    throw new Error(`${prefix}HTTP error! status: ${response.status}`);
+  }
+}
+
 export async function auroraGetApi<T>(url: string, token: string): Promise<T> {
   // Default headers
   const headers: Record<string, string> = {
@@ -29,10 +41,7 @@ export async function auroraGetApi<T>(url: string, token: string): Promise<T> {
   };
 
   const response = await fetch(url, fetchOptions);
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
+  handleAuroraApiResponse(response);
 
   // Handle compressed responses
   const contentEncoding = response.headers.get('content-encoding');

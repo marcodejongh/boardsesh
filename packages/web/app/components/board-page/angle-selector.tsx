@@ -10,7 +10,7 @@ import Box from '@mui/material/Box';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { useRouter, usePathname } from 'next/navigation';
 import { track } from '@vercel/analytics';
-import useSWR from 'swr';
+import { useQuery } from '@tanstack/react-query';
 import { ANGLES } from '@/app/lib/board-data';
 import { BoardName, BoardDetails, Climb } from '@/app/lib/types';
 import { ClimbStatsForAngle } from '@/app/lib/data/queries';
@@ -23,28 +23,22 @@ type AngleSelectorProps = {
   boardDetails: BoardDetails;
   currentAngle: number;
   currentClimb: Climb | null;
+  isAngleAdjustable?: boolean;
 };
 
-export default function AngleSelector({ boardName, boardDetails, currentAngle, currentClimb }: AngleSelectorProps) {
+export default function AngleSelector({ boardName, boardDetails, currentAngle, currentClimb, isAngleAdjustable = true }: AngleSelectorProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const currentAngleRef = useRef<HTMLDivElement>(null);
 
-  // Build the API URL for fetching climb stats
-  const climbStatsUrl = currentClimb
-    ? `/api/v1/${boardName}/climb-stats/${currentClimb.uuid}`
-    : null;
-
   // Fetch climb stats for all angles when there's a current climb
-  const { data: climbStats, isLoading } = useSWR<ClimbStatsForAngle[]>(
-    climbStatsUrl,
-    (url: string) => fetch(url).then(res => res.json()),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-    }
-  );
+  const { data: climbStats, isLoading } = useQuery<ClimbStatsForAngle[]>({
+    queryKey: ['climbStats', boardName, currentClimb?.uuid],
+    queryFn: () => fetch(`/api/v1/${boardName}/climb-stats/${currentClimb!.uuid}`).then(res => res.json()),
+    enabled: !!currentClimb,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Create a map for easy lookup of stats by angle
   const statsMap = React.useMemo(() => {
@@ -67,6 +61,8 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
   }, [isDrawerOpen]);
 
   const handleAngleChange = (newAngle: number) => {
+    if (!isAngleAdjustable) return;
+
     track('Angle Changed', {
       angle: newAngle,
     });

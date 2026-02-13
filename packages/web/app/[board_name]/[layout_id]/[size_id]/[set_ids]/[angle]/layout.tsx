@@ -18,6 +18,7 @@ import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
 import { BluetoothProvider } from '@/app/components/board-bluetooth-control/bluetooth-context';
 import { UISearchParamsProvider } from '@/app/components/queue-control/ui-searchparams-provider';
 import LastUsedBoardTracker from '@/app/components/board-page/last-used-board-tracker';
+import { themeTokens } from '@/app/theme/theme-config';
 import { getAllBoardConfigs } from '@/app/lib/server-board-configs';
 import layoutStyles from './layout.module.css';
 
@@ -186,8 +187,8 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                     id="content-for-scrollable"
                     style={{
                       flex: 1,
-                      paddingLeft: '10px',
-                      paddingRight: '10px',
+                      paddingLeft: `${themeTokens.spacing[2]}px`,
+                      paddingRight: `${themeTokens.spacing[2]}px`,
                       paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))',
                       paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
                     }}

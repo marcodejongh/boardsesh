@@ -31,6 +31,8 @@ import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_GYM,
   DELETE_GYM,
+  FOLLOW_GYM,
+  UNFOLLOW_GYM,
   type GetGymQueryResponse,
   type GetGymQueryVariables,
   type DeleteGymMutationVariables,
@@ -38,7 +40,7 @@ import {
 } from '@/app/lib/graphql/operations';
 import { useSession } from 'next-auth/react';
 import { themeTokens } from '@/app/theme/theme-config';
-import FollowGymButton from './follow-gym-button';
+import FollowButton from '@/app/components/ui/follow-button';
 import EditGymForm from './edit-gym-form';
 import GymMemberManagement from './gym-member-management';
 import CommentSection from '@/app/components/social/comment-section';
@@ -220,9 +222,13 @@ export default function GymDetail({ gymUuid, open, onClose, onDeleted, anchor = 
               {/* Actions */}
               <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                 {!isOwner && (
-                  <FollowGymButton
-                    gymUuid={gym.uuid}
+                  <FollowButton
+                    entityId={gym.uuid}
                     initialIsFollowing={gym.isFollowedByMe}
+                    followMutation={FOLLOW_GYM}
+                    unfollowMutation={UNFOLLOW_GYM}
+                    entityLabel="gym"
+                    getFollowVariables={(id) => ({ input: { gymUuid: id } })}
                     onFollowChange={() => fetchGym()}
                   />
                 )}

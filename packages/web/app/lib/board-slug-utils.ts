@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { ParsedBoardRouteParameters, BoardName } from '@/app/lib/types';
+import { getGraphQLHttpUrl } from '@/app/lib/graphql/client';
 
 export type ResolvedBoard = {
   uuid: string;
@@ -14,19 +15,9 @@ export type ResolvedBoard = {
   isPublic: boolean;
   isOwned: boolean;
   ownerId: string;
+  angle: number;
+  isAngleAdjustable: boolean;
 };
-
-/**
- * Get the HTTP GraphQL endpoint URL from NEXT_PUBLIC_WS_URL.
- * Matches the pattern used in server-cached-client.ts and client.ts.
- */
-function getGraphQLHttpUrl(): string {
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
-  if (!wsUrl) {
-    throw new Error('NEXT_PUBLIC_WS_URL environment variable is not set');
-  }
-  return wsUrl.replace(/^ws(s?):\/\//, 'http$1://');
-}
 
 /**
  * Resolve a board entity by its slug.
@@ -49,6 +40,8 @@ export const resolveBoardBySlug = cache(async (slug: string): Promise<ResolvedBo
         locationName
         isPublic
         isOwned
+        angle
+        isAngleAdjustable
       }
     }
   `;
