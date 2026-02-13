@@ -3,22 +3,5 @@
   "buildCommand": "if [ \"$VERCEL_ENV\" != \"preview\" ]; then npm run db:migrate; fi && npm run build --workspace=@boardsesh/web",
   "outputDirectory": "packages/web/.next",
   "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/internal/shared-sync/tension",
-      "schedule": "0 */2 * * *"
-    },
-    {
-      "path": "/api/internal/shared-sync/kilter",
-      "schedule": "0 */2 * * *"
-    },
-    {
-      "path": "/api/internal/user-sync-cron",
-      "schedule": "0 */2 * * *"
-    },
-    {
-      "path": "/api/internal/migrate-users-cron",
-      "schedule": "0 3 * * *"
-    }
-  ]
+  "crons": []
 }

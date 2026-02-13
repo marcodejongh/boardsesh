@@ -168,11 +168,13 @@ export type UserProfile = {
   email: string;
   displayName?: string;
   avatarUrl?: string;
+  instagramUrl?: string;
 };
 
 export type UpdateProfileInput = {
   displayName?: string;
   avatarUrl?: string;
+  instagramUrl?: string;
 };
 
 export type AuroraCredential = {
@@ -189,6 +191,9 @@ export type AuroraCredentialStatus = {
   userId?: number;
   syncedAt?: string;
   hasToken: boolean;
+  syncStatus?: string;
+  syncError?: string;
+  createdAt?: string;
 };
 
 export type SaveAuroraCredentialInput = {
@@ -556,6 +561,155 @@ export type SearchPlaylistsResult = {
 };
 
 // ============================================
+// Beta Link Types
+// ============================================
+
+export type BetaLink = {
+  climbUuid: string;
+  link: string;
+  foreignUsername?: string | null;
+  angle?: number | null;
+  thumbnail?: string | null;
+  isListed?: boolean | null;
+  createdAt?: string | null;
+};
+
+// ============================================
+// Climb Stats Types
+// ============================================
+
+export type ClimbStatsForAngle = {
+  angle: number;
+  ascensionistCount: number;
+  qualityAverage?: string | null;
+  difficultyAverage?: number | null;
+  displayDifficulty?: number | null;
+  faUsername?: string | null;
+  faAt?: string | null;
+  difficulty?: string | null;
+};
+
+// ============================================
+// Hold Classification Types
+// ============================================
+
+export type HoldClassification = {
+  id: string;
+  userId: string;
+  boardType: string;
+  layoutId: number;
+  sizeId: number;
+  holdId: number;
+  holdType?: string | null;
+  handRating?: number | null;
+  footRating?: number | null;
+  pullDirection?: number | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type GetHoldClassificationsInput = {
+  boardType: string;
+  layoutId: number;
+  sizeId: number;
+};
+
+export type SaveHoldClassificationInput = {
+  boardType: string;
+  layoutId: number;
+  sizeId: number;
+  holdId: number;
+  holdType?: string | null;
+  handRating?: number | null;
+  footRating?: number | null;
+  pullDirection?: number | null;
+};
+
+// ============================================
+// User Board Mapping Types
+// ============================================
+
+export type UserBoardMapping = {
+  id: string;
+  userId: string;
+  boardType: string;
+  boardUserId: number;
+  boardUsername?: string | null;
+  createdAt?: string | null;
+};
+
+export type SaveUserBoardMappingInput = {
+  boardType: string;
+  boardUserId: number;
+  boardUsername?: string | null;
+};
+
+// ============================================
+// Unsynced Counts Types
+// ============================================
+
+export type BoardUnsyncedCount = {
+  ascents: number;
+  climbs: number;
+};
+
+export type UnsyncedCounts = {
+  kilter: BoardUnsyncedCount;
+  tension: BoardUnsyncedCount;
+};
+
+export type SetterStat = {
+  setterUsername: string;
+  climbCount: number;
+};
+
+export type SetterStatsInput = {
+  boardName: string;
+  layoutId: number;
+  sizeId: number;
+  setIds: string;
+  angle: number;
+  search?: string | null;
+};
+
+export type HoldHeatmapStat = {
+  holdId: number;
+  totalUses: number;
+  startingUses: number;
+  totalAscents: number;
+  handUses: number;
+  footUses: number;
+  finishUses: number;
+  averageDifficulty: number | null;
+  userAscents?: number | null;
+  userAttempts?: number | null;
+};
+
+export type HoldHeatmapInput = {
+  boardName: string;
+  layoutId: number;
+  sizeId: number;
+  setIds: string;
+  angle: number;
+  gradeAccuracy?: string | null;
+  minGrade?: number | null;
+  maxGrade?: number | null;
+  minAscents?: number | null;
+  minRating?: number | null;
+  sortBy?: string | null;
+  sortOrder?: string | null;
+  name?: string | null;
+  settername?: string[] | null;
+  onlyClassics?: boolean | null;
+  onlyTallClimbs?: boolean | null;
+  holdsFilter?: Record<string, string> | null;
+  hideAttempted?: boolean | null;
+  hideCompleted?: boolean | null;
+  showOnlyAttempted?: boolean | null;
+  showOnlyCompleted?: boolean | null;
+};
+
+// ============================================
 // Social / Follow Types
 // ============================================
 
@@ -563,6 +717,7 @@ export type PublicUserProfile = {
   id: string;
   displayName?: string;
   avatarUrl?: string;
+  instagramUrl?: string;
   followerCount: number;
   followingCount: number;
   isFollowedByMe: boolean;

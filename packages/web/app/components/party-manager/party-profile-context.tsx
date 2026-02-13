@@ -8,6 +8,9 @@ import {
   clearPartyProfile,
   ensurePartyProfile,
 } from '@/app/lib/party-profile-db';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { GET_PROFILE, GetProfileQueryResponse } from '@/app/lib/graphql/operations';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 
 interface UserProfileData {
   displayName: string | null;
@@ -33,6 +36,7 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { data: session, status: sessionStatus } = useSession();
+  const { token } = useWsAuthToken();
 
   // Load party profile on mount
   useEffect(() => {
@@ -66,18 +70,20 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
     let mounted = true;
 
     const fetchUserProfile = async () => {
-      if (sessionStatus !== 'authenticated') {
+      if (sessionStatus !== 'authenticated' || !token) {
         setUserProfile(null);
         return;
       }
 
       try {
-        const response = await fetch('/api/internal/profile');
-        if (response.ok) {
-          const data = await response.json();
-          if (mounted) {
-            setUserProfile(data.profile || null);
-          }
+        const data = await executeGraphQL<GetProfileQueryResponse>(GET_PROFILE, {}, token);
+        if (mounted && data.profile) {
+          setUserProfile({
+            displayName: data.profile.displayName,
+            avatarUrl: data.profile.avatarUrl,
+          });
+        } else if (mounted) {
+          setUserProfile(null);
         }
       } catch (error) {
         console.error('Failed to fetch user profile:', error);
@@ -89,7 +95,7 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => {
       mounted = false;
     };
-  }, [sessionStatus]);
+  }, [sessionStatus, token]);
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -97,18 +103,22 @@ export const PartyProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const loadedProfile = await getPartyProfile();
       setProfile(loadedProfile);
 
-      // Also refresh user profile from API if authenticated
-      if (sessionStatus === 'authenticated') {
-        const response = await fetch('/api/internal/profile');
-        if (response.ok) {
-          const data = await response.json();
-          setUserProfile(data.profile || null);
+      // Also refresh user profile from GraphQL if authenticated
+      if (sessionStatus === 'authenticated' && token) {
+        const data = await executeGraphQL<GetProfileQueryResponse>(GET_PROFILE, {}, token);
+        if (data.profile) {
+          setUserProfile({
+            displayName: data.profile.displayName,
+            avatarUrl: data.profile.avatarUrl,
+          });
+        } else {
+          setUserProfile(null);
         }
       }
     } catch (error) {
       console.error('Failed to refresh party profile:', error);
     }
-  }, [sessionStatus]);
+  }, [sessionStatus, token]);
 
   const clearProfileHandler = useCallback(async () => {
     setIsLoading(true);

@@ -7,20 +7,15 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
 import { useQueueContext } from '../graphql-queue';
 import useSWR from 'swr';
-import { constructSetterStatsUrl } from '@/app/lib/url-utils';
-
-interface SetterStat {
-  setter_username: string;
-  climb_count: number;
-}
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { GET_SETTER_STATS, type GetSetterStatsQueryResponse, type GetSetterStatsQueryVariables } from '@/app/lib/graphql/operations';
+import type { SetterStat } from '@boardsesh/shared-schema';
 
 interface SetterOption {
   value: string;
   label: string;
   count: number;
 }
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const MIN_SEARCH_LENGTH = 2; // Only search when user has typed at least 2 characters
 
@@ -34,15 +29,28 @@ const SetterNameSelect = () => {
   const shouldFetch = isOpen || searchValue.length >= MIN_SEARCH_LENGTH;
   const isSearching = searchValue.length >= MIN_SEARCH_LENGTH;
 
-  // Build API URL - with search query if searching, without if just showing top setters
-  const apiUrl = shouldFetch
-    ? constructSetterStatsUrl(parsedParams, isSearching ? searchValue : undefined)
+  // Build cache key for SWR
+  const cacheKey = shouldFetch
+    ? `setterStats:${parsedParams.board_name}:${parsedParams.layout_id}:${parsedParams.size_id}:${parsedParams.set_ids}:${parsedParams.angle}:${isSearching ? searchValue : ''}`
     : null;
 
-  // Fetch setter stats from the API
+  // Fetch setter stats via GraphQL
   const { data: setterStats, isLoading } = useSWR<SetterStat[]>(
-    apiUrl,
-    fetcher,
+    cacheKey,
+    async () => {
+      const variables: GetSetterStatsQueryVariables = {
+        input: {
+          boardName: parsedParams.board_name,
+          layoutId: parsedParams.layout_id,
+          sizeId: parsedParams.size_id,
+          setIds: Array.isArray(parsedParams.set_ids) ? parsedParams.set_ids.join(',') : String(parsedParams.set_ids),
+          angle: parsedParams.angle,
+          search: isSearching ? searchValue : null,
+        },
+      };
+      const data = await executeGraphQL<GetSetterStatsQueryResponse>(GET_SETTER_STATS, variables);
+      return data.setterStats;
+    },
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
@@ -55,9 +63,9 @@ const SetterNameSelect = () => {
     if (!setterStats) return [];
 
     return setterStats.map(stat => ({
-      value: stat.setter_username,
-      label: `${stat.setter_username} (${stat.climb_count})`,
-      count: stat.climb_count,
+      value: stat.setterUsername,
+      label: `${stat.setterUsername} (${stat.climbCount})`,
+      count: stat.climbCount,
     }));
   }, [setterStats]);
 

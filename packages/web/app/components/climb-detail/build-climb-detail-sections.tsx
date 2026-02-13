@@ -5,8 +5,10 @@ import type { CollapsibleSectionConfig } from '@/app/components/collapsible-sect
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import { LogbookSection, useLogbookSummary } from '@/app/components/logbook/logbook-section';
 import ClimbSocialSection from '@/app/components/social/climb-social-section';
-import type { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
+import type { BetaLink } from '@boardsesh/shared-schema';
 import type { Climb } from '@/app/lib/types';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { GET_BETA_LINKS, type GetBetaLinksQueryResponse, type GetBetaLinksQueryVariables } from '@/app/lib/graphql/operations';
 
 interface BuildClimbDetailSectionsProps {
   climb: Climb;
@@ -36,14 +38,12 @@ function useClimbBetaLinks({ boardType, climbUuid, initialBetaLinks }: { boardTy
 
     const fetchBetaLinks = async () => {
       try {
-        const response = await fetch(`/api/v1/${boardType}/beta/${climbUuid}`);
-        if (!response.ok) {
-          return;
-        }
-
-        const data: BetaLink[] = await response.json();
+        const data = await executeGraphQL<GetBetaLinksQueryResponse, GetBetaLinksQueryVariables>(
+          GET_BETA_LINKS,
+          { boardName: boardType, climbUuid },
+        );
         if (!cancelled) {
-          setBetaLinks(data);
+          setBetaLinks(data.betaLinks);
         }
       } catch {
         if (!cancelled) {

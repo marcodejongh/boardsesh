@@ -224,7 +224,8 @@ export const ClimbSearchInputSchema = z.object({
  */
 export const UpdateProfileInputSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
-  avatarUrl: z.string().url().max(500).optional(),
+  avatarUrl: z.string().url().max(500).optional().nullable(),
+  instagramUrl: z.string().url().max(500).optional().nullable(),
 });
 
 /**
@@ -949,6 +950,83 @@ export const GymMembersInputSchema = z.object({
 export const LinkBoardToGymInputSchema = z.object({
   boardUuid: UUIDSchema,
   gymUuid: UUIDSchema.optional().nullable(),
+});
+
+// ============================================
+// Data Query Schemas (migrated from Next.js)
+// ============================================
+
+/**
+ * Get hold classifications input validation schema
+ */
+export const GetHoldClassificationsInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive('Layout ID must be positive'),
+  sizeId: z.number().int().positive('Size ID must be positive'),
+});
+
+/**
+ * Save hold classification input validation schema
+ */
+export const SaveHoldClassificationInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive('Layout ID must be positive'),
+  sizeId: z.number().int().positive('Size ID must be positive'),
+  holdId: z.number().int().positive('Hold ID must be positive'),
+  holdType: z.enum(['jug', 'sloper', 'pinch', 'crimp', 'pocket']).optional().nullable(),
+  handRating: z.number().int().min(1).max(5).optional().nullable(),
+  footRating: z.number().int().min(1).max(5).optional().nullable(),
+  pullDirection: z.number().int().min(0).max(360).optional().nullable(),
+});
+
+/**
+ * Save user board mapping input validation schema
+ */
+export const SaveUserBoardMappingInputSchema = z.object({
+  boardType: z.enum(['kilter', 'tension'], {
+    errorMap: () => ({ message: 'Board type must be kilter or tension' }),
+  }),
+  boardUserId: z.number().int().positive('Board user ID must be a positive integer'),
+  boardUsername: z.string().max(100, 'Username too long').optional().nullable(),
+});
+
+/**
+ * Setter stats input validation schema
+ */
+export const SetterStatsInputSchema = z.object({
+  boardName: BoardNameSchema,
+  layoutId: z.number().int().positive(),
+  sizeId: z.number().int().positive(),
+  setIds: z.string().min(1),
+  angle: z.number().int(),
+  search: z.string().max(200).optional().nullable(),
+});
+
+/**
+ * Hold heatmap input validation schema
+ */
+export const HoldHeatmapInputSchema = z.object({
+  boardName: BoardNameSchema,
+  layoutId: z.number().int().positive(),
+  sizeId: z.number().int().positive(),
+  setIds: z.string().min(1),
+  angle: z.number().int(),
+  gradeAccuracy: z.string().optional().nullable(),
+  minGrade: z.number().int().optional().nullable(),
+  maxGrade: z.number().int().optional().nullable(),
+  minAscents: z.number().int().optional().nullable(),
+  minRating: z.number().optional().nullable(),
+  sortBy: z.string().optional().nullable(),
+  sortOrder: z.string().optional().nullable(),
+  name: z.string().max(200).optional().nullable(),
+  settername: z.array(z.string()).optional().nullable(),
+  onlyClassics: z.boolean().optional().nullable(),
+  onlyTallClimbs: z.boolean().optional().nullable(),
+  holdsFilter: z.record(z.string()).optional().nullable(),
+  hideAttempted: z.boolean().optional().nullable(),
+  hideCompleted: z.boolean().optional().nullable(),
+  showOnlyAttempted: z.boolean().optional().nullable(),
+  showOnlyCompleted: z.boolean().optional().nullable(),
 });
 
 /**

@@ -10,6 +10,9 @@ import { useFavorite } from './use-favorite';
 import { BoardName } from '@/app/lib/types';
 import AuthModal from '../auth/auth-modal';
 import { themeTokens } from '@/app/theme/theme-config';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { TOGGLE_FAVORITE, type ToggleFavoriteMutationVariables, type ToggleFavoriteMutationResponse } from '@/app/lib/graphql/operations';
 
 type FavoriteButtonProps = {
   boardName: BoardName;
@@ -34,6 +37,7 @@ export default function FavoriteButton({
     climbUuid,
   });
   const { showMessage } = useSnackbar();
+  const { token: authToken } = useWsAuthToken();
 
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -61,26 +65,18 @@ export default function FavoriteButton({
   };
 
   const handleAuthSuccess = async () => {
-    // Call API directly since session state may not have updated yet
     try {
-      const response = await fetch('/api/internal/favorites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          boardName,
-          climbUuid,
-          angle,
-        }),
-      });
-      if (response.ok) {
+      const data = await executeGraphQL<ToggleFavoriteMutationResponse, ToggleFavoriteMutationVariables>(
+        TOGGLE_FAVORITE,
+        { input: { boardName, climbUuid, angle } },
+        authToken,
+      );
+      if (data.toggleFavorite.favorited !== undefined) {
         track('Favorite Toggle', {
           boardName,
           climbUuid,
           action: 'favorited',
         });
-      } else {
-        console.error(`[FavoriteButton] API error for ${climbUuid}: ${response.status}`);
-        showMessage('Failed to save favorite. Please try again.', 'error');
       }
     } catch (error) {
       console.error(`[FavoriteButton] Error after auth for ${climbUuid}:`, error);

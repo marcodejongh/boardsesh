@@ -87,58 +87,6 @@ export const ClimbSearchResultSchema = z
   .openapi('ClimbSearchResult');
 
 // ============================================
-// Climb Stats Schema
-// ============================================
-
-export const ClimbStatsSchema = z
-  .object({
-    angle: z.number().describe('Board angle'),
-    ascensionist_count: z.number().describe('Number of ascents at this angle'),
-    difficulty: z.string().nullable().describe('Difficulty at this angle'),
-    quality_average: z.number().nullable().describe('Average quality rating'),
-    benchmark_difficulty: z.string().nullable().describe('Benchmark difficulty if set'),
-  })
-  .openapi('ClimbStats');
-
-export const ClimbStatsResponseSchema = z.array(ClimbStatsSchema).openapi('ClimbStatsResponse');
-
-// ============================================
-// Beta Link Schema
-// ============================================
-
-export const BetaLinkSchema = z
-  .object({
-    angle: z.number().describe('Board angle for this beta'),
-    foreign_username: z.string().describe('Username of the person who posted the beta'),
-    link: z.string().describe('URL to the beta video'),
-  })
-  .openapi('BetaLink');
-
-export const BetaLinksResponseSchema = z.array(BetaLinkSchema).openapi('BetaLinksResponse');
-
-// ============================================
-// Setter Schema
-// ============================================
-
-export const SetterSchema = z
-  .object({
-    username: z.string().describe('Setter username'),
-    count: z.number().describe('Number of climbs set'),
-  })
-  .openapi('Setter');
-
-export const SettersResponseSchema = z.array(SetterSchema).openapi('SettersResponse');
-
-// ============================================
-// Heatmap Schema
-// ============================================
-
-export const HeatmapDataSchema = z
-  .record(z.string(), z.number())
-  .describe('Map of hold IDs to usage frequency')
-  .openapi('HeatmapData');
-
-// ============================================
 // Angle Schema
 // ============================================
 
@@ -211,40 +159,6 @@ export const ResendVerificationRequestSchema = z
     email: z.string().email().describe('Email address to resend verification to'),
   })
   .openapi('ResendVerificationRequest');
-
-// ============================================
-// Aurora Proxy Schemas
-// ============================================
-
-export const AuroraLoginRequestSchema = z
-  .object({
-    username: z.string().describe('Aurora board username'),
-    password: z.string().describe('Aurora board password'),
-  })
-  .openapi('AuroraLoginRequest');
-
-export const AuroraLoginResponseSchema = z
-  .object({
-    token: z.string().describe('Authentication token for Aurora API'),
-    user_id: z.number().describe('Aurora user ID'),
-    username: z.string().describe('Aurora username'),
-  })
-  .openapi('AuroraLoginResponse');
-
-export const SaveAscentRequestSchema = z
-  .object({
-    token: z.string().describe('Aurora authentication token'),
-    options: z.object({
-      climb_uuid: z.string().describe('UUID of the climb'),
-      angle: z.number().describe('Board angle'),
-      is_mirror: z.boolean().describe('Whether climb was mirrored'),
-      quality: z.number().min(0).max(3).describe('Quality rating (0-3)'),
-      difficulty: z.number().describe('Difficulty rating'),
-      comment: z.string().optional().describe('Optional comment'),
-      climbed_at: z.string().describe('ISO timestamp of when climb was completed'),
-    }),
-  })
-  .openapi('SaveAscentRequest');
 
 // ============================================
 // Hold Classification Schemas

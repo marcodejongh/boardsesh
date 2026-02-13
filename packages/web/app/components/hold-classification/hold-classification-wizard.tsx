@@ -7,6 +7,16 @@ import Rating from '@mui/material/Rating';
 import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import {
+  GET_HOLD_CLASSIFICATIONS,
+  SAVE_HOLD_CLASSIFICATION,
+  type GetHoldClassificationsQueryResponse,
+  type GetHoldClassificationsQueryVariables,
+  type SaveHoldClassificationMutationResponse,
+  type SaveHoldClassificationMutationVariables,
+} from '@/app/lib/graphql/operations';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { ArrowBackOutlined, ArrowForwardOutlined, CheckOutlined, CheckCircle, OpenInFullOutlined, CompressOutlined } from '@mui/icons-material';
 import { useSession } from 'next-auth/react';
@@ -111,6 +121,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 }) => {
   const { status: sessionStatus } = useSession();
   const { showMessage } = useSnackbar();
+  const { token: authToken } = useWsAuthToken();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -140,35 +151,36 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/internal/hold-classifications?` +
-        `boardType=${boardDetails.board_name}&` +
-        `layoutId=${boardDetails.layout_id}&` +
-        `sizeId=${boardDetails.size_id}`
+      const data = await executeGraphQL<GetHoldClassificationsQueryResponse, GetHoldClassificationsQueryVariables>(
+        GET_HOLD_CLASSIFICATIONS,
+        {
+          input: {
+            boardType: boardDetails.board_name,
+            layoutId: boardDetails.layout_id,
+            sizeId: boardDetails.size_id,
+          },
+        },
+        authToken,
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        const classMap = new Map<number, HoldClassification>();
-
-        data.classifications.forEach((c: StoredHoldClassification) => {
-          classMap.set(c.holdId, {
-            holdId: c.holdId,
-            holdType: c.holdType,
-            handRating: c.handRating,
-            footRating: c.footRating,
-            pullDirection: c.pullDirection,
-          });
+      const classMap = new Map<number, HoldClassification>();
+      data.holdClassifications.forEach((c) => {
+        classMap.set(c.holdId, {
+          holdId: c.holdId,
+          holdType: c.holdType as HoldType | null,
+          handRating: c.handRating ?? null,
+          footRating: c.footRating ?? null,
+          pullDirection: c.pullDirection ?? null,
         });
+      });
 
-        setClassifications(classMap);
-      }
+      setClassifications(classMap);
     } catch (error) {
       console.error('Failed to load classifications:', error);
     } finally {
       setLoading(false);
     }
-  }, [boardDetails]);
+  }, [boardDetails, authToken]);
 
   // Load existing classifications when the wizard opens
   useEffect(() => {
@@ -185,31 +197,29 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
   const doSaveClassification = useCallback(async (holdId: number, classification: HoldClassification) => {
     setSaving(true);
     try {
-      const response = await fetch('/api/internal/hold-classifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          boardType: boardDetails.board_name,
-          layoutId: boardDetails.layout_id,
-          sizeId: boardDetails.size_id,
-          holdId,
-          holdType: classification.holdType,
-          handRating: classification.handRating,
-          footRating: classification.footRating,
-          pullDirection: classification.pullDirection,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save classification');
-      }
+      await executeGraphQL<SaveHoldClassificationMutationResponse, SaveHoldClassificationMutationVariables>(
+        SAVE_HOLD_CLASSIFICATION,
+        {
+          input: {
+            boardType: boardDetails.board_name,
+            layoutId: boardDetails.layout_id,
+            sizeId: boardDetails.size_id,
+            holdId,
+            holdType: classification.holdType,
+            handRating: classification.handRating,
+            footRating: classification.footRating,
+            pullDirection: classification.pullDirection,
+          },
+        },
+        authToken,
+      );
     } catch (error) {
       console.error('Failed to save classification:', error);
       showMessage('Failed to save classification', 'error');
     } finally {
       setSaving(false);
     }
-  }, [boardDetails]);
+  }, [boardDetails, authToken]);
 
   // Debounced save - waits 500ms after last change before saving
   const saveClassification = useCallback((holdId: number, classification: HoldClassification) => {

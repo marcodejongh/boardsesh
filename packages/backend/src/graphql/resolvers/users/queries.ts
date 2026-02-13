@@ -40,6 +40,7 @@ export const userQueries = {
       email: user.email,
       displayName: profile?.displayName || user.name || undefined,
       avatarUrl: profile?.avatarUrl || user.image || undefined,
+      instagramUrl: profile?.instagramUrl || undefined,
     };
   },
 
@@ -62,6 +63,9 @@ export const userQueries = {
       userId: c.auroraUserId || undefined,
       syncedAt: c.lastSyncAt?.toISOString() || undefined,
       hasToken: !!c.auroraToken,
+      syncStatus: c.syncStatus || undefined,
+      syncError: c.syncError || undefined,
+      createdAt: c.createdAt?.toISOString() || undefined,
     }));
   },
 

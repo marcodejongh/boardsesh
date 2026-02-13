@@ -10,6 +10,9 @@ import { useFavorite } from '../use-favorite';
 import AuthModal from '../../auth/auth-modal';
 import { themeTokens } from '@/app/theme/theme-config';
 import { buildActionResult, computeActionDisplay } from '../action-view-renderer';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { TOGGLE_FAVORITE, type ToggleFavoriteMutationVariables, type ToggleFavoriteMutationResponse } from '@/app/lib/graphql/operations';
 
 export function FavoriteAction({
   climb,
@@ -23,6 +26,7 @@ export function FavoriteAction({
   onComplete,
 }: ClimbActionProps): ClimbActionResult {
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const { token: authToken } = useWsAuthToken();
   const { iconSize } = computeActionDisplay(viewMode, size, showLabel);
 
   const { isFavorited, isLoading, toggleFavorite, isAuthenticated } = useFavorite({
@@ -53,16 +57,12 @@ export function FavoriteAction({
 
   const handleAuthSuccess = useCallback(async () => {
     try {
-      const response = await fetch('/api/internal/favorites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          boardName: boardDetails.board_name,
-          climbUuid: climb.uuid,
-          angle,
-        }),
-      });
-      if (response.ok) {
+      const data = await executeGraphQL<ToggleFavoriteMutationResponse, ToggleFavoriteMutationVariables>(
+        TOGGLE_FAVORITE,
+        { input: { boardName: boardDetails.board_name, climbUuid: climb.uuid, angle } },
+        authToken,
+      );
+      if (data.toggleFavorite.favorited !== undefined) {
         track('Favorite Toggle', {
           boardName: boardDetails.board_name,
           climbUuid: climb.uuid,
@@ -72,7 +72,7 @@ export function FavoriteAction({
     } catch {
       // Silently fail
     }
-  }, [boardDetails.board_name, climb.uuid, angle]);
+  }, [boardDetails.board_name, climb.uuid, angle, authToken]);
 
   const label = isFavorited ? 'Favorited' : 'Favorite';
   const HeartIcon = isFavorited ? Favorite : FavoriteBorderOutlined;

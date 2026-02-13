@@ -25,8 +25,15 @@ import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import SyncOutlined from '@mui/icons-material/SyncOutlined';
 import WarningOutlined from '@mui/icons-material/WarningOutlined';
-import type { AuroraCredentialStatus } from '@/app/api/internal/aurora-credentials/route';
-import type { UnsyncedCounts } from '@/app/api/internal/aurora-credentials/unsynced/route';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import {
+  GET_AURORA_CREDENTIALS,
+  GET_UNSYNCED_COUNTS,
+  type GetAuroraCredentialsQueryResponse,
+  type GetUnsyncedCountsQueryResponse,
+  type AuroraCredentialStatusGql,
+} from '@/app/lib/graphql/operations';
 import styles from './aurora-credentials-section.module.css';
 
 interface BoardUnsyncedCounts {
@@ -34,9 +41,14 @@ interface BoardUnsyncedCounts {
   climbs: number;
 }
 
+interface UnsyncedCounts {
+  kilter: BoardUnsyncedCounts;
+  tension: BoardUnsyncedCounts;
+}
+
 interface BoardCredentialCardProps {
   boardType: 'kilter' | 'tension';
-  credential: AuroraCredentialStatus | null;
+  credential: AuroraCredentialStatusGql | null;
   unsyncedCounts: BoardUnsyncedCounts;
   onAdd: () => void;
   onRemove: () => void;
@@ -115,11 +127,11 @@ function BoardCredentialCard({
         <div className={styles.credentialInfo}>
           <div className={styles.infoRow}>
             <Typography variant="body2" component="span" color="text.secondary">Username:</Typography>
-            <Typography variant="body2" component="span" fontWeight={600}>{credential.auroraUsername}</Typography>
+            <Typography variant="body2" component="span" fontWeight={600}>{credential.username}</Typography>
           </div>
           <div className={styles.infoRow}>
             <Typography variant="body2" component="span" color="text.secondary">Last synced:</Typography>
-            <Typography variant="body2" component="span">{formatLastSync(credential.lastSyncAt)}</Typography>
+            <Typography variant="body2" component="span">{formatLastSync(credential.syncedAt)}</Typography>
           </div>
           {credential.syncError && (
             <div className={styles.errorRow}>
@@ -161,7 +173,8 @@ function BoardCredentialCard({
 
 export default function AuroraCredentialsSection() {
   const { showMessage } = useSnackbar();
-  const [credentials, setCredentials] = useState<AuroraCredentialStatus[]>([]);
+  const { token: authToken } = useWsAuthToken();
+  const [credentials, setCredentials] = useState<AuroraCredentialStatusGql[]>([]);
   const [unsyncedCounts, setUnsyncedCounts] = useState<UnsyncedCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -171,12 +184,14 @@ export default function AuroraCredentialsSection() {
   const [formValues, setFormValues] = useState({ username: '', password: '' });
 
   const fetchCredentials = async () => {
+    if (!authToken) return;
     try {
-      const response = await fetch('/api/internal/aurora-credentials');
-      if (response.ok) {
-        const data = await response.json();
-        setCredentials(data.credentials);
-      }
+      const data = await executeGraphQL<GetAuroraCredentialsQueryResponse>(
+        GET_AURORA_CREDENTIALS,
+        {},
+        authToken,
+      );
+      setCredentials(data.auroraCredentials);
     } catch (error) {
       console.error('Failed to fetch credentials:', error);
     } finally {
@@ -186,20 +201,23 @@ export default function AuroraCredentialsSection() {
 
   const fetchUnsyncedCounts = async () => {
     try {
-      const response = await fetch('/api/internal/aurora-credentials/unsynced');
-      if (response.ok) {
-        const data = await response.json();
-        setUnsyncedCounts(data.counts);
-      }
+      const data = await executeGraphQL<GetUnsyncedCountsQueryResponse>(
+        GET_UNSYNCED_COUNTS,
+        {},
+        authToken,
+      );
+      setUnsyncedCounts(data.unsyncedCounts);
     } catch (error) {
       console.error('Failed to fetch unsynced counts:', error);
     }
   };
 
   useEffect(() => {
-    fetchCredentials();
+    if (authToken) {
+      fetchCredentials();
+    }
     fetchUnsyncedCounts();
-  }, []);
+  }, [authToken]);
 
   const handleAddClick = (boardType: 'kilter' | 'tension') => {
     setSelectedBoard(boardType);
