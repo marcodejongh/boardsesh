@@ -44,9 +44,16 @@ BEGIN
 
   v_score := v_up - v_down;
 
-  -- Get entity creation time for hot score (use earliest vote if unknown)
-  SELECT COALESCE(MIN(created_at), NOW()) INTO v_created_at
-  FROM votes WHERE entity_type = v_entity_type AND entity_id = v_entity_id;
+  -- Get entity creation time from feed_items if available, otherwise use NOW()
+  -- This ensures hot score uses the entity's actual creation time rather than the
+  -- earliest vote time (which would skew results for entities that existed long before
+  -- receiving their first vote).
+  SELECT COALESCE(
+    (SELECT fi."created_at" FROM feed_items fi
+     WHERE fi."entity_type" = v_entity_type::text AND fi."entity_id" = v_entity_id
+     LIMIT 1),
+    NOW()
+  ) INTO v_created_at;
 
   -- Hot score: sign(score) * ln(max(|score|, 1)) + epoch/45000
   v_hot_score := SIGN(v_score) * LN(GREATEST(ABS(v_score), 1))
@@ -74,17 +81,27 @@ CREATE TRIGGER votes_count_trigger
   AFTER INSERT OR UPDATE OR DELETE ON votes
   FOR EACH ROW EXECUTE FUNCTION update_vote_counts();
 
--- Backfill existing votes
+-- Backfill existing votes, using feed_items.created_at when available
 INSERT INTO vote_counts (entity_type, entity_id, upvotes, downvotes, score, hot_score, created_at)
 SELECT
-  entity_type,
-  entity_id,
-  SUM(CASE WHEN value = 1 THEN 1 ELSE 0 END) as upvotes,
-  SUM(CASE WHEN value = -1 THEN 1 ELSE 0 END) as downvotes,
-  SUM(value) as score,
-  SIGN(SUM(value)) * LN(GREATEST(ABS(SUM(value)), 1))
-    + EXTRACT(EPOCH FROM MIN(created_at)) / 45000.0 as hot_score,
-  MIN(created_at) as created_at
-FROM votes
-GROUP BY entity_type, entity_id
+  v.entity_type,
+  v.entity_id,
+  SUM(CASE WHEN v.value = 1 THEN 1 ELSE 0 END) as upvotes,
+  SUM(CASE WHEN v.value = -1 THEN 1 ELSE 0 END) as downvotes,
+  SUM(v.value) as score,
+  SIGN(SUM(v.value)) * LN(GREATEST(ABS(SUM(v.value)), 1))
+    + EXTRACT(EPOCH FROM COALESCE(
+        (SELECT fi."created_at" FROM feed_items fi
+         WHERE fi."entity_type" = v.entity_type::text AND fi."entity_id" = v.entity_id
+         LIMIT 1),
+        MIN(v.created_at)
+      )) / 45000.0 as hot_score,
+  COALESCE(
+    (SELECT fi."created_at" FROM feed_items fi
+     WHERE fi."entity_type" = v.entity_type::text AND fi."entity_id" = v.entity_id
+     LIMIT 1),
+    MIN(v.created_at)
+  ) as created_at
+FROM votes v
+GROUP BY v.entity_type, v.entity_id
 ON CONFLICT (entity_type, entity_id) DO NOTHING;

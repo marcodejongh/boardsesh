@@ -151,7 +151,7 @@ export const socialRoleMutations = {
     ctx: ConnectionContext,
   ) => {
     await requireAdmin(ctx);
-    applyRateLimit(ctx, 10);
+    await applyRateLimit(ctx, 10);
 
     const validated = validateInput(GrantRoleInputSchema, input, 'input');
     const { userId, role, boardType } = validated;
@@ -204,7 +204,7 @@ export const socialRoleMutations = {
     ctx: ConnectionContext,
   ) => {
     await requireAdmin(ctx);
-    applyRateLimit(ctx, 10);
+    await applyRateLimit(ctx, 10);
 
     const validated = validateInput(RevokeRoleInputSchema, input, 'input');
     const { userId, role, boardType } = validated;

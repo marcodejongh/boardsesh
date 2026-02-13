@@ -150,7 +150,7 @@ export const socialVoteMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 30, 'vote');
+    await applyRateLimit(ctx, 30, 'vote');
 
     const validated = validateInput(VoteInputSchema, input, 'input');
     const { entityType, entityId, value } = validated;

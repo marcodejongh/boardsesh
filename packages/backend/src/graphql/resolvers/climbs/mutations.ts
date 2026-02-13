@@ -88,7 +88,7 @@ export const climbMutations = {
     ctx: ConnectionContext
   ): Promise<SaveClimbResult> => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 10);
+    await applyRateLimit(ctx, 10);
 
     const validated = validateInput(SaveClimbInputSchema, input, 'input');
 
@@ -152,7 +152,7 @@ export const climbMutations = {
     ctx: ConnectionContext
   ): Promise<SaveClimbResult> => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 10);
+    await applyRateLimit(ctx, 10);
 
     const validated = validateInput(SaveMoonBoardClimbInputSchema, input, 'input');
 

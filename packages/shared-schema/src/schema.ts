@@ -2713,6 +2713,12 @@ export const typeDefs = /* GraphQL */ `
     markNotificationRead(notificationUuid: ID!): Boolean!
 
     """
+    Mark all notifications in a group as read.
+    Returns the number of notifications that were marked as read.
+    """
+    markGroupNotificationsRead(type: NotificationType!, entityType: SocialEntityType, entityId: String): Int!
+
+    """
     Mark all notifications as read.
     """
     markAllNotificationsRead: Boolean!

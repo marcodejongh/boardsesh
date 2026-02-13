@@ -158,8 +158,12 @@ export const activityFeedQueries = {
                      / (COALESCE(${dbSchema.voteCounts.upvotes}, 0) + COALESCE(${dbSchema.voteCounts.downvotes}, 0))
                      * LN(COALESCE(${dbSchema.voteCounts.upvotes}, 0) + COALESCE(${dbSchema.voteCounts.downvotes}, 0) + 1)
                 END`)
-            : // Hot: use pre-computed hot_score from vote_counts
-              desc(sql`COALESCE(${dbSchema.voteCounts.hotScore}, EXTRACT(EPOCH FROM ${dbSchema.feedItems.createdAt}) / 45000)`),
+            : // Hot: compute at query time using vote score + entity creation time
+              // Uses feedItems.createdAt (the entity's actual creation time) rather than
+              // vote_counts.hot_score which incorrectly uses earliest vote time
+              desc(sql`SIGN(COALESCE(${dbSchema.voteCounts.score}, 0))
+                * LN(GREATEST(ABS(COALESCE(${dbSchema.voteCounts.score}, 0)), 1))
+                + EXTRACT(EPOCH FROM ${dbSchema.feedItems.createdAt}) / 45000.0`),
         desc(dbSchema.feedItems.createdAt),
         desc(dbSchema.feedItems.id),
       )

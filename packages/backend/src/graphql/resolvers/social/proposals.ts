@@ -747,7 +747,7 @@ export const socialProposalMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 5);
+    await applyRateLimit(ctx, 5);
 
     const validated = validateInput(CreateProposalInputSchema, input, 'input');
     const { climbUuid, boardType, angle, type, proposedValue, reason } = validated;
@@ -929,7 +929,7 @@ export const socialProposalMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 20);
+    await applyRateLimit(ctx, 20);
 
     const validated = validateInput(VoteOnProposalInputSchema, input, 'input');
     const { proposalUuid, value } = validated;
@@ -1124,7 +1124,7 @@ export const socialProposalMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 10);
+    await applyRateLimit(ctx, 10);
 
     const validated = validateInput(SetterOverrideInputSchema, input, 'input');
     const { climbUuid, boardType, angle, communityGrade, isBenchmark } = validated;

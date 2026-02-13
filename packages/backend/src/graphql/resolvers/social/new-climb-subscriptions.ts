@@ -130,7 +130,7 @@ export const newClimbSubscriptionResolvers = {
       ctx: ConnectionContext
     ): Promise<boolean> => {
       requireAuthenticated(ctx);
-      applyRateLimit(ctx, 20);
+      await applyRateLimit(ctx, 20);
       const validated = validateInput(NewClimbSubscriptionInputSchema, input, 'input');
 
       await db
@@ -151,7 +151,7 @@ export const newClimbSubscriptionResolvers = {
       ctx: ConnectionContext
     ): Promise<boolean> => {
       requireAuthenticated(ctx);
-      applyRateLimit(ctx, 20);
+      await applyRateLimit(ctx, 20);
       const validated = validateInput(NewClimbSubscriptionInputSchema, input, 'input');
 
       await db

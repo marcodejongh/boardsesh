@@ -216,7 +216,7 @@ export const socialCommentMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 10, 'comment');
+    await applyRateLimit(ctx, 10, 'comment');
 
     const validated = validateInput(AddCommentInputSchema, input, 'input');
     const { entityType, entityId, parentCommentUuid, body } = validated;
@@ -324,7 +324,7 @@ export const socialCommentMutations = {
     ctx: ConnectionContext,
   ) => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 10, 'comment');
+    await applyRateLimit(ctx, 10, 'comment');
 
     const validated = validateInput(UpdateCommentInputSchema, input, 'input');
     const { commentUuid, body } = validated;

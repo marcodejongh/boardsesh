@@ -81,6 +81,12 @@ export const MARK_NOTIFICATION_READ = gql`
   }
 `;
 
+export const MARK_GROUP_NOTIFICATIONS_READ = gql`
+  mutation MarkGroupNotificationsRead($type: NotificationType!, $entityType: SocialEntityType, $entityId: String) {
+    markGroupNotificationsRead(type: $type, entityType: $entityType, entityId: $entityId)
+  }
+`;
+
 export const MARK_ALL_NOTIFICATIONS_READ = gql`
   mutation MarkAllNotificationsRead {
     markAllNotificationsRead
@@ -203,6 +209,16 @@ export interface MarkNotificationReadMutationVariables {
 
 export interface MarkNotificationReadMutationResponse {
   markNotificationRead: boolean;
+}
+
+export interface MarkGroupNotificationsReadMutationVariables {
+  type: string;
+  entityType?: string | null;
+  entityId?: string | null;
+}
+
+export interface MarkGroupNotificationsReadMutationResponse {
+  markGroupNotificationsRead: number;
 }
 
 export interface MarkAllNotificationsReadMutationResponse {

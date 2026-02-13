@@ -269,7 +269,7 @@ export const socialNotificationMutations = {
     ctx: ConnectionContext,
   ): Promise<boolean> => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 60, 'notification_read');
+    await applyRateLimit(ctx, 60, 'notification_read');
     const userId = ctx.userId!;
 
     await db
@@ -285,13 +285,50 @@ export const socialNotificationMutations = {
     return true;
   },
 
+  markGroupNotificationsRead: async (
+    _: unknown,
+    { type, entityType, entityId }: { type: string; entityType?: string | null; entityId?: string | null },
+    ctx: ConnectionContext,
+  ): Promise<number> => {
+    requireAuthenticated(ctx);
+    await applyRateLimit(ctx, 60, 'notification_read');
+    const userId = ctx.userId!;
+
+    // Build conditions for the group
+    const conditions = [
+      eq(dbSchema.notifications.recipientId, userId),
+      sql`${dbSchema.notifications.type} = ${type}`,
+      isNull(dbSchema.notifications.readAt),
+    ];
+
+    if (entityType != null) {
+      conditions.push(sql`${dbSchema.notifications.entityType} = ${entityType}`);
+    } else {
+      conditions.push(sql`${dbSchema.notifications.entityType} IS NULL`);
+    }
+
+    if (entityId != null) {
+      conditions.push(sql`${dbSchema.notifications.entityId} = ${entityId}`);
+    } else {
+      conditions.push(sql`${dbSchema.notifications.entityId} IS NULL`);
+    }
+
+    const result = await db
+      .update(dbSchema.notifications)
+      .set({ readAt: new Date() })
+      .where(and(...conditions))
+      .returning();
+
+    return result.length;
+  },
+
   markAllNotificationsRead: async (
     _: unknown,
     __: unknown,
     ctx: ConnectionContext,
   ): Promise<boolean> => {
     requireAuthenticated(ctx);
-    applyRateLimit(ctx, 5, 'notification_read_all');
+    await applyRateLimit(ctx, 5, 'notification_read_all');
     const userId = ctx.userId!;
 
     await db

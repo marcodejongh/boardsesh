@@ -65,7 +65,7 @@ export const sessionMutations = {
   ) => {
     if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}, sessionName: ${sessionName}, initialQueueLength: ${initialQueue?.length || 0}`);
 
-    applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
+    await applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
 
     // Validate inputs
     validateInput(SessionIdSchema, sessionId, 'sessionId');
@@ -138,7 +138,7 @@ export const sessionMutations = {
   ) => {
     if (DEBUG) console.log(`[createSession] START - connectionId: ${ctx.connectionId}, boardPath: ${input.boardPath}`);
 
-    applyRateLimit(ctx, 5); // Limit session creation to prevent abuse
+    await applyRateLimit(ctx, 5); // Limit session creation to prevent abuse
     // Only authenticated users can create sessions
     requireAuthenticated(ctx);
 

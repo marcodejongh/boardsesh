@@ -9,13 +9,14 @@ import { createGraphQLClient, subscribe } from '@/app/components/graphql-queue/g
 import {
   GET_GROUPED_NOTIFICATIONS,
   GET_UNREAD_NOTIFICATION_COUNT,
-  MARK_NOTIFICATION_READ,
+  MARK_GROUP_NOTIFICATIONS_READ,
   MARK_ALL_NOTIFICATIONS_READ,
   NOTIFICATION_RECEIVED_SUBSCRIPTION,
   type GetGroupedNotificationsQueryResponse,
   type GetGroupedNotificationsQueryVariables,
   type GetUnreadNotificationCountQueryResponse,
-  type MarkNotificationReadMutationVariables,
+  type MarkGroupNotificationsReadMutationVariables,
+  type MarkGroupNotificationsReadMutationResponse,
   type NotificationReceivedSubscriptionResponse,
 } from '@/app/lib/graphql/operations';
 
@@ -24,7 +25,7 @@ interface NotificationContextValue {
   groupedNotifications: GroupedNotification[];
   isLoading: boolean;
   fetchGroupedNotifications: (limit?: number, offset?: number) => Promise<GroupedNotificationConnection | null>;
-  markAsRead: (uuid: string) => Promise<void>;
+  markGroupAsRead: (notification: GroupedNotification) => Promise<void>;
   markAllAsRead: () => Promise<void>;
 }
 
@@ -33,7 +34,7 @@ const NotificationContext = createContext<NotificationContextValue>({
   groupedNotifications: [],
   isLoading: true,
   fetchGroupedNotifications: async () => null,
-  markAsRead: async () => {},
+  markGroupAsRead: async () => {},
   markAllAsRead: async () => {},
 });
 
@@ -227,23 +228,29 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     [token],
   );
 
-  const markAsRead = useCallback(
-    async (uuid: string) => {
+  const markGroupAsRead = useCallback(
+    async (notification: GroupedNotification) => {
       if (!token) return;
 
       try {
         const client = createGraphQLHttpClient(token);
-        await client.request<{ markNotificationRead: boolean }, MarkNotificationReadMutationVariables>(
-          MARK_NOTIFICATION_READ,
-          { notificationUuid: uuid },
-        );
+        const data = await client.request<
+          MarkGroupNotificationsReadMutationResponse,
+          MarkGroupNotificationsReadMutationVariables
+        >(MARK_GROUP_NOTIFICATIONS_READ, {
+          type: notification.type,
+          entityType: notification.entityType,
+          entityId: notification.entityId,
+        });
+
+        const markedCount = data.markGroupNotificationsRead;
 
         setGroupedNotifications((prev) =>
-          prev.map((n) => (n.uuid === uuid ? { ...n, isRead: true } : n)),
+          prev.map((n) => (n.uuid === notification.uuid ? { ...n, isRead: true } : n)),
         );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
+        setUnreadCount((prev) => Math.max(0, prev - markedCount));
       } catch (err) {
-        console.error('[Notifications] Failed to mark notification as read:', err);
+        console.error('[Notifications] Failed to mark group as read:', err);
       }
     },
     [token],
@@ -270,7 +277,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         groupedNotifications,
         isLoading,
         fetchGroupedNotifications,
-        markAsRead,
+        markGroupAsRead,
         markAllAsRead,
       }}
     >

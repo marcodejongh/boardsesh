@@ -117,28 +117,29 @@ export async function requireSessionMember(
 }
 
 /**
- * Apply rate limiting to a connection (synchronous).
- * Uses in-memory rate limiter keyed by userId (if authenticated) or connectionId.
- * Also enqueues an async Redis rate limit check for distributed enforcement.
+ * Apply rate limiting to a connection.
+ * Uses in-memory rate limiter as fast synchronous check, then awaits
+ * Redis for distributed enforcement across multiple backend instances.
+ *
+ * Redis rate limit errors are re-thrown to enforce distributed limits.
+ * Redis connection errors fall back silently to in-memory enforcement.
  *
  * @param ctx - Connection context
  * @param limit - Optional custom limit (default: 60 requests per minute)
  * @param operation - Operation name for Redis key namespacing (default: 'default')
  */
-export function applyRateLimit(ctx: ConnectionContext, limit?: number, operation = 'default'): void {
+export async function applyRateLimit(ctx: ConnectionContext, limit?: number, operation = 'default'): Promise<void> {
   const maxRequests = limit ?? 60;
 
-  // Always apply synchronous in-memory rate limiting as the primary enforcement
+  // Synchronous in-memory rate limiting (fast path, per-instance)
   const key = ctx.isAuthenticated && ctx.userId
     ? `${ctx.userId}:${operation}`
     : ctx.connectionId;
   checkRateLimit(key, maxRequests);
 
-  // Additionally, for authenticated users, fire async Redis check for distributed enforcement
+  // Distributed Redis rate limiting for authenticated users
   if (ctx.isAuthenticated && ctx.userId) {
-    void checkRateLimitRedis(ctx.userId, operation, maxRequests, 60_000).catch(() => {
-      // Swallow — in-memory rate limiting above is the primary safeguard
-    });
+    await checkRateLimitRedis(ctx.userId, operation, maxRequests, 60_000);
   }
 }
 

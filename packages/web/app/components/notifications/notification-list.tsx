@@ -16,7 +16,7 @@ import NotificationItem from './notification-item';
 const PAGE_SIZE = 20;
 
 export default function NotificationList() {
-  const { groupedNotifications, fetchGroupedNotifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
+  const { groupedNotifications, fetchGroupedNotifications, markGroupAsRead, markAllAsRead, unreadCount } = useNotifications();
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -45,7 +45,7 @@ export default function NotificationList() {
   const handleNotificationClick = useCallback(
     (notification: GroupedNotification) => {
       if (!notification.isRead) {
-        markAsRead(notification.uuid);
+        markGroupAsRead(notification);
       }
 
       // Navigate based on notification type
@@ -56,7 +56,7 @@ export default function NotificationList() {
         router.push(`/profile/${notification.actors[0].id}`);
       }
     },
-    [markAsRead, router],
+    [markGroupAsRead, router],
   );
 
   const sentinelRef = useInfiniteScroll({
