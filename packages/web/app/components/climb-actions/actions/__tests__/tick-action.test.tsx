@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 
 // Mock dependencies before importing the module
 vi.mock('@vercel/analytics', () => ({
@@ -13,6 +13,11 @@ let mockBoardProvider: {
 
 vi.mock('@/app/components/board-provider/board-provider-context', () => ({
   useOptionalBoardProvider: () => mockBoardProvider,
+}));
+
+let mockStandaloneLogbook: Array<{ climb_uuid: string; angle: number; is_ascent: boolean }> = [];
+vi.mock('@/app/hooks/use-logbook', () => ({
+  useLogbook: () => ({ logbook: mockStandaloneLogbook, isLoading: false, error: null }),
 }));
 
 let mockSessionStatus = 'unauthenticated';
@@ -146,6 +151,7 @@ describe('TickAction', () => {
     vi.clearAllMocks();
     mockBoardProvider = null;
     mockSessionStatus = 'unauthenticated';
+    mockStandaloneLogbook = [];
   });
 
   describe('availability', () => {
@@ -209,8 +215,19 @@ describe('TickAction', () => {
       expect(result.current.menuItem.label).toBe('Tick (2)');
     });
 
-    it('uses empty logbook when BoardProvider is absent', () => {
+    it('uses standalone useLogbook when BoardProvider is absent', () => {
       mockBoardProvider = null;
+      mockStandaloneLogbook = [
+        { climb_uuid: 'test-uuid-789', angle: 40, is_ascent: true },
+      ];
+      const props = createTestProps();
+      const { result } = renderHook(() => TickAction(props));
+      expect(result.current.menuItem.label).toBe('Tick (1)');
+    });
+
+    it('shows no badge when standalone logbook is empty', () => {
+      mockBoardProvider = null;
+      mockStandaloneLogbook = [];
       const props = createTestProps();
       const { result } = renderHook(() => TickAction(props));
       expect(result.current.menuItem.label).toBe('Tick');

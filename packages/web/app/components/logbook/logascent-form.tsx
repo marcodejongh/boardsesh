@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import MuiRating from '@mui/material/Rating';
 import Chip from '@mui/material/Chip';
 import MuiTooltip from '@mui/material/Tooltip';
@@ -18,14 +18,9 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { track } from '@vercel/analytics';
 import { Climb, BoardDetails } from '@/app/lib/types';
-import { useOptionalBoardProvider, TickStatus, type SaveTickOptions } from '../board-provider/board-provider-context';
+import { useOptionalBoardProvider, type TickStatus } from '../board-provider/board-provider-context';
 import { useSession } from 'next-auth/react';
-import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { executeGraphQL } from '@/app/lib/graphql/client';
-import {
-  SAVE_TICK,
-  type SaveTickMutationResponse,
-} from '@/app/lib/graphql/operations';
+import { useSaveTick } from '@/app/hooks/use-save-tick';
 import { TENSION_KILTER_GRADES, ANGLES } from '@/app/lib/board-data';
 
 import dayjs from 'dayjs';
@@ -63,19 +58,11 @@ interface LogAscentFormProps {
 export const LogAscentForm: React.FC<LogAscentFormProps> = ({ currentClimb, boardDetails, onClose }) => {
   const boardProvider = useOptionalBoardProvider();
   const { status: sessionStatus } = useSession();
-  const { token: wsAuthToken } = useWsAuthToken();
   const isAuthenticated = boardProvider?.isAuthenticated ?? (sessionStatus === 'authenticated');
 
-  // Use a ref so the fallback saveTick closure always reads the latest token
-  const wsAuthTokenRef = useRef(wsAuthToken);
-  wsAuthTokenRef.current = wsAuthToken;
-
-  const saveTick = boardProvider?.saveTick ?? (async (options: SaveTickOptions) => {
-    await executeGraphQL<SaveTickMutationResponse>(
-      SAVE_TICK,
-      { input: { ...options, boardType: boardDetails.board_name } },
-      wsAuthTokenRef.current,
-    );
+  const saveTickMutation = useSaveTick(boardDetails.board_name);
+  const saveTick = boardProvider?.saveTick ?? (async (options: Parameters<typeof saveTickMutation.mutateAsync>[0]) => {
+    await saveTickMutation.mutateAsync(options);
   });
   const grades = TENSION_KILTER_GRADES;
   const angleOptions = ANGLES[boardDetails.board_name];

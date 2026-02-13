@@ -1,16 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useRef } from 'react';
 
 // === Mock setup ===
 
-const mockExecuteGraphQL = vi.fn().mockResolvedValue({});
-vi.mock('@/app/lib/graphql/client', () => ({
-  executeGraphQL: (...args: unknown[]) => mockExecuteGraphQL(...args),
-}));
-
-vi.mock('@/app/lib/graphql/operations', () => ({
-  SAVE_TICK: 'SAVE_TICK_QUERY',
+const mockMutateAsync = vi.fn().mockResolvedValue({});
+vi.mock('@/app/hooks/use-save-tick', () => ({
+  useSaveTick: () => ({ mutateAsync: mockMutateAsync }),
 }));
 
 vi.mock('@vercel/analytics', () => ({
@@ -31,11 +26,6 @@ vi.mock('next-auth/react', () => ({
   useSession: () => ({ status: mockSessionStatus }),
 }));
 
-let mockWsAuthToken: string | null = 'test-token-123';
-vi.mock('@/app/hooks/use-ws-auth-token', () => ({
-  useWsAuthToken: () => ({ token: mockWsAuthToken, isLoading: false }),
-}));
-
 vi.mock('@/app/lib/board-data', () => ({
   TENSION_KILTER_GRADES: [
     { difficulty_id: 1, difficulty_name: 'V0' },
@@ -50,9 +40,7 @@ vi.mock('@/app/lib/board-data', () => ({
 // Import the mocked modules at the top level (vitest resolves these to mocks)
 import { useOptionalBoardProvider } from '@/app/components/board-provider/board-provider-context';
 import { useSession } from 'next-auth/react';
-import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { executeGraphQL } from '@/app/lib/graphql/client';
-import { SAVE_TICK } from '@/app/lib/graphql/operations';
+import { useSaveTick } from '@/app/hooks/use-save-tick';
 
 import type { BoardDetails } from '@/app/lib/types';
 import type { SaveTickOptions } from '@/app/components/board-provider/board-provider-context';
@@ -88,18 +76,11 @@ function createTestBoardDetails(overrides?: Partial<BoardDetails>): BoardDetails
 function useSaveTickLogic(boardDetails: BoardDetails) {
   const bp = useOptionalBoardProvider();
   const { status: sessionStatus } = useSession();
-  const { token: wsAuthToken } = useWsAuthToken();
   const isAuthenticated = bp?.isAuthenticated ?? (sessionStatus === 'authenticated');
 
-  const wsAuthTokenRef = useRef(wsAuthToken);
-  wsAuthTokenRef.current = wsAuthToken;
-
+  const saveTickMutation = useSaveTick(boardDetails.board_name);
   const saveTick = bp?.saveTick ?? (async (options: SaveTickOptions) => {
-    await executeGraphQL(
-      SAVE_TICK,
-      { input: { ...options, boardType: boardDetails.board_name } },
-      wsAuthTokenRef.current,
-    );
+    await saveTickMutation.mutateAsync(options);
   });
 
   return { saveTick, isAuthenticated };
@@ -110,7 +91,6 @@ describe('LogAscentForm', () => {
     vi.clearAllMocks();
     mockBoardProvider = null;
     mockSessionStatus = 'unauthenticated';
-    mockWsAuthToken = 'test-token-123';
   });
 
   describe('authentication fallback', () => {
@@ -167,12 +147,11 @@ describe('LogAscentForm', () => {
 
       await result.current.saveTick(tickOptions);
       expect(mockSaveTick).toHaveBeenCalledWith(tickOptions);
-      expect(mockExecuteGraphQL).not.toHaveBeenCalled();
+      expect(mockMutateAsync).not.toHaveBeenCalled();
     });
 
-    it('falls back to executeGraphQL when BoardProvider is absent', async () => {
+    it('falls back to useSaveTick mutation when BoardProvider is absent', async () => {
       mockBoardProvider = null;
-      mockWsAuthToken = 'fallback-token';
 
       const boardDetails = createTestBoardDetails({ board_name: 'kilter' });
       const { result } = renderHook(() => useSaveTickLogic(boardDetails));
@@ -190,14 +169,10 @@ describe('LogAscentForm', () => {
 
       await result.current.saveTick(tickOptions);
 
-      expect(mockExecuteGraphQL).toHaveBeenCalledWith(
-        'SAVE_TICK_QUERY',
-        { input: { ...tickOptions, boardType: 'kilter' } },
-        'fallback-token',
-      );
+      expect(mockMutateAsync).toHaveBeenCalledWith(tickOptions);
     });
 
-    it('spreads all SaveTickOptions fields into the GraphQL input', async () => {
+    it('passes all SaveTickOptions fields to mutateAsync', async () => {
       mockBoardProvider = null;
 
       const boardDetails = createTestBoardDetails({ board_name: 'tension' });
@@ -222,55 +197,21 @@ describe('LogAscentForm', () => {
 
       await result.current.saveTick(tickOptions);
 
-      const callArgs = mockExecuteGraphQL.mock.calls[0];
-      const input = callArgs[1].input;
+      const callArgs = mockMutateAsync.mock.calls[0][0];
 
-      expect(input.boardType).toBe('tension');
-      expect(input.climbUuid).toBe('uuid-456');
-      expect(input.angle).toBe(25);
-      expect(input.isMirror).toBe(true);
-      expect(input.status).toBe('attempt');
-      expect(input.attemptCount).toBe(5);
-      expect(input.quality).toBe(4);
-      expect(input.difficulty).toBe(10);
-      expect(input.isBenchmark).toBe(true);
-      expect(input.comment).toBe('Hard one');
-      expect(input.sessionId).toBe('session-1');
-      expect(input.layoutId).toBe(2);
-      expect(input.sizeId).toBe(15);
-      expect(input.setIds).toBe('3,4');
-    });
-
-    it('uses fresh token via ref when token changes after initial render', async () => {
-      mockBoardProvider = null;
-      mockWsAuthToken = 'old-token';
-
-      const boardDetails = createTestBoardDetails();
-      const { result, rerender } = renderHook(() => useSaveTickLogic(boardDetails));
-
-      // Simulate token refresh
-      mockWsAuthToken = 'new-token';
-      rerender();
-
-      const tickOptions: SaveTickOptions = {
-        climbUuid: 'climb-uuid-123',
-        angle: 40,
-        isMirror: false,
-        status: 'flash',
-        attemptCount: 1,
-        isBenchmark: false,
-        comment: '',
-        climbedAt: new Date().toISOString(),
-      };
-
-      await result.current.saveTick(tickOptions);
-
-      // Should use the new token, not the stale one
-      expect(mockExecuteGraphQL).toHaveBeenCalledWith(
-        'SAVE_TICK_QUERY',
-        expect.any(Object),
-        'new-token',
-      );
+      expect(callArgs.climbUuid).toBe('uuid-456');
+      expect(callArgs.angle).toBe(25);
+      expect(callArgs.isMirror).toBe(true);
+      expect(callArgs.status).toBe('attempt');
+      expect(callArgs.attemptCount).toBe(5);
+      expect(callArgs.quality).toBe(4);
+      expect(callArgs.difficulty).toBe(10);
+      expect(callArgs.isBenchmark).toBe(true);
+      expect(callArgs.comment).toBe('Hard one');
+      expect(callArgs.sessionId).toBe('session-1');
+      expect(callArgs.layoutId).toBe(2);
+      expect(callArgs.sizeId).toBe(15);
+      expect(callArgs.setIds).toBe('3,4');
     });
   });
 });
