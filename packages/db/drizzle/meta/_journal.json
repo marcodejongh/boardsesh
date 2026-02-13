@@ -393,6 +393,13 @@
       "when": 1770985556751,
       "tag": "0055_enhanced-sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1771060417917,
+      "tag": "0056_fix_vote_counts_hot_score_fallback",
+      "breakpoints": true
     }
   ]
 }
