@@ -81,6 +81,18 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
   // Correlation ID counter for tracking local updates (keeps reducer pure)
   const correlationCounterRef = useRef(0);
 
+  // Guard to prevent syncing empty initial state before restoration completes.
+  // On mount, the reducer starts with empty state. The sync effect must not
+  // write to persistent session until restoration (from memory or IndexedDB)
+  // has finished — otherwise it overwrites valid data with empty state,
+  // causing PersistentQueueControlBar to see an empty queue and unmount.
+  // Uses useState (not useRef) so the sync effect only sees hasRestored=true
+  // in the render where state.queue already contains the restored data.
+  // With a ref, the restore and sync effects run in the same render cycle:
+  // the restore sets the ref and dispatches, but the sync sees the ref=true
+  // while state.queue is still empty, writing empty state to localQueue.
+  const [hasRestored, setHasRestored] = useState(false);
+
   // Get backend URL from settings
   const { backendUrl } = useConnectionSettings();
 
@@ -169,6 +181,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
           },
         });
       }
+      setHasRestored(true);
     }
   // Only run on mount and when session becomes active - not on every queue change
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -195,6 +208,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
           currentClimbQueueItem: persistentSession.localCurrentClimbQueueItem,
         },
       });
+      setHasRestored(true);
       return;
     }
 
@@ -211,8 +225,13 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
             },
           });
         }
+        setHasRestored(true);
       });
+      return;
     }
+
+    // Local queue is loaded but empty or for a different board — nothing to restore
+    setHasRestored(true);
   // Only run on mount and when isLocalQueueLoaded changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persistentSession.isLocalQueueLoaded]);
@@ -227,6 +246,12 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
   // Sync queue changes to local queue when not in party mode
   useEffect(() => {
+    // Don't sync until initial restoration is complete — the reducer starts
+    // with empty state and would overwrite valid persistent session data.
+    // hasRestored is a state variable (not a ref) so this effect only runs
+    // after the render where INITIAL_QUEUE_DATA has been applied to state.queue.
+    if (!hasRestored) return;
+
     // Only sync when NOT in party mode
     if (isPersistentSessionActive || sessionId) return;
 
@@ -239,6 +264,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       boardDetails,
     );
   }, [
+    hasRestored,
     state.queue,
     state.currentClimbQueueItem,
     baseBoardPath,

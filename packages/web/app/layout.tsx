@@ -10,6 +10,7 @@ import { NavigationLoadingProvider } from './components/providers/navigation-loa
 import PersistentSessionWrapper from './components/providers/persistent-session-wrapper';
 import { SnackbarProvider } from './components/providers/snackbar-provider';
 import { NotificationSubscriptionManager } from './components/providers/notification-subscription-manager';
+import { getAllBoardConfigs } from './lib/server-board-configs';
 import './components/index.css';
 import type { Viewport } from 'next';
 
@@ -20,7 +21,9 @@ export const viewport: Viewport = {
   themeColor: '#0A0A0A',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const boardConfigs = await getAllBoardConfigs();
+
   return (
     <html lang="en" data-theme="dark">
       <body>
@@ -29,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SessionProviderWrapper>
             <AppRouterCacheProvider>
               <ColorModeProvider>
-                <PersistentSessionWrapper>
+                <PersistentSessionWrapper boardConfigs={boardConfigs}>
                   <SnackbarProvider>
                     <NavigationLoadingProvider>
                       <NotificationSubscriptionManager>{children}</NotificationSubscriptionManager>
