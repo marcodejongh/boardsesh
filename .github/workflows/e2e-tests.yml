@@ -23,11 +23,11 @@ jobs:
 
     services:
       postgres:
-        image: ghcr.io/marcodejongh/boardsesh-postgres-postgis:latest
+        image: ghcr.io/marcodejongh/boardsesh-dev-db:latest
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: boardsesh_test
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: main
         ports:
           - 5432:5432
         options: >-
@@ -35,6 +35,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          --shm-size=256m
 
     steps:
     - uses: actions/checkout@v4
@@ -64,13 +65,13 @@ jobs:
         # Provide minimal env vars needed for build
         NEXTAUTH_SECRET: test-secret-for-ci
         NEXTAUTH_URL: http://localhost:3000
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/boardsesh_test
+        DATABASE_URL: postgresql://postgres:password@localhost:5432/main
 
     - name: Run database migrations
       run: npx drizzle-kit migrate
-      working-directory: packages/web
+      working-directory: packages/db
       env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/boardsesh_test
+        DATABASE_URL: postgresql://postgres:password@localhost:5432/main
 
     - name: Start server and run E2E tests
       run: |
@@ -79,7 +80,7 @@ jobs:
         npm run test:e2e --workspace=@boardsesh/web
       env:
         PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/boardsesh_test
+        DATABASE_URL: postgresql://postgres:password@localhost:5432/main
         NEXTAUTH_SECRET: test-secret-for-ci
         NEXTAUTH_URL: http://localhost:3000
 
