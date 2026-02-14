@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useMemo, useLayoutEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useLayoutEffect, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { QueueContext, type GraphQLQueueContextType } from '../graphql-queue/QueueContext';
 import { usePersistentSession } from '../persistent-session';
@@ -34,15 +34,15 @@ export function useQueueBridgeBoardInfo() {
 // -------------------------------------------------------------------
 
 interface QueueBridgeSetters {
-  setInjectedContext: (ctx: GraphQLQueueContextType | null) => void;
-  setInjectedBoardDetails: (bd: BoardDetails | null) => void;
-  setInjectedAngle: (angle: Angle) => void;
+  inject: (ctx: GraphQLQueueContextType, bd: BoardDetails, angle: Angle) => void;
+  updateContext: (ctx: GraphQLQueueContextType) => void;
+  clear: () => void;
 }
 
 const QueueBridgeSetterContext = createContext<QueueBridgeSetters>({
-  setInjectedContext: () => {},
-  setInjectedBoardDetails: () => {},
-  setInjectedAngle: () => {},
+  inject: () => {},
+  updateContext: () => {},
+  clear: () => {},
 });
 
 // -------------------------------------------------------------------
@@ -271,18 +271,29 @@ function usePersistentSessionQueueAdapter(): {
 // -------------------------------------------------------------------
 
 export function QueueBridgeProvider({ children }: { children: React.ReactNode }) {
-  const [injectedContext, setInjectedContext] = useState<GraphQLQueueContextType | null>(null);
+  // Whether a board route injector is currently mounted
+  const [isInjected, setIsInjected] = useState(false);
+  // Board details and angle from the injector (stable across context updates)
   const [injectedBoardDetails, setInjectedBoardDetails] = useState<BoardDetails | null>(null);
   const [injectedAngle, setInjectedAngle] = useState<Angle>(0);
+  // The queue context value is stored in a ref to avoid cleanup/setup cycles
+  // on every context update. The ref is read synchronously during render.
+  const injectedContextRef = useRef<GraphQLQueueContextType | null>(null);
+  // Counter to force re-renders when the injected context ref changes
+  const [contextVersion, setContextVersion] = useState(0);
 
   const adapter = usePersistentSessionQueueAdapter();
 
-  // When a board route is active (injectedContext set), use the injected context.
+  // When a board route is active (isInjected), use the injected context.
   // Otherwise, fall back to the PersistentSession adapter.
-  const effectiveContext = injectedContext ?? adapter.context;
-  const effectiveBoardDetails = injectedContext ? injectedBoardDetails : adapter.boardDetails;
-  const effectiveAngle = injectedContext ? injectedAngle : adapter.angle;
-  const effectiveHasActiveQueue = injectedContext
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- contextVersion forces re-read of ref
+  const effectiveContext = useMemo(
+    () => (isInjected && injectedContextRef.current) ? injectedContextRef.current : adapter.context,
+    [isInjected, contextVersion, adapter.context],
+  );
+  const effectiveBoardDetails = isInjected ? injectedBoardDetails : adapter.boardDetails;
+  const effectiveAngle = isInjected ? injectedAngle : adapter.angle;
+  const effectiveHasActiveQueue = isInjected
     ? true // If injected, a board route is active — always show bar
     : adapter.hasActiveQueue;
 
@@ -295,13 +306,30 @@ export function QueueBridgeProvider({ children }: { children: React.ReactNode })
     [effectiveBoardDetails, effectiveAngle, effectiveHasActiveQueue],
   );
 
+  const inject = useCallback((ctx: GraphQLQueueContextType, bd: BoardDetails, a: Angle) => {
+    injectedContextRef.current = ctx;
+    setInjectedBoardDetails(bd);
+    setInjectedAngle(a);
+    setIsInjected(true);
+    setContextVersion(v => v + 1);
+  }, []);
+
+  const updateContext = useCallback((ctx: GraphQLQueueContextType) => {
+    injectedContextRef.current = ctx;
+    setContextVersion(v => v + 1);
+  }, []);
+
+  const clear = useCallback(() => {
+    injectedContextRef.current = null;
+    setIsInjected(false);
+    setInjectedBoardDetails(null);
+    setInjectedAngle(0);
+    setContextVersion(v => v + 1);
+  }, []);
+
   const setters = useMemo<QueueBridgeSetters>(
-    () => ({
-      setInjectedContext,
-      setInjectedBoardDetails,
-      setInjectedAngle,
-    }),
-    [],
+    () => ({ inject, updateContext, clear }),
+    [inject, updateContext, clear],
   );
 
   return (
@@ -325,25 +353,36 @@ interface QueueBridgeInjectorProps {
 }
 
 export function QueueBridgeInjector({ boardDetails, angle }: QueueBridgeInjectorProps) {
-  const { setInjectedContext, setInjectedBoardDetails, setInjectedAngle } = useContext(QueueBridgeSetterContext);
+  const { inject, updateContext, clear } = useContext(QueueBridgeSetterContext);
 
   // Read the board route's QueueContext (from GraphQLQueueProvider which is a parent)
   const queueContext = useContext(QueueContext);
 
-  // Use useLayoutEffect so injection happens synchronously before paint — no flash
+  // Track whether we've done the initial injection
+  const hasInjectedRef = useRef(false);
+
+  // Initial injection: set board details + context on mount
   useLayoutEffect(() => {
     if (queueContext) {
-      setInjectedContext(queueContext);
+      inject(queueContext, boardDetails, angle);
+      hasInjectedRef.current = true;
     }
-    setInjectedBoardDetails(boardDetails);
-    setInjectedAngle(angle);
-
+    // Only clean up on unmount (navigating away from board route)
     return () => {
-      setInjectedContext(null);
-      setInjectedBoardDetails(null);
-      setInjectedAngle(0);
+      hasInjectedRef.current = false;
+      clear();
     };
-  }, [queueContext, boardDetails, angle, setInjectedContext, setInjectedBoardDetails, setInjectedAngle]);
+  // Only re-run when board details or angle change (navigation between boards)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardDetails, angle, inject, clear]);
+
+  // Update the context ref whenever the queue context value changes
+  // This avoids the cleanup/setup cycle that was causing the bar to disappear
+  useEffect(() => {
+    if (queueContext && hasInjectedRef.current) {
+      updateContext(queueContext);
+    }
+  }, [queueContext, updateContext]);
 
   return null;
 }
