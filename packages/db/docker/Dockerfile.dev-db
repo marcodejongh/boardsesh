@@ -93,7 +93,7 @@ RUN set -e && \
     chown postgres:postgres "$PGDATA" && \
     gosu postgres initdb -D "$PGDATA" --auth-local=trust --auth-host=trust && \
     gosu postgres pg_ctl -D "$PGDATA" start \
-      -o "-c listen_addresses=localhost -c log_min_messages=warning" && \
+      -o "-c listen_addresses=localhost -c log_min_messages=warning -c max_wal_size=2GB" && \
     until gosu postgres pg_isready; do sleep 1; done && \
     \
     # ── Create database and neon proxy schema ────────────────────────── \
@@ -135,6 +135,16 @@ RUN set -e && \
       fi; \
     done && \
     echo ">>> All $applied migrations applied successfully." && \
+    \
+    # ── Verify database state ────────────────────────────────────────── \
+    echo ">>> Verifying database..." && \
+    recorded=$(gosu postgres psql main -t -A -c "SELECT count(*) FROM \"__drizzle_migrations\"") && \
+    table_count=$(gosu postgres psql main -t -A -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'") && \
+    echo "  Migrations recorded: $recorded / $migration_count" && \
+    echo "  Public tables: $table_count" && \
+    if [ "$recorded" -ne "$migration_count" ]; then \
+      echo "ERROR: Migration count mismatch! Expected $migration_count, got $recorded" && false; \
+    fi && \
     \
     # ── Stop PostgreSQL ──────────────────────────────────────────────── \
     echo ">>> Stopping PostgreSQL..." && \
