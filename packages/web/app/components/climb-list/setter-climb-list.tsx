@@ -1,23 +1,32 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Box from '@mui/material/Box';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import ToggleButton from '@mui/material/ToggleButton';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
-  GET_SETTER_CLIMBS,
-  type GetSetterClimbsQueryVariables,
-  type GetSetterClimbsQueryResponse,
+  GET_SETTER_CLIMBS_FULL,
+  type GetSetterClimbsFullQueryVariables,
+  type GetSetterClimbsFullQueryResponse,
 } from '@/app/lib/graphql/operations';
-import type { SetterClimb } from '@boardsesh/shared-schema';
+import { useMyBoards } from '@/app/hooks/use-my-boards';
+import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
+import BoardScrollSection from '@/app/components/board-scroll/board-scroll-section';
+import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
+import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module.css';
+import ClimbsList from '@/app/components/board-page/climbs-list';
+import { FavoritesProvider } from '@/app/components/climb-actions/favorites-batch-context';
+import { PlaylistsProvider } from '@/app/components/climb-actions/playlists-batch-context';
+import { getBoardDetailsForPlaylist, getDefaultAngleForBoard } from '@/app/lib/board-config-for-playlist';
+import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
+import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
+import type { UserBoard } from '@boardsesh/shared-schema';
+import type { Climb, BoardDetails, BoardName } from '@/app/lib/types';
+
+type SortBy = 'popular' | 'new';
 
 interface SetterClimbListProps {
   username: string;
@@ -25,29 +34,70 @@ interface SetterClimbListProps {
   authToken?: string | null;
 }
 
+function getUserBoardDetails(board: UserBoard): BoardDetails | null {
+  try {
+    const setIds = board.setIds.split(',').map(Number);
+    if (board.boardType === 'moonboard') {
+      return getMoonBoardDetails({ layout_id: board.layoutId, set_ids: setIds }) as BoardDetails;
+    }
+    return getBoardDetails({
+      board_name: board.boardType as BoardName,
+      layout_id: board.layoutId,
+      size_id: board.sizeId,
+      set_ids: setIds,
+    });
+  } catch {
+    return null;
+  }
+}
+
 export default function SetterClimbList({ username, boardTypes, authToken }: SetterClimbListProps) {
-  const [climbs, setClimbs] = useState<SetterClimb[]>([]);
+  const [climbs, setClimbs] = useState<Climb[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-  const [selectedBoard, setSelectedBoard] = useState<string | undefined>(undefined);
+  const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
+  const [sortBy, setSortBy] = useState<SortBy>('popular');
 
-  const fetchClimbs = useCallback(async (offset = 0, boardType?: string) => {
+  const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(true);
+
+  const fetchClimbs = useCallback(async (
+    offset = 0,
+    board?: UserBoard | null,
+    sort: SortBy = 'popular',
+  ) => {
     setLoading(true);
     try {
       const client = createGraphQLHttpClient(authToken ?? null);
-      const response = await client.request<GetSetterClimbsQueryResponse, GetSetterClimbsQueryVariables>(
-        GET_SETTER_CLIMBS,
-        { input: { username, boardType, limit: 20, offset } }
+      const variables: GetSetterClimbsFullQueryVariables = {
+        input: {
+          username,
+          sortBy: sort,
+          limit: 20,
+          offset,
+        },
+      };
+
+      if (board) {
+        variables.input.boardType = board.boardType;
+        variables.input.layoutId = board.layoutId;
+        variables.input.sizeId = board.sizeId;
+        variables.input.setIds = board.setIds;
+        variables.input.angle = board.angle ?? getDefaultAngleForBoard(board.boardType);
+      }
+
+      const response = await client.request<GetSetterClimbsFullQueryResponse, GetSetterClimbsFullQueryVariables>(
+        GET_SETTER_CLIMBS_FULL,
+        variables,
       );
 
       if (offset === 0) {
-        setClimbs(response.setterClimbs.climbs);
+        setClimbs(response.setterClimbsFull.climbs);
       } else {
-        setClimbs((prev) => [...prev, ...response.setterClimbs.climbs]);
+        setClimbs((prev) => [...prev, ...response.setterClimbsFull.climbs]);
       }
-      setHasMore(response.setterClimbs.hasMore);
-      setTotalCount(response.setterClimbs.totalCount);
+      setHasMore(response.setterClimbsFull.hasMore);
+      setTotalCount(response.setterClimbsFull.totalCount);
     } catch (error) {
       console.error('Failed to fetch setter climbs:', error);
     } finally {
@@ -56,22 +106,34 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
   }, [username, authToken]);
 
   useEffect(() => {
-    fetchClimbs(0, selectedBoard);
-  }, [fetchClimbs, selectedBoard]);
+    fetchClimbs(0, selectedBoard, sortBy);
+  }, [fetchClimbs, selectedBoard, sortBy]);
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     if (!loading && hasMore) {
-      fetchClimbs(climbs.length, selectedBoard);
+      fetchClimbs(climbs.length, selectedBoard, sortBy);
+    }
+  }, [loading, hasMore, climbs.length, selectedBoard, sortBy, fetchClimbs]);
+
+  const handleSortChange = (_: React.MouseEvent<HTMLElement>, value: SortBy | null) => {
+    if (value) {
+      setSortBy(value);
     }
   };
 
-  const handleBoardChange = (_: React.MouseEvent<HTMLElement>, value: string | null) => {
-    setSelectedBoard(value ?? undefined);
+  const handleBoardSelect = (board: UserBoard) => {
+    setSelectedBoard(board);
   };
 
-  const navigateToClimb = useCallback(async (climb: SetterClimb) => {
+  const handleAllSelect = () => {
+    setSelectedBoard(null);
+  };
+
+  const navigateToClimb = useCallback(async (climb: Climb) => {
     try {
-      const params = new URLSearchParams({ boardType: climb.boardType, climbUuid: climb.uuid });
+      const bt = climb.boardType || selectedBoard?.boardType;
+      if (!bt) return;
+      const params = new URLSearchParams({ boardType: bt, climbUuid: climb.uuid });
       const res = await fetch(`/api/internal/climb-redirect?${params}`);
       if (!res.ok) return;
       const { url } = await res.json();
@@ -79,107 +141,164 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
     } catch {
       // Silently fail navigation
     }
-  }, []);
+  }, [selectedBoard]);
+
+  // Build boardDetailsMap for multi-board rendering
+  const { boardDetailsMap, defaultBoardDetails, unsupportedClimbs } = useMemo(() => {
+    const map: Record<string, BoardDetails> = {};
+    const unsupported = new Set<string>();
+
+    // Group user boards by boardType:layoutId
+    const userBoardsByKey = new Map<string, UserBoard>();
+    for (const board of myBoards) {
+      const key = `${board.boardType}:${board.layoutId}`;
+      if (!userBoardsByKey.has(key)) {
+        userBoardsByKey.set(key, board);
+      }
+    }
+
+    // For each climb, resolve board details
+    for (const climb of climbs) {
+      const bt = climb.boardType;
+      const layoutId = climb.layoutId;
+      if (!bt || layoutId == null) continue;
+
+      const key = `${bt}:${layoutId}`;
+      if (map[key]) continue;
+
+      const userBoard = userBoardsByKey.get(key);
+      if (userBoard) {
+        const details = getUserBoardDetails(userBoard);
+        if (details) {
+          map[key] = details;
+          continue;
+        }
+      }
+
+      const genericDetails = getBoardDetailsForPlaylist(bt, layoutId);
+      if (genericDetails) {
+        map[key] = genericDetails;
+      }
+    }
+
+    // Determine unsupported climbs
+    const userBoardTypes = new Set(myBoards.map((b) => b.boardType));
+    for (const climb of climbs) {
+      if (climb.boardType && !userBoardTypes.has(climb.boardType)) {
+        unsupported.add(climb.uuid);
+      }
+    }
+
+    // Default board details for skeletons
+    let defaultDetails: BoardDetails | null = null;
+    if (selectedBoard) {
+      defaultDetails = getUserBoardDetails(selectedBoard);
+    }
+    if (!defaultDetails && myBoards.length > 0) {
+      defaultDetails = getUserBoardDetails(myBoards[0]);
+    }
+    if (!defaultDetails) {
+      defaultDetails = getBoardDetailsForPlaylist('kilter', 1);
+    }
+
+    return {
+      boardDetailsMap: map,
+      defaultBoardDetails: defaultDetails!,
+      unsupportedClimbs: unsupported,
+    };
+  }, [climbs, myBoards, selectedBoard]);
+
+  // Climb action data for favorites/playlists context
+  const climbUuids = useMemo(() => climbs.map((c) => c.uuid), [climbs]);
+  const actionsBoardName = selectedBoard?.boardType || (climbs[0]?.boardType ?? 'kilter');
+  const actionsLayoutId = selectedBoard?.layoutId || (climbs[0]?.layoutId ?? 1);
+  const actionsAngle = selectedBoard?.angle || getDefaultAngleForBoard(actionsBoardName);
+
+  const { favoritesProviderProps, playlistsProviderProps } = useClimbActionsData({
+    boardName: actionsBoardName,
+    layoutId: actionsLayoutId,
+    angle: actionsAngle,
+    climbUuids,
+  });
+
+  // Header with sort toggle and count
+  const headerInline = (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={sortBy}
+        onChange={handleSortChange}
+      >
+        <ToggleButton value="popular">Popular</ToggleButton>
+        <ToggleButton value="new">New</ToggleButton>
+      </ToggleButtonGroup>
+      {totalCount > 0 && (
+        <Typography variant="body2" color="text.secondary">
+          {totalCount} climb{totalCount !== 1 ? 's' : ''}
+        </Typography>
+      )}
+    </Box>
+  );
 
   return (
     <Box>
-      {/* Board type filter */}
-      {boardTypes && boardTypes.length > 1 && (
-        <Box sx={{ mb: 2 }}>
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={selectedBoard ?? null}
-            onChange={handleBoardChange}
+      {/* Board filter - thumbnail scroll cards */}
+      {(myBoards.length > 0 || isLoadingBoards) && (
+        <BoardScrollSection loading={isLoadingBoards} size="small">
+          <div
+            className={`${boardScrollStyles.cardScroll} ${boardScrollStyles.cardScrollSmall}`}
+            onClick={handleAllSelect}
           >
-            <ToggleButton value={null as unknown as string}>All</ToggleButton>
-            {boardTypes.map((bt) => (
-              <ToggleButton key={bt} value={bt}>
-                {bt.charAt(0).toUpperCase() + bt.slice(1)}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
-        </Box>
+            <div className={`${boardScrollStyles.cardSquare} ${boardScrollStyles.filterSquare} ${!selectedBoard ? boardScrollStyles.cardSquareSelected : ''}`}>
+              <span className={boardScrollStyles.filterLabel}>All</span>
+            </div>
+            <div className={`${boardScrollStyles.cardName} ${!selectedBoard ? boardScrollStyles.cardNameSelected : ''}`}>
+              All Boards
+            </div>
+          </div>
+          {myBoards.map((board) => (
+            <BoardScrollCard
+              key={board.uuid}
+              userBoard={board}
+              size="small"
+              selected={selectedBoard?.uuid === board.uuid}
+              disabled={!boardTypes?.includes(board.boardType)}
+              disabledText="No climbs"
+              onClick={() => handleBoardSelect(board)}
+            />
+          ))}
+        </BoardScrollSection>
       )}
 
       {loading && climbs.length === 0 ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress size={24} />
         </Box>
-      ) : climbs.length === 0 ? (
+      ) : climbs.length === 0 && !loading ? (
         <Box sx={{ py: 4, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">
             No climbs found
           </Typography>
         </Box>
-      ) : (
-        <>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {totalCount} climb{totalCount !== 1 ? 's' : ''}
-          </Typography>
-          <List disablePadding>
-            {climbs.map((climb) => (
-              <ListItem
-                key={`${climb.boardType}-${climb.uuid}`}
-                onClick={() => navigateToClimb(climb)}
-                sx={{
-                  cursor: 'pointer',
-                  '&:hover': { backgroundColor: 'action.hover' },
-                  borderBottom: '1px solid var(--neutral-200)',
-                  py: 1.5,
-                  px: 0,
-                }}
-              >
-                <ListItemText
-                  primary={climb.name || 'Unnamed'}
-                  secondary={
-                    <Box component="span" sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
-                      <Chip
-                        label={climb.boardType.charAt(0).toUpperCase() + climb.boardType.slice(1)}
-                        size="small"
-                        variant="outlined"
-                        sx={{ height: 20, fontSize: '0.7rem' }}
-                      />
-                      {climb.difficultyName && (
-                        <Typography variant="caption" component="span" color="text.secondary">
-                          {climb.difficultyName}
-                        </Typography>
-                      )}
-                      {climb.angle != null && (
-                        <Typography variant="caption" component="span" color="text.secondary">
-                          {climb.angle}&deg;
-                        </Typography>
-                      )}
-                      {climb.ascensionistCount != null && climb.ascensionistCount > 0 && (
-                        <Typography variant="caption" component="span" color="text.secondary">
-                          {climb.ascensionistCount} ascent{climb.ascensionistCount !== 1 ? 's' : ''}
-                        </Typography>
-                      )}
-                      {climb.qualityAverage != null && climb.qualityAverage > 0 && (
-                        <Typography variant="caption" component="span" color="text.secondary">
-                          {'★'.repeat(Math.round(climb.qualityAverage))}
-                        </Typography>
-                      )}
-                    </Box>
-                  }
-                />
-              </ListItem>
-            ))}
-          </List>
-          {hasMore && (
-            <Box sx={{ p: 2, textAlign: 'center' }}>
-              <MuiButton
-                onClick={handleLoadMore}
-                disabled={loading}
-                variant="outlined"
-                fullWidth
-              >
-                {loading ? 'Loading...' : `Load more (${climbs.length} of ${totalCount})`}
-              </MuiButton>
-            </Box>
-          )}
-        </>
-      )}
+      ) : defaultBoardDetails ? (
+        <FavoritesProvider {...favoritesProviderProps}>
+          <PlaylistsProvider {...playlistsProviderProps}>
+            <ClimbsList
+              boardDetails={defaultBoardDetails}
+              boardDetailsMap={boardDetailsMap}
+              unsupportedClimbs={unsupportedClimbs}
+              climbs={climbs}
+              isFetching={loading}
+              hasMore={hasMore}
+              onClimbSelect={navigateToClimb}
+              onLoadMore={handleLoadMore}
+              headerInline={headerInline}
+              hideEndMessage
+            />
+          </PlaylistsProvider>
+        </FavoritesProvider>
+      ) : null}
     </Box>
   );
 }

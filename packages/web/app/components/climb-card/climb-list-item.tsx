@@ -28,10 +28,12 @@ type ClimbListItemProps = {
   climb: Climb;
   boardDetails: BoardDetails;
   selected?: boolean;
+  /** When true, the item is visually dimmed (greyed out) but still interactive */
+  unsupported?: boolean;
   onSelect?: () => void;
 };
 
-const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDetails, selected, onSelect }) => {
+const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDetails, selected, unsupported, onSelect }) => {
   const isDark = useIsDarkMode();
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const queueContext = useOptionalQueueContext();
@@ -66,8 +68,12 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
 
   // Memoize style objects to prevent recreation on every render
   const containerStyle = useMemo(
-    () => ({ position: 'relative' as const, overflow: 'hidden' as const }),
-    [],
+    () => ({
+      position: 'relative' as const,
+      overflow: 'hidden' as const,
+      ...(unsupported ? { opacity: 0.5, filter: 'grayscale(80%)' } : {}),
+    }),
+    [unsupported],
   );
 
   const leftActionStyle = useMemo(
@@ -326,6 +332,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
 }, (prev, next) => {
   return prev.climb.uuid === next.climb.uuid
     && prev.selected === next.selected
+    && prev.unsupported === next.unsupported
     && prev.boardDetails === next.boardDetails;
 });
 

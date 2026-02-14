@@ -6,7 +6,6 @@ import type {
   UnifiedSearchConnection,
   FollowingAscentsFeedResult,
   SetterProfile,
-  SetterClimbsConnection,
 } from '@boardsesh/shared-schema';
 
 // ============================================
@@ -288,25 +287,57 @@ export const GET_SETTER_PROFILE = gql`
   }
 `;
 
-export const GET_SETTER_CLIMBS = gql`
-  query GetSetterClimbs($input: SetterClimbsInput!) {
-    setterClimbs(input: $input) {
+// ============================================
+// Setter Climbs Full (with litUpHoldsMap for thumbnails)
+// ============================================
+
+export const GET_SETTER_CLIMBS_FULL = gql`
+  query GetSetterClimbsFull($input: SetterClimbsFullInput!) {
+    setterClimbsFull(input: $input) {
       climbs {
         uuid
-        name
-        boardType
         layoutId
+        boardType
+        setter_username
+        name
+        description
+        frames
         angle
-        difficultyName
-        qualityAverage
-        ascensionistCount
-        createdAt
+        ascensionist_count
+        difficulty
+        quality_average
+        stars
+        difficulty_error
+        benchmark_difficulty
+        litUpHoldsMap
       }
       totalCount
       hasMore
     }
   }
 `;
+
+export interface GetSetterClimbsFullQueryVariables {
+  input: {
+    username: string;
+    boardType?: string;
+    layoutId?: number;
+    sizeId?: number;
+    setIds?: string;
+    angle?: number;
+    sortBy?: string;
+    limit?: number;
+    offset?: number;
+  };
+}
+
+export interface GetSetterClimbsFullQueryResponse {
+  setterClimbsFull: {
+    climbs: import('@/app/lib/types').Climb[];
+    totalCount: number;
+    hasMore: boolean;
+  };
+}
 
 // ============================================
 // Unified Search
@@ -365,14 +396,6 @@ export interface GetSetterProfileQueryVariables {
 
 export interface GetSetterProfileQueryResponse {
   setterProfile: SetterProfile | null;
-}
-
-export interface GetSetterClimbsQueryVariables {
-  input: { username: string; boardType?: string; limit?: number; offset?: number };
-}
-
-export interface GetSetterClimbsQueryResponse {
-  setterClimbs: SetterClimbsConnection;
 }
 
 export interface SearchUsersAndSettersQueryVariables {

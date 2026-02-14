@@ -46,6 +46,8 @@ export const typeDefs = /* GraphQL */ `
     userAscents: Int
     "Number of times the current user has attempted this climb"
     userAttempts: Int
+    "Board type this climb belongs to (e.g. 'kilter', 'tension'). Populated in multi-board contexts."
+    boardType: String
   }
 
   """
@@ -2163,9 +2165,38 @@ export const typeDefs = /* GraphQL */ `
     username: String!
     "Optional board type filter"
     boardType: String
+    "Optional layout ID filter"
+    layoutId: Int
+    "Sort order: popular (by ascents, default) or new (by creation date)"
+    sortBy: String
     "Maximum number of climbs to return"
     limit: Int
     "Number of climbs to skip"
+    offset: Int
+  }
+
+  """
+  Input for fetching setter climbs with full Climb data (including litUpHoldsMap).
+  Used by the setter profile page for thumbnail rendering.
+  """
+  input SetterClimbsFullInput {
+    "The setter's Aurora username"
+    username: String!
+    "Board type filter (omit for 'All Boards')"
+    boardType: String
+    "Layout ID (required when boardType is provided)"
+    layoutId: Int
+    "Size ID (required when boardType is provided)"
+    sizeId: Int
+    "Set IDs (required when boardType is provided)"
+    setIds: String
+    "Board angle (required when boardType is provided)"
+    angle: Int
+    "Sort order: 'popular' (default) or 'new'"
+    sortBy: String
+    "Maximum number of climbs to return (default 20)"
+    limit: Int
+    "Number of climbs to skip (default 0)"
     offset: Int
   }
 
@@ -2839,6 +2870,12 @@ export const typeDefs = /* GraphQL */ `
     Get climbs created by a setter.
     """
     setterClimbs(input: SetterClimbsInput!): SetterClimbsConnection!
+
+    """
+    Get climbs created by a setter with full Climb data (including litUpHoldsMap for thumbnails).
+    Supports multi-board mode when boardType is omitted.
+    """
+    setterClimbsFull(input: SetterClimbsFullInput!): PlaylistClimbsResult!
 
     """
     Get activity feed of ascents from followed users.

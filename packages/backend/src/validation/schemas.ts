@@ -537,6 +537,23 @@ export const SetterProfileInputSchema = z.object({
 export const SetterClimbsInputSchema = z.object({
   username: z.string().min(1, 'Username cannot be empty').max(100),
   boardType: BoardNameSchema.optional(),
+  layoutId: z.number().int().positive().optional(),
+  sortBy: z.enum(['popular', 'new']).optional().default('popular'),
+  limit: z.number().int().min(1).max(100).optional().default(20),
+  offset: z.number().int().min(0).optional().default(0),
+});
+
+/**
+ * Setter climbs full input validation schema (with litUpHoldsMap for thumbnails)
+ */
+export const SetterClimbsFullInputSchema = z.object({
+  username: z.string().min(1, 'Username cannot be empty').max(100),
+  boardType: BoardNameSchema.optional(),
+  layoutId: z.number().int().positive().optional(),
+  sizeId: z.number().int().positive().optional(),
+  setIds: z.string().optional(),
+  angle: z.number().int().optional(),
+  sortBy: z.enum(['popular', 'new']).optional().default('popular'),
   limit: z.number().int().min(1).max(100).optional().default(20),
   offset: z.number().int().min(0).optional().default(0),
 });

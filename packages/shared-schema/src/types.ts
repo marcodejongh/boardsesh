@@ -26,6 +26,7 @@ export type Climb = {
   benchmark_difficulty: string | null;
   userAscents?: number | null; // GraphQL nullable Int
   userAttempts?: number | null; // GraphQL nullable Int
+  boardType?: string; // Populated in multi-board contexts
 };
 
 export type QueueItemUser = {
@@ -650,6 +651,8 @@ export type SetterProfileInput = {
 export type SetterClimbsInput = {
   username: string;
   boardType?: string;
+  layoutId?: number;
+  sortBy?: 'popular' | 'new';
   limit?: number;
   offset?: number;
 };

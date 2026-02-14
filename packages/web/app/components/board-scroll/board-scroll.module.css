@@ -79,6 +79,16 @@
   text-overflow: ellipsis;
 }
 
+/* Disabled state */
+.cardSquareDisabled {
+  opacity: 0.4;
+  filter: grayscale(100%);
+}
+
+.cardNameDisabled {
+  color: var(--neutral-400);
+}
+
 /* Create New Card */
 .createSquare {
   border: 2px dashed var(--neutral-300);
