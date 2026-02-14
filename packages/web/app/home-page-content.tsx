@@ -19,11 +19,11 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { BoardConfigData } from '@/app/lib/server-board-configs';
-import ErrorBoundary from '@/app/components/error-boundary';
-import PersistentQueueControlBar from '@/app/components/queue-control/persistent-queue-control-bar';
 import BoardScrollSection from '@/app/components/board-scroll/board-scroll-section';
 import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
 import type { SortMode, ActivityFeedItem } from '@boardsesh/shared-schema';
+import ErrorBoundary from '@/app/components/error-boundary';
+import PersistentQueueControlBar from '@/app/components/queue-control/persistent-queue-control-bar';
 import bottomBarStyles from '@/app/components/bottom-tab-bar/bottom-bar-wrapper.module.css';
 import { NewClimbFeed } from '@/app/components/new-climb-feed';
 import type { UserBoard, NewClimbSubscription } from '@boardsesh/shared-schema';
@@ -233,7 +233,7 @@ export default function HomePageContent({
         )}
       </Box>
 
-      {/* Bottom Bar: QueueControlBar (if active) + BottomTabBar */}
+      {/* Bottom Bar */}
       <div className={bottomBarStyles.bottomBarWrapper}>
         <ErrorBoundary>
           <PersistentQueueControlBar />

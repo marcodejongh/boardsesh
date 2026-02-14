@@ -81,12 +81,14 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
   // Correlation ID counter for tracking local updates (keeps reducer pure)
   const correlationCounterRef = useRef(0);
 
-  // Guard to skip the first sync-to-persistent-session effect execution.
-  // On mount, the reducer starts with empty state. If the sync effect fires
-  // immediately it overwrites the persistent session before the restoration
-  // effect's dispatch (INITIAL_QUEUE_DATA) has been processed, causing the
-  // PersistentQueueControlBar to see an empty queue and unmount.
-  const isFirstSyncRef = useRef(true);
+  // Guard to prevent syncing empty initial state before restoration completes.
+  // On mount, the reducer starts with empty state. The sync effect must not
+  // write to persistent session until restoration (from memory or IndexedDB)
+  // has finished — otherwise it overwrites valid data with empty state,
+  // causing PersistentQueueControlBar to see an empty queue and unmount.
+  // Unlike isFirstSyncRef (which only skipped one render), this ref stays
+  // false until restoration explicitly sets it, handling async IndexedDB loads.
+  const hasRestoredRef = useRef(false);
 
   // Get backend URL from settings
   const { backendUrl } = useConnectionSettings();
@@ -176,6 +178,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
           },
         });
       }
+      hasRestoredRef.current = true;
     }
   // Only run on mount and when session becomes active - not on every queue change
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,6 +205,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
           currentClimbQueueItem: persistentSession.localCurrentClimbQueueItem,
         },
       });
+      hasRestoredRef.current = true;
       return;
     }
 
@@ -218,8 +222,13 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
             },
           });
         }
+        hasRestoredRef.current = true;
       });
+      return;
     }
+
+    // Local queue is loaded but empty or for a different board — nothing to restore
+    hasRestoredRef.current = true;
   // Only run on mount and when isLocalQueueLoaded changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persistentSession.isLocalQueueLoaded]);
@@ -234,12 +243,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
   // Sync queue changes to local queue when not in party mode
   useEffect(() => {
-    // Skip the first execution to avoid overwriting persistent session with
-    // empty initial reducer state before the restoration effect runs.
-    if (isFirstSyncRef.current) {
-      isFirstSyncRef.current = false;
-      return;
-    }
+    // Don't sync until initial restoration is complete — the reducer starts
+    // with empty state and would overwrite valid persistent session data.
+    if (!hasRestoredRef.current) return;
 
     // Only sync when NOT in party mode
     if (isPersistentSessionActive || sessionId) return;

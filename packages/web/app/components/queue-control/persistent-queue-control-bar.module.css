@@ -16,21 +16,3 @@
     }
   }
 }
-
-/* Positions the queue bar above the bottom tab bar on pages that have one
-   (home, my-library, notifications). The tab bar is ~56px tall. */
-.aboveTabBar {
-  position: fixed;
-  bottom: 56px;
-  left: 0;
-  width: 100%;
-  z-index: 999;
-}
-
-@supports (-webkit-touch-callout: none) {
-  @media (hover: none) and (pointer: coarse) {
-    .aboveTabBar {
-      bottom: calc(56px + 2dvh);
-    }
-  }
-}
