@@ -87,15 +87,15 @@ RUN set -e && \
     echo ">>> Fixing Tension SQLite compatibility..." && \
     DB_FILE=/db/tmp/tension.modified.db /db/cleanup_sqlite_db_problems.sh && \
     \
-    # ── Initialize and start PostgreSQL (Unix sockets only) ────────────── \
-    # TCP sockets fail under QEMU emulation (buildx arm64), so we use \
-    # Unix sockets exclusively for the build-time postgres instance. \
+    # ── Initialize and start PostgreSQL ────────────────────────────────── \
+    # Listen on localhost TCP (for pgloader, which can't parse Unix socket URLs) \
+    # and Unix sockets (for psql). \
     echo ">>> Initializing PostgreSQL..." && \
     mkdir -p "$PGDATA" /var/run/postgresql && \
     chown postgres:postgres "$PGDATA" /var/run/postgresql && \
     gosu postgres initdb -D "$PGDATA" --auth-local=trust --auth-host=trust && \
     gosu postgres pg_ctl -D "$PGDATA" start \
-      -o "-c listen_addresses='' -c unix_socket_directories='/var/run/postgresql' -c log_min_messages=warning -c max_wal_size=2GB" && \
+      -o "-c listen_addresses='localhost' -c unix_socket_directories='/var/run/postgresql' -c log_min_messages=warning -c max_wal_size=2GB" && \
     until gosu postgres pg_isready -h /var/run/postgresql; do sleep 1; done && \
     \
     # ── Create database and neon proxy schema ────────────────────────── \
@@ -108,8 +108,8 @@ RUN set -e && \
     # pgloader uses {{DB_FILE}} / {{DB_URL}} mustache templates → env vars \
     # Must cd /db so AFTER LOAD EXECUTE ./kilter_table_rename.sql resolves \
     # FK constraint errors are expected (create no indexes → no PKs to reference) \
-    # Unix socket path is URL-encoded (%2F = /) in the connection string. \
-    export DB_URL="postgresql://postgres@%2Fvar%2Frun%2Fpostgresql/main" && \
+    # pgloader connects via TCP (it can't parse Unix socket URLs with %2F encoding). \
+    export DB_URL="postgresql://postgres@localhost/main" && \
     cd /db && \
     echo ">>> Importing Tension board data..." && \
     DB_FILE=/db/tmp/tension.modified.db pgloader /db/tension_db.load && \
