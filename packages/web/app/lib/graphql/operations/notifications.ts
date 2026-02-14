@@ -57,6 +57,7 @@ export const GET_GROUPED_NOTIFICATIONS = gql`
         climbUuid
         boardType
         proposalUuid
+        setterUsername
         isRead
         createdAt
       }

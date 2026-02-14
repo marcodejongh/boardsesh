@@ -3,7 +3,9 @@ import type {
   PublicUserProfile,
   FollowConnection,
   UserSearchConnection,
+  UnifiedSearchConnection,
   FollowingAscentsFeedResult,
+  SetterProfile,
 } from '@boardsesh/shared-schema';
 
 // ============================================
@@ -248,4 +250,158 @@ export interface GetGlobalAscentsFeedQueryVariables {
 
 export interface GetGlobalAscentsFeedQueryResponse {
   globalAscentsFeed: FollowingAscentsFeedResult;
+}
+
+// ============================================
+// Setter Follow Mutations
+// ============================================
+
+export const FOLLOW_SETTER = gql`
+  mutation FollowSetter($input: FollowSetterInput!) {
+    followSetter(input: $input)
+  }
+`;
+
+export const UNFOLLOW_SETTER = gql`
+  mutation UnfollowSetter($input: FollowSetterInput!) {
+    unfollowSetter(input: $input)
+  }
+`;
+
+// ============================================
+// Setter Queries
+// ============================================
+
+export const GET_SETTER_PROFILE = gql`
+  query GetSetterProfile($input: SetterProfileInput!) {
+    setterProfile(input: $input) {
+      username
+      climbCount
+      boardTypes
+      followerCount
+      isFollowedByMe
+      linkedUserId
+      linkedUserDisplayName
+      linkedUserAvatarUrl
+    }
+  }
+`;
+
+// ============================================
+// Setter Climbs Full (with litUpHoldsMap for thumbnails)
+// ============================================
+
+export const GET_SETTER_CLIMBS_FULL = gql`
+  query GetSetterClimbsFull($input: SetterClimbsFullInput!) {
+    setterClimbsFull(input: $input) {
+      climbs {
+        uuid
+        layoutId
+        boardType
+        setter_username
+        name
+        description
+        frames
+        angle
+        ascensionist_count
+        difficulty
+        quality_average
+        stars
+        difficulty_error
+        benchmark_difficulty
+        litUpHoldsMap
+      }
+      totalCount
+      hasMore
+    }
+  }
+`;
+
+export interface GetSetterClimbsFullQueryVariables {
+  input: {
+    username: string;
+    boardType?: string;
+    layoutId?: number;
+    sizeId?: number;
+    setIds?: string;
+    angle?: number;
+    sortBy?: string;
+    limit?: number;
+    offset?: number;
+  };
+}
+
+export interface GetSetterClimbsFullQueryResponse {
+  setterClimbsFull: {
+    climbs: import('@/app/lib/types').Climb[];
+    totalCount: number;
+    hasMore: boolean;
+  };
+}
+
+// ============================================
+// Unified Search
+// ============================================
+
+export const SEARCH_USERS_AND_SETTERS = gql`
+  query SearchUsersAndSetters($input: SearchUsersInput!) {
+    searchUsersAndSetters(input: $input) {
+      results {
+        user {
+          id
+          displayName
+          avatarUrl
+          followerCount
+          followingCount
+          isFollowedByMe
+        }
+        setter {
+          username
+          climbCount
+          boardTypes
+          isFollowedByMe
+        }
+        recentAscentCount
+        matchReason
+      }
+      totalCount
+      hasMore
+    }
+  }
+`;
+
+// ============================================
+// Setter Query/Mutation Variable Types
+// ============================================
+
+export interface FollowSetterMutationVariables {
+  input: { setterUsername: string };
+}
+
+export interface FollowSetterMutationResponse {
+  followSetter: boolean;
+}
+
+export interface UnfollowSetterMutationVariables {
+  input: { setterUsername: string };
+}
+
+export interface UnfollowSetterMutationResponse {
+  unfollowSetter: boolean;
+}
+
+export interface GetSetterProfileQueryVariables {
+  input: { username: string };
+}
+
+export interface GetSetterProfileQueryResponse {
+  setterProfile: SetterProfile | null;
+}
+
+export interface SearchUsersAndSettersQueryVariables {
+  input: { query: string; boardType?: string; limit?: number; offset?: number };
+}
+
+export interface SearchUsersAndSettersQueryResponse {
+  searchUsersAndSetters: UnifiedSearchConnection;
 }

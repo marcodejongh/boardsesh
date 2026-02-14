@@ -18,6 +18,10 @@ const VIEW_MODE_PREFERENCE_KEY = 'climbListViewMode';
 
 export type ClimbsListProps = {
   boardDetails: BoardDetails;
+  /** Map of "boardType:layoutId" -> BoardDetails for multi-board contexts */
+  boardDetailsMap?: Record<string, BoardDetails>;
+  /** Set of climb UUIDs that are unsupported (no matching user board) */
+  unsupportedClimbs?: Set<string>;
   climbs: Climb[];
   selectedClimbUuid?: string | null;
   isFetching: boolean;
@@ -44,6 +48,8 @@ const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; vi
 
 const ClimbsList = ({
   boardDetails,
+  boardDetailsMap,
+  unsupportedClimbs,
   climbs,
   selectedClimbUuid,
   isFetching,
@@ -116,6 +122,18 @@ const ClimbsList = ({
     });
     return map;
   }, [climbs, handleClimbDoubleClick]);
+
+  // Resolve per-climb boardDetails when boardDetailsMap is provided
+  const resolveBoardDetails = useCallback(
+    (climb: Climb): BoardDetails => {
+      if (boardDetailsMap && climb.boardType && climb.layoutId != null) {
+        const key = `${climb.boardType}:${climb.layoutId}`;
+        return boardDetailsMap[key] || boardDetails;
+      }
+      return boardDetails;
+    },
+    [boardDetails, boardDetailsMap],
+  );
 
   // Memoize sx prop objects to prevent recreation on every render
   const headerBoxSx = useMemo(() => ({
@@ -218,9 +236,10 @@ const ClimbsList = ({
               >
                 <ClimbCard
                   climb={climb}
-                  boardDetails={boardDetails}
+                  boardDetails={resolveBoardDetails(climb)}
                   selected={selectedClimbUuid === climb.uuid}
                   onCoverDoubleClick={climbHandlersMap.get(climb.uuid)}
+                  unsupported={unsupportedClimbs?.has(climb.uuid)}
                 />
               </div>
             </Box>
@@ -239,9 +258,10 @@ const ClimbsList = ({
             >
               <ClimbListItem
                 climb={climb}
-                boardDetails={boardDetails}
+                boardDetails={resolveBoardDetails(climb)}
                 selected={selectedClimbUuid === climb.uuid}
                 onSelect={climbHandlersMap.get(climb.uuid)}
+                unsupported={unsupportedClimbs?.has(climb.uuid)}
               />
             </div>
           ))}
