@@ -89,27 +89,28 @@ RUN set -e && \
     \
     # ── Initialize and start PostgreSQL ────────────────────────────────── \
     # Listen on localhost TCP (for pgloader, which can't parse Unix socket URLs) \
-    # and Unix sockets (for psql). \
+    # and Unix sockets (for psql). Port 15432 avoids "address already in use" \
+    # under QEMU emulation (buildx arm64) where port 5432 is claimed. \
     echo ">>> Initializing PostgreSQL..." && \
     mkdir -p "$PGDATA" /var/run/postgresql && \
     chown postgres:postgres "$PGDATA" /var/run/postgresql && \
     gosu postgres initdb -D "$PGDATA" --auth-local=trust --auth-host=trust && \
     gosu postgres pg_ctl -D "$PGDATA" start \
-      -o "-c listen_addresses='localhost' -c unix_socket_directories='/var/run/postgresql' -c log_min_messages=warning -c max_wal_size=2GB" && \
-    until gosu postgres pg_isready -h /var/run/postgresql; do sleep 1; done && \
+      -o "-c listen_addresses='localhost' -c port=15432 -c unix_socket_directories='/var/run/postgresql' -c log_min_messages=warning -c max_wal_size=2GB" && \
+    until gosu postgres pg_isready -h /var/run/postgresql -p 15432; do sleep 1; done && \
     \
     # ── Create database and neon proxy schema ────────────────────────── \
     echo ">>> Creating database 'main' and neon_control_plane schema..." && \
-    gosu postgres psql -h /var/run/postgresql postgres -c "CREATE DATABASE main" && \
-    gosu postgres psql -h /var/run/postgresql main -c "CREATE SCHEMA IF NOT EXISTS neon_control_plane" && \
-    gosu postgres psql -h /var/run/postgresql main -c "CREATE TABLE IF NOT EXISTS neon_control_plane.endpoints (endpoint_id VARCHAR(255) NOT NULL PRIMARY KEY, allowed_ips VARCHAR(255))" && \
+    gosu postgres psql -h /var/run/postgresql -p 15432 postgres -c "CREATE DATABASE main" && \
+    gosu postgres psql -h /var/run/postgresql -p 15432 main -c "CREATE SCHEMA IF NOT EXISTS neon_control_plane" && \
+    gosu postgres psql -h /var/run/postgresql -p 15432 main -c "CREATE TABLE IF NOT EXISTS neon_control_plane.endpoints (endpoint_id VARCHAR(255) NOT NULL PRIMARY KEY, allowed_ips VARCHAR(255))" && \
     \
     # ── Import board data via pgloader ───────────────────────────────── \
     # pgloader uses {{DB_FILE}} / {{DB_URL}} mustache templates → env vars \
     # Must cd /db so AFTER LOAD EXECUTE ./kilter_table_rename.sql resolves \
     # FK constraint errors are expected (create no indexes → no PKs to reference) \
     # pgloader connects via TCP (it can't parse Unix socket URLs with %2F encoding). \
-    export DB_URL="postgresql://postgres@localhost/main" && \
+    export DB_URL="postgresql://postgres@localhost:15432/main" && \
     cd /db && \
     echo ">>> Importing Tension board data..." && \
     DB_FILE=/db/tmp/tension.modified.db pgloader /db/tension_db.load && \
@@ -123,7 +124,7 @@ RUN set -e && \
     echo ">>> Applying drizzle migrations..." && \
     migration_count=$(jq '.entries | length' /drizzle/meta/_journal.json) && \
     echo "  Found $migration_count migrations in journal" && \
-    gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS \"__drizzle_migrations\" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)" && \
+    gosu postgres psql -h /var/run/postgresql -p 15432 main -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS \"__drizzle_migrations\" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)" && \
     applied=0 && \
     for tag in $(jq -r '.entries[].tag' /drizzle/meta/_journal.json); do \
       sql_file="/drizzle/${tag}.sql"; \
@@ -131,8 +132,8 @@ RUN set -e && \
         hash=$(sha256sum "$sql_file" | cut -d' ' -f1); \
         applied=$((applied + 1)); \
         echo "  [$applied/$migration_count] Applying: $tag"; \
-        gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -f "$sql_file" && \
-        gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -c "INSERT INTO \"__drizzle_migrations\" (hash, created_at) VALUES ('$hash', $(date +%s)000)"; \
+        gosu postgres psql -h /var/run/postgresql -p 15432 main -v ON_ERROR_STOP=1 -f "$sql_file" && \
+        gosu postgres psql -h /var/run/postgresql -p 15432 main -v ON_ERROR_STOP=1 -c "INSERT INTO \"__drizzle_migrations\" (hash, created_at) VALUES ('$hash', $(date +%s)000)"; \
       else \
         echo "  ERROR: Migration file not found: $sql_file" && false; \
       fi; \
@@ -141,8 +142,8 @@ RUN set -e && \
     \
     # ── Verify database state ────────────────────────────────────────── \
     echo ">>> Verifying database..." && \
-    recorded=$(gosu postgres psql -h /var/run/postgresql main -t -A -c "SELECT count(*) FROM \"__drizzle_migrations\"") && \
-    table_count=$(gosu postgres psql -h /var/run/postgresql main -t -A -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'") && \
+    recorded=$(gosu postgres psql -h /var/run/postgresql -p 15432 main -t -A -c "SELECT count(*) FROM \"__drizzle_migrations\"") && \
+    table_count=$(gosu postgres psql -h /var/run/postgresql -p 15432 main -t -A -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'") && \
     echo "  Migrations recorded: $recorded / $migration_count" && \
     echo "  Public tables: $table_count" && \
     if [ "$recorded" -ne "$migration_count" ]; then \
@@ -151,7 +152,7 @@ RUN set -e && \
     \
     # ── Stop PostgreSQL ──────────────────────────────────────────────── \
     echo ">>> Stopping PostgreSQL..." && \
-    gosu postgres pg_ctl -D "$PGDATA" stop -m fast && \
+    gosu postgres pg_ctl -D "$PGDATA" -o "-p 15432" stop -m fast && \
     \
     # ── Clean up temporary files ─────────────────────────────────────── \
     rm -rf /db/tmp /tmp/*.apk /tmp/com.auroraclimbing.*.apk /drizzle && \
