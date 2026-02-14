@@ -1,5 +1,6 @@
 services:
   postgres:
+    image: ghcr.io/marcodejongh/boardsesh-postgres-postgis:latest
     build:
       context: ./packages/db/docker
       dockerfile: Dockerfile.postgres
@@ -41,6 +42,7 @@ services:
       retries: 5
 
   db_setup:
+    image: ghcr.io/marcodejongh/boardsesh-db-setup:latest
     build:
       context: .
       dockerfile: ./packages/db/docker/Dockerfile
