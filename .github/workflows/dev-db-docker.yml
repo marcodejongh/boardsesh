@@ -113,7 +113,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./packages/db/docker
+          context: ./packages/db
           file: ./packages/db/docker/Dockerfile.dev-db
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}

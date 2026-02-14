@@ -1,7 +1,11 @@
 # =============================================================================
 # Dockerfile.dev-db
 # Multi-stage build that produces a PostgreSQL + PostGIS image with all
-# Kilter/Tension board data pre-loaded. Developers just pull & run.
+# Kilter/Tension board data pre-loaded and drizzle migrations applied.
+# Developers just pull & run.
+#
+# Build context: packages/db/ (not packages/db/docker/) so we can access
+# both docker/ scripts and drizzle/ migrations.
 #
 # Key trick: PGDATA is set to /var/lib/postgresql/pgdata (not the default
 # /var/lib/postgresql/data) because the official postgres image declares a
@@ -29,21 +33,25 @@ RUN apt-get update && \
       sqlite3 \
       ca-certificates \
       curl \
-      unzip && \
+      unzip \
+      jq && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Custom PGDATA to avoid the VOLUME at /var/lib/postgresql/data
 ENV PGDATA=/var/lib/postgresql/pgdata
 
-# Copy all scripts and pgloader configs
-COPY cleanup_sqlite_db_problems.sh \
-     kilter_db.load tension_db.load \
-     kilter_table_rename.sql tension_table_rename.sql \
+# Copy pgloader configs and scripts (from docker/ subdirectory of build context)
+COPY docker/cleanup_sqlite_db_problems.sh \
+     docker/kilter_db.load docker/tension_db.load \
+     docker/kilter_table_rename.sql docker/tension_table_rename.sql \
      /db/
 RUN chmod +x /db/cleanup_sqlite_db_problems.sh
 
-# Single RUN: download → extract → fix → start PG → import → stop PG → clean
+# Copy drizzle migration files (from drizzle/ subdirectory of build context)
+COPY drizzle/ /drizzle/
+
+# Single RUN: download → extract → fix → start PG → import → migrate → stop PG → clean
 RUN set -e && \
     mkdir -p /db/tmp && \
     \
@@ -64,8 +72,11 @@ RUN set -e && \
     \
     echo ">>> Extracting Tension database..." && \
     (unzip -o -j /tmp/tensionboard.apk assets/db.sqlite3 -d /db/tmp/ > /dev/null 2>&1 || \
-     (unzip -o -j /tmp/tensionboard.apk 'com.auroraclimbing.tensionboard2.apk' -d /tmp/ && \
+     (echo ">>> Direct extraction failed, trying nested APK..." && \
+      unzip -o -j /tmp/tensionboard.apk 'com.auroraclimbing.tensionboard2.apk' -d /tmp/ && \
       unzip -o -j /tmp/com.auroraclimbing.tensionboard2.apk assets/db.sqlite3 -d /db/tmp/)) && \
+    { test -f /db/tmp/db.sqlite3 || \
+      (echo "ERROR: Failed to extract Tension database from APK" && false); } && \
     mv /db/tmp/db.sqlite3 /db/tmp/tension.db && \
     \
     # ── Fix SQLite compatibility (FLOAT UNSIGNED → FLOAT, orphans) ──── \
@@ -94,6 +105,7 @@ RUN set -e && \
     # ── Import board data via pgloader ───────────────────────────────── \
     # pgloader uses {{DB_FILE}} / {{DB_URL}} mustache templates → env vars \
     # Must cd /db so AFTER LOAD EXECUTE ./kilter_table_rename.sql resolves \
+    # FK constraint errors are expected (create no indexes → no PKs to reference) \
     export DB_URL="postgresql://postgres@localhost:5432/main" && \
     cd /db && \
     echo ">>> Importing Tension board data..." && \
@@ -101,13 +113,30 @@ RUN set -e && \
     echo ">>> Importing Kilter board data..." && \
     DB_FILE=/db/tmp/kilter.modified.db pgloader /db/kilter_db.load && \
     \
+    # ── Apply drizzle migrations via psql ─────────────────────────────── \
+    # Replicate what drizzle-orm's migrate() does: create tracking table, \
+    # apply each SQL file from the journal, record the SHA-256 hash. \
+    echo ">>> Applying drizzle migrations..." && \
+    gosu postgres psql main -c "CREATE TABLE IF NOT EXISTS \"__drizzle_migrations\" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)" && \
+    for tag in $(jq -r '.entries[].tag' /drizzle/meta/_journal.json); do \
+      sql_file="/drizzle/${tag}.sql"; \
+      if [ -f "$sql_file" ]; then \
+        hash=$(sha256sum "$sql_file" | cut -d' ' -f1); \
+        echo "  Applying: $tag"; \
+        gosu postgres psql main -f "$sql_file" && \
+        gosu postgres psql main -c "INSERT INTO \"__drizzle_migrations\" (hash, created_at) VALUES ('$hash', $(date +%s)000)"; \
+      else \
+        echo "  WARNING: Migration file not found: $sql_file"; \
+      fi; \
+    done && \
+    \
     # ── Stop PostgreSQL ──────────────────────────────────────────────── \
     echo ">>> Stopping PostgreSQL..." && \
     gosu postgres pg_ctl -D "$PGDATA" stop -m fast && \
     \
     # ── Clean up temporary files ─────────────────────────────────────── \
-    rm -rf /db/tmp /tmp/*.apk /tmp/com.auroraclimbing.*.apk && \
-    echo ">>> Build complete — database is pre-populated."
+    rm -rf /db/tmp /tmp/*.apk /tmp/com.auroraclimbing.*.apk /drizzle && \
+    echo ">>> Build complete — database is pre-populated with migrations applied."
 
 # ---------------------------------------------------------------------------
 # Stage 3: Final clean image with only the pre-populated PGDATA
