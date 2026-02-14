@@ -37,7 +37,7 @@ The development database uses a **pre-built Docker image** (`ghcr.io/marcodejong
 # Start development databases (PostgreSQL, Neon proxy, Redis)
 # First run pulls the pre-built image (~1GB) with all board data included.
 # Subsequent runs start in seconds.
-# Test user: test@boardsesh.dev / test
+# Test user: test@boardsesh.com / test
 npm run db:up
 
 # Environment files are in packages/web/:
@@ -63,7 +63,7 @@ npm run backend:dev
 
 #### Pre-built database image
 
-The `boardsesh-dev-db` image is published to GHCR and contains PostgreSQL 17 + PostGIS with all Kilter/Tension/MoonBoard board data pre-loaded, a test user (`test@boardsesh.dev` / `test`), social seed data (fake users, follows, ticks, comments, notifications), and all drizzle migrations applied. It is rebuilt automatically when files in `packages/db/docker/`, `packages/db/scripts/`, `packages/db/src/schema/`, `packages/db/drizzle/`, or `packages/db/package.json` change on main.
+The `boardsesh-dev-db` image is published to GHCR and contains PostgreSQL 17 + PostGIS with all Kilter/Tension/MoonBoard board data pre-loaded, a test user (`test@boardsesh.com` / `test`), social seed data (fake users, follows, ticks, comments, notifications), and all drizzle migrations applied. It is rebuilt automatically when files in `packages/db/docker/`, `packages/db/scripts/`, `packages/db/src/schema/`, `packages/db/drizzle/`, or `packages/db/package.json` change on main.
 
 - **Pull directly**: `docker pull ghcr.io/marcodejongh/boardsesh-dev-db:latest`
 - **Reset your local database**: `docker compose down -v && npm run db:up`

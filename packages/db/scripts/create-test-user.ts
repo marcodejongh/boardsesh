@@ -3,7 +3,7 @@ import { users } from '../src/schema/auth/users.js';
 import { userCredentials, userProfiles } from '../src/schema/auth/credentials.js';
 
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
-const TEST_USER_EMAIL = 'test@boardsesh.dev';
+const TEST_USER_EMAIL = 'test@boardsesh.com';
 const TEST_USER_NAME = 'test';
 const TEST_USER_DISPLAY_NAME = 'Test User';
 

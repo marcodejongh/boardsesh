@@ -15,7 +15,7 @@ import { createScriptDb, getScriptDatabaseUrl } from './db-connection.js';
 // Constants
 // =============================================================================
 
-const FAKE_EMAIL_DOMAIN = 'fake.boardsesh.dev';
+const FAKE_EMAIL_DOMAIN = 'fake.boardsesh.com';
 const NUM_FAKE_USERS = 40;
 const BATCH_SIZE = 100;
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';

@@ -22,4 +22,4 @@ npm run db:migrate
 
 echo ""
 echo "Development database is ready."
-echo "  Test user: test@boardsesh.dev / test"
+echo "  Test user: test@boardsesh.com / test"
