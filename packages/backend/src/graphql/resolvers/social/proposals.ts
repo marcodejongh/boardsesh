@@ -861,7 +861,7 @@ export const socialProposalMutations = {
         uuid,
         climbUuid,
         boardType,
-        angle: angle || null,
+        angle: angle ?? null,
         proposerId,
         type,
         proposedValue,
@@ -882,7 +882,7 @@ export const socialProposalMutations = {
       });
 
     // Check auto-approval (atomic: only transition if still 'open')
-    const shouldApprove = await checkAutoApproval(proposal.id, boardType, climbUuid, angle || null);
+    const shouldApprove = await checkAutoApproval(proposal.id, boardType, climbUuid, angle ?? null);
     if (shouldApprove) {
       const [approved] = await db
         .update(dbSchema.climbProposals)
