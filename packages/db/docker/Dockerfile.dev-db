@@ -87,26 +87,29 @@ RUN set -e && \
     echo ">>> Fixing Tension SQLite compatibility..." && \
     DB_FILE=/db/tmp/tension.modified.db /db/cleanup_sqlite_db_problems.sh && \
     \
-    # ── Initialize and start PostgreSQL ──────────────────────────────── \
+    # ── Initialize and start PostgreSQL (Unix sockets only) ────────────── \
+    # TCP sockets fail under QEMU emulation (buildx arm64), so we use \
+    # Unix sockets exclusively for the build-time postgres instance. \
     echo ">>> Initializing PostgreSQL..." && \
-    mkdir -p "$PGDATA" && \
-    chown postgres:postgres "$PGDATA" && \
+    mkdir -p "$PGDATA" /var/run/postgresql && \
+    chown postgres:postgres "$PGDATA" /var/run/postgresql && \
     gosu postgres initdb -D "$PGDATA" --auth-local=trust --auth-host=trust && \
     gosu postgres pg_ctl -D "$PGDATA" start \
-      -o "-c listen_addresses=localhost -c log_min_messages=warning -c max_wal_size=2GB" && \
-    until gosu postgres pg_isready; do sleep 1; done && \
+      -o "-c listen_addresses='' -c unix_socket_directories='/var/run/postgresql' -c log_min_messages=warning -c max_wal_size=2GB" && \
+    until gosu postgres pg_isready -h /var/run/postgresql; do sleep 1; done && \
     \
     # ── Create database and neon proxy schema ────────────────────────── \
     echo ">>> Creating database 'main' and neon_control_plane schema..." && \
-    gosu postgres psql postgres -c "CREATE DATABASE main" && \
-    gosu postgres psql main -c "CREATE SCHEMA IF NOT EXISTS neon_control_plane" && \
-    gosu postgres psql main -c "CREATE TABLE IF NOT EXISTS neon_control_plane.endpoints (endpoint_id VARCHAR(255) NOT NULL PRIMARY KEY, allowed_ips VARCHAR(255))" && \
+    gosu postgres psql -h /var/run/postgresql postgres -c "CREATE DATABASE main" && \
+    gosu postgres psql -h /var/run/postgresql main -c "CREATE SCHEMA IF NOT EXISTS neon_control_plane" && \
+    gosu postgres psql -h /var/run/postgresql main -c "CREATE TABLE IF NOT EXISTS neon_control_plane.endpoints (endpoint_id VARCHAR(255) NOT NULL PRIMARY KEY, allowed_ips VARCHAR(255))" && \
     \
     # ── Import board data via pgloader ───────────────────────────────── \
     # pgloader uses {{DB_FILE}} / {{DB_URL}} mustache templates → env vars \
     # Must cd /db so AFTER LOAD EXECUTE ./kilter_table_rename.sql resolves \
     # FK constraint errors are expected (create no indexes → no PKs to reference) \
-    export DB_URL="postgresql://postgres@localhost:5432/main" && \
+    # Unix socket path is URL-encoded (%2F = /) in the connection string. \
+    export DB_URL="postgresql://postgres@%2Fvar%2Frun%2Fpostgresql/main" && \
     cd /db && \
     echo ">>> Importing Tension board data..." && \
     DB_FILE=/db/tmp/tension.modified.db pgloader /db/tension_db.load && \
@@ -120,7 +123,7 @@ RUN set -e && \
     echo ">>> Applying drizzle migrations..." && \
     migration_count=$(jq '.entries | length' /drizzle/meta/_journal.json) && \
     echo "  Found $migration_count migrations in journal" && \
-    gosu postgres psql main -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS \"__drizzle_migrations\" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)" && \
+    gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS \"__drizzle_migrations\" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)" && \
     applied=0 && \
     for tag in $(jq -r '.entries[].tag' /drizzle/meta/_journal.json); do \
       sql_file="/drizzle/${tag}.sql"; \
@@ -128,8 +131,8 @@ RUN set -e && \
         hash=$(sha256sum "$sql_file" | cut -d' ' -f1); \
         applied=$((applied + 1)); \
         echo "  [$applied/$migration_count] Applying: $tag"; \
-        gosu postgres psql main -v ON_ERROR_STOP=1 -f "$sql_file" && \
-        gosu postgres psql main -v ON_ERROR_STOP=1 -c "INSERT INTO \"__drizzle_migrations\" (hash, created_at) VALUES ('$hash', $(date +%s)000)"; \
+        gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -f "$sql_file" && \
+        gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -c "INSERT INTO \"__drizzle_migrations\" (hash, created_at) VALUES ('$hash', $(date +%s)000)"; \
       else \
         echo "  ERROR: Migration file not found: $sql_file" && false; \
       fi; \
@@ -138,8 +141,8 @@ RUN set -e && \
     \
     # ── Verify database state ────────────────────────────────────────── \
     echo ">>> Verifying database..." && \
-    recorded=$(gosu postgres psql main -t -A -c "SELECT count(*) FROM \"__drizzle_migrations\"") && \
-    table_count=$(gosu postgres psql main -t -A -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'") && \
+    recorded=$(gosu postgres psql -h /var/run/postgresql main -t -A -c "SELECT count(*) FROM \"__drizzle_migrations\"") && \
+    table_count=$(gosu postgres psql -h /var/run/postgresql main -t -A -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'") && \
     echo "  Migrations recorded: $recorded / $migration_count" && \
     echo "  Public tables: $table_count" && \
     if [ "$recorded" -ne "$migration_count" ]; then \
