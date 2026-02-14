@@ -1,0 +1,120 @@
+# =============================================================================
+# Dockerfile.dev-db
+# Multi-stage build that produces a PostgreSQL + PostGIS image with all
+# Kilter/Tension board data pre-loaded. Developers just pull & run.
+#
+# Key trick: PGDATA is set to /var/lib/postgresql/pgdata (not the default
+# /var/lib/postgresql/data) because the official postgres image declares a
+# VOLUME on the default path, which discards data written during build.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1: postgres + PostGIS base (same as Dockerfile.postgres)
+# ---------------------------------------------------------------------------
+FROM postgres:17 AS postgres-postgis
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends postgresql-17-postgis-3 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# Stage 2: Builder — download APKs, extract SQLite DBs, fix compat, import
+# ---------------------------------------------------------------------------
+FROM postgres-postgis AS builder
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      pgloader \
+      sqlite3 \
+      ca-certificates \
+      curl \
+      unzip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Custom PGDATA to avoid the VOLUME at /var/lib/postgresql/data
+ENV PGDATA=/var/lib/postgresql/pgdata
+
+# Copy all scripts and pgloader configs
+COPY cleanup_sqlite_db_problems.sh \
+     kilter_db.load tension_db.load \
+     kilter_table_rename.sql tension_table_rename.sql \
+     /db/
+RUN chmod +x /db/cleanup_sqlite_db_problems.sh
+
+# Single RUN: download → extract → fix → start PG → import → stop PG → clean
+RUN set -e && \
+    mkdir -p /db/tmp && \
+    \
+    # ── Download APKs ────────────────────────────────────────────────── \
+    echo ">>> Downloading Kilterboard APK..." && \
+    curl -o /tmp/kilterboard.apk -L \
+      -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" \
+      "https://d.apkpure.net/b/APK/com.auroraclimbing.kilterboard?version=latest" && \
+    echo ">>> Downloading Tensionboard APK..." && \
+    curl -o /tmp/tensionboard.apk -L \
+      -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" \
+      "https://d.apkpure.net/b/APK/com.auroraclimbing.tensionboard2?version=latest" && \
+    \
+    # ── Extract SQLite databases from APKs ───────────────────────────── \
+    echo ">>> Extracting Kilter database..." && \
+    unzip -o -j /tmp/kilterboard.apk assets/db.sqlite3 -d /db/tmp/ && \
+    mv /db/tmp/db.sqlite3 /db/tmp/kilter.db && \
+    \
+    echo ">>> Extracting Tension database..." && \
+    (unzip -o -j /tmp/tensionboard.apk assets/db.sqlite3 -d /db/tmp/ > /dev/null 2>&1 || \
+     (unzip -o -j /tmp/tensionboard.apk 'com.auroraclimbing.tensionboard2.apk' -d /tmp/ && \
+      unzip -o -j /tmp/com.auroraclimbing.tensionboard2.apk assets/db.sqlite3 -d /db/tmp/)) && \
+    mv /db/tmp/db.sqlite3 /db/tmp/tension.db && \
+    \
+    # ── Fix SQLite compatibility (FLOAT UNSIGNED → FLOAT, orphans) ──── \
+    echo ">>> Fixing Kilter SQLite compatibility..." && \
+    cp /db/tmp/kilter.db /db/tmp/kilter.modified.db && \
+    cp /db/tmp/tension.db /db/tmp/tension.modified.db && \
+    DB_FILE=/db/tmp/kilter.modified.db /db/cleanup_sqlite_db_problems.sh && \
+    echo ">>> Fixing Tension SQLite compatibility..." && \
+    DB_FILE=/db/tmp/tension.modified.db /db/cleanup_sqlite_db_problems.sh && \
+    \
+    # ── Initialize and start PostgreSQL ──────────────────────────────── \
+    echo ">>> Initializing PostgreSQL..." && \
+    mkdir -p "$PGDATA" && \
+    chown postgres:postgres "$PGDATA" && \
+    gosu postgres initdb -D "$PGDATA" --auth-local=trust --auth-host=trust && \
+    gosu postgres pg_ctl -D "$PGDATA" start \
+      -o "-c listen_addresses=localhost -c log_min_messages=warning" && \
+    until gosu postgres pg_isready; do sleep 1; done && \
+    \
+    # ── Create database and neon proxy schema ────────────────────────── \
+    echo ">>> Creating database 'main' and neon_control_plane schema..." && \
+    gosu postgres psql postgres -c "CREATE DATABASE main" && \
+    gosu postgres psql main -c "CREATE SCHEMA IF NOT EXISTS neon_control_plane" && \
+    gosu postgres psql main -c "CREATE TABLE IF NOT EXISTS neon_control_plane.endpoints (endpoint_id VARCHAR(255) NOT NULL PRIMARY KEY, allowed_ips VARCHAR(255))" && \
+    \
+    # ── Import board data via pgloader ───────────────────────────────── \
+    # pgloader uses {{DB_FILE}} / {{DB_URL}} mustache templates → env vars \
+    # Must cd /db so AFTER LOAD EXECUTE ./kilter_table_rename.sql resolves \
+    export DB_URL="postgresql://postgres@localhost:5432/main" && \
+    cd /db && \
+    echo ">>> Importing Tension board data..." && \
+    DB_FILE=/db/tmp/tension.modified.db pgloader /db/tension_db.load && \
+    echo ">>> Importing Kilter board data..." && \
+    DB_FILE=/db/tmp/kilter.modified.db pgloader /db/kilter_db.load && \
+    \
+    # ── Stop PostgreSQL ──────────────────────────────────────────────── \
+    echo ">>> Stopping PostgreSQL..." && \
+    gosu postgres pg_ctl -D "$PGDATA" stop -m fast && \
+    \
+    # ── Clean up temporary files ─────────────────────────────────────── \
+    rm -rf /db/tmp /tmp/*.apk /tmp/com.auroraclimbing.*.apk && \
+    echo ">>> Build complete — database is pre-populated."
+
+# ---------------------------------------------------------------------------
+# Stage 3: Final clean image with only the pre-populated PGDATA
+# ---------------------------------------------------------------------------
+FROM postgres-postgis
+
+ENV PGDATA=/var/lib/postgresql/pgdata
+
+COPY --from=builder --chown=postgres:postgres \
+     /var/lib/postgresql/pgdata /var/lib/postgresql/pgdata
