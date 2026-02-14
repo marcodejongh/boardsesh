@@ -31,8 +31,12 @@ Before working on a specific part of the codebase, check the `docs/` directory f
 
 ### Development Setup
 
+The development database uses a **pre-built Docker image** (`ghcr.io/marcodejongh/boardsesh-dev-db`) that already contains all Kilter and Tension board data with migrations applied. This means `npm run db:up` is fast — it just pulls the image, starts containers, runs any newer migrations, and imports MoonBoard data.
+
 ```bash
 # Start development databases (PostgreSQL, Neon proxy, Redis)
+# First run pulls the pre-built image (~1GB) with all board data included.
+# Subsequent runs start in seconds.
 npm run db:up
 
 # Environment files are in packages/web/:
@@ -56,6 +60,16 @@ npm run dev
 npm run backend:dev
 ```
 
+#### Pre-built database image
+
+The `boardsesh-dev-db` image is published to GHCR and contains PostgreSQL 17 + PostGIS with all Kilter/Tension board data pre-loaded via pgloader and all drizzle migrations applied. It is rebuilt automatically when files in `packages/db/docker/` change on main.
+
+- **Pull directly**: `docker pull ghcr.io/marcodejongh/boardsesh-dev-db:latest`
+- **Reset your local database**: `docker compose down -v && npm run db:up`
+- **Build locally** (e.g. to test Dockerfile changes): `docker compose up -d --build postgres`
+
+MoonBoard data is not included in the image (it requires the Neon HTTP proxy for import). It is automatically downloaded and imported by `npm run db:up` on first run.
+
 ### Common Commands (from root)
 
 - `npm run dev` - Start web development server with Turbopack
@@ -70,7 +84,7 @@ npm run backend:dev
 - `npm run typecheck:shared` - Type check shared-schema package only
 - `npm run backend:dev` - Start backend in development mode
 - `npm run backend:start` - Start backend in production mode
-- `npm run db:up` - Start development databases (PostgreSQL, Neon proxy, Redis)
+- `npm run db:up` - Start development databases, run migrations, and import MoonBoard data (uses pre-built image with Kilter/Tension data)
 
 ### Database Commands (run from root or packages/db/)
 

@@ -21,7 +21,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: ghcr.io/marcodejongh/boardsesh-postgres-postgis:latest
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: boardsesh_backend_test
