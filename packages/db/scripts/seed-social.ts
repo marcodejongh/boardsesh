@@ -473,7 +473,34 @@ async function seedSocialData() {
     // Distribution modeled after a strong V8 climber: bell curve peaking at
     // the most popular grade range, with asymmetric tails (wider on easy side,
     // steep dropoff above V8).
+    //
+    // Session schedule: ~3 sessions/week over 3 years with occasional rest
+    // weeks. Each board type gets its own session pool so ticks are spread
+    // evenly across the full time span.
     console.log('  Generating test user ticks...');
+
+    // Pre-generate climbing session dates over the past 3 years.
+    // Walk week-by-week: 2-4 sessions per normal week, 0-1 on rest weeks.
+    const SESSION_SPAN_DAYS = 3 * 365;
+    const sessionDates: Date[] = [];
+
+    for (let weekOffset = 0; weekOffset < Math.ceil(SESSION_SPAN_DAYS / 7); weekOffset++) {
+      const weekStartDaysAgo = SESSION_SPAN_DAYS - weekOffset * 7;
+
+      const isRestWeek = faker.datatype.boolean(0.1);
+      const sessionsThisWeek = isRestWeek
+        ? faker.number.int({ min: 0, max: 1 })
+        : faker.number.int({ min: 2, max: 4 });
+
+      for (let s = 0; s < sessionsThisWeek; s++) {
+        const dayInWeek = faker.number.int({ min: 0, max: 6 });
+        const daysAgo = weekStartDaysAgo - dayInWeek;
+        if (daysAgo < 0) continue;
+        sessionDates.push(new Date(now - daysAgo * 24 * 60 * 60 * 1000));
+      }
+    }
+
+    console.log(`    ${sessionDates.length} session dates over ${Math.round(SESSION_SPAN_DAYS / 365)} years`);
 
     for (const boardType of availableBoardTypes) {
       const byDifficulty = climbsByDifficultyPerBoard[boardType];
@@ -557,10 +584,8 @@ async function seedSocialData() {
 
           const quality = status !== 'attempt' ? faker.number.int({ min: 1, max: 5 }) : null;
 
-          // Spread over the last year with exponential bias toward recent dates
-          const exponentialRandom = -Math.log(1 - faker.number.float({ min: 0, max: 0.999 })) / 2;
-          const daysAgo = Math.min(exponentialRandom * 60, 365);
-          const climbedAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
+          // Pick a random session date from the pre-generated schedule
+          const climbedAt = faker.helpers.arrayElement(sessionDates);
 
           const comment = faker.datatype.boolean(0.08)
             ? faker.helpers.arrayElement(CLIMBING_COMMENTS)
