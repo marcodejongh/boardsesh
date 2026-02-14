@@ -1,8 +1,8 @@
 # =============================================================================
 # Dockerfile.dev-db
 # Multi-stage build that produces a PostgreSQL + PostGIS image with all
-# Kilter/Tension board data pre-loaded and drizzle migrations applied.
-# Developers just pull & run.
+# Kilter/Tension/MoonBoard board data, a test user, and social seed data
+# pre-loaded with drizzle migrations applied. Developers just pull & run.
 #
 # Build context: packages/db/ (not packages/db/docker/) so we can access
 # both docker/ scripts and drizzle/ migrations.
@@ -34,7 +34,11 @@ RUN apt-get update && \
       ca-certificates \
       curl \
       unzip \
-      jq && \
+      jq \
+      gnupg && \
+    # Install Node.js 20 for TypeScript import/seed scripts
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -50,6 +54,18 @@ RUN chmod +x /db/cleanup_sqlite_db_problems.sh
 
 # Copy drizzle migration files (from drizzle/ subdirectory of build context)
 COPY drizzle/ /drizzle/
+
+# Copy Node.js project files for import/seed scripts
+COPY package.json /app/package.json
+COPY scripts/ /app/scripts/
+COPY src/ /app/src/
+COPY tsconfig.json /app/tsconfig.json
+
+# Strip @boardsesh/shared-schema dependency (scripts don't import from it;
+# only src/schema/app/sessions.ts uses it, and no scripts touch that file)
+RUN cd /app && \
+    sed -i '/"@boardsesh\/shared-schema"/d' package.json && \
+    npm install --ignore-scripts
 
 # Single RUN: download → extract → fix → start PG → import → migrate → stop PG → clean
 RUN set -e && \
@@ -149,13 +165,31 @@ RUN set -e && \
       echo "ERROR: Migration count mismatch! Expected $migration_count, got $recorded" && false; \
     fi && \
     \
+    # ── Download and import MoonBoard data ────────────────────────────── \
+    echo ">>> Downloading MoonBoard problem data..." && \
+    mkdir -p /tmp/moonboard && \
+    curl -o /tmp/moonboard/problems_2023_01_30.zip -L \
+      "https://github.com/spookykat/MoonBoard/files/13193317/problems_2023_01_30.zip" && \
+    unzip -o /tmp/moonboard/problems_2023_01_30.zip -d /tmp/moonboard/problems_2023_01_30 && \
+    echo ">>> Importing MoonBoard problems via Node.js..." && \
+    cd /app && \
+    DATABASE_URL=postgresql://postgres@localhost/main npx tsx scripts/import-moonboard-problems.ts /tmp/moonboard/problems_2023_01_30 && \
+    \
+    # ── Create test user ─────────────────────────────────────────────── \
+    echo ">>> Creating test user..." && \
+    DATABASE_URL=postgresql://postgres@localhost/main npx tsx scripts/create-test-user.ts && \
+    \
+    # ── Seed social data ─────────────────────────────────────────────── \
+    echo ">>> Seeding social data..." && \
+    DATABASE_URL=postgresql://postgres@localhost/main npx tsx scripts/seed-social.ts && \
+    \
     # ── Stop PostgreSQL ──────────────────────────────────────────────── \
     echo ">>> Stopping PostgreSQL..." && \
     gosu postgres pg_ctl -D "$PGDATA" stop -m fast && \
     \
     # ── Clean up temporary files ─────────────────────────────────────── \
-    rm -rf /db/tmp /tmp/*.apk /tmp/com.auroraclimbing.*.apk /drizzle && \
-    echo ">>> Build complete — database is pre-populated with migrations applied."
+    rm -rf /db/tmp /tmp/*.apk /tmp/com.auroraclimbing.*.apk /tmp/moonboard /drizzle /app && \
+    echo ">>> Build complete — database is pre-populated with all data."
 
 # ---------------------------------------------------------------------------
 # Stage 3: Final clean image with only the pre-populated PGDATA

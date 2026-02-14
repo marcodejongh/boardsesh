@@ -5,10 +5,18 @@ on:
     branches: [main]
     paths:
       - 'packages/db/docker/**'
+      - 'packages/db/scripts/**'
+      - 'packages/db/src/schema/**'
+      - 'packages/db/drizzle/**'
+      - 'packages/db/package.json'
       - '.github/workflows/dev-db-docker.yml'
   pull_request:
     paths:
       - 'packages/db/docker/**'
+      - 'packages/db/scripts/**'
+      - 'packages/db/src/schema/**'
+      - 'packages/db/drizzle/**'
+      - 'packages/db/package.json'
       - '.github/workflows/dev-db-docker.yml'
   workflow_dispatch:
 

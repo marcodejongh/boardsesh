@@ -1,9 +1,3 @@
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
-import { config } from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { eq, sql, and } from 'drizzle-orm';
 import { faker } from '@faker-js/faker';
 
@@ -12,34 +6,10 @@ import { userProfiles } from '../src/schema/auth/credentials.js';
 import { userFollows } from '../src/schema/app/follows.js';
 import { boardseshTicks } from '../src/schema/app/ascents.js';
 import { userBoards, boardFollows } from '../src/schema/app/boards.js';
-import { boardClimbs, boardDifficultyGrades } from '../src/schema/boards/unified.js';
+import { boardClimbs, boardClimbStats, boardDifficultyGrades } from '../src/schema/boards/unified.js';
 import { notifications } from '../src/schema/app/notifications.js';
 import { comments } from '../src/schema/app/social.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Load environment files (same as migrate.ts / import-moonboard-problems.ts)
-config({ path: path.resolve(__dirname, '../../../.env.local') });
-config({ path: path.resolve(__dirname, '../../web/.env.local') });
-config({ path: path.resolve(__dirname, '../../web/.env.development.local') });
-
-// Enable WebSocket for Neon
-neonConfig.webSocketConstructor = ws;
-
-// Configure Neon for local development (uses neon-proxy on port 4444)
-function configureNeonForLocal(connectionString: string): void {
-  const connectionStringUrl = new URL(connectionString);
-  const isLocalDb = connectionStringUrl.hostname === 'db.localtest.me';
-
-  if (isLocalDb) {
-    neonConfig.fetchEndpoint = (host) => {
-      const [protocol, port] = host === 'db.localtest.me' ? ['http', 4444] : ['https', 443];
-      return `${protocol}://${host}:${port}/sql`;
-    };
-    neonConfig.useSecureWebSocket = false;
-    neonConfig.wsProxy = (host) => (host === 'db.localtest.me' ? `${host}:4444/v2` : `${host}/v2`);
-  }
-}
+import { createScriptDb, getScriptDatabaseUrl } from './db-connection.js';
 
 // =============================================================================
 // Constants
@@ -48,6 +18,8 @@ function configureNeonForLocal(connectionString: string): void {
 const FAKE_EMAIL_DOMAIN = 'fake.boardsesh.dev';
 const NUM_FAKE_USERS = 40;
 const BATCH_SIZE = 100;
+const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
+const TEST_TICKS_PER_BOARD = 2000;
 
 const CLIMBING_NICKNAMES = [
   'CrimpKing', 'BetaMaster', 'DynoQueen', 'SloperSlayer', 'PinchPro',
@@ -150,33 +122,16 @@ const COMMENT_BODIES = [
 // =============================================================================
 
 async function seedSocialData() {
-  // Check for DATABASE_URL first, then POSTGRES_URL
-  const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (!databaseUrl) {
-    console.error('DATABASE_URL or POSTGRES_URL is not set');
-    process.exit(1);
-  }
-
-  // Safety: Block local dev URLs in production builds
-  const isLocalUrl = databaseUrl.includes('localhost') ||
-                     databaseUrl.includes('localtest.me') ||
-                     databaseUrl.includes('127.0.0.1');
-
-  if (process.env.VERCEL && isLocalUrl) {
-    console.error('Refusing to run seed with local DATABASE_URL in Vercel build');
-    process.exit(1);
-  }
-
+  const databaseUrl = getScriptDatabaseUrl();
   const dbHost = databaseUrl.split('@')[1]?.split('/')[0] || 'unknown';
   console.log(`Seeding social data to: ${dbHost}`);
 
   // Use deterministic seed for idempotent output
   faker.seed(42);
 
+  const { db, close } = createScriptDb(databaseUrl);
+
   try {
-    configureNeonForLocal(databaseUrl);
-    const pool = new Pool({ connectionString: databaseUrl });
-    const db = drizzle(pool);
 
     // =========================================================================
     // Step 1: Find existing dev users
@@ -445,7 +400,7 @@ async function seedSocialData() {
     if (availableBoardTypes.length === 0) {
       console.log('\nNo climbs found in database. Skipping tick generation.');
       console.log('Run the app sync first to populate board_climbs, then re-run this script.');
-      await pool.end();
+      await close();
       process.exit(0);
     }
 
@@ -459,11 +414,187 @@ async function seedSocialData() {
     }
 
     // =========================================================================
+    // Step 7b: Fetch climbs with difficulty for test user tick generation
+    // =========================================================================
+    console.log('\n--- Step 7b: Fetching climbs with difficulty for test user ---');
+
+    type ClimbWithDifficulty = { uuid: string; angle: number; difficulty: number };
+    const climbsByDifficultyPerBoard: Record<string, Map<number, ClimbWithDifficulty[]>> = {};
+
+    for (const boardType of availableBoardTypes) {
+      const climbsWithStats = await db
+        .select({
+          uuid: boardClimbs.uuid,
+          angle: boardClimbStats.angle,
+          difficulty: boardClimbStats.displayDifficulty,
+        })
+        .from(boardClimbs)
+        .innerJoin(
+          boardClimbStats,
+          and(
+            eq(boardClimbs.uuid, boardClimbStats.climbUuid),
+            eq(boardClimbs.boardType, boardClimbStats.boardType),
+          )
+        )
+        .where(
+          and(
+            eq(boardClimbs.boardType, boardType),
+            eq(boardClimbs.isListed, true),
+          )
+        )
+        .limit(10000);
+
+      const byDifficulty = new Map<number, ClimbWithDifficulty[]>();
+      for (const climb of climbsWithStats) {
+        if (climb.difficulty === null) continue;
+        const diff = Math.round(climb.difficulty);
+        if (!byDifficulty.has(diff)) {
+          byDifficulty.set(diff, []);
+        }
+        byDifficulty.get(diff)!.push({
+          uuid: climb.uuid,
+          angle: climb.angle,
+          difficulty: diff,
+        });
+      }
+
+      climbsByDifficultyPerBoard[boardType] = byDifficulty;
+      console.log(`  ${boardType}: ${climbsWithStats.length} climbs across ${byDifficulty.size} difficulty levels`);
+    }
+
+    // =========================================================================
     // Step 8: Create ascent activity (ticks)
     // =========================================================================
     console.log('\n--- Step 8: Creating ascent ticks ---');
     const tickRecords: (typeof boardseshTicks.$inferInsert)[] = [];
     const now = Date.now();
+
+    // ── Step 8a: Realistic test user ticks (~2000 per board type) ──────────
+    // Distribution modeled after a strong V8 climber: bell curve peaking at
+    // the most popular grade range, with asymmetric tails (wider on easy side,
+    // steep dropoff above V8).
+    console.log('  Generating test user ticks...');
+
+    for (const boardType of availableBoardTypes) {
+      const byDifficulty = climbsByDifficultyPerBoard[boardType];
+      if (!byDifficulty || byDifficulty.size === 0) {
+        console.log(`    ${boardType}: skipped (no climbs with stats)`);
+        continue;
+      }
+
+      const difficulties = Array.from(byDifficulty.keys()).sort((a, b) => a - b);
+
+      // Find the difficulty with the most climbs — this is typically the
+      // "popular zone" (V3-V5) and serves as the peak for our distribution.
+      let peakDifficulty = difficulties[0];
+      let maxClimbCount = 0;
+      for (const [diff, climbs] of byDifficulty) {
+        if (climbs.length > maxClimbCount) {
+          maxClimbCount = climbs.length;
+          peakDifficulty = diff;
+        }
+      }
+
+      // Weight function: asymmetric Gaussian centered on the peak difficulty.
+      // - Left (easy) side: sigma=3.5 → wide spread for warm-ups
+      // - Right (hard) side: sigma=2.2 → steeper decline toward projects
+      // - Extra exponential decay above peak+6 (≈V8 territory)
+      function getWeight(difficulty: number): number {
+        const dist = difficulty - peakDifficulty;
+        const sigma = dist < 0 ? 3.5 : 2.2;
+        let w = Math.exp(-(dist * dist) / (2 * sigma * sigma));
+
+        // Steep penalty above the V8 limit (peak + 6 difficulty units)
+        if (dist > 6) {
+          w *= Math.exp(-(dist - 6) * 2);
+        }
+
+        return Math.max(w, 0.001);
+      }
+
+      // Calculate target tick counts per difficulty
+      const weights = difficulties.map(d => getWeight(d));
+      const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+      let boardTickCount = 0;
+
+      for (let gi = 0; gi < difficulties.length; gi++) {
+        const difficulty = difficulties[gi];
+        const climbs = byDifficulty.get(difficulty)!;
+        let targetCount = Math.round((weights[gi] / totalWeight) * TEST_TICKS_PER_BOARD);
+
+        // Ensure at least 1 tick at each available difficulty
+        if (targetCount < 1 && climbs.length > 0) targetCount = 1;
+
+        const gradeRank = gi / (difficulties.length - 1);
+
+        for (let i = 0; i < targetCount; i++) {
+          const climb = faker.helpers.arrayElement(climbs);
+
+          // Status depends on difficulty relative to the climber's level
+          let status: 'flash' | 'send' | 'attempt';
+          let attemptCount: number;
+
+          if (gradeRank < 0.3) {
+            // Warm-up grades: mostly flashes
+            status = faker.datatype.boolean(0.7) ? 'flash' : 'send';
+            attemptCount = status === 'flash' ? 1 : faker.number.int({ min: 2, max: 3 });
+          } else if (gradeRank > 0.7) {
+            // Project grades: fewer flashes, more attempts
+            const roll = faker.number.float({ min: 0, max: 1 });
+            status = roll < 0.05 ? 'flash' : roll < 0.55 ? 'send' : 'attempt';
+            attemptCount = status === 'flash' ? 1
+              : status === 'send' ? faker.number.int({ min: 3, max: 20 })
+              : faker.number.int({ min: 1, max: 10 });
+          } else {
+            // Comfort zone: good mix of flashes and sends
+            const roll = faker.number.float({ min: 0, max: 1 });
+            status = roll < 0.25 ? 'flash' : roll < 0.85 ? 'send' : 'attempt';
+            attemptCount = status === 'flash' ? 1
+              : status === 'send' ? faker.number.int({ min: 2, max: 8 })
+              : faker.number.int({ min: 1, max: 5 });
+          }
+
+          const quality = status !== 'attempt' ? faker.number.int({ min: 1, max: 5 }) : null;
+
+          // Spread over the last year with exponential bias toward recent dates
+          const exponentialRandom = -Math.log(1 - faker.number.float({ min: 0, max: 0.999 })) / 2;
+          const daysAgo = Math.min(exponentialRandom * 60, 365);
+          const climbedAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
+
+          const comment = faker.datatype.boolean(0.08)
+            ? faker.helpers.arrayElement(CLIMBING_COMMENTS)
+            : '';
+
+          let boardId: number | null = null;
+          const matchingBoards = boardsByType[boardType];
+          if (matchingBoards && matchingBoards.length > 0 && faker.datatype.boolean(0.8)) {
+            boardId = faker.helpers.arrayElement(matchingBoards).id;
+          }
+
+          tickRecords.push({
+            uuid: faker.string.uuid(),
+            userId: TEST_USER_ID,
+            boardType,
+            climbUuid: climb.uuid,
+            angle: climb.angle,
+            isMirror: false,
+            status,
+            attemptCount,
+            quality,
+            difficulty,
+            isBenchmark: false,
+            comment,
+            climbedAt: climbedAt.toISOString(),
+            boardId,
+          });
+
+          boardTickCount++;
+        }
+      }
+
+      console.log(`    ${boardType}: ${boardTickCount} ticks (peak difficulty: ${peakDifficulty})`);
+    }
 
     function generateTicks(userId: string, count: number) {
       for (let i = 0; i < count; i++) {
@@ -526,8 +657,9 @@ async function seedSocialData() {
       generateTicks(fakeId, tickCount);
     }
 
-    // 2-5 ticks per dev user
+    // 2-5 ticks per dev user (skip test user — already generated above)
     for (const devUser of devUsers) {
+      if (devUser.id === TEST_USER_ID) continue;
       const tickCount = faker.number.int({ min: 2, max: 5 });
       generateTicks(devUser.id, tickCount);
     }
@@ -747,6 +879,7 @@ async function seedSocialData() {
     // Summary
     // =========================================================================
     const ticksWithBoard = tickRecords.filter(t => t.boardId != null).length;
+    const testUserTicks = tickRecords.filter(t => t.userId === TEST_USER_ID).length;
 
     console.log('\nSeed completed!');
     console.log(`  Fake users: ${fakeUserRecords.length}`);
@@ -754,12 +887,12 @@ async function seedSocialData() {
     console.log(`  Follow relationships: ${followRecords.length}`);
     console.log(`  User boards: ${boardRecords.length}`);
     console.log(`  Board follows: ${boardFollowRecords.length}`);
-    console.log(`  Ascent ticks: ${tickRecords.length} (${ticksWithBoard} linked to boards)`);
+    console.log(`  Ascent ticks: ${tickRecords.length} (${testUserTicks} test user, ${ticksWithBoard} linked to boards)`);
     console.log(`  Comments: ${commentRecords.length}`);
     console.log(`  Notifications: ${notificationRecords.length} (${unreadNotifications} unread)`);
     console.log(`    Dev user notifications: ${devUserNotifications} (${devUserUnread} unread)`);
 
-    await pool.end();
+    await close();
     process.exit(0);
   } catch (error) {
     console.error('Seed failed:', error);
