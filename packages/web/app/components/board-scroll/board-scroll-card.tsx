@@ -26,6 +26,8 @@ interface BoardScrollCardProps {
   storedConfig?: StoredBoardConfig;
   boardConfigs?: BoardConfigData;
   selected?: boolean;
+  disabled?: boolean;
+  disabledText?: string;
   size?: 'default' | 'small';
   onClick: () => void;
 }
@@ -35,6 +37,8 @@ export default function BoardScrollCard({
   storedConfig,
   boardConfigs,
   selected,
+  disabled,
+  disabledText,
   size = 'default',
   onClick,
 }: BoardScrollCardProps) {
@@ -103,10 +107,13 @@ export default function BoardScrollCard({
   const isSmall = size === 'small';
   const iconSize = isSmall ? 24 : 32;
 
+  const handleClick = disabled ? undefined : onClick;
+  const displayMeta = disabled && disabledText ? disabledText : meta;
+
   return (
-    <div className={`${styles.cardScroll} ${isSmall ? styles.cardScrollSmall : ''}`} onClick={onClick}>
+    <div className={`${styles.cardScroll} ${isSmall ? styles.cardScrollSmall : ''}`} onClick={handleClick}>
       <div
-        className={`${styles.cardSquare} ${selected ? styles.cardSquareSelected : ''}`}
+        className={`${styles.cardSquare} ${selected ? styles.cardSquareSelected : ''} ${disabled ? styles.cardSquareDisabled : ''}`}
       >
         {boardDetails ? (
           <BoardRenderer
@@ -122,10 +129,10 @@ export default function BoardScrollCard({
           </div>
         )}
       </div>
-      <div className={`${styles.cardName} ${selected ? styles.cardNameSelected : ''}`}>
+      <div className={`${styles.cardName} ${selected ? styles.cardNameSelected : ''} ${disabled ? styles.cardNameDisabled : ''}`}>
         {name}
       </div>
-      {meta && <div className={styles.cardMeta}>{meta}</div>}
+      {displayMeta && <div className={`${styles.cardMeta} ${disabled ? styles.cardNameDisabled : ''}`}>{displayMeta}</div>}
     </div>
   );
 }

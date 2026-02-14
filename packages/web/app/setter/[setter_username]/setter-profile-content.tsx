@@ -1,21 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Box from '@mui/material/Box';
-import MuiAvatar from '@mui/material/Avatar';
-import MuiCard from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
-import MuiButton from '@mui/material/Button';
-import { PersonOutlined } from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import { PersonOutlined, SentimentDissatisfiedOutlined } from '@mui/icons-material';
 import { useSession } from 'next-auth/react';
-import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import FollowButton from '@/app/components/ui/follow-button';
 import SetterClimbList from '@/app/components/climb-list/setter-climb-list';
-import { EmptyState } from '@/app/components/ui/empty-state';
+import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_SETTER_PROFILE,
@@ -24,8 +18,9 @@ import {
   type GetSetterProfileQueryVariables,
   type GetSetterProfileQueryResponse,
 } from '@/app/lib/graphql/operations';
+import { themeTokens } from '@/app/theme/theme-config';
 import type { SetterProfile } from '@boardsesh/shared-schema';
-import styles from './setter-profile.module.css';
+import styles from '@/app/components/library/playlist-view.module.css';
 
 interface SetterProfileContentProps {
   username: string;
@@ -58,28 +53,21 @@ export default function SetterProfileContent({ username }: SetterProfileContentP
 
   if (loading) {
     return (
-      <Box className={styles.layout}>
-        <Box component="main" className={styles.loadingContent}>
-          <CircularProgress size={48} />
-        </Box>
-      </Box>
+      <div className={styles.loadingContainer}>
+        <LoadingSpinner size={48} />
+      </div>
     );
   }
 
   if (!profile) {
     return (
-      <Box className={styles.layout}>
-        <Box component="header" className={styles.header}>
-          <BackButton fallbackUrl="/" />
-          <Logo size="sm" showText={false} />
-          <Typography variant="h6" component="h4" className={styles.headerTitle}>
-            Setter Profile
-          </Typography>
-        </Box>
-        <Box component="main" className={styles.content}>
-          <EmptyState description="Setter not found" />
-        </Box>
-      </Box>
+      <div className={styles.errorContainer}>
+        <SentimentDissatisfiedOutlined className={styles.errorIcon} />
+        <div className={styles.errorTitle}>Setter Not Found</div>
+        <div className={styles.errorMessage}>
+          This setter profile may not exist or may have been removed.
+        </div>
+      </div>
     );
   }
 
@@ -88,87 +76,83 @@ export default function SetterProfileContent({ username }: SetterProfileContentP
   const authToken = (session as { authToken?: string } | null)?.authToken ?? null;
 
   return (
-    <Box className={styles.layout}>
-      <Box component="header" className={styles.header}>
+    <>
+      {/* Back Button */}
+      <div className={styles.actionsSection}>
         <BackButton fallbackUrl="/" />
-        <Logo size="sm" showText={false} />
-        <Typography variant="h6" component="h4" className={styles.headerTitle}>
-          Setter Profile
-        </Typography>
-      </Box>
+      </div>
 
-      <Box component="main" className={styles.content}>
-        {/* Profile Card */}
-        <MuiCard className={styles.profileCard}>
-          <CardContent>
-            <div className={styles.profileInfo}>
-              <MuiAvatar sx={{ width: 80, height: 80 }} src={avatarUrl ?? undefined}>
-                {!avatarUrl && <PersonOutlined />}
-              </MuiAvatar>
-              <div className={styles.profileDetails}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="h6" component="h4" className={styles.displayName}>
-                    {displayName}
-                  </Typography>
-                  <FollowButton
-                    entityId={profile.username}
-                    initialIsFollowing={profile.isFollowedByMe}
-                    followMutation={FOLLOW_SETTER}
-                    unfollowMutation={UNFOLLOW_SETTER}
-                    entityLabel="setter"
-                    getFollowVariables={(id) => ({ input: { setterUsername: id } })}
-                    onFollowChange={(isFollowing) => {
-                      if (profile) {
-                        setProfile({
-                          ...profile,
-                          followerCount: profile.followerCount + (isFollowing ? 1 : -1),
-                          isFollowedByMe: isFollowing,
-                        });
-                      }
-                    }}
-                  />
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  {profile.followerCount} follower{profile.followerCount !== 1 ? 's' : ''} &middot; {profile.climbCount} climb{profile.climbCount !== 1 ? 's' : ''}
-                </Typography>
-                <div className={styles.boardBadges}>
-                  {profile.boardTypes.map((bt) => (
-                    <Chip
-                      key={bt}
-                      label={bt.charAt(0).toUpperCase() + bt.slice(1)}
-                      size="small"
-                      variant="outlined"
-                    />
-                  ))}
-                </div>
-                {profile.linkedUserId && (
-                  <MuiButton
-                    href={`/crusher/${profile.linkedUserId}`}
-                    size="small"
-                    sx={{ mt: 1, textTransform: 'none', alignSelf: 'flex-start' }}
-                  >
-                    View Boardsesh profile
-                  </MuiButton>
-                )}
-              </div>
+      {/* Main Content */}
+      <div className={styles.contentWrapper}>
+        {/* Hero Card */}
+        <div className={styles.heroSection}>
+          <div className={styles.heroContent}>
+            <div
+              className={styles.heroSquare}
+              style={{ backgroundColor: themeTokens.colors.primary, overflow: 'hidden' }}
+            >
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <PersonOutlined className={styles.heroSquareIcon} />
+              )}
             </div>
-          </CardContent>
-        </MuiCard>
+            <div className={styles.heroInfo}>
+              <Typography variant="h5" component="h2" className={styles.heroName}>
+                {displayName}
+              </Typography>
+              <div className={styles.heroMeta}>
+                <span className={styles.heroMetaItem}>
+                  {profile.followerCount} {profile.followerCount === 1 ? 'follower' : 'followers'}
+                </span>
+                <span className={styles.heroMetaItem}>
+                  {profile.climbCount} {profile.climbCount === 1 ? 'climb' : 'climbs'}
+                </span>
+              </div>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                {profile.boardTypes.map((bt) => (
+                  <Chip
+                    key={bt}
+                    label={bt.charAt(0).toUpperCase() + bt.slice(1)}
+                    size="small"
+                    variant="outlined"
+                  />
+                ))}
+              </Box>
+              <FollowButton
+                entityId={profile.username}
+                initialIsFollowing={profile.isFollowedByMe}
+                followMutation={FOLLOW_SETTER}
+                unfollowMutation={UNFOLLOW_SETTER}
+                entityLabel="setter"
+                getFollowVariables={(id) => ({ input: { setterUsername: id } })}
+                onFollowChange={(isFollowing) => {
+                  if (profile) {
+                    setProfile({
+                      ...profile,
+                      followerCount: profile.followerCount + (isFollowing ? 1 : -1),
+                      isFollowedByMe: isFollowing,
+                    });
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
 
-        {/* Created Climbs */}
-        <MuiCard className={styles.climbsCard}>
-          <CardContent>
-            <Typography variant="h6" component="h5" sx={{ mb: 2 }}>
-              Created Climbs
-            </Typography>
-            <SetterClimbList
-              username={profile.username}
-              boardTypes={profile.boardTypes}
-              authToken={authToken}
-            />
-          </CardContent>
-        </MuiCard>
-      </Box>
-    </Box>
+        {/* Climbs Section */}
+        <div className={styles.climbsSection}>
+          <SetterClimbList
+            username={profile.username}
+            boardTypes={profile.boardTypes}
+            authToken={authToken}
+          />
+        </div>
+      </div>
+    </>
   );
 }
