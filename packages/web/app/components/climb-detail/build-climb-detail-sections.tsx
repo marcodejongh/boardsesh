@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { CollapsibleSectionConfig } from '@/app/components/collapsible-section/collapsible-section';
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import { LogbookSection, useLogbookSummary } from '@/app/components/logbook/logbook-section';
@@ -71,6 +72,8 @@ export function useBuildClimbDetailSections({
   currentClimbDifficulty,
   boardName,
 }: BuildClimbDetailSectionsProps): CollapsibleSectionConfig[] {
+  const searchParams = useSearchParams();
+  const highlightProposalUuid = searchParams.get('proposalUuid') ?? undefined;
   const betaLinks = useClimbBetaLinks({ boardType, climbUuid, initialBetaLinks });
   const logbookSummary = useLogbookSummary(climb.uuid);
 
@@ -115,6 +118,7 @@ export function useBuildClimbDetailSections({
       defaultSummary: 'Votes, comments, proposals',
       getSummary: () => ['Votes', 'Comments', 'Proposals'],
       lazy: true,
+      defaultActive: !!highlightProposalUuid,
       content: (
         <ClimbSocialSection
           climbUuid={climbUuid}
@@ -122,6 +126,7 @@ export function useBuildClimbDetailSections({
           angle={angle}
           currentClimbDifficulty={currentClimbDifficulty}
           boardName={boardName}
+          highlightProposalUuid={highlightProposalUuid}
         />
       ),
     },

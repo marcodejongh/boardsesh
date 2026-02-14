@@ -214,15 +214,54 @@ export const socialNotificationQueries = {
         commentBody: row.commentBody
           ? (row.commentBody.length > 100 ? row.commentBody.slice(0, 100) + '...' : row.commentBody)
           : undefined,
-        climbName: undefined,
-        climbUuid: undefined,
-        boardType: undefined,
+        climbName: undefined as string | undefined,
+        climbUuid: undefined as string | undefined,
+        boardType: undefined as string | undefined,
+        proposalUuid: undefined as string | undefined,
         isRead: row.allRead,
         createdAt: row.latestCreatedAt instanceof Date
           ? row.latestCreatedAt.toISOString()
           : String(row.latestCreatedAt),
       };
     });
+
+    // Enrich groups with climb/proposal data
+    const proposalTypes = ['proposal_created', 'proposal_approved', 'proposal_rejected', 'proposal_vote'];
+    const climbTypes = ['new_climb', 'new_climb_global'];
+
+    for (const group of groups) {
+      if (!group.entityId) continue;
+
+      if (climbTypes.includes(group.type)) {
+        const [climb] = await db
+          .select({ name: dbSchema.boardClimbs.name, boardType: dbSchema.boardClimbs.boardType })
+          .from(dbSchema.boardClimbs)
+          .where(eq(dbSchema.boardClimbs.uuid, group.entityId))
+          .limit(1);
+        if (climb) {
+          group.climbUuid = group.entityId;
+          group.climbName = climb.name ?? undefined;
+          group.boardType = climb.boardType;
+        }
+      } else if (proposalTypes.includes(group.type)) {
+        const [proposal] = await db
+          .select({ climbUuid: dbSchema.climbProposals.climbUuid, boardType: dbSchema.climbProposals.boardType })
+          .from(dbSchema.climbProposals)
+          .where(eq(dbSchema.climbProposals.uuid, group.entityId))
+          .limit(1);
+        if (proposal) {
+          group.proposalUuid = group.entityId;
+          group.climbUuid = proposal.climbUuid;
+          group.boardType = proposal.boardType;
+          const [climb] = await db
+            .select({ name: dbSchema.boardClimbs.name })
+            .from(dbSchema.boardClimbs)
+            .where(eq(dbSchema.boardClimbs.uuid, proposal.climbUuid))
+            .limit(1);
+          group.climbName = climb?.name ?? undefined;
+        }
+      }
+    }
 
     // Unread count (individual notifications, not groups)
     const unreadCountResult = await db

@@ -11,6 +11,8 @@ import Box from '@mui/material/Box';
 import PersonAddOutlined from '@mui/icons-material/PersonAddOutlined';
 import ChatBubbleOutline from '@mui/icons-material/ChatBubbleOutline';
 import ThumbUpOutlined from '@mui/icons-material/ThumbUpOutlined';
+import LightbulbOutlined from '@mui/icons-material/LightbulbOutlined';
+import AddCircleOutline from '@mui/icons-material/AddCircleOutline';
 import type { GroupedNotification, NotificationType } from '@boardsesh/shared-schema';
 import { themeTokens } from '@/app/theme/theme-config';
 
@@ -72,6 +74,17 @@ function getNotificationText(notification: GroupedNotification): string {
       return `${actorSummary} liked your ascent`;
     case 'vote_on_comment':
       return `${actorSummary} liked your comment`;
+    case 'proposal_created':
+      return `${actorSummary} created a new proposal`;
+    case 'proposal_approved':
+      return `${actorSummary}'s proposal was approved`;
+    case 'proposal_rejected':
+      return `${actorSummary}'s proposal was rejected`;
+    case 'proposal_vote':
+      return `${actorSummary} voted on your proposal`;
+    case 'new_climb':
+    case 'new_climb_global':
+      return `${actorSummary} created a new climb`;
     default:
       return 'You have a new notification';
   }
@@ -88,6 +101,14 @@ function getNotificationIcon(type: NotificationType) {
     case 'vote_on_tick':
     case 'vote_on_comment':
       return <ThumbUpOutlined fontSize="small" />;
+    case 'proposal_created':
+    case 'proposal_approved':
+    case 'proposal_rejected':
+    case 'proposal_vote':
+      return <LightbulbOutlined fontSize="small" />;
+    case 'new_climb':
+    case 'new_climb_global':
+      return <AddCircleOutline fontSize="small" />;
     default:
       return null;
   }

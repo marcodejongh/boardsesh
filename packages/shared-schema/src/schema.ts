@@ -1617,6 +1617,8 @@ export const typeDefs = /* GraphQL */ `
     climbUuid: String
     "Board type (for navigation)"
     boardType: String
+    "Proposal UUID (for proposal notifications, to deep-link to the specific proposal)"
+    proposalUuid: String
     "Whether the notification has been read"
     isRead: Boolean!
     "When the notification was created (ISO 8601)"
@@ -1673,6 +1675,8 @@ export const typeDefs = /* GraphQL */ `
     climbUuid: String
     "Board type"
     boardType: String
+    "Proposal UUID (for deep-linking to a specific proposal)"
+    proposalUuid: String
     "Whether all notifications in the group are read"
     isRead: Boolean!
     "When the most recent notification was created"

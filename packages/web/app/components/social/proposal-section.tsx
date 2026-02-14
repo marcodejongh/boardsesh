@@ -34,9 +34,10 @@ interface ProposalSectionProps {
   angle: number;
   currentClimbDifficulty?: string;
   boardName?: string;
+  highlightProposalUuid?: string;
 }
 
-export default function ProposalSection({ climbUuid, boardType, angle, currentClimbDifficulty, boardName }: ProposalSectionProps) {
+export default function ProposalSection({ climbUuid, boardType, angle, currentClimbDifficulty, boardName, highlightProposalUuid }: ProposalSectionProps) {
   const { token } = useWsAuthToken();
   const [communityStatus, setCommunityStatus] = useState<ClimbCommunityStatusType | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -167,6 +168,7 @@ export default function ProposalSection({ climbUuid, boardType, angle, currentCl
                 proposal={proposal}
                 isAdminOrLeader={isAdminOrLeader}
                 onUpdate={handleProposalUpdated}
+                highlight={proposal.uuid === highlightProposalUuid}
               />
             ))
           ) : (

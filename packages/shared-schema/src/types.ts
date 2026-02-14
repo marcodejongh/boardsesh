@@ -695,6 +695,7 @@ export type Notification = {
   climbName?: string | null;
   climbUuid?: string | null;
   boardType?: string | null;
+  proposalUuid?: string | null;
   isRead: boolean;
   createdAt: string;
 };
@@ -723,6 +724,7 @@ export type GroupedNotification = {
   climbName?: string | null;
   climbUuid?: string | null;
   boardType?: string | null;
+  proposalUuid?: string | null;
   isRead: boolean;
   createdAt: string;
 };

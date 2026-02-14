@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -51,15 +51,23 @@ interface ProposalCardProps {
   isAdminOrLeader?: boolean;
   onUpdate?: (updated: Proposal) => void;
   onDelete?: (proposalUuid: string) => void;
+  highlight?: boolean;
 }
 
-export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDelete }: ProposalCardProps) {
+export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDelete, highlight }: ProposalCardProps) {
   const { token } = useWsAuthToken();
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState('');
   const [localProposal, setLocalProposal] = useState(proposal);
   const [showComments, setShowComments] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (highlight && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlight]);
 
   const handleVote = useCallback(async (value: number) => {
     if (!token) {
@@ -120,10 +128,12 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDe
   return (
     <>
       <Card
+        ref={cardRef}
         variant="outlined"
         sx={{
           mb: 1.5,
-          borderColor: themeTokens.neutral[200],
+          borderColor: highlight ? themeTokens.colors.primary : themeTokens.neutral[200],
+          boxShadow: highlight ? `0 0 0 1px ${themeTokens.colors.primary}` : undefined,
           '&:hover': { borderColor: themeTokens.neutral[300] },
         }}
       >
