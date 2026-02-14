@@ -20,6 +20,7 @@ import { UISearchParamsProvider } from '@/app/components/queue-control/ui-search
 import LastUsedBoardTracker from '@/app/components/board-page/last-used-board-tracker';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getAllBoardConfigs } from '@/app/lib/server-board-configs';
+import { BoardRouteBottomBarRegistrar } from '@/app/components/bottom-tab-bar/board-route-bottom-bar-context';
 import layoutStyles from './layout.module.css';
 
 // Helper to get board details for any board type
@@ -166,6 +167,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--semantic-surface)' }}>
+      <BoardRouteBottomBarRegistrar />
       <LastUsedBoardTracker
         url={listUrl}
         boardName={boardDetails.board_name}

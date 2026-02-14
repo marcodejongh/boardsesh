@@ -20,6 +20,7 @@ import { BoardProvider } from '@/app/components/board-provider/board-provider-co
 import LastUsedBoardTracker from '@/app/components/board-page/last-used-board-tracker';
 import { getAllBoardConfigs } from '@/app/lib/server-board-configs';
 import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
+import { BoardRouteBottomBarRegistrar } from '@/app/components/bottom-tab-bar/board-route-bottom-bar-context';
 import layoutStyles from './layout.module.css';
 import { themeTokens } from '@/app/theme/theme-config';
 
@@ -76,6 +77,7 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--semantic-surface)' }}>
+      <BoardRouteBottomBarRegistrar />
       <LastUsedBoardTracker
         url={listUrl}
         boardName={boardDetails.board_name}

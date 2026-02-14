@@ -1,48 +1,57 @@
 'use client';
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
 import { PartyProfileProvider } from '../party-manager/party-profile-context';
-import { PersistentSessionProvider, useIsOnBoardRoute } from '../persistent-session';
+import { PersistentSessionProvider } from '../persistent-session';
 import PersistentQueueControlBar from '../queue-control/persistent-queue-control-bar';
-import styles from '../queue-control/persistent-queue-control-bar.module.css';
+import BottomTabBar from '../bottom-tab-bar/bottom-tab-bar';
+import { BoardRouteBottomBarProvider, useBoardRouteBottomBar } from '../bottom-tab-bar/board-route-bottom-bar-context';
+import ErrorBoundary from '../error-boundary';
+import bottomBarStyles from '../bottom-tab-bar/bottom-bar-wrapper.module.css';
+import { BoardConfigData } from '@/app/lib/server-board-configs';
 
 interface PersistentSessionWrapperProps {
   children: React.ReactNode;
+  boardConfigs: BoardConfigData;
 }
 
 /**
  * Root-level wrapper that provides:
  * 1. PartyProfileProvider - user profile from IndexedDB and NextAuth session
  * 2. PersistentSessionProvider - WebSocket connection management that persists across navigation
- * 3. OffBoardQueueBar - shows the full QueueControlBar when navigated away from board routes
+ * 3. BoardRouteBottomBarProvider - tracks whether a board route has its own bottom bar
+ * 4. RootBottomBar - persistent queue control bar + bottom tab bar on all non-board pages
  */
-export default function PersistentSessionWrapper({ children }: PersistentSessionWrapperProps) {
+export default function PersistentSessionWrapper({ children, boardConfigs }: PersistentSessionWrapperProps) {
   return (
     <PartyProfileProvider>
       <PersistentSessionProvider>
-        {children}
-        <OffBoardQueueBar />
+        <BoardRouteBottomBarProvider>
+          {children}
+          <RootBottomBar boardConfigs={boardConfigs} />
+        </BoardRouteBottomBarProvider>
       </PersistentSessionProvider>
     </PartyProfileProvider>
   );
 }
 
 /**
- * Fallback queue bar for pages that don't render their own inline queue bar.
- * Board routes render their own provider. Home, my-library, and notifications
- * each render an inline PersistentQueueControlBar inside their bottom bar wrapper,
- * so this component returns null on those pages to avoid double-rendering.
+ * Persistent bottom bar rendered at the root level.
+ * Hides itself when a board route registers its own bottom bar.
  */
-function OffBoardQueueBar() {
-  const isOnBoardRoute = useIsOnBoardRoute();
-  const pathname = usePathname();
-  const isHomePage = pathname === '/';
-  const hasOwnBottomBar = pathname.startsWith('/my-library') || pathname.startsWith('/notifications');
+function RootBottomBar({ boardConfigs }: { boardConfigs: BoardConfigData }) {
+  const { hasBoardRouteBottomBar } = useBoardRouteBottomBar();
 
-  if (isOnBoardRoute || isHomePage || hasOwnBottomBar) {
+  if (hasBoardRouteBottomBar) {
     return null;
   }
 
-  return <PersistentQueueControlBar className={styles.fixedBottom} />;
+  return (
+    <div className={bottomBarStyles.bottomBarWrapper}>
+      <ErrorBoundary>
+        <PersistentQueueControlBar />
+      </ErrorBoundary>
+      <BottomTabBar boardConfigs={boardConfigs} />
+    </div>
+  );
 }
