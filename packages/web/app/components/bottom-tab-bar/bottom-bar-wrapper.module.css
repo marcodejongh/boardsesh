@@ -1,14 +1,19 @@
 .bottomBarWrapper {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: 2dvw;
+  right: 2dvw;
   z-index: 10;
+  background: none;
+  border-radius: 16px;
 }
 
 @media (min-width: 768px) {
   .bottomBarWrapper {
+    left: 0;
+    right: 0;
     padding-bottom: 16px;
+    border-radius: 0;
   }
 }
 

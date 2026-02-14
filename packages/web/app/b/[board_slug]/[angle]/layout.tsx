@@ -6,22 +6,19 @@ import { resolveBoardBySlug, boardToRouteParams } from '@/app/lib/board-slug-uti
 import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
 import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
 import { ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
-import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { GraphQLQueueProvider } from '@/app/components/graphql-queue';
 import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 import { BoardSessionBridge } from '@/app/components/persistent-session';
 import BoardPageSkeleton from '@/app/components/board-page/board-page-skeleton';
-import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
 import { BluetoothProvider } from '@/app/components/board-bluetooth-control/bluetooth-context';
 import { UISearchParamsProvider } from '@/app/components/queue-control/ui-searchparams-provider';
 import { BoardProvider } from '@/app/components/board-provider/board-provider-context';
+import { QueueBridgeInjector } from '@/app/components/queue-control/queue-bridge-context';
 import LastUsedBoardTracker from '@/app/components/board-page/last-used-board-tracker';
 import { getAllBoardConfigs } from '@/app/lib/server-board-configs';
 import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
-import { BoardRouteBottomBarRegistrar } from '@/app/components/bottom-tab-bar/board-route-bottom-bar-context';
-import layoutStyles from './layout.module.css';
 import { themeTokens } from '@/app/theme/theme-config';
 
 interface BoardSlugRouteParams {
@@ -77,7 +74,6 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--semantic-surface)' }}>
-      <BoardRouteBottomBarRegistrar />
       <LastUsedBoardTracker
         url={listUrl}
         boardName={boardDetails.board_name}
@@ -94,6 +90,7 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
               <PartyProvider>
                 <BluetoothProvider boardDetails={boardDetails}>
                   <UISearchParamsProvider>
+                    <QueueBridgeInjector boardDetails={boardDetails} angle={angle} />
                     <BoardSeshHeader boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} isAngleAdjustable={board.isAngleAdjustable} />
 
                     <main
@@ -110,11 +107,6 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
                         {children}
                       </Suspense>
                     </main>
-
-                    <div className={layoutStyles.bottomBarWrapper} data-testid="bottom-bar-wrapper">
-                      <QueueControlBar boardDetails={boardDetails} angle={angle} />
-                      <BottomTabBar boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} />
-                    </div>
                   </UISearchParamsProvider>
                 </BluetoothProvider>
               </PartyProvider>

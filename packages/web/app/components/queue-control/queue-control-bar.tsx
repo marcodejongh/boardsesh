@@ -114,7 +114,11 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
           climb.uuid,
           climb.name,
         )
-      : `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/${fallbackPath}/${climb.uuid}`;
+      : params.board_name
+        ? `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/${fallbackPath}/${climb.uuid}`
+        : null;
+
+    if (!climbUrl) return null;
 
     // Preserve search params in play mode
     if (isPlayPage) {
@@ -138,7 +142,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     });
 
     if (shouldNavigate) {
-      router.push(buildClimbUrl(nextClimb.climb));
+      const url = buildClimbUrl(nextClimb.climb);
+      if (url) router.push(url);
     }
   }, [nextClimb, viewOnlyMode, setCurrentClimbQueueItem, shouldNavigate, router, buildClimbUrl, boardDetails]);
 
@@ -153,7 +158,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     });
 
     if (shouldNavigate) {
-      router.push(buildClimbUrl(previousClimb.climb));
+      const url = buildClimbUrl(previousClimb.climb);
+      if (url) router.push(url);
     }
   }, [previousClimb, viewOnlyMode, setCurrentClimbQueueItem, shouldNavigate, router, buildClimbUrl, boardDetails]);
 
@@ -174,7 +180,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
 
     const { layout_name, size_name, size_description, set_names, board_name } = boardDetails;
 
-    let baseUrl: string;
+    let baseUrl: string | null;
     if (layout_name && size_name && set_names) {
       baseUrl = constructPlayUrlWithSlugs(
         board_name,
@@ -186,8 +192,10 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
         currentClimb.uuid,
         currentClimb.name,
       );
-    } else {
+    } else if (params.board_name) {
       baseUrl = `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/play/${currentClimb.uuid}`;
+    } else {
+      return null;
     }
 
     const queryString = searchParams.toString();
