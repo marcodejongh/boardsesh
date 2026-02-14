@@ -12,9 +12,10 @@ interface ClimbSocialSectionProps {
   angle?: number;
   currentClimbDifficulty?: string;
   boardName?: string;
+  highlightProposalUuid?: string;
 }
 
-export default function ClimbSocialSection({ climbUuid, boardType, angle, currentClimbDifficulty, boardName }: ClimbSocialSectionProps) {
+export default function ClimbSocialSection({ climbUuid, boardType, angle, currentClimbDifficulty, boardName, highlightProposalUuid }: ClimbSocialSectionProps) {
   return (
     <Box>
       {boardType && angle != null && (
@@ -24,6 +25,7 @@ export default function ClimbSocialSection({ climbUuid, boardType, angle, curren
           angle={angle}
           currentClimbDifficulty={currentClimbDifficulty}
           boardName={boardName}
+          highlightProposalUuid={highlightProposalUuid}
         />
       )}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>

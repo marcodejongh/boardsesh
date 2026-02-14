@@ -154,7 +154,7 @@ export class NotificationWorker {
       recipient.recipientId,
       event.actorId,
       recipient.notificationType,
-      'user',
+      null,
       event.entityId,
     );
   }
@@ -360,7 +360,7 @@ export class NotificationWorker {
     recipientId: string,
     actorId: string,
     type: NotificationType,
-    entityType: string,
+    entityType: string | null,
     entityId: string,
     commentUuid?: string,
   ): Promise<void> {
@@ -388,7 +388,7 @@ export class NotificationWorker {
         recipientId,
         actorId,
         type,
-        entityType: entityType as dbSchema.SocialEntityType,
+        entityType: entityType as dbSchema.SocialEntityType | null,
         entityId,
         commentId,
       });
@@ -404,7 +404,7 @@ export class NotificationWorker {
     uuid: string,
     actorId: string,
     type: NotificationType,
-    entityType: string,
+    entityType: string | null,
     entityId: string,
     commentUuid?: string,
   ) {
@@ -439,6 +439,7 @@ export class NotificationWorker {
     let climbName: string | undefined;
     let climbUuid: string | undefined;
     let climbBoardType: string | undefined;
+    let proposalUuid: string | undefined;
 
     if (type === 'new_climb' || type === 'new_climb_global') {
       const [climb] = await db
@@ -454,6 +455,33 @@ export class NotificationWorker {
         climbUuid = entityId;
         climbBoardType = climb.boardType;
       }
+    } else if (
+      type === 'proposal_created' ||
+      type === 'proposal_approved' ||
+      type === 'proposal_rejected' ||
+      type === 'proposal_vote'
+    ) {
+      // entityId is the proposal UUID — look up the associated climb
+      const [proposal] = await db
+        .select({
+          climbUuid: dbSchema.climbProposals.climbUuid,
+          boardType: dbSchema.climbProposals.boardType,
+        })
+        .from(dbSchema.climbProposals)
+        .where(eq(dbSchema.climbProposals.uuid, entityId))
+        .limit(1);
+      if (proposal) {
+        proposalUuid = entityId;
+        climbUuid = proposal.climbUuid;
+        climbBoardType = proposal.boardType;
+        // Fetch climb name
+        const [climb] = await db
+          .select({ name: dbSchema.boardClimbs.name })
+          .from(dbSchema.boardClimbs)
+          .where(eq(dbSchema.boardClimbs.uuid, proposal.climbUuid))
+          .limit(1);
+        climbName = climb?.name ?? undefined;
+      }
     }
 
     return {
@@ -462,12 +490,13 @@ export class NotificationWorker {
       actorId,
       actorDisplayName: actor?.displayName || actor?.name || undefined,
       actorAvatarUrl: actor?.avatarUrl || actor?.image || undefined,
-      entityType: entityType as dbSchema.SocialEntityType,
+      entityType: entityType as dbSchema.SocialEntityType | null,
       entityId,
       commentBody,
       climbName,
       climbUuid,
       boardType: climbBoardType,
+      proposalUuid,
       isRead: false,
       createdAt: new Date().toISOString(),
     };

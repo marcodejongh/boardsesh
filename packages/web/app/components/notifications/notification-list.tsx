@@ -27,6 +27,22 @@ export default function NotificationList() {
     }
   }, [hasMore, isFetchingMore, fetchMore]);
 
+  const navigateToClimb = useCallback(
+    async (boardType: string, climbUuid: string, proposalUuid?: string | null) => {
+      try {
+        const params = new URLSearchParams({ boardType, climbUuid });
+        if (proposalUuid) params.set('proposalUuid', proposalUuid);
+        const res = await fetch(`/api/internal/climb-redirect?${params}`);
+        if (!res.ok) return;
+        const { url } = await res.json();
+        if (url) router.push(url);
+      } catch {
+        // Silently fail navigation
+      }
+    },
+    [router],
+  );
+
   const handleNotificationClick = useCallback(
     (notification: GroupedNotification) => {
       if (!notification.isRead) {
@@ -34,14 +50,13 @@ export default function NotificationList() {
       }
 
       // Navigate based on notification type
-      if (notification.climbUuid && notification.boardType) {
-        // Navigate to climb - for now just go to the board page
-        // TODO: construct full climb URL when available
-      } else if (notification.type === 'new_follower' && notification.actors.length > 0) {
+      if (notification.type === 'new_follower' && notification.actors.length > 0) {
         router.push(`/profile/${notification.actors[0].id}`);
+      } else if (notification.climbUuid && notification.boardType) {
+        navigateToClimb(notification.boardType, notification.climbUuid, notification.proposalUuid);
       }
     },
-    [markGroupAsReadMutation, router],
+    [markGroupAsReadMutation, router, navigateToClimb],
   );
 
   // Inline IntersectionObserver — same pattern as climbs-list.tsx

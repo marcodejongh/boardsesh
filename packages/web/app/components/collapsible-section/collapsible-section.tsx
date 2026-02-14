@@ -12,6 +12,8 @@ export interface CollapsibleSectionConfig {
   content: React.ReactNode;
   /** When true, content is only mounted while this section is the active one. */
   lazy?: boolean;
+  /** When true, this section should be the initially active one (overrides defaultActiveKey). */
+  defaultActive?: boolean;
 }
 
 interface CollapsibleSectionProps {
@@ -23,7 +25,10 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   sections,
   defaultActiveKey,
 }) => {
-  const [activeKey, setActiveKey] = useState<string | null>(defaultActiveKey ?? null);
+  const sectionDefaultActive = sections.find((s) => s.defaultActive);
+  const [activeKey, setActiveKey] = useState<string | null>(
+    sectionDefaultActive?.key ?? defaultActiveKey ?? null,
+  );
 
   return (
     <div className={styles.steppedContainer}>

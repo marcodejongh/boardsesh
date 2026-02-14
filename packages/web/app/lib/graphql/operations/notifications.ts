@@ -27,6 +27,7 @@ export const GET_NOTIFICATIONS = gql`
         climbName
         climbUuid
         boardType
+        proposalUuid
         isRead
         createdAt
       }
@@ -55,6 +56,7 @@ export const GET_GROUPED_NOTIFICATIONS = gql`
         climbName
         climbUuid
         boardType
+        proposalUuid
         isRead
         createdAt
       }
@@ -112,6 +114,7 @@ export const NOTIFICATION_RECEIVED_SUBSCRIPTION = `
         climbName
         climbUuid
         boardType
+        proposalUuid
         isRead
         createdAt
       }
