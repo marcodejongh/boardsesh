@@ -116,19 +116,25 @@ RUN set -e && \
     # ── Apply drizzle migrations via psql ─────────────────────────────── \
     # Replicate what drizzle-orm's migrate() does: create tracking table, \
     # apply each SQL file from the journal, record the SHA-256 hash. \
+    # ON_ERROR_STOP=1 makes psql exit non-zero on any SQL error. \
     echo ">>> Applying drizzle migrations..." && \
-    gosu postgres psql main -c "CREATE TABLE IF NOT EXISTS \"__drizzle_migrations\" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)" && \
+    migration_count=$(jq '.entries | length' /drizzle/meta/_journal.json) && \
+    echo "  Found $migration_count migrations in journal" && \
+    gosu postgres psql main -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS \"__drizzle_migrations\" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)" && \
+    applied=0 && \
     for tag in $(jq -r '.entries[].tag' /drizzle/meta/_journal.json); do \
       sql_file="/drizzle/${tag}.sql"; \
       if [ -f "$sql_file" ]; then \
         hash=$(sha256sum "$sql_file" | cut -d' ' -f1); \
-        echo "  Applying: $tag"; \
-        gosu postgres psql main -f "$sql_file" && \
-        gosu postgres psql main -c "INSERT INTO \"__drizzle_migrations\" (hash, created_at) VALUES ('$hash', $(date +%s)000)"; \
+        applied=$((applied + 1)); \
+        echo "  [$applied/$migration_count] Applying: $tag"; \
+        gosu postgres psql main -v ON_ERROR_STOP=1 -f "$sql_file" && \
+        gosu postgres psql main -v ON_ERROR_STOP=1 -c "INSERT INTO \"__drizzle_migrations\" (hash, created_at) VALUES ('$hash', $(date +%s)000)"; \
       else \
-        echo "  WARNING: Migration file not found: $sql_file"; \
+        echo "  ERROR: Migration file not found: $sql_file" && false; \
       fi; \
     done && \
+    echo ">>> All $applied migrations applied successfully." && \
     \
     # ── Stop PostgreSQL ──────────────────────────────────────────────── \
     echo ">>> Stopping PostgreSQL..." && \
