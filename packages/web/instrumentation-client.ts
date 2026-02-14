@@ -5,9 +5,10 @@
 import * as Sentry from "@sentry/nextjs";
 
 // Only enable Sentry on boardsesh.com to avoid polluting error tracking
+// Check hostname to ensure we don't send errors from localhost or preview deployments
 const isProductionDomain =
   typeof window !== "undefined" &&
-  window.location.hostname.includes("boardsesh.com");
+  window.location.hostname === "boardsesh.com";
 
 Sentry.init({
   dsn: "https://f55e6626faf787ae5291ad75b010ea14@o4510644927660032.ingest.us.sentry.io/4510644930150400",

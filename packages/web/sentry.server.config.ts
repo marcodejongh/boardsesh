@@ -5,7 +5,10 @@
 import * as Sentry from "@sentry/nextjs";
 
 // Only enable Sentry on production deployments to avoid polluting error tracking
-const isProductionDomain = process.env.VERCEL_ENV === "production";
+// Check both NODE_ENV and VERCEL_ENV to ensure we don't send errors from local dev or preview deployments
+const isProductionDomain =
+  process.env.NODE_ENV === "production" &&
+  process.env.VERCEL_ENV === "production";
 
 Sentry.init({
   dsn: "https://f55e6626faf787ae5291ad75b010ea14@o4510644927660032.ingest.us.sentry.io/4510644930150400",
