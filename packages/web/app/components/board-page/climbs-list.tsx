@@ -165,7 +165,7 @@ const ClimbsList = ({
   }), []);
 
   const cardBoxSx = useMemo(() => ({
-    width: { xs: '100%', lg: '50%' },
+    width: { xs: '100%', lg: `calc(50% - ${themeTokens.spacing[4] / 2}px)` },
   }), []);
 
   const sentinelBoxSx = useMemo(() => ({
