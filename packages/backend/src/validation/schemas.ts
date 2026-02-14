@@ -518,6 +518,30 @@ export const SearchUsersInputSchema = z.object({
 });
 
 /**
+ * Follow setter input validation schema
+ */
+export const FollowSetterInputSchema = z.object({
+  setterUsername: z.string().min(1, 'Setter username cannot be empty').max(100),
+});
+
+/**
+ * Setter profile input validation schema
+ */
+export const SetterProfileInputSchema = z.object({
+  username: z.string().min(1, 'Username cannot be empty').max(100),
+});
+
+/**
+ * Setter climbs input validation schema
+ */
+export const SetterClimbsInputSchema = z.object({
+  username: z.string().min(1, 'Username cannot be empty').max(100),
+  boardType: BoardNameSchema.optional(),
+  limit: z.number().int().min(1).max(100).optional().default(20),
+  offset: z.number().int().min(0).optional().default(0),
+});
+
+/**
  * Following ascents feed input validation schema
  */
 export const FollowingAscentsFeedInputSchema = z.object({

@@ -52,6 +52,8 @@ export default function NotificationList() {
       // Navigate based on notification type
       if (notification.type === 'new_follower' && notification.actors.length > 0) {
         router.push(`/profile/${notification.actors[0].id}`);
+      } else if (notification.type === 'new_climbs_synced' && notification.setterUsername) {
+        router.push(`/setter/${encodeURIComponent(notification.setterUsername)}`);
       } else if (notification.climbUuid && notification.boardType) {
         navigateToClimb(notification.boardType, notification.climbUuid, notification.proposalUuid);
       }

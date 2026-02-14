@@ -1,12 +1,20 @@
 import { getPool } from '@/app/lib/db/db';
 import { SyncOptions, AuroraBoardName } from '../../api-wrappers/aurora/types';
 import { sharedSync } from '../../api-wrappers/aurora/sharedSync';
-import { sql, eq } from 'drizzle-orm';
+import { sql, eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { Attempt, BetaLink, Climb, ClimbStats, SharedSync, SyncPutFields } from '../../api-wrappers/sync-api-types';
 import { UNIFIED_TABLES } from '../../db/queries/util/table-select';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
+
+export type NewClimbInfo = {
+  uuid: string;
+  setterId?: number;
+  setterUsername?: string;
+  layoutId: number;
+  name?: string;
+};
 
 // Define shared sync tables in correct dependency order
 // Order matches what the Android app sends - keep full list to remain indistinguishable
@@ -139,9 +147,19 @@ async function upsertBetaLinks(db: NeonDatabase<Record<string, never>>, board: A
   );
 }
 
-async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: Climb[]) {
+async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: AuroraBoardName, data: Climb[]): Promise<NewClimbInfo[]> {
   const climbsSchema = UNIFIED_TABLES.climbs;
   const climbHoldsSchema = UNIFIED_TABLES.climbHolds;
+
+  if (data.length === 0) return [];
+
+  // Check which UUIDs already exist to track new climbs
+  const uuids = data.map((c) => c.uuid);
+  const existingRows = await db
+    .select({ uuid: climbsSchema.uuid })
+    .from(climbsSchema)
+    .where(inArray(climbsSchema.uuid, uuids));
+  const existingUuids = new Set(existingRows.map((r) => r.uuid));
 
   await Promise.all(
     data.map(async (item: Climb) => {
@@ -210,6 +228,17 @@ async function upsertClimbs(db: NeonDatabase<Record<string, never>>, board: Auro
       await db.insert(climbHoldsSchema).values(holdsToInsert).onConflictDoNothing(); // Avoid duplicate inserts
     }),
   );
+
+  // Return info about newly inserted climbs
+  return data
+    .filter((c) => !existingUuids.has(c.uuid))
+    .map((c) => ({
+      uuid: c.uuid,
+      setterId: c.setter_id,
+      setterUsername: c.setter_username,
+      layoutId: c.layout_id,
+      name: c.name,
+    }));
 }
 
 async function upsertSharedTableData(
@@ -217,27 +246,26 @@ async function upsertSharedTableData(
   boardName: AuroraBoardName,
   tableName: string,
   data: SyncPutFields[],
-) {
+): Promise<NewClimbInfo[]> {
   switch (tableName) {
     case 'attempts':
       await upsertAttempts(db, boardName, data as Attempt[]);
-      break;
+      return [];
     case 'climb_stats':
       await upsertClimbStats(db, boardName, data as ClimbStats[]);
-      break;
+      return [];
     case 'beta_links':
       await upsertBetaLinks(db, boardName, data as BetaLink[]);
-      break;
+      return [];
     case 'climbs':
-      await upsertClimbs(db, boardName, data as Climb[]);
-      break;
+      return await upsertClimbs(db, boardName, data as Climb[]);
     case 'shared_syncs':
       await updateSharedSyncs(db, boardName, data as SharedSync[]);
-      break;
+      return [];
     default:
       // Tables not in TABLES_TO_PROCESS are handled in the main sync loop
       console.log(`Table ${tableName} not handled in upsertSharedTableData`);
-      break;
+      return [];
   }
 }
 async function updateSharedSyncs(
@@ -288,7 +316,7 @@ export async function getLastSharedSyncTimes(boardName: AuroraBoardName) {
 export async function syncSharedData(
   board: AuroraBoardName,
   token: string,
-): Promise<{ complete: boolean; results: Record<string, { synced: number; complete: boolean }> }> {
+): Promise<{ complete: boolean; results: Record<string, { synced: number; complete: boolean }>; newClimbs: NewClimbInfo[] }> {
   try {
     console.log('Entered sync shared data');
 
@@ -314,6 +342,7 @@ export async function syncSharedData(
 
     // Initialize results tracking
     const totalResults: Record<string, { synced: number; complete: boolean }> = {};
+    const allNewClimbs: NewClimbInfo[] = [];
     let isComplete = false;
 
     const syncResults = await sharedSync(board, syncParams, token);
@@ -337,7 +366,8 @@ export async function syncSharedData(
           // Only process tables we actually care about
           if (TABLES_TO_PROCESS.has(tableName)) {
             console.log(`Syncing ${tableName}: ${data.length} records`);
-            await upsertSharedTableData(tx, board, tableName, data);
+            const newClimbs = await upsertSharedTableData(tx, board, tableName, data);
+            allNewClimbs.push(...newClimbs);
 
             // Accumulate results
             if (!totalResults[tableName]) {
@@ -409,7 +439,7 @@ export async function syncSharedData(
     });
     console.log(`Sync complete: ${isComplete}`);
 
-    return { complete: isComplete, results: totalResults };
+    return { complete: isComplete, results: totalResults, newClimbs: allNewClimbs };
   } catch (error) {
     console.error('Error syncing shared data:', error);
     throw error;
