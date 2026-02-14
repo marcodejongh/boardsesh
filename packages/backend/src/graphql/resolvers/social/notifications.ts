@@ -218,6 +218,7 @@ export const socialNotificationQueries = {
         climbUuid: undefined as string | undefined,
         boardType: undefined as string | undefined,
         proposalUuid: undefined as string | undefined,
+        setterUsername: undefined as string | undefined,
         isRead: row.allRead,
         createdAt: row.latestCreatedAt instanceof Date
           ? row.latestCreatedAt.toISOString()
@@ -232,7 +233,24 @@ export const socialNotificationQueries = {
     for (const group of groups) {
       if (!group.entityId) continue;
 
-      if (climbTypes.includes(group.type)) {
+      if (group.type === 'new_climbs_synced') {
+        // For synced climb notifications, entityId is the first climb UUID
+        const [climb] = await db
+          .select({
+            name: dbSchema.boardClimbs.name,
+            boardType: dbSchema.boardClimbs.boardType,
+            setterUsername: dbSchema.boardClimbs.setterUsername,
+          })
+          .from(dbSchema.boardClimbs)
+          .where(eq(dbSchema.boardClimbs.uuid, group.entityId))
+          .limit(1);
+        if (climb) {
+          group.climbUuid = group.entityId;
+          group.climbName = climb.name ?? undefined;
+          group.boardType = climb.boardType;
+          group.setterUsername = climb.setterUsername ?? undefined;
+        }
+      } else if (climbTypes.includes(group.type)) {
         const [climb] = await db
           .select({ name: dbSchema.boardClimbs.name, boardType: dbSchema.boardClimbs.boardType })
           .from(dbSchema.boardClimbs)

@@ -1677,6 +1677,8 @@ export const typeDefs = /* GraphQL */ `
     boardType: String
     "Proposal UUID (for deep-linking to a specific proposal)"
     proposalUuid: String
+    "Setter username (for new_climbs_synced notifications)"
+    setterUsername: String
     "Whether all notifications in the group are read"
     isRead: Boolean!
     "When the most recent notification was created"
@@ -2033,6 +2035,138 @@ export const typeDefs = /* GraphQL */ `
     totalCount: Int!
     "Whether more results are available"
     hasMore: Boolean!
+  }
+
+  # ============================================
+  # Setter Profile & Search Types
+  # ============================================
+
+  """
+  Profile of a climb setter (may or may not be a Boardsesh user).
+  """
+  type SetterProfile {
+    "The setter's Aurora username"
+    username: String!
+    "Total number of climbs set across all boards"
+    climbCount: Int!
+    "Board types this setter has climbs on"
+    boardTypes: [String!]!
+    "Number of followers"
+    followerCount: Int!
+    "Whether the current user follows this setter"
+    isFollowedByMe: Boolean!
+    "Linked Boardsesh user ID (if setter has a Boardsesh account)"
+    linkedUserId: ID
+    "Linked user's display name"
+    linkedUserDisplayName: String
+    "Linked user's avatar URL"
+    linkedUserAvatarUrl: String
+  }
+
+  """
+  A setter result from unified search.
+  """
+  type SetterSearchResult {
+    "The setter's Aurora username"
+    username: String!
+    "Total number of climbs set"
+    climbCount: Int!
+    "Board types this setter has climbs on"
+    boardTypes: [String!]!
+    "Whether the current user follows this setter"
+    isFollowedByMe: Boolean!
+  }
+
+  """
+  A unified search result (can be a Boardsesh user, a setter, or both).
+  """
+  type UnifiedSearchResult {
+    "Boardsesh user profile (if result is a registered user)"
+    user: PublicUserProfile
+    "Setter profile (if result is a setter)"
+    setter: SetterSearchResult
+    "Number of recent ascents"
+    recentAscentCount: Int!
+    "Why this result matched the search"
+    matchReason: String
+  }
+
+  """
+  Paginated unified search results.
+  """
+  type UnifiedSearchConnection {
+    "List of search results"
+    results: [UnifiedSearchResult!]!
+    "Total number of matching results"
+    totalCount: Int!
+    "Whether more results are available"
+    hasMore: Boolean!
+  }
+
+  """
+  A climb created by a setter, for display on profile pages.
+  """
+  type SetterClimb {
+    "Climb UUID"
+    uuid: String!
+    "Climb name"
+    name: String
+    "Board type (kilter, tension, etc.)"
+    boardType: String!
+    "Layout ID"
+    layoutId: Int!
+    "Board angle in degrees"
+    angle: Int
+    "Display difficulty name (e.g. 'V5')"
+    difficultyName: String
+    "Average quality rating"
+    qualityAverage: Float
+    "Number of ascensionists"
+    ascensionistCount: Int
+    "When the climb was created"
+    createdAt: String
+  }
+
+  """
+  Paginated list of setter climbs.
+  """
+  type SetterClimbsConnection {
+    "List of climbs"
+    climbs: [SetterClimb!]!
+    "Total number of climbs"
+    totalCount: Int!
+    "Whether more climbs are available"
+    hasMore: Boolean!
+  }
+
+  """
+  Input for following/unfollowing a setter.
+  """
+  input FollowSetterInput {
+    "The setter's Aurora username"
+    setterUsername: String!
+  }
+
+  """
+  Input for getting a setter profile.
+  """
+  input SetterProfileInput {
+    "The setter's Aurora username"
+    username: String!
+  }
+
+  """
+  Input for fetching setter climbs.
+  """
+  input SetterClimbsInput {
+    "The setter's Aurora username"
+    username: String!
+    "Optional board type filter"
+    boardType: String
+    "Maximum number of climbs to return"
+    limit: Int
+    "Number of climbs to skip"
+    offset: Int
   }
 
   # ============================================
@@ -2691,6 +2825,22 @@ export const typeDefs = /* GraphQL */ `
     searchUsers(input: SearchUsersInput!): UserSearchConnection!
 
     """
+    Search for users and setters by name.
+    Returns unified results with both Boardsesh users and climb setters.
+    """
+    searchUsersAndSetters(input: SearchUsersInput!): UnifiedSearchConnection!
+
+    """
+    Get a setter profile by username.
+    """
+    setterProfile(input: SetterProfileInput!): SetterProfile
+
+    """
+    Get climbs created by a setter.
+    """
+    setterClimbs(input: SetterClimbsInput!): SetterClimbsConnection!
+
+    """
     Get activity feed of ascents from followed users.
     Requires authentication.
     Deprecated: Use activityFeed instead.
@@ -3057,6 +3207,16 @@ export const typeDefs = /* GraphQL */ `
     Unfollow a user.
     """
     unfollowUser(input: FollowInput!): Boolean!
+
+    """
+    Follow a setter by username. Idempotent.
+    """
+    followSetter(input: FollowSetterInput!): Boolean!
+
+    """
+    Unfollow a setter by username.
+    """
+    unfollowSetter(input: FollowSetterInput!): Boolean!
 
     """
     Subscribe to new climbs for a board type and layout.

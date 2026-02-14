@@ -1,0 +1,140 @@
+/*
+ * Setter profile page styles
+ * Uses CSS custom properties from index.css (derived from theme-config.ts)
+ */
+
+.layout {
+  min-height: 100vh;
+  background: var(--background, #F9FAFB);
+}
+
+.header {
+  background: var(--surface, #FFFFFF);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-xs);
+  height: 64px;
+}
+
+.headerTitle {
+  margin: 0 !important;
+  flex: 1;
+}
+
+.content {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.loadingContent {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.profileCard {
+  margin-bottom: 24px;
+}
+
+.profileInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profileDetails {
+  display: flex;
+  flex-direction: column;
+}
+
+.displayName {
+  margin: 0 !important;
+}
+
+.boardBadges {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.climbsCard {
+  margin-bottom: 24px;
+}
+
+.filterRow {
+  margin-bottom: 16px;
+}
+
+.climbList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.climbItem {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--neutral-200);
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.climbItem:last-child {
+  border-bottom: none;
+}
+
+.climbItem:hover {
+  background-color: var(--neutral-50);
+}
+
+.climbInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.climbName {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.climbMeta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 16px;
+  }
+
+  .header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .profileInfo {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .profileDetails {
+    align-items: center;
+  }
+
+  .boardBadges {
+    justify-content: center;
+  }
+}
