@@ -16,6 +16,7 @@ import Alert from '@mui/material/Alert';
 import AddIcon from '@mui/icons-material/Add';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { ClientError } from 'graphql-request';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { CREATE_PROPOSAL } from '@/app/lib/graphql/operations/proposals';
 import { BOULDER_GRADES, ANGLES } from '@/app/lib/board-data';
@@ -97,12 +98,17 @@ export default function CreateProposalForm({
         input: {
           climbUuid,
           boardType,
-          angle: selectedAngle === 'all' ? null : selectedAngle,
+          angle: type === 'classic' ? null : (selectedAngle === 'all' ? null : selectedAngle),
           type,
           proposedValue,
           reason: reason || null,
         },
       });
+
+      if (!result.createProposal) {
+        setSnackbar('Failed to create proposal: no data returned');
+        return;
+      }
 
       onCreated?.(result.createProposal);
       handleClose();
@@ -110,7 +116,12 @@ export default function CreateProposalForm({
       setReason('');
       setSnackbar('Proposal created');
     } catch (err) {
-      setSnackbar(err instanceof Error ? err.message : 'Failed to create proposal');
+      if (err instanceof ClientError) {
+        const msg = err.response?.errors?.[0]?.message;
+        setSnackbar(msg || 'Failed to create proposal');
+      } else {
+        setSnackbar(err instanceof Error ? err.message : 'Failed to create proposal');
+      }
     } finally {
       setLoading(false);
     }
@@ -183,7 +194,7 @@ export default function CreateProposalForm({
           </ToggleButtonGroup>
 
           {/* Angle selector */}
-          {boardAngles.length > 0 && (
+          {boardAngles.length > 0 && type !== 'classic' && (
             <FormControl size="small" fullWidth>
               <InputLabel>Angle</InputLabel>
               <Select
@@ -192,9 +203,6 @@ export default function CreateProposalForm({
                 onChange={(e) => setSelectedAngle(e.target.value as number | 'all')}
                 MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}
               >
-                {type === 'classic' && (
-                  <MenuItem value="all">All angles</MenuItem>
-                )}
                 {boardAngles.map((a) => (
                   <MenuItem key={a} value={a}>{a}°</MenuItem>
                 ))}
