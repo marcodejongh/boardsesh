@@ -110,6 +110,7 @@ RUN set -e && \
     mkdir -p "$PGDATA" /var/run/postgresql && \
     chown postgres:postgres "$PGDATA" /var/run/postgresql && \
     gosu postgres initdb -D "$PGDATA" --auth-local=trust --auth-host=trust && \
+    echo "host all all 0.0.0.0/0 trust" >> "$PGDATA/pg_hba.conf" && \
     gosu postgres pg_ctl -D "$PGDATA" start \
       -o "-c listen_addresses='localhost' -c unix_socket_directories='/var/run/postgresql' -c log_min_messages=warning -c max_wal_size=2GB" && \
     until gosu postgres pg_isready -h /var/run/postgresql; do sleep 1; done && \
@@ -119,6 +120,7 @@ RUN set -e && \
     gosu postgres psql -h /var/run/postgresql postgres -c "CREATE DATABASE main" && \
     gosu postgres psql -h /var/run/postgresql main -c "CREATE SCHEMA IF NOT EXISTS neon_control_plane" && \
     gosu postgres psql -h /var/run/postgresql main -c "CREATE TABLE IF NOT EXISTS neon_control_plane.endpoints (endpoint_id VARCHAR(255) NOT NULL PRIMARY KEY, allowed_ips VARCHAR(255))" && \
+    gosu postgres psql -h /var/run/postgresql main -c "ALTER USER postgres WITH PASSWORD 'password'" && \
     \
     # ── Import board data via pgloader ───────────────────────────────── \
     # pgloader uses {{DB_FILE}} / {{DB_URL}} mustache templates → env vars \
@@ -140,6 +142,8 @@ RUN set -e && \
     migration_count=$(jq '.entries | length' /drizzle/meta/_journal.json) && \
     echo "  Found $migration_count migrations in journal" && \
     gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS \"__drizzle_migrations\" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)" && \
+    gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -c "CREATE SCHEMA IF NOT EXISTS drizzle" && \
+    gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS drizzle.\"__drizzle_migrations\" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)" && \
     applied=0 && \
     for tag in $(jq -r '.entries[].tag' /drizzle/meta/_journal.json); do \
       sql_file="/drizzle/${tag}.sql"; \
@@ -148,7 +152,8 @@ RUN set -e && \
         applied=$((applied + 1)); \
         echo "  [$applied/$migration_count] Applying: $tag"; \
         gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -f "$sql_file" || { echo "  WARNING: migration $tag had errors, continuing..."; true; }; \
-        gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -c "INSERT INTO \"__drizzle_migrations\" (hash, created_at) VALUES ('$hash', $(date +%s)000)"; \
+        gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -c "INSERT INTO \"__drizzle_migrations\" (hash, created_at) VALUES ('$hash', $(date +%s)000)" && \
+        gosu postgres psql -h /var/run/postgresql main -v ON_ERROR_STOP=1 -c "INSERT INTO drizzle.\"__drizzle_migrations\" (hash, created_at) VALUES ('$hash', $(date +%s)000)"; \
       else \
         echo "  ERROR: Migration file not found: $sql_file" && false; \
       fi; \
