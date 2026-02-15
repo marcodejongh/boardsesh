@@ -1,9 +1,3 @@
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
-import { config } from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { eq, sql, and } from 'drizzle-orm';
 import { faker } from '@faker-js/faker';
 
@@ -12,42 +6,33 @@ import { userProfiles } from '../src/schema/auth/credentials.js';
 import { userFollows } from '../src/schema/app/follows.js';
 import { boardseshTicks } from '../src/schema/app/ascents.js';
 import { userBoards, boardFollows } from '../src/schema/app/boards.js';
-import { boardClimbs, boardDifficultyGrades } from '../src/schema/boards/unified.js';
+import { boardClimbs, boardClimbStats, boardDifficultyGrades } from '../src/schema/boards/unified.js';
 import { notifications } from '../src/schema/app/notifications.js';
-import { comments } from '../src/schema/app/social.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Load environment files (same as migrate.ts / import-moonboard-problems.ts)
-config({ path: path.resolve(__dirname, '../../../.env.local') });
-config({ path: path.resolve(__dirname, '../../web/.env.local') });
-config({ path: path.resolve(__dirname, '../../web/.env.development.local') });
-
-// Enable WebSocket for Neon
-neonConfig.webSocketConstructor = ws;
-
-// Configure Neon for local development (uses neon-proxy on port 4444)
-function configureNeonForLocal(connectionString: string): void {
-  const connectionStringUrl = new URL(connectionString);
-  const isLocalDb = connectionStringUrl.hostname === 'db.localtest.me';
-
-  if (isLocalDb) {
-    neonConfig.fetchEndpoint = (host) => {
-      const [protocol, port] = host === 'db.localtest.me' ? ['http', 4444] : ['https', 443];
-      return `${protocol}://${host}:${port}/sql`;
-    };
-    neonConfig.useSecureWebSocket = false;
-    neonConfig.wsProxy = (host) => (host === 'db.localtest.me' ? `${host}:4444/v2` : `${host}/v2`);
-  }
-}
+import { comments, votes } from '../src/schema/app/social.js';
+import { createScriptDb, getScriptDatabaseUrl } from './db-connection.js';
+import {
+  pickTickComment,
+  pickSocialComment,
+  pickThread,
+  type TickStatus,
+} from './fixtures/comment-templates.js';
+import {
+  FIXTURE_USERS,
+  FIXTURE_TICKS,
+  FIXTURE_CONVERSATIONS,
+  FIXTURE_VOTES,
+  FIXTURE_BASE_TIMESTAMP,
+} from './fixtures/deterministic-social.js';
 
 // =============================================================================
 // Constants
 // =============================================================================
 
-const FAKE_EMAIL_DOMAIN = 'fake.boardsesh.dev';
+const FAKE_EMAIL_DOMAIN = 'fake.boardsesh.com';
 const NUM_FAKE_USERS = 40;
 const BATCH_SIZE = 100;
+const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
+const TEST_TICKS_PER_BOARD = 2000;
 
 const CLIMBING_NICKNAMES = [
   'CrimpKing', 'BetaMaster', 'DynoQueen', 'SloperSlayer', 'PinchPro',
@@ -104,79 +89,21 @@ const BOARD_LOCATIONS = [
 
 const NUM_BOARDS = 20;
 
-const CLIMBING_COMMENTS = [
-  'Finally sent this one! Took me ages to figure out the beta.',
-  'Clean flash, felt great today!',
-  'That crux move is so tricky. Need to come back stronger.',
-  'Love the movement on this one.',
-  'Unexpected top out, stoked!',
-  'Fingers are wrecked but worth it.',
-  'The heel hook makes this so much easier.',
-  'Tried the sit start variation, way harder.',
-  'Great warm up problem.',
-  'This one is sandbagged for sure.',
-  'Perfect conditions today, skin was amazing.',
-  'Need to work on my crimp strength for this.',
-  'The dyno at the top is terrifying.',
-  'Smooth run, no falls.',
-  'So close! Fell on the last move.',
-  'Managed to skip the kneebar, felt strong.',
-  'This route flows so well once you find the beta.',
-  'My project for the month, finally done!',
-  'Way harder than the grade suggests.',
-  'Board felt extra sticky today, crushed it.',
-];
-
-const COMMENT_BODIES = [
-  'Nice send! What beta did you use for the crux?',
-  'That heel hook is key, right?',
-  'Solid work! I need to try this one.',
-  'How many sessions did this take you?',
-  'Love this problem, one of my favorites on the board.',
-  'The top out is sketchy, be careful!',
-  'Great flash! This took me forever.',
-  'I think this is harder than the grade suggests.',
-  'Congrats on the send! 🎉',
-  'What angle were you climbing at?',
-  'The left hand crimp at the crux is brutal.',
-  'Way to stick with it!',
-  'This climb is so good. Definitely adding to my playlist.',
-  'Did you match on the sloper or bump?',
-  'Impressive attempt count, consistency pays off!',
-];
-
 // =============================================================================
 // Main seed function
 // =============================================================================
 
 async function seedSocialData() {
-  // Check for DATABASE_URL first, then POSTGRES_URL
-  const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (!databaseUrl) {
-    console.error('DATABASE_URL or POSTGRES_URL is not set');
-    process.exit(1);
-  }
-
-  // Safety: Block local dev URLs in production builds
-  const isLocalUrl = databaseUrl.includes('localhost') ||
-                     databaseUrl.includes('localtest.me') ||
-                     databaseUrl.includes('127.0.0.1');
-
-  if (process.env.VERCEL && isLocalUrl) {
-    console.error('Refusing to run seed with local DATABASE_URL in Vercel build');
-    process.exit(1);
-  }
-
+  const databaseUrl = getScriptDatabaseUrl();
   const dbHost = databaseUrl.split('@')[1]?.split('/')[0] || 'unknown';
   console.log(`Seeding social data to: ${dbHost}`);
 
   // Use deterministic seed for idempotent output
   faker.seed(42);
 
+  const { db, close } = createScriptDb(databaseUrl);
+
   try {
-    configureNeonForLocal(databaseUrl);
-    const pool = new Pool({ connectionString: databaseUrl });
-    const db = drizzle(pool);
 
     // =========================================================================
     // Step 1: Find existing dev users
@@ -233,6 +160,33 @@ async function seedSocialData() {
     console.log(`Inserted ${profileRecords.length} user profiles`);
 
     // =========================================================================
+    // Step 3.5: Insert deterministic fixture users
+    // =========================================================================
+    console.log('\n--- Step 3.5: Inserting deterministic fixture users ---');
+
+    await db.insert(users).values(
+      FIXTURE_USERS.map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        image: u.image,
+        createdAt: new Date('2025-06-01'),
+        updatedAt: new Date('2025-06-01'),
+      })),
+    ).onConflictDoNothing();
+
+    await db.insert(userProfiles).values(
+      FIXTURE_USERS.map(u => ({
+        userId: u.id,
+        displayName: u.displayName,
+        avatarUrl: u.avatarUrl,
+        instagramUrl: u.instagramUrl,
+      })),
+    ).onConflictDoNothing();
+
+    console.log(`Inserted ${FIXTURE_USERS.length} deterministic fixture users`);
+
+    // =========================================================================
     // Step 4: Create follow relationships
     // =========================================================================
     console.log('\n--- Step 4: Creating follow relationships ---');
@@ -248,6 +202,10 @@ async function seedSocialData() {
     }
 
     const fakeUserIds = fakeUserRecords.map(u => u.id!);
+
+    // Add fixture users to the pool so they participate in follows, etc.
+    const fixtureUserIds = FIXTURE_USERS.map(u => u.id);
+    fakeUserIds.push(...fixtureUserIds);
 
     // Each dev user gets 10-20 followers from fake users
     for (const devUser of devUsers) {
@@ -445,7 +403,7 @@ async function seedSocialData() {
     if (availableBoardTypes.length === 0) {
       console.log('\nNo climbs found in database. Skipping tick generation.');
       console.log('Run the app sync first to populate board_climbs, then re-run this script.');
-      await pool.end();
+      await close();
       process.exit(0);
     }
 
@@ -459,11 +417,212 @@ async function seedSocialData() {
     }
 
     // =========================================================================
+    // Step 7b: Fetch climbs with difficulty for test user tick generation
+    // =========================================================================
+    console.log('\n--- Step 7b: Fetching climbs with difficulty for test user ---');
+
+    type ClimbWithDifficulty = { uuid: string; angle: number; difficulty: number };
+    const climbsByDifficultyPerBoard: Record<string, Map<number, ClimbWithDifficulty[]>> = {};
+
+    for (const boardType of availableBoardTypes) {
+      const climbsWithStats = await db
+        .select({
+          uuid: boardClimbs.uuid,
+          angle: boardClimbStats.angle,
+          difficulty: boardClimbStats.displayDifficulty,
+        })
+        .from(boardClimbs)
+        .innerJoin(
+          boardClimbStats,
+          and(
+            eq(boardClimbs.uuid, boardClimbStats.climbUuid),
+            eq(boardClimbs.boardType, boardClimbStats.boardType),
+          )
+        )
+        .where(
+          and(
+            eq(boardClimbs.boardType, boardType),
+            eq(boardClimbs.isListed, true),
+          )
+        )
+        .limit(10000);
+
+      const byDifficulty = new Map<number, ClimbWithDifficulty[]>();
+      for (const climb of climbsWithStats) {
+        if (climb.difficulty === null) continue;
+        const diff = Math.round(climb.difficulty);
+        if (!byDifficulty.has(diff)) {
+          byDifficulty.set(diff, []);
+        }
+        byDifficulty.get(diff)!.push({
+          uuid: climb.uuid,
+          angle: climb.angle,
+          difficulty: diff,
+        });
+      }
+
+      climbsByDifficultyPerBoard[boardType] = byDifficulty;
+      console.log(`  ${boardType}: ${climbsWithStats.length} climbs across ${byDifficulty.size} difficulty levels`);
+    }
+
+    // =========================================================================
     // Step 8: Create ascent activity (ticks)
     // =========================================================================
     console.log('\n--- Step 8: Creating ascent ticks ---');
     const tickRecords: (typeof boardseshTicks.$inferInsert)[] = [];
     const now = Date.now();
+
+    // ── Step 8a: Realistic test user ticks (~2000 per board type) ──────────
+    // Distribution modeled after a strong V8 climber: bell curve peaking at
+    // the most popular grade range, with asymmetric tails (wider on easy side,
+    // steep dropoff above V8).
+    //
+    // Session schedule: ~3 sessions/week over 3 years with occasional rest
+    // weeks. Each board type gets its own session pool so ticks are spread
+    // evenly across the full time span.
+    console.log('  Generating test user ticks...');
+
+    // Pre-generate climbing session dates over the past 3 years.
+    // Walk week-by-week: 2-4 sessions per normal week, 0-1 on rest weeks.
+    const SESSION_SPAN_DAYS = 3 * 365;
+    const sessionDates: Date[] = [];
+
+    for (let weekOffset = 0; weekOffset < Math.ceil(SESSION_SPAN_DAYS / 7); weekOffset++) {
+      const weekStartDaysAgo = SESSION_SPAN_DAYS - weekOffset * 7;
+
+      const isRestWeek = faker.datatype.boolean(0.1);
+      const sessionsThisWeek = isRestWeek
+        ? faker.number.int({ min: 0, max: 1 })
+        : faker.number.int({ min: 2, max: 4 });
+
+      for (let s = 0; s < sessionsThisWeek; s++) {
+        const dayInWeek = faker.number.int({ min: 0, max: 6 });
+        const daysAgo = weekStartDaysAgo - dayInWeek;
+        if (daysAgo < 0) continue;
+        sessionDates.push(new Date(now - daysAgo * 24 * 60 * 60 * 1000));
+      }
+    }
+
+    console.log(`    ${sessionDates.length} session dates over ${Math.round(SESSION_SPAN_DAYS / 365)} years`);
+
+    for (const boardType of availableBoardTypes) {
+      const byDifficulty = climbsByDifficultyPerBoard[boardType];
+      if (!byDifficulty || byDifficulty.size === 0) {
+        console.log(`    ${boardType}: skipped (no climbs with stats)`);
+        continue;
+      }
+
+      const difficulties = Array.from(byDifficulty.keys()).sort((a, b) => a - b);
+
+      // Find the difficulty with the most climbs — this is typically the
+      // "popular zone" (V3-V5) and serves as the peak for our distribution.
+      let peakDifficulty = difficulties[0];
+      let maxClimbCount = 0;
+      for (const [diff, climbs] of byDifficulty) {
+        if (climbs.length > maxClimbCount) {
+          maxClimbCount = climbs.length;
+          peakDifficulty = diff;
+        }
+      }
+
+      // Weight function: asymmetric Gaussian centered on the peak difficulty.
+      // - Left (easy) side: sigma=3.5 → wide spread for warm-ups
+      // - Right (hard) side: sigma=2.2 → steeper decline toward projects
+      // - Extra exponential decay above peak+6 (≈V8 territory)
+      function getWeight(difficulty: number): number {
+        const dist = difficulty - peakDifficulty;
+        const sigma = dist < 0 ? 3.5 : 2.2;
+        let w = Math.exp(-(dist * dist) / (2 * sigma * sigma));
+
+        // Steep penalty above the V8 limit (peak + 6 difficulty units)
+        if (dist > 6) {
+          w *= Math.exp(-(dist - 6) * 2);
+        }
+
+        return Math.max(w, 0.001);
+      }
+
+      // Calculate target tick counts per difficulty
+      const weights = difficulties.map(d => getWeight(d));
+      const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+      let boardTickCount = 0;
+
+      for (let gi = 0; gi < difficulties.length; gi++) {
+        const difficulty = difficulties[gi];
+        const climbs = byDifficulty.get(difficulty)!;
+        let targetCount = Math.round((weights[gi] / totalWeight) * TEST_TICKS_PER_BOARD);
+
+        // Ensure at least 1 tick at each available difficulty
+        if (targetCount < 1 && climbs.length > 0) targetCount = 1;
+
+        const gradeRank = gi / (difficulties.length - 1);
+
+        for (let i = 0; i < targetCount; i++) {
+          const climb = faker.helpers.arrayElement(climbs);
+
+          // Status depends on difficulty relative to the climber's level
+          let status: 'flash' | 'send' | 'attempt';
+          let attemptCount: number;
+
+          if (gradeRank < 0.3) {
+            // Warm-up grades: mostly flashes
+            status = faker.datatype.boolean(0.7) ? 'flash' : 'send';
+            attemptCount = status === 'flash' ? 1 : faker.number.int({ min: 2, max: 3 });
+          } else if (gradeRank > 0.7) {
+            // Project grades: fewer flashes, more attempts
+            const roll = faker.number.float({ min: 0, max: 1 });
+            status = roll < 0.05 ? 'flash' : roll < 0.55 ? 'send' : 'attempt';
+            attemptCount = status === 'flash' ? 1
+              : status === 'send' ? faker.number.int({ min: 3, max: 20 })
+              : faker.number.int({ min: 1, max: 10 });
+          } else {
+            // Comfort zone: good mix of flashes and sends
+            const roll = faker.number.float({ min: 0, max: 1 });
+            status = roll < 0.25 ? 'flash' : roll < 0.85 ? 'send' : 'attempt';
+            attemptCount = status === 'flash' ? 1
+              : status === 'send' ? faker.number.int({ min: 2, max: 8 })
+              : faker.number.int({ min: 1, max: 5 });
+          }
+
+          const quality = status !== 'attempt' ? faker.number.int({ min: 1, max: 5 }) : null;
+
+          // Pick a random session date from the pre-generated schedule
+          const climbedAt = faker.helpers.arrayElement(sessionDates);
+
+          const comment = faker.datatype.boolean(0.08)
+            ? pickTickComment(status)
+            : '';
+
+          let boardId: number | null = null;
+          const matchingBoards = boardsByType[boardType];
+          if (matchingBoards && matchingBoards.length > 0 && faker.datatype.boolean(0.8)) {
+            boardId = faker.helpers.arrayElement(matchingBoards).id;
+          }
+
+          tickRecords.push({
+            uuid: faker.string.uuid(),
+            userId: TEST_USER_ID,
+            boardType,
+            climbUuid: climb.uuid,
+            angle: climb.angle,
+            isMirror: false,
+            status,
+            attemptCount,
+            quality,
+            difficulty,
+            isBenchmark: false,
+            comment,
+            climbedAt: climbedAt.toISOString(),
+            boardId,
+          });
+
+          boardTickCount++;
+        }
+      }
+
+      console.log(`    ${boardType}: ${boardTickCount} ticks (peak difficulty: ${peakDifficulty})`);
+    }
 
     function generateTicks(userId: string, count: number) {
       for (let i = 0; i < count; i++) {
@@ -491,7 +650,7 @@ async function seedSocialData() {
         const attemptCount = status === 'flash' ? 1 : status === 'send' ? faker.number.int({ min: 2, max: 15 }) : faker.number.int({ min: 1, max: 5 });
 
         const comment = faker.datatype.boolean(0.3)
-          ? faker.helpers.arrayElement(CLIMBING_COMMENTS)
+          ? pickTickComment(status)
           : '';
 
         // ~60% of ticks get linked to a matching board (if any exist for this boardType)
@@ -526,8 +685,9 @@ async function seedSocialData() {
       generateTicks(fakeId, tickCount);
     }
 
-    // 2-5 ticks per dev user
+    // 2-5 ticks per dev user (skip test user — already generated above)
     for (const devUser of devUsers) {
+      if (devUser.id === TEST_USER_ID) continue;
       const tickCount = faker.number.int({ min: 2, max: 5 });
       generateTicks(devUser.id, tickCount);
     }
@@ -541,44 +701,326 @@ async function seedSocialData() {
     console.log('');
 
     // =========================================================================
-    // Step 9: Create comments on ticks
+    // Step 8.5: Insert deterministic fixture ticks
     // =========================================================================
-    console.log('\n--- Step 9: Creating comments on ticks ---');
-    const commentRecords: (typeof comments.$inferInsert)[] = [];
+    console.log('\n  Inserting deterministic fixture ticks...');
 
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const fixtureTickRecords: (typeof boardseshTicks.$inferInsert)[] = [];
+
+    for (const tick of FIXTURE_TICKS) {
+      // Use the fixture boardType if available, fall back to first available
+      const bt = climbsByBoard[tick.boardType]?.length ? tick.boardType : availableBoardTypes[0];
+      const climbs = climbsByBoard[bt];
+      if (!climbs || climbs.length === 0) continue;
+
+      const climb = climbs[tick.globalIndex % climbs.length];
+      const climbedAt = new Date(FIXTURE_BASE_TIMESTAMP + tick.globalIndex * DAY_MS);
+
+      fixtureTickRecords.push({
+        uuid: tick.uuid,
+        userId: tick.userId,
+        boardType: bt,
+        climbUuid: climb.uuid,
+        angle: tick.angle,
+        isMirror: tick.isMirror,
+        status: tick.status,
+        attemptCount: tick.attemptCount,
+        quality: tick.quality,
+        difficulty: null,
+        isBenchmark: false,
+        comment: tick.comment,
+        climbedAt: climbedAt.toISOString(),
+        boardId: null,
+      });
+    }
+
+    for (let i = 0; i < fixtureTickRecords.length; i += BATCH_SIZE) {
+      const batch = fixtureTickRecords.slice(i, i + BATCH_SIZE);
+      await db.insert(boardseshTicks).values(batch).onConflictDoNothing();
+    }
+    console.log(`  Fixture ticks: ${fixtureTickRecords.length}`);
+
+    // =========================================================================
+    // Step 9: Create threaded comments on ticks
+    // =========================================================================
+    console.log('\n--- Step 9: Creating threaded comments on ticks ---');
+
+    // Build a fast tick UUID lookup for notification generation
+    const tickByUuid = new Map(tickRecords.map(t => [t.uuid!, t]));
+    const allUsers = [...fakeUserIds, ...devUsers.map(u => u.id)];
+
+    // ── Step 9a: Build parent comment records ────────────────────────────────
     // Pick ~30% of ticks to receive comments
     const ticksForComments = tickRecords.filter(() => faker.datatype.boolean(0.3));
+
+    type ParentRecord = typeof comments.$inferInsert & {
+      _tickUuid: string;
+      _tickUserId: string;
+      _tickStatus: TickStatus;
+      _hasThread: boolean;
+    };
+    type ReplyRecord = typeof comments.$inferInsert & {
+      _parentUuid: string;
+      _parentUserId: string;
+      _tickUuid: string;
+      _tickUserId: string;
+    };
+
+    const parentRecords: ParentRecord[] = [];
+
+    // For each tick, decide comment structure:
+    //   50% → 1-2 standalone comments only
+    //   35% → 1 threaded conversation (parent + 1-3 replies)
+    //   15% → 1 standalone + 1 thread
     for (const tick of ticksForComments) {
-      // 1-3 comments per tick
-      const commentCount = faker.number.int({ min: 1, max: 3 });
-      for (let i = 0; i < commentCount; i++) {
-        // Pick a random commenter (not the tick owner)
-        const otherUsers = [...fakeUserIds, ...devUsers.map(u => u.id)].filter(id => id !== tick.userId);
-        if (otherUsers.length === 0) continue;
+      const tickStatus = (tick.status as TickStatus) ?? 'send';
+      const otherUsers = allUsers.filter(id => id !== tick.userId);
+      if (otherUsers.length === 0) continue;
 
+      const roll = faker.number.float({ min: 0, max: 1 });
+
+      if (roll < 0.50) {
+        // Standalone comments only (1-2)
+        const count = faker.number.int({ min: 1, max: 2 });
+        for (let i = 0; i < count; i++) {
+          const commenterId = faker.helpers.arrayElement(otherUsers);
+          const daysAgo = faker.number.float({ min: 0, max: 14 });
+          const commentedAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
+          parentRecords.push({
+            uuid: faker.string.uuid(),
+            userId: commenterId,
+            entityType: 'tick' as const,
+            entityId: tick.uuid!,
+            body: pickSocialComment(tickStatus),
+            createdAt: commentedAt,
+            updatedAt: commentedAt,
+            _tickUuid: tick.uuid!,
+            _tickUserId: tick.userId!,
+            _tickStatus: tickStatus,
+            _hasThread: false,
+          });
+        }
+      } else if (roll < 0.85) {
+        // 1 threaded conversation
         const commenterId = faker.helpers.arrayElement(otherUsers);
-        const daysAgo = faker.number.float({ min: 0, max: 14 });
+        const daysAgo = faker.number.float({ min: 0.5, max: 14 });
         const commentedAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
-
-        commentRecords.push({
+        const thread = pickThread(tickStatus);
+        parentRecords.push({
           uuid: faker.string.uuid(),
           userId: commenterId,
           entityType: 'tick' as const,
           entityId: tick.uuid!,
-          body: faker.helpers.arrayElement(COMMENT_BODIES),
+          body: thread.parent,
           createdAt: commentedAt,
           updatedAt: commentedAt,
+          _tickUuid: tick.uuid!,
+          _tickUserId: tick.userId!,
+          _tickStatus: tickStatus,
+          _hasThread: true,
+        });
+      } else {
+        // 1 standalone + 1 thread
+        const commenterId1 = faker.helpers.arrayElement(otherUsers);
+        const daysAgo1 = faker.number.float({ min: 0.5, max: 14 });
+        const commentedAt1 = new Date(now - daysAgo1 * 24 * 60 * 60 * 1000);
+        parentRecords.push({
+          uuid: faker.string.uuid(),
+          userId: commenterId1,
+          entityType: 'tick' as const,
+          entityId: tick.uuid!,
+          body: pickSocialComment(tickStatus),
+          createdAt: commentedAt1,
+          updatedAt: commentedAt1,
+          _tickUuid: tick.uuid!,
+          _tickUserId: tick.userId!,
+          _tickStatus: tickStatus,
+          _hasThread: false,
+        });
+
+        const commenterId2 = faker.helpers.arrayElement(otherUsers);
+        const daysAgo2 = faker.number.float({ min: 0.5, max: 14 });
+        const commentedAt2 = new Date(now - daysAgo2 * 24 * 60 * 60 * 1000);
+        const thread = pickThread(tickStatus);
+        parentRecords.push({
+          uuid: faker.string.uuid(),
+          userId: commenterId2,
+          entityType: 'tick' as const,
+          entityId: tick.uuid!,
+          body: thread.parent,
+          createdAt: commentedAt2,
+          updatedAt: commentedAt2,
+          _tickUuid: tick.uuid!,
+          _tickUserId: tick.userId!,
+          _tickStatus: tickStatus,
+          _hasThread: true,
         });
       }
     }
 
-    // Batch insert comments
-    for (let i = 0; i < commentRecords.length; i += BATCH_SIZE) {
-      const batch = commentRecords.slice(i, i + BATCH_SIZE);
-      await db.insert(comments).values(batch).onConflictDoNothing();
-      process.stdout.write(`\r  Comments: ${Math.min(i + BATCH_SIZE, commentRecords.length)}/${commentRecords.length}`);
+    // ── Step 9b: Insert parent comments (Pass 1) ─────────────────────────────
+    // Insert in batches with .returning() to get auto-generated IDs
+    const parentIdMap = new Map<string, number>(); // uuid → id
+
+    for (let i = 0; i < parentRecords.length; i += BATCH_SIZE) {
+      const batch = parentRecords.slice(i, i + BATCH_SIZE);
+      const insertBatch = batch.map(({ _tickUuid, _tickUserId, _tickStatus, _hasThread, ...record }) => record);
+      const returned = await db.insert(comments).values(insertBatch).onConflictDoNothing().returning({ id: comments.id, uuid: comments.uuid });
+      for (const row of returned) {
+        parentIdMap.set(row.uuid, row.id);
+      }
+      process.stdout.write(`\r  Parent comments: ${Math.min(i + BATCH_SIZE, parentRecords.length)}/${parentRecords.length}`);
     }
     console.log('');
+
+    // ── Step 9c: Build and insert reply comments (Pass 2) ────────────────────
+    const replyRecords: ReplyRecord[] = [];
+    const threadParents = parentRecords.filter(p => p._hasThread);
+
+    for (const parent of threadParents) {
+      const parentId = parentIdMap.get(parent.uuid!);
+      if (!parentId) continue;
+
+      // Pick a thread template matching the tick status for reply bodies
+      const thread = pickThread(parent._tickStatus);
+      const replyBodies = thread.replies;
+
+      const parentTime = (parent.createdAt as Date).getTime();
+      const otherUsers = allUsers.filter(id => id !== parent.userId);
+      if (otherUsers.length === 0) continue;
+
+      for (let r = 0; r < replyBodies.length; r++) {
+        // ~30% chance one reply is from the tick owner
+        let replyAuthor: string;
+        if (r === 0 && faker.datatype.boolean(0.3) && parent._tickUserId !== parent.userId) {
+          replyAuthor = parent._tickUserId;
+        } else {
+          replyAuthor = faker.helpers.arrayElement(otherUsers.filter(id => id !== parent.userId));
+        }
+
+        // Reply timestamps: 5 min to 24 hours after parent
+        const replyOffset = faker.number.int({ min: 5 * 60 * 1000, max: 24 * 60 * 60 * 1000 });
+        const replyTime = new Date(parentTime + replyOffset * (r + 1));
+
+        replyRecords.push({
+          uuid: faker.string.uuid(),
+          userId: replyAuthor,
+          entityType: 'tick' as const,
+          entityId: parent.entityId!,
+          parentCommentId: parentId,
+          body: replyBodies[r],
+          createdAt: replyTime,
+          updatedAt: replyTime,
+          _parentUuid: parent.uuid!,
+          _parentUserId: parent.userId!,
+          _tickUuid: parent._tickUuid,
+          _tickUserId: parent._tickUserId,
+        });
+      }
+    }
+
+    // Insert replies in batches
+    const replyIdMap = new Map<string, number>(); // uuid → id
+
+    for (let i = 0; i < replyRecords.length; i += BATCH_SIZE) {
+      const batch = replyRecords.slice(i, i + BATCH_SIZE);
+      const insertBatch = batch.map(({ _parentUuid, _parentUserId, _tickUuid, _tickUserId, ...record }) => record);
+      const returned = await db.insert(comments).values(insertBatch).onConflictDoNothing().returning({ id: comments.id, uuid: comments.uuid });
+      for (const row of returned) {
+        replyIdMap.set(row.uuid, row.id);
+      }
+      process.stdout.write(`\r  Reply comments: ${Math.min(i + BATCH_SIZE, replyRecords.length)}/${replyRecords.length}`);
+    }
+    console.log('');
+
+    const parentCount = parentRecords.length;
+    const replyCount = replyRecords.length;
+    const threadCount = threadParents.length;
+
+    // =========================================================================
+    // Step 9.5: Insert deterministic fixture comments & votes
+    // =========================================================================
+    console.log('\n--- Step 9.5: Inserting deterministic fixture comments ---');
+
+    // Build tick lookup for computing comment timestamps
+    const fixtureTickMap = new Map(FIXTURE_TICKS.map(t => [t.uuid, t]));
+
+    // Flatten all fixture comments with their conversation context
+    const allFixtureComments = FIXTURE_CONVERSATIONS.flatMap(conv =>
+      conv.comments.map(c => ({ comment: c, tickUuid: conv.tickUuid })),
+    );
+
+    // Multi-pass insertion: insert comments level by level (parents before children)
+    const fixtureCommentIdMap = new Map<string, number>(); // uuid → DB id
+
+    // Level 0: comments with no parent
+    let remaining = allFixtureComments;
+
+    while (remaining.length > 0) {
+      const canInsert = remaining.filter(
+        fc => fc.comment.parentCommentUuid === null || fixtureCommentIdMap.has(fc.comment.parentCommentUuid),
+      );
+      const cantInsert = remaining.filter(
+        fc => fc.comment.parentCommentUuid !== null && !fixtureCommentIdMap.has(fc.comment.parentCommentUuid),
+      );
+
+      if (canInsert.length === 0 && cantInsert.length > 0) {
+        console.warn(`  Warning: ${cantInsert.length} fixture comments have broken parent references, skipping`);
+        break;
+      }
+
+      for (let i = 0; i < canInsert.length; i += BATCH_SIZE) {
+        const batch = canInsert.slice(i, i + BATCH_SIZE);
+        const insertBatch = batch.map(fc => {
+          const tick = fixtureTickMap.get(fc.tickUuid);
+          const tickTime = FIXTURE_BASE_TIMESTAMP + (tick?.globalIndex ?? 0) * DAY_MS;
+          const commentTime = new Date(tickTime + fc.comment.minutesAfterTick * 60 * 1000);
+          const parentId = fc.comment.parentCommentUuid
+            ? fixtureCommentIdMap.get(fc.comment.parentCommentUuid) ?? null
+            : null;
+
+          return {
+            uuid: fc.comment.uuid,
+            userId: fc.comment.userId,
+            entityType: 'tick' as const,
+            entityId: fc.tickUuid,
+            parentCommentId: parentId,
+            body: fc.comment.body,
+            createdAt: commentTime,
+            updatedAt: commentTime,
+          };
+        });
+
+        const returned = await db.insert(comments).values(insertBatch)
+          .onConflictDoNothing()
+          .returning({ id: comments.id, uuid: comments.uuid });
+        for (const row of returned) {
+          fixtureCommentIdMap.set(row.uuid, row.id);
+        }
+      }
+
+      remaining = cantInsert;
+    }
+
+    const fixtureParentCount = allFixtureComments.filter(fc => fc.comment.parentCommentUuid === null).length;
+    const fixtureReplyCount = allFixtureComments.filter(fc => fc.comment.parentCommentUuid !== null).length;
+    console.log(`  Fixture comments: ${fixtureParentCount} parents + ${fixtureReplyCount} replies = ${fixtureCommentIdMap.size} inserted`);
+
+    // Insert fixture votes
+    const fixtureVoteRecords = FIXTURE_VOTES
+      .filter(v => fixtureCommentIdMap.has(v.commentUuid))
+      .map(v => ({
+        userId: v.userId,
+        entityType: 'comment' as const,
+        entityId: v.commentUuid,
+        value: v.value,
+      }));
+
+    if (fixtureVoteRecords.length > 0) {
+      await db.insert(votes).values(fixtureVoteRecords).onConflictDoNothing();
+    }
+    console.log(`  Fixture votes: ${fixtureVoteRecords.length}`);
 
     // =========================================================================
     // Step 10: Create notifications
@@ -652,21 +1094,18 @@ async function seedSocialData() {
       );
     }
 
-    // 2. comment_on_tick notifications — from the comments we created above
-    for (const comment of commentRecords) {
-      // Find the tick this comment is on to get the tick owner
-      const tick = tickRecords.find(t => t.uuid === comment.entityId);
-      if (tick && tick.userId && comment.userId) {
-        createNotification(
-          tick.userId,
-          comment.userId,
-          'comment_on_tick',
-          'tick',
-          tick.uuid!,
-          null,
-          14,
-        );
-      }
+    // 2. comment_on_tick notifications — from parent comments (not replies)
+    for (const parent of parentRecords) {
+      const commentId = parentIdMap.get(parent.uuid!) ?? null;
+      createNotification(
+        parent._tickUserId,
+        parent.userId!,
+        'comment_on_tick',
+        'tick',
+        parent._tickUuid,
+        commentId,
+        14,
+      );
     }
 
     // 3. vote_on_tick notifications — for a subset of ticks
@@ -675,10 +1114,10 @@ async function seedSocialData() {
       // 1-3 vote notifications per tick
       const voteCount = faker.number.int({ min: 1, max: 3 });
       for (let i = 0; i < voteCount; i++) {
-        const otherUsers = [...fakeUserIds, ...devUsers.map(u => u.id)].filter(id => id !== tick.userId);
-        if (otherUsers.length === 0) continue;
+        const otherUsersForVote = allUsers.filter(id => id !== tick.userId);
+        if (otherUsersForVote.length === 0) continue;
 
-        const voterId = faker.helpers.arrayElement(otherUsers);
+        const voterId = faker.helpers.arrayElement(otherUsersForVote);
         createNotification(
           tick.userId!,
           voterId,
@@ -691,13 +1130,14 @@ async function seedSocialData() {
       }
     }
 
-    // 4. vote_on_comment notifications — for a subset of comments
-    const commentsForVotes = commentRecords.filter(() => faker.datatype.boolean(0.2));
+    // 4. vote_on_comment notifications — for a subset of all comments
+    const allCommentRecords = [...parentRecords, ...replyRecords];
+    const commentsForVotes = allCommentRecords.filter(() => faker.datatype.boolean(0.2));
     for (const comment of commentsForVotes) {
-      const otherUsers = [...fakeUserIds, ...devUsers.map(u => u.id)].filter(id => id !== comment.userId);
-      if (otherUsers.length === 0) continue;
+      const otherUsersForVote = allUsers.filter(id => id !== comment.userId);
+      if (otherUsersForVote.length === 0) continue;
 
-      const voterId = faker.helpers.arrayElement(otherUsers);
+      const voterId = faker.helpers.arrayElement(otherUsersForVote);
       createNotification(
         comment.userId!,
         voterId,
@@ -709,23 +1149,39 @@ async function seedSocialData() {
       );
     }
 
-    // 5. comment_reply notifications — create some reply chains
-    // Pick ~15% of comments to have a reply notification
-    const commentsForReplies = commentRecords.filter(() => faker.datatype.boolean(0.15));
-    for (const comment of commentsForReplies) {
-      const otherUsers = [...fakeUserIds, ...devUsers.map(u => u.id)].filter(id => id !== comment.userId);
-      if (otherUsers.length === 0) continue;
-
-      const replierId = faker.helpers.arrayElement(otherUsers);
+    // 5. comment_reply notifications — from actual reply comments
+    for (const reply of replyRecords) {
+      const replyId = replyIdMap.get(reply.uuid!) ?? null;
       createNotification(
-        comment.userId!,
-        replierId,
+        reply._parentUserId,
+        reply.userId!,
         'comment_reply',
         'comment',
-        comment.uuid!,
-        null,
+        reply._parentUuid,
+        replyId,
         10,
       );
+    }
+
+    // 6. Fixture comment notifications
+    for (const conv of FIXTURE_CONVERSATIONS) {
+      const tick = fixtureTickMap.get(conv.tickUuid);
+      if (!tick) continue;
+
+      for (const c of conv.comments) {
+        const commentId = fixtureCommentIdMap.get(c.uuid) ?? null;
+
+        if (c.parentCommentUuid === null) {
+          // Top-level comment → comment_on_tick notification to tick owner
+          createNotification(tick.userId, c.userId, 'comment_on_tick', 'tick', conv.tickUuid, commentId, 14);
+        } else {
+          // Reply → comment_reply notification to parent comment author
+          const parentComment = conv.comments.find(pc => pc.uuid === c.parentCommentUuid);
+          if (parentComment) {
+            createNotification(parentComment.userId, c.userId, 'comment_reply', 'comment', c.parentCommentUuid, commentId, 10);
+          }
+        }
+      }
     }
 
     // Shuffle notifications so they're not grouped by type when sorted by createdAt
@@ -747,19 +1203,24 @@ async function seedSocialData() {
     // Summary
     // =========================================================================
     const ticksWithBoard = tickRecords.filter(t => t.boardId != null).length;
+    const testUserTicks = tickRecords.filter(t => t.userId === TEST_USER_ID).length;
 
     console.log('\nSeed completed!');
     console.log(`  Fake users: ${fakeUserRecords.length}`);
+    console.log(`  Fixture users: ${FIXTURE_USERS.length}`);
     console.log(`  User profiles: ${profileRecords.length}`);
     console.log(`  Follow relationships: ${followRecords.length}`);
     console.log(`  User boards: ${boardRecords.length}`);
     console.log(`  Board follows: ${boardFollowRecords.length}`);
-    console.log(`  Ascent ticks: ${tickRecords.length} (${ticksWithBoard} linked to boards)`);
-    console.log(`  Comments: ${commentRecords.length}`);
+    console.log(`  Ascent ticks: ${tickRecords.length} (${testUserTicks} test user, ${ticksWithBoard} linked to boards)`);
+    console.log(`  Fixture ticks: ${fixtureTickRecords.length}`);
+    console.log(`  Comments: ${parentCount + replyCount} (${parentCount} top-level, ${replyCount} replies in ${threadCount} threads)`);
+    console.log(`  Fixture comments: ${fixtureCommentIdMap.size} (${fixtureParentCount} parents + ${fixtureReplyCount} replies)`);
+    console.log(`  Fixture votes: ${fixtureVoteRecords.length}`);
     console.log(`  Notifications: ${notificationRecords.length} (${unreadNotifications} unread)`);
     console.log(`    Dev user notifications: ${devUserNotifications} (${devUserUnread} unread)`);
 
-    await pool.end();
+    await close();
     process.exit(0);
   } catch (error) {
     console.error('Seed failed:', error);

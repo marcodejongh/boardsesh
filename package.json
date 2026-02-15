@@ -28,6 +28,7 @@
     "db:studio": "npm run db:studio --workspace=@boardsesh/db",
     "db:import-moonboard": "npm run db:import-moonboard --workspace=@boardsesh/db",
     "db:seed-social": "npm run db:seed-social --workspace=@boardsesh/db",
+    "db:create-test-user": "npm run db:create-test-user --workspace=@boardsesh/db",
     "controller:codegen": "node embedded/scripts/generate-graphql-types.mjs",
     "controller:codegen:board-data": "node embedded/scripts/generate-board-data.mjs",
     "controller:codegen:test": "node --test embedded/scripts/generate-graphql-types.test.mjs && node --test embedded/scripts/generate-board-data.test.mjs && python3 embedded/scripts/test_prebuild.py",
