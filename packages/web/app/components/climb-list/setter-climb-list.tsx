@@ -138,8 +138,8 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
       if (!res.ok) return;
       const { url } = await res.json();
       if (url) window.location.href = url;
-    } catch {
-      // Silently fail navigation
+    } catch (error) {
+      console.error('Failed to navigate to climb:', error);
     }
   }, [selectedBoard]);
 

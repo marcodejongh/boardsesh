@@ -16,6 +16,9 @@ import { getBoardTables, isValidBoardName } from '../../../db/queries/util/table
 import { getSizeEdges } from '../../../db/queries/util/product-sizes-data';
 import { convertLitUpHoldsStringToMap } from '../../../db/queries/util/hold-state';
 
+/** Default angle fallback when no angle specified or no stats exist. 40 is the most common training angle. */
+const DEFAULT_ANGLE = 40;
+
 export const setterFollowQueries = {
   /**
    * Get a setter profile by username
@@ -215,7 +218,7 @@ export const setterFollowQueries = {
         throw new Error(`Invalid board name: ${boardName}. Must be one of: ${SUPPORTED_BOARDS.join(', ')}`);
       }
 
-      const angle = validatedInput.angle ?? 40;
+      const angle = validatedInput.angle ?? DEFAULT_ANGLE;
       const tables = getBoardTables(boardName);
 
       // Get total count
@@ -386,7 +389,7 @@ export const setterFollowQueries = {
           name: result.name || '',
           description: result.description || '',
           frames: result.frames || '',
-          angle: result.statsAngle ?? 40,
+          angle: result.statsAngle ?? DEFAULT_ANGLE,
           ascensionist_count: Number(result.ascensionist_count || 0),
           difficulty: result.difficulty || '',
           quality_average: result.quality_average?.toString() || '0',
@@ -449,7 +452,7 @@ export const setterFollowQueries = {
         sql`case when ${dbSchema.userProfiles.displayName} ilike ${prefixPattern} or ${dbSchema.users.name} ilike ${prefixPattern} then 0 else 1 end`,
         sql`(select count(*)::int from boardsesh_ticks where user_id = ${dbSchema.users.id} and created_at > ${thirtyDaysAgoIso}) DESC`,
       )
-      .limit(limit);
+      .limit(limit + offset);
 
     // 2. Search setters from board_climbs
     const setterResults = await db
@@ -467,7 +470,7 @@ export const setterFollowQueries = {
       )
       .groupBy(dbSchema.boardClimbs.setterUsername)
       .orderBy(sql`count(DISTINCT ${dbSchema.boardClimbs.uuid}) DESC`)
-      .limit(limit);
+      .limit(limit + offset);
 
     // 3. Get linked usernames to de-duplicate
     const linkedUsernames = new Set<string>();

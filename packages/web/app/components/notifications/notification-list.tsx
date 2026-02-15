@@ -36,8 +36,8 @@ export default function NotificationList() {
         if (!res.ok) return;
         const { url } = await res.json();
         if (url) router.push(url);
-      } catch {
-        // Silently fail navigation
+      } catch (error) {
+        console.error('Failed to navigate to climb:', error);
       }
     },
     [router],

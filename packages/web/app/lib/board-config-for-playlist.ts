@@ -89,10 +89,13 @@ export function getDefaultLayoutForBoard(boardType: string): number | null {
   return ids.length > 0 ? ids[0] : null;
 }
 
+/** Default angle fallback when no angle specified. 40 is the most common training angle. */
+const DEFAULT_ANGLE = 40;
+
 /**
  * Get a default angle for a board type.
- * Returns 40 for all board types.
+ * Returns the default training angle for all board types.
  */
 export function getDefaultAngleForBoard(_boardType: string): number {
-  return 40;
+  return DEFAULT_ANGLE;
 }
