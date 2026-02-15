@@ -184,9 +184,6 @@ async function seedSocialData() {
       })),
     ).onConflictDoNothing();
 
-    // Add fixture users to the pool so they participate in follows, etc.
-    const fixtureUserIds = FIXTURE_USERS.map(u => u.id);
-    fakeUserIds.push(...fixtureUserIds);
     console.log(`Inserted ${FIXTURE_USERS.length} deterministic fixture users`);
 
     // =========================================================================
@@ -205,6 +202,10 @@ async function seedSocialData() {
     }
 
     const fakeUserIds = fakeUserRecords.map(u => u.id!);
+
+    // Add fixture users to the pool so they participate in follows, etc.
+    const fixtureUserIds = FIXTURE_USERS.map(u => u.id);
+    fakeUserIds.push(...fixtureUserIds);
 
     // Each dev user gets 10-20 followers from fake users
     for (const devUser of devUsers) {
