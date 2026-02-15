@@ -85,6 +85,10 @@ function getNotificationText(notification: GroupedNotification): string {
     case 'new_climb':
     case 'new_climb_global':
       return `${actorSummary} created a new climb`;
+    case 'new_climbs_synced':
+      return notification.setterUsername
+        ? `${notification.setterUsername} set new climbs`
+        : `${actorSummary} set new climbs`;
     default:
       return 'You have a new notification';
   }
@@ -108,6 +112,7 @@ function getNotificationIcon(type: NotificationType) {
       return <LightbulbOutlined fontSize="small" />;
     case 'new_climb':
     case 'new_climb_global':
+    case 'new_climbs_synced':
       return <AddCircleOutline fontSize="small" />;
     default:
       return null;

@@ -4,6 +4,7 @@ import { SetIdList } from './board-data';
 export type Climb = {
   uuid: string;
   layoutId?: number | null; // Layout the climb belongs to - used to identify cross-layout climbs
+  boardType?: string; // Board type this climb belongs to (e.g. 'kilter', 'tension'). Populated in multi-board contexts.
   setter_username: string;
   name: string;
   description: string;

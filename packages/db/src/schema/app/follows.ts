@@ -16,3 +16,17 @@ export const userFollows = pgTable('user_follows', {
 
 export type UserFollow = typeof userFollows.$inferSelect;
 export type NewUserFollow = typeof userFollows.$inferInsert;
+
+export const setterFollows = pgTable('setter_follows', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  followerId: text('follower_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  setterUsername: text('setter_username').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueFollow: uniqueIndex('unique_setter_follow').on(table.followerId, table.setterUsername),
+  followerIdx: index('setter_follows_follower_idx').on(table.followerId),
+  setterIdx: index('setter_follows_setter_idx').on(table.setterUsername),
+}));
+
+export type SetterFollow = typeof setterFollows.$inferSelect;
+export type NewSetterFollow = typeof setterFollows.$inferInsert;

@@ -26,6 +26,7 @@ export type Climb = {
   benchmark_difficulty: string | null;
   userAscents?: number | null; // GraphQL nullable Int
   userAttempts?: number | null; // GraphQL nullable Int
+  boardType?: string; // Populated in multi-board contexts
 };
 
 export type QueueItemUser = {
@@ -586,6 +587,76 @@ export type UserSearchConnection = {
   hasMore: boolean;
 };
 
+// ============================================
+// Setter Profile & Search Types
+// ============================================
+
+export type SetterProfile = {
+  username: string;
+  climbCount: number;
+  boardTypes: string[];
+  followerCount: number;
+  isFollowedByMe: boolean;
+  linkedUserId?: string | null;
+  linkedUserDisplayName?: string | null;
+  linkedUserAvatarUrl?: string | null;
+};
+
+export type SetterSearchResult = {
+  username: string;
+  climbCount: number;
+  boardTypes: string[];
+  isFollowedByMe: boolean;
+};
+
+export type UnifiedSearchResult = {
+  user?: PublicUserProfile | null;
+  setter?: SetterSearchResult | null;
+  recentAscentCount: number;
+  matchReason?: string;
+};
+
+export type UnifiedSearchConnection = {
+  results: UnifiedSearchResult[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
+export type SetterClimb = {
+  uuid: string;
+  name?: string | null;
+  boardType: string;
+  layoutId: number;
+  angle?: number | null;
+  difficultyName?: string | null;
+  qualityAverage?: number | null;
+  ascensionistCount?: number | null;
+  createdAt?: string | null;
+};
+
+export type SetterClimbsConnection = {
+  climbs: SetterClimb[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
+export type FollowSetterInput = {
+  setterUsername: string;
+};
+
+export type SetterProfileInput = {
+  username: string;
+};
+
+export type SetterClimbsInput = {
+  username: string;
+  boardType?: string;
+  layoutId?: number;
+  sortBy?: 'popular' | 'new';
+  limit?: number;
+  offset?: number;
+};
+
 export type FollowingAscentFeedItem = {
   uuid: string;
   userId: string;
@@ -681,7 +752,8 @@ export type NotificationType =
   | 'proposal_approved'
   | 'proposal_rejected'
   | 'proposal_vote'
-  | 'proposal_created';
+  | 'proposal_created'
+  | 'new_climbs_synced';
 
 export type Notification = {
   uuid: string;
@@ -725,6 +797,7 @@ export type GroupedNotification = {
   climbUuid?: string | null;
   boardType?: string | null;
   proposalUuid?: string | null;
+  setterUsername?: string | null;
   isRead: boolean;
   createdAt: string;
 };

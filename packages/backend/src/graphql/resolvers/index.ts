@@ -26,6 +26,7 @@ import { controllerMutations } from './controller/mutations';
 import { controllerSubscriptions, controllerEventResolver } from './controller/subscriptions';
 import { socialFollowQueries, socialFollowMutations } from './social/follows';
 import { socialSearchQueries } from './social/search';
+import { setterFollowQueries, setterFollowMutations } from './social/setter-follows';
 import { socialFeedQueries } from './social/feed';
 import { activityFeedQueries } from './social/activity-feed';
 import { socialCommentQueries, socialCommentMutations } from './social/comments';
@@ -57,6 +58,7 @@ export const resolvers = {
     ...controllerQueries,
     ...socialFollowQueries,
     ...socialSearchQueries,
+    ...setterFollowQueries,
     ...socialFeedQueries,
     ...socialCommentQueries,
     ...socialVoteQueries,
@@ -80,6 +82,7 @@ export const resolvers = {
     ...playlistMutations,
     ...controllerMutations,
     ...socialFollowMutations,
+    ...setterFollowMutations,
     ...socialCommentMutations,
     ...socialVoteMutations,
     ...socialBoardMutations,

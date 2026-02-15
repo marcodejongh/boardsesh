@@ -1,4 +1,4 @@
-import { eq, and, isNull, count, sql } from 'drizzle-orm';
+import { eq, and, isNull, count, sql, inArray } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
@@ -218,6 +218,7 @@ export const socialNotificationQueries = {
         climbUuid: undefined as string | undefined,
         boardType: undefined as string | undefined,
         proposalUuid: undefined as string | undefined,
+        setterUsername: undefined as string | undefined,
         isRead: row.allRead,
         createdAt: row.latestCreatedAt instanceof Date
           ? row.latestCreatedAt.toISOString()
@@ -225,39 +226,100 @@ export const socialNotificationQueries = {
       };
     });
 
-    // Enrich groups with climb/proposal data
+    // Enrich groups with climb/proposal data (batched to avoid N+1)
     const proposalTypes = ['proposal_created', 'proposal_approved', 'proposal_rejected', 'proposal_vote'];
     const climbTypes = ['new_climb', 'new_climb_global'];
 
+    // Collect entity IDs by type
+    const climbEntityIds: string[] = [];
+    const proposalEntityIds: string[] = [];
+    for (const group of groups) {
+      if (!group.entityId) continue;
+      if (group.type === 'new_climbs_synced' || climbTypes.includes(group.type)) {
+        climbEntityIds.push(group.entityId);
+      } else if (proposalTypes.includes(group.type)) {
+        proposalEntityIds.push(group.entityId);
+      }
+    }
+
+    // Batch-fetch climbs
+    const climbMap = new Map<string, { name: string | null; boardType: string; setterUsername: string | null }>();
+    if (climbEntityIds.length > 0) {
+      const climbRows = await db
+        .select({
+          uuid: dbSchema.boardClimbs.uuid,
+          name: dbSchema.boardClimbs.name,
+          boardType: dbSchema.boardClimbs.boardType,
+          setterUsername: dbSchema.boardClimbs.setterUsername,
+        })
+        .from(dbSchema.boardClimbs)
+        .where(inArray(dbSchema.boardClimbs.uuid, climbEntityIds));
+      for (const row of climbRows) {
+        climbMap.set(row.uuid, { name: row.name, boardType: row.boardType, setterUsername: row.setterUsername });
+      }
+    }
+
+    // Batch-fetch proposals
+    const proposalMap = new Map<string, { climbUuid: string; boardType: string }>();
+    if (proposalEntityIds.length > 0) {
+      const proposalRows = await db
+        .select({
+          uuid: dbSchema.climbProposals.uuid,
+          climbUuid: dbSchema.climbProposals.climbUuid,
+          boardType: dbSchema.climbProposals.boardType,
+        })
+        .from(dbSchema.climbProposals)
+        .where(inArray(dbSchema.climbProposals.uuid, proposalEntityIds));
+      for (const row of proposalRows) {
+        proposalMap.set(row.uuid, { climbUuid: row.climbUuid, boardType: row.boardType });
+      }
+
+      // Fetch climb names for proposal-linked climbs
+      const proposalClimbUuids = [...new Set([...proposalMap.values()].map((p) => p.climbUuid))];
+      if (proposalClimbUuids.length > 0) {
+        const proposalClimbRows = await db
+          .select({
+            uuid: dbSchema.boardClimbs.uuid,
+            name: dbSchema.boardClimbs.name,
+            boardType: dbSchema.boardClimbs.boardType,
+            setterUsername: dbSchema.boardClimbs.setterUsername,
+          })
+          .from(dbSchema.boardClimbs)
+          .where(inArray(dbSchema.boardClimbs.uuid, proposalClimbUuids));
+        for (const row of proposalClimbRows) {
+          if (!climbMap.has(row.uuid)) {
+            climbMap.set(row.uuid, { name: row.name, boardType: row.boardType, setterUsername: row.setterUsername });
+          }
+        }
+      }
+    }
+
+    // Enrich groups using map lookups (no DB calls)
     for (const group of groups) {
       if (!group.entityId) continue;
 
-      if (climbTypes.includes(group.type)) {
-        const [climb] = await db
-          .select({ name: dbSchema.boardClimbs.name, boardType: dbSchema.boardClimbs.boardType })
-          .from(dbSchema.boardClimbs)
-          .where(eq(dbSchema.boardClimbs.uuid, group.entityId))
-          .limit(1);
+      if (group.type === 'new_climbs_synced') {
+        const climb = climbMap.get(group.entityId);
+        if (climb) {
+          group.climbUuid = group.entityId;
+          group.climbName = climb.name ?? undefined;
+          group.boardType = climb.boardType;
+          group.setterUsername = climb.setterUsername ?? undefined;
+        }
+      } else if (climbTypes.includes(group.type)) {
+        const climb = climbMap.get(group.entityId);
         if (climb) {
           group.climbUuid = group.entityId;
           group.climbName = climb.name ?? undefined;
           group.boardType = climb.boardType;
         }
       } else if (proposalTypes.includes(group.type)) {
-        const [proposal] = await db
-          .select({ climbUuid: dbSchema.climbProposals.climbUuid, boardType: dbSchema.climbProposals.boardType })
-          .from(dbSchema.climbProposals)
-          .where(eq(dbSchema.climbProposals.uuid, group.entityId))
-          .limit(1);
+        const proposal = proposalMap.get(group.entityId);
         if (proposal) {
           group.proposalUuid = group.entityId;
           group.climbUuid = proposal.climbUuid;
           group.boardType = proposal.boardType;
-          const [climb] = await db
-            .select({ name: dbSchema.boardClimbs.name })
-            .from(dbSchema.boardClimbs)
-            .where(eq(dbSchema.boardClimbs.uuid, proposal.climbUuid))
-            .limit(1);
+          const climb = climbMap.get(proposal.climbUuid);
           group.climbName = climb?.name ?? undefined;
         }
       }
