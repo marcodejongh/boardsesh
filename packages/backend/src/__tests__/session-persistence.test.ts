@@ -184,6 +184,25 @@ const createMockRedis = (): Redis => {
   return mockRedis;
 };
 
+// Helper function to register a client before joining
+// This is needed because roomManager.joinSession requires the client to be registered first
+const registerAndJoinSession = async (
+  clientId: string,
+  sessionId: string,
+  boardPath: string,
+  username: string
+) => {
+  roomManager.registerClient(clientId);
+  return roomManager.joinSession(clientId, sessionId, boardPath, username);
+};
+
+// Helper for registering multiple clients
+const registerClients = (...clientIds: string[]) => {
+  for (const clientId of clientIds) {
+    roomManager.registerClient(clientId);
+  }
+};
+
 const createTestClimb = (): ClimbQueueItem => ({
   uuid: uuidv4(),
   climb: {
@@ -355,6 +374,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       await roomManager.initialize(mockRedis);
 
       // Multiple users join concurrently
+      registerClients('client-2', 'client-3', 'client-4');
       const results = await Promise.all([
         roomManager.joinSession('client-2', sessionId, boardPath, 'User2'),
         roomManager.joinSession('client-3', sessionId, boardPath, 'User3'),
