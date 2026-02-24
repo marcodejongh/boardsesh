@@ -1,4 +1,4 @@
-import { eq, and, count, sql, ilike } from 'drizzle-orm';
+import { eq, and, count, sql, ilike, inArray } from 'drizzle-orm';
 import type { ConnectionContext, Climb, BoardName } from '@boardsesh/shared-schema';
 import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
@@ -482,7 +482,7 @@ export const setterFollowQueries = {
           boardUsername: dbSchema.userBoardMappings.boardUsername,
         })
         .from(dbSchema.userBoardMappings)
-        .where(sql`${dbSchema.userBoardMappings.userId} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`);
+        .where(inArray(dbSchema.userBoardMappings.userId, userIds));
 
       for (const m of mappings) {
         if (m.boardUsername) {
@@ -504,7 +504,7 @@ export const setterFollowQueries = {
           .where(
             and(
               eq(dbSchema.setterFollows.followerId, ctx.userId),
-              sql`${dbSchema.setterFollows.setterUsername} IN (${sql.join(setterUsernames.map(u => sql`${u}`), sql`, `)})`
+              inArray(dbSchema.setterFollows.setterUsername, setterUsernames)
             )
           );
         setterFollowedSet = new Set(followedSetters.map((f) => f.setterUsername));
