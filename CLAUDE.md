@@ -31,12 +31,13 @@ Before working on a specific part of the codebase, check the `docs/` directory f
 
 ### Development Setup
 
-The development database uses a **pre-built Docker image** (`ghcr.io/marcodejongh/boardsesh-dev-db`) that already contains all Kilter and Tension board data with migrations applied. This means `npm run db:up` is fast — it just pulls the image, starts containers, runs any newer migrations, and imports MoonBoard data.
+The development database uses a **pre-built Docker image** (`ghcr.io/marcodejongh/boardsesh-dev-db`) that already contains all Kilter, Tension, and MoonBoard board data, a test user, and social seed data with migrations applied. This means `npm run db:up` is fast — it just pulls the image, starts containers, and runs any newer migrations.
 
 ```bash
 # Start development databases (PostgreSQL, Neon proxy, Redis)
 # First run pulls the pre-built image (~1GB) with all board data included.
 # Subsequent runs start in seconds.
+# Test user: test@boardsesh.com / test
 npm run db:up
 
 # Environment files are in packages/web/:
@@ -62,13 +63,11 @@ npm run backend:dev
 
 #### Pre-built database image
 
-The `boardsesh-dev-db` image is published to GHCR and contains PostgreSQL 17 + PostGIS with all Kilter/Tension board data pre-loaded via pgloader and all drizzle migrations applied. It is rebuilt automatically when files in `packages/db/docker/` change on main.
+The `boardsesh-dev-db` image is published to GHCR and contains PostgreSQL 17 + PostGIS with all Kilter/Tension/MoonBoard board data pre-loaded, a test user (`test@boardsesh.com` / `test`), social seed data (fake users, follows, ticks, comments, notifications), and all drizzle migrations applied. It is rebuilt automatically when files in `packages/db/docker/`, `packages/db/scripts/`, `packages/db/src/schema/`, `packages/db/drizzle/`, or `packages/db/package.json` change on main.
 
 - **Pull directly**: `docker pull ghcr.io/marcodejongh/boardsesh-dev-db:latest`
 - **Reset your local database**: `docker compose down -v && npm run db:up`
 - **Build locally** (e.g. to test Dockerfile changes): `docker compose up -d --build postgres`
-
-MoonBoard data is not included in the image (it requires the Neon HTTP proxy for import). It is automatically downloaded and imported by `npm run db:up` on first run.
 
 ### Common Commands (from root)
 

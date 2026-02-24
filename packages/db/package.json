@@ -51,7 +51,8 @@
     "test": "tsx --test scripts/**/*.test.ts",
     "db:studio": "drizzle-kit studio",
     "db:import-moonboard": "tsx scripts/import-moonboard-problems.ts",
-    "db:seed-social": "tsx scripts/seed-social.ts"
+    "db:seed-social": "tsx scripts/seed-social.ts",
+    "db:create-test-user": "tsx scripts/create-test-user.ts"
   },
   "dependencies": {
     "@boardsesh/shared-schema": "*",

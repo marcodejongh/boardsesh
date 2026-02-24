@@ -1,7 +1,3 @@
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
-import { config } from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -15,6 +11,7 @@ import {
   MOONBOARD_UUID_NAMESPACE,
   type MoonBoardMove,
 } from './moonboard-helpers.js';
+import { createScriptDb, getScriptDatabaseUrl } from './db-connection.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,33 +31,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 //   - problems MoonBoard Masters 2019 40.json
 //   - problems Mini MoonBoard 2020 40.json
 //
-// During `npm run db:setup`, the ZIP is downloaded and extracted automatically
-// to packages/db/docker/tmp/problems_2023_01_30/. The import runs as part of
-// `npm run db:up` after migrations.
+// The import is baked into the dev-db Docker image during build, and can also
+// be run manually with `npm run db:import-moonboard [/path/to/dump]`.
 // =============================================================================
-
-// Load environment files (same as migrate.ts)
-config({ path: path.resolve(__dirname, '../../../.env.local') });
-config({ path: path.resolve(__dirname, '../../web/.env.local') });
-config({ path: path.resolve(__dirname, '../../web/.env.development.local') });
-
-// Enable WebSocket for Neon
-neonConfig.webSocketConstructor = ws;
-
-// Configure Neon for local development (uses neon-proxy on port 4444)
-function configureNeonForLocal(connectionString: string): void {
-  const connectionStringUrl = new URL(connectionString);
-  const isLocalDb = connectionStringUrl.hostname === 'db.localtest.me';
-
-  if (isLocalDb) {
-    neonConfig.fetchEndpoint = (host) => {
-      const [protocol, port] = host === 'db.localtest.me' ? ['http', 4444] : ['https', 443];
-      return `${protocol}://${host}:${port}/sql`;
-    };
-    neonConfig.useSecureWebSocket = false;
-    neonConfig.wsProxy = (host) => (host === 'db.localtest.me' ? `${host}:4444/v2` : `${host}/v2`);
-  }
-}
 
 // =============================================================================
 // Types for the MoonBoard JSON dump
@@ -169,31 +142,14 @@ async function importMoonBoardProblems() {
     process.exit(1);
   }
 
-  // Check for DATABASE_URL first, then POSTGRES_URL
-  const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-  if (!databaseUrl) {
-    console.error('❌ DATABASE_URL or POSTGRES_URL is not set');
-    process.exit(1);
-  }
-
-  // Safety: Block local dev URLs in production builds
-  const isLocalUrl = databaseUrl.includes('localhost') ||
-                     databaseUrl.includes('localtest.me') ||
-                     databaseUrl.includes('127.0.0.1');
-
-  if (process.env.VERCEL && isLocalUrl) {
-    console.error('❌ Refusing to run import with local DATABASE_URL in Vercel build');
-    process.exit(1);
-  }
-
+  const databaseUrl = getScriptDatabaseUrl();
   const dbHost = databaseUrl.split('@')[1]?.split('/')[0] || 'unknown';
   console.log(`🔄 Importing MoonBoard problems to: ${dbHost}`);
   console.log(`📂 Reading dump from: ${dumpPath}`);
 
+  const { db, close } = createScriptDb(databaseUrl);
+
   try {
-    configureNeonForLocal(databaseUrl);
-    const pool = new Pool({ connectionString: databaseUrl });
-    const db = drizzle(pool);
 
     let totalClimbs = 0;
     let totalStats = 0;
@@ -348,7 +304,7 @@ async function importMoonBoardProblems() {
     console.log(`   Total holds: ${totalHolds}`);
     console.log(`   Total skipped (deleted): ${totalSkipped}`);
 
-    await pool.end();
+    await close();
     process.exit(0);
   } catch (error) {
     console.error('❌ Import failed:', error);
