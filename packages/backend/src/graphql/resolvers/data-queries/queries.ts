@@ -263,7 +263,9 @@ export const dataQueryQueries = {
     ];
 
     if (validatedInput.search && validatedInput.search.trim().length > 0) {
-      whereConditions.push(ilike(climbs.setterUsername, `%${validatedInput.search}%`));
+      // Escape LIKE wildcards (% and _) so user input is treated literally
+      const escapedSearch = validatedInput.search.replace(/%/g, '\\%').replace(/_/g, '\\_');
+      whereConditions.push(ilike(climbs.setterUsername, `%${escapedSearch}%`));
     }
 
     const result = await db
