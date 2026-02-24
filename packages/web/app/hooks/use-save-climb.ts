@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useWsAuthToken } from './use-ws-auth-token';
 import { useSession } from 'next-auth/react';
@@ -25,9 +26,14 @@ export function useSaveClimb(boardName: BoardName) {
   const { data: session, status: sessionStatus } = useSession();
   const { showMessage } = useSnackbar();
 
+  // Use ref to always access the freshest token in async mutation callbacks
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+
   return useMutation({
     mutationFn: async (options: Omit<SaveClimbOptions, 'setter_id' | 'user_id'>): Promise<SaveClimbResponse> => {
-      if (sessionStatus !== 'authenticated' || !session?.user?.id || !token) {
+      const currentToken = tokenRef.current;
+      if (sessionStatus !== 'authenticated' || !session?.user?.id || !currentToken) {
         throw new Error('Authentication required to create climbs');
       }
 
@@ -35,7 +41,7 @@ export function useSaveClimb(boardName: BoardName) {
       // The client is disposed immediately after the request completes.
       const client = createGraphQLClient({
         url: process.env.NEXT_PUBLIC_WS_URL!,
-        authToken: token,
+        authToken: currentToken,
       });
 
       try {

@@ -39,6 +39,8 @@ import { socialRoleQueries, socialRoleMutations } from './social/roles';
 import { socialCommunitySettingsQueries, socialCommunitySettingsMutations } from './social/community-settings';
 import { newClimbSubscriptionResolvers } from './social/new-climb-subscriptions';
 import { newClimbFeedSubscription } from './social/new-climb-feed-subscription';
+import { dataQueryQueries } from './data-queries/queries';
+import { dataQueryMutations } from './data-queries/mutations';
 
 export const resolvers = {
   // Scalar types
@@ -68,6 +70,7 @@ export const resolvers = {
     ...socialRoleQueries,
     ...socialCommunitySettingsQueries,
     ...newClimbSubscriptionResolvers.Query,
+    ...dataQueryQueries,
   },
 
   Mutation: {
@@ -89,6 +92,7 @@ export const resolvers = {
     ...socialRoleMutations,
     ...socialCommunitySettingsMutations,
     ...newClimbSubscriptionResolvers.Mutation,
+    ...dataQueryMutations,
   },
 
   Subscription: {

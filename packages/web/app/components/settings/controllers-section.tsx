@@ -27,17 +27,29 @@ import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
 import WarningOutlined from '@mui/icons-material/WarningOutlined';
-import type { ControllerInfo } from '@/app/api/internal/controllers/route';
 import { getBoardSelectorOptions } from '@/app/lib/__generated__/product-sizes-data';
 import { BoardName } from '@/app/lib/types';
 import styles from './controllers-section.module.css';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import { executeGraphQL } from '@/app/lib/graphql/client';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import {
+  GET_MY_CONTROLLERS,
+  REGISTER_CONTROLLER,
+  DELETE_CONTROLLER,
+  type GetMyControllersQueryResponse,
+  type ControllerInfoGql,
+  type RegisterControllerMutationVariables,
+  type RegisterControllerMutationResponse,
+  type DeleteControllerMutationVariables,
+  type DeleteControllerMutationResponse,
+} from '@/app/lib/graphql/operations';
 
 // Get board config data (synchronous - from generated data)
 const boardSelectorOptions = getBoardSelectorOptions();
 
 interface ControllerCardProps {
-  controller: ControllerInfo;
+  controller: ControllerInfoGql;
   onRemove: () => void;
   isRemoving: boolean;
 }
@@ -184,8 +196,9 @@ function ApiKeySuccessModal({ isOpen, apiKey, controllerName, onClose }: ApiKeyS
 }
 
 export default function ControllersSection() {
-  const [controllers, setControllers] = useState<ControllerInfo[]>([]);
+  const [controllers, setControllers] = useState<ControllerInfoGql[]>([]);
   const [loading, setLoading] = useState(true);
+  const { token: authToken } = useWsAuthToken();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -223,12 +236,14 @@ export default function ControllersSection() {
   const [successControllerName, setSuccessControllerName] = useState('');
 
   const fetchControllers = async () => {
+    if (!authToken) return;
     try {
-      const response = await fetch('/api/internal/controllers');
-      if (response.ok) {
-        const data = await response.json();
-        setControllers(data.controllers);
-      }
+      const data = await executeGraphQL<GetMyControllersQueryResponse>(
+        GET_MY_CONTROLLERS,
+        {},
+        authToken,
+      );
+      setControllers(data.myControllers);
     } catch (error) {
       console.error('Failed to fetch controllers:', error);
     } finally {
@@ -237,8 +252,10 @@ export default function ControllersSection() {
   };
 
   useEffect(() => {
-    fetchControllers();
-  }, []);
+    if (authToken) {
+      fetchControllers();
+    }
+  }, [authToken]);
 
   const handleAddClick = () => {
     setFormValues({ name: '' });
@@ -294,31 +311,26 @@ export default function ControllersSection() {
   }) => {
     setIsSaving(true);
     try {
-      const response = await fetch('/api/internal/controllers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: values.name,
-          boardName: values.boardName,
-          layoutId: values.layoutId,
-          sizeId: values.sizeId,
-          setIds: Array.isArray(values.setIds) ? values.setIds.join(',') : values.setIds,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to register controller');
-      }
-
-      const data = await response.json();
+      const data = await executeGraphQL<RegisterControllerMutationResponse, RegisterControllerMutationVariables>(
+        REGISTER_CONTROLLER,
+        {
+          input: {
+            name: values.name,
+            boardName: values.boardName,
+            layoutId: values.layoutId,
+            sizeId: values.sizeId,
+            setIds: Array.isArray(values.setIds) ? values.setIds.join(',') : String(values.setIds),
+          },
+        },
+        authToken,
+      );
 
       // Close the registration modal
       setIsModalOpen(false);
       setFormValues({ name: '' });
 
       // Show the API key success modal
-      setSuccessApiKey(data.apiKey);
+      setSuccessApiKey(data.registerController.apiKey);
       setSuccessControllerName(values.name || '');
 
       await fetchControllers();
@@ -332,16 +344,11 @@ export default function ControllersSection() {
   const handleRemove = async (controllerId: string) => {
     setRemovingId(controllerId);
     try {
-      const response = await fetch('/api/internal/controllers', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ controllerId }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete controller');
-      }
+      await executeGraphQL<DeleteControllerMutationResponse, DeleteControllerMutationVariables>(
+        DELETE_CONTROLLER,
+        { controllerId },
+        authToken,
+      );
 
       showMessage('Controller deleted successfully', 'success');
       await fetchControllers();
