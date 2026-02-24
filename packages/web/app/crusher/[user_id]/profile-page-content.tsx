@@ -20,6 +20,7 @@ import Logo from '@/app/components/brand/logo';
 import BackButton from '@/app/components/back-button';
 import AscentsFeed from '@/app/components/activity-feed';
 import FollowButton from '@/app/components/ui/follow-button';
+import SetterClimbList from '@/app/components/climb-list/setter-climb-list';
 import FollowerCount from '@/app/components/social/follower-count';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -67,6 +68,10 @@ interface UserProfile {
     avatarUrl: string | null;
     instagramUrl: string | null;
   } | null;
+  credentials?: Array<{
+    boardType: string;
+    auroraUsername: string;
+  }>;
   followerCount: number;
   followingCount: number;
   isFollowedByMe: boolean;
@@ -231,6 +236,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         name: data.name,
         image: data.image,
         profile: data.profile,
+        credentials: data.credentials,
         followerCount: data.followerCount ?? 0,
         followingCount: data.followingCount ?? 0,
         isFollowedByMe: data.isFollowedByMe ?? false,
@@ -650,6 +656,7 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   const displayName = profile?.profile?.displayName || profile?.name || 'Crusher';
   const avatarUrl = profile?.profile?.avatarUrl || profile?.image;
   const instagramUrl = profile?.profile?.instagramUrl;
+  const authToken = (session as { authToken?: string } | null)?.authToken ?? null;
 
   // Board options are now available for all users (no Aurora credentials required)
   const boardOptions = BOARD_TYPES.map((boardType) => ({
@@ -949,6 +956,31 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
           </Typography>
           <AscentsFeed userId={userId} pageSize={10} />
         </CardContent></MuiCard>
+
+        {/* Created Climbs (from linked Aurora accounts) */}
+        {(() => {
+          const creds = profile?.credentials;
+          if (!creds || creds.length === 0) return null;
+          const uniqueSetters = Array.from(
+            new Map(creds.map((c) => [c.auroraUsername, c])).values()
+          );
+          return uniqueSetters.map((cred) => (
+            <MuiCard key={cred.auroraUsername} className={styles.statsCard}>
+              <CardContent>
+                <Typography variant="h6" component="h5">
+                  Created Climbs
+                </Typography>
+                <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
+                  Climbs set by {cred.auroraUsername} on {cred.boardType.charAt(0).toUpperCase() + cred.boardType.slice(1)}
+                </Typography>
+                <SetterClimbList
+                  username={cred.auroraUsername}
+                  authToken={authToken}
+                />
+              </CardContent>
+            </MuiCard>
+          ));
+        })()}
       </Box>
     </Box>
   );

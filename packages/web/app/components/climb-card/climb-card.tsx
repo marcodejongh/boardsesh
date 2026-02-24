@@ -21,6 +21,8 @@ type ClimbCardProps = {
   onCoverClick?: () => void;
   onCoverDoubleClick?: () => void;
   selected?: boolean;
+  /** When true, the card is visually dimmed (greyed out) but still interactive */
+  unsupported?: boolean;
   actions?: React.JSX.Element[];
   /** Optional expanded content to render over the cover */
   expandedContent?: React.ReactNode;
@@ -59,12 +61,14 @@ function ClimbCardWithActions({
   onCoverClick,
   onCoverDoubleClick,
   selected,
+  unsupported,
 }: {
   climb: Climb;
   boardDetails: BoardDetails;
   onCoverClick?: () => void;
   onCoverDoubleClick?: () => void;
   selected?: boolean;
+  unsupported?: boolean;
 }) {
   const { mode } = useColorMode();
   const isDark = mode === 'dark';
@@ -83,7 +87,7 @@ function ClimbCardWithActions({
   }
 
   return (
-    <div data-testid="climb-card">
+    <div data-testid="climb-card" style={unsupported ? { opacity: 0.5, filter: 'grayscale(80%)' } : undefined}>
       <MuiCard>
         <CardHeader
           title={cardTitle}
@@ -209,7 +213,7 @@ ClimbCardStatic.displayName = 'ClimbCardStatic';
  * - When no climb, shows loading state
  */
 function ClimbCard(props: ClimbCardProps) {
-  const { climb, boardDetails, onCoverClick, onCoverDoubleClick, selected, actions, expandedContent } = props;
+  const { climb, boardDetails, onCoverClick, onCoverDoubleClick, selected, unsupported, actions, expandedContent } = props;
 
   // When actions or expandedContent are provided externally, use the memoized static version
   if (actions !== undefined || expandedContent !== undefined) {
@@ -236,6 +240,7 @@ function ClimbCard(props: ClimbCardProps) {
         onCoverClick={onCoverClick}
         onCoverDoubleClick={onCoverDoubleClick}
         selected={selected}
+        unsupported={unsupported}
       />
     );
   }

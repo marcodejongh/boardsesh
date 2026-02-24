@@ -1,0 +1,699 @@
+import { eq, and, count, sql, ilike, inArray } from 'drizzle-orm';
+import type { ConnectionContext, Climb, BoardName } from '@boardsesh/shared-schema';
+import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
+import { db } from '../../../db/client';
+import * as dbSchema from '@boardsesh/db/schema';
+import { requireAuthenticated, applyRateLimit, validateInput } from '../shared/helpers';
+import {
+  FollowSetterInputSchema,
+  SetterProfileInputSchema,
+  SetterClimbsInputSchema,
+  SetterClimbsFullInputSchema,
+  SearchUsersInputSchema,
+} from '../../../validation/schemas';
+import { publishSocialEvent } from '../../../events/index';
+import { getBoardTables, isValidBoardName } from '../../../db/queries/util/table-select';
+import { getSizeEdges } from '../../../db/queries/util/product-sizes-data';
+import { convertLitUpHoldsStringToMap } from '../../../db/queries/util/hold-state';
+
+/** Default angle fallback when no angle specified or no stats exist. 40 is the most common training angle. */
+const DEFAULT_ANGLE = 40;
+
+export const setterFollowQueries = {
+  /**
+   * Get a setter profile by username
+   */
+  setterProfile: async (
+    _: unknown,
+    { input }: { input: { username: string } },
+    ctx: ConnectionContext
+  ) => {
+    const validatedInput = validateInput(SetterProfileInputSchema, input, 'input');
+    const username = validatedInput.username;
+
+    // Get distinct board types and climb count
+    const boardTypeResults = await db
+      .select({
+        boardType: dbSchema.boardClimbs.boardType,
+        climbCount: count(),
+      })
+      .from(dbSchema.boardClimbs)
+      .where(eq(dbSchema.boardClimbs.setterUsername, username))
+      .groupBy(dbSchema.boardClimbs.boardType);
+
+    if (boardTypeResults.length === 0) {
+      return null;
+    }
+
+    const boardTypes = boardTypeResults.map((r) => r.boardType);
+    const totalClimbCount = boardTypeResults.reduce((sum, r) => sum + Number(r.climbCount), 0);
+
+    // Count followers
+    const [followerResult] = await db
+      .select({ count: count() })
+      .from(dbSchema.setterFollows)
+      .where(eq(dbSchema.setterFollows.setterUsername, username));
+
+    const followerCount = Number(followerResult?.count ?? 0);
+
+    // Check isFollowedByMe
+    let isFollowedByMe = false;
+    if (ctx.isAuthenticated && ctx.userId) {
+      const [followCheck] = await db
+        .select({ count: count() })
+        .from(dbSchema.setterFollows)
+        .where(
+          and(
+            eq(dbSchema.setterFollows.followerId, ctx.userId),
+            eq(dbSchema.setterFollows.setterUsername, username)
+          )
+        );
+      isFollowedByMe = Number(followCheck?.count ?? 0) > 0;
+    }
+
+    // Check for linked Boardsesh user
+    const linkedUsers = await db
+      .select({
+        userId: dbSchema.userBoardMappings.userId,
+        displayName: dbSchema.userProfiles.displayName,
+        avatarUrl: dbSchema.userProfiles.avatarUrl,
+        userName: dbSchema.users.name,
+        userImage: dbSchema.users.image,
+      })
+      .from(dbSchema.userBoardMappings)
+      .innerJoin(dbSchema.users, eq(dbSchema.userBoardMappings.userId, dbSchema.users.id))
+      .leftJoin(dbSchema.userProfiles, eq(dbSchema.userBoardMappings.userId, dbSchema.userProfiles.userId))
+      .where(eq(dbSchema.userBoardMappings.boardUsername, username))
+      .limit(1);
+
+    const linkedUser = linkedUsers[0];
+
+    return {
+      username,
+      climbCount: totalClimbCount,
+      boardTypes,
+      followerCount,
+      isFollowedByMe,
+      linkedUserId: linkedUser?.userId ?? null,
+      linkedUserDisplayName: linkedUser?.displayName || linkedUser?.userName || null,
+      linkedUserAvatarUrl: linkedUser?.avatarUrl || linkedUser?.userImage || null,
+    };
+  },
+
+  /**
+   * Get climbs created by a setter
+   */
+  setterClimbs: async (
+    _: unknown,
+    { input }: { input: { username: string; boardType?: string; layoutId?: number; sortBy?: string; limit?: number; offset?: number } },
+    _ctx: ConnectionContext
+  ) => {
+    const validatedInput = validateInput(SetterClimbsInputSchema, input, 'input');
+    const { username, boardType, layoutId, sortBy = 'popular', limit = 20, offset = 0 } = validatedInput;
+
+    // Build conditions
+    const conditions = [eq(dbSchema.boardClimbs.setterUsername, username)];
+    if (boardType) {
+      conditions.push(eq(dbSchema.boardClimbs.boardType, boardType));
+    }
+    if (layoutId != null) {
+      conditions.push(eq(dbSchema.boardClimbs.layoutId, layoutId));
+    }
+
+    // Get total count
+    const [countResult] = await db
+      .select({ count: count() })
+      .from(dbSchema.boardClimbs)
+      .where(and(...conditions));
+
+    const totalCount = Number(countResult?.count ?? 0);
+
+    // Get climbs with stats at the most popular angle (most ascensionists)
+    const climbs = await db
+      .select({
+        uuid: dbSchema.boardClimbs.uuid,
+        name: dbSchema.boardClimbs.name,
+        boardType: dbSchema.boardClimbs.boardType,
+        layoutId: dbSchema.boardClimbs.layoutId,
+        createdAt: dbSchema.boardClimbs.createdAt,
+        statsAngle: dbSchema.boardClimbStats.angle,
+        qualityAverage: dbSchema.boardClimbStats.qualityAverage,
+        ascensionistCount: dbSchema.boardClimbStats.ascensionistCount,
+        difficultyName: dbSchema.boardDifficultyGrades.boulderName,
+      })
+      .from(dbSchema.boardClimbs)
+      .leftJoin(
+        dbSchema.boardClimbStats,
+        and(
+          eq(dbSchema.boardClimbStats.boardType, dbSchema.boardClimbs.boardType),
+          eq(dbSchema.boardClimbStats.climbUuid, dbSchema.boardClimbs.uuid),
+          eq(dbSchema.boardClimbStats.angle, sql`(
+            SELECT s.angle FROM board_climb_stats s
+            WHERE s.board_type = ${dbSchema.boardClimbs.boardType}
+              AND s.climb_uuid = ${dbSchema.boardClimbs.uuid}
+            ORDER BY s.ascensionist_count DESC NULLS LAST
+            LIMIT 1
+          )`),
+        )
+      )
+      .leftJoin(
+        dbSchema.boardDifficultyGrades,
+        and(
+          eq(dbSchema.boardDifficultyGrades.boardType, dbSchema.boardClimbs.boardType),
+          eq(dbSchema.boardDifficultyGrades.difficulty, sql`CAST(${dbSchema.boardClimbStats.displayDifficulty} AS INTEGER)`),
+        )
+      )
+      .where(and(...conditions))
+      .orderBy(
+        sortBy === 'popular'
+          ? sql`COALESCE(${dbSchema.boardClimbStats.ascensionistCount}, 0) DESC`
+          : sql`${dbSchema.boardClimbs.createdAt} DESC NULLS LAST`
+      )
+      .limit(limit)
+      .offset(offset);
+
+    return {
+      climbs: climbs.map((c) => ({
+        uuid: c.uuid,
+        name: c.name,
+        boardType: c.boardType,
+        layoutId: c.layoutId,
+        angle: c.statsAngle ?? null,
+        difficultyName: c.difficultyName ?? null,
+        qualityAverage: c.qualityAverage ?? null,
+        ascensionistCount: c.ascensionistCount ?? null,
+        createdAt: c.createdAt ?? null,
+      })),
+      totalCount,
+      hasMore: offset + climbs.length < totalCount,
+    };
+  },
+
+  /**
+   * Get climbs created by a setter with full Climb data (including litUpHoldsMap for thumbnails).
+   * Supports multi-board mode when boardType is omitted.
+   */
+  setterClimbsFull: async (
+    _: unknown,
+    { input }: { input: {
+      username: string;
+      boardType?: string;
+      layoutId?: number;
+      sizeId?: number;
+      setIds?: string;
+      angle?: number;
+      sortBy?: string;
+      limit?: number;
+      offset?: number;
+    } },
+    _ctx: ConnectionContext
+  ): Promise<{ climbs: Climb[]; totalCount: number; hasMore: boolean }> => {
+    const validatedInput = validateInput(SetterClimbsFullInputSchema, input, 'input');
+    const { username, boardType, sortBy = 'popular', limit = 20, offset = 0 } = validatedInput;
+
+    if (boardType) {
+      // === Specific board mode ===
+      const boardName = boardType as BoardName;
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}. Must be one of: ${SUPPORTED_BOARDS.join(', ')}`);
+      }
+
+      const angle = validatedInput.angle ?? DEFAULT_ANGLE;
+      const tables = getBoardTables(boardName);
+
+      // Get total count
+      const [countResult] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(tables.climbs)
+        .where(
+          and(
+            eq(tables.climbs.setterUsername, username),
+            eq(tables.climbs.boardType, boardName)
+          )
+        );
+
+      const totalCount = Number(countResult?.count ?? 0);
+
+      // Get climbs with stats at specified angle
+      const results = await db
+        .select({
+          uuid: tables.climbs.uuid,
+          layoutId: tables.climbs.layoutId,
+          setter_username: tables.climbs.setterUsername,
+          name: tables.climbs.name,
+          description: tables.climbs.description,
+          frames: tables.climbs.frames,
+          ascensionist_count: tables.climbStats.ascensionistCount,
+          difficulty: tables.difficultyGrades.boulderName,
+          quality_average: sql<number>`ROUND(${tables.climbStats.qualityAverage}::numeric, 2)`,
+          difficulty_error: sql<number>`ROUND(${tables.climbStats.difficultyAverage}::numeric - ${tables.climbStats.displayDifficulty}::numeric, 2)`,
+          benchmark_difficulty: tables.climbStats.benchmarkDifficulty,
+        })
+        .from(tables.climbs)
+        .leftJoin(
+          tables.climbStats,
+          and(
+            eq(tables.climbStats.climbUuid, tables.climbs.uuid),
+            eq(tables.climbStats.boardType, boardName),
+            eq(tables.climbStats.angle, angle)
+          )
+        )
+        .leftJoin(
+          tables.difficultyGrades,
+          and(
+            eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
+            eq(tables.difficultyGrades.boardType, boardName)
+          )
+        )
+        .where(
+          and(
+            eq(tables.climbs.setterUsername, username),
+            eq(tables.climbs.boardType, boardName)
+          )
+        )
+        .orderBy(
+          sortBy === 'popular'
+            ? sql`COALESCE(${tables.climbStats.ascensionistCount}, 0) DESC`
+            : sql`${tables.climbs.createdAt} DESC NULLS LAST`
+        )
+        .limit(limit + 1)
+        .offset(offset);
+
+      const hasMore = results.length > limit;
+      const trimmedResults = hasMore ? results.slice(0, limit) : results;
+
+      const climbs: Climb[] = trimmedResults.map((result) => ({
+        uuid: result.uuid,
+        layoutId: result.layoutId,
+        setter_username: result.setter_username || '',
+        name: result.name || '',
+        description: result.description || '',
+        frames: result.frames || '',
+        angle,
+        ascensionist_count: Number(result.ascensionist_count || 0),
+        difficulty: result.difficulty || '',
+        quality_average: result.quality_average?.toString() || '0',
+        stars: Math.round((Number(result.quality_average) || 0) * 5),
+        difficulty_error: result.difficulty_error?.toString() || '0',
+        benchmark_difficulty: result.benchmark_difficulty && result.benchmark_difficulty > 0 ? result.benchmark_difficulty.toString() : null,
+        litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', boardName)[0],
+        boardType: boardName,
+      }));
+
+      return { climbs, totalCount, hasMore };
+    } else {
+      // === All boards mode ===
+      // Get distinct board types for this setter
+      const boardTypeResults = await db
+        .select({
+          boardType: dbSchema.boardClimbs.boardType,
+        })
+        .from(dbSchema.boardClimbs)
+        .where(eq(dbSchema.boardClimbs.setterUsername, username))
+        .groupBy(dbSchema.boardClimbs.boardType);
+
+      const setterBoardTypes = boardTypeResults
+        .map((r) => r.boardType)
+        .filter((bt): bt is string => bt !== null && isValidBoardName(bt));
+
+      if (setterBoardTypes.length === 0) {
+        return { climbs: [], totalCount: 0, hasMore: false };
+      }
+
+      // Get total count across all boards
+      const [countResult] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(dbSchema.boardClimbs)
+        .where(eq(dbSchema.boardClimbs.setterUsername, username));
+
+      const totalCount = Number(countResult?.count ?? 0);
+
+      // Query climbs across all board types using most popular angle
+      const tables = getBoardTables('kilter'); // All unified - just need the table refs
+      const results = await db
+        .select({
+          uuid: tables.climbs.uuid,
+          layoutId: tables.climbs.layoutId,
+          boardType: tables.climbs.boardType,
+          setter_username: tables.climbs.setterUsername,
+          name: tables.climbs.name,
+          description: tables.climbs.description,
+          frames: tables.climbs.frames,
+          statsAngle: tables.climbStats.angle,
+          ascensionist_count: tables.climbStats.ascensionistCount,
+          difficulty: tables.difficultyGrades.boulderName,
+          quality_average: sql<number>`ROUND(${tables.climbStats.qualityAverage}::numeric, 2)`,
+          difficulty_error: sql<number>`ROUND(${tables.climbStats.difficultyAverage}::numeric - ${tables.climbStats.displayDifficulty}::numeric, 2)`,
+          benchmark_difficulty: tables.climbStats.benchmarkDifficulty,
+        })
+        .from(tables.climbs)
+        .leftJoin(
+          tables.climbStats,
+          and(
+            eq(tables.climbStats.boardType, tables.climbs.boardType),
+            eq(tables.climbStats.climbUuid, tables.climbs.uuid),
+            eq(tables.climbStats.angle, sql`(
+              SELECT s.angle FROM board_climb_stats s
+              WHERE s.board_type = ${tables.climbs.boardType}
+                AND s.climb_uuid = ${tables.climbs.uuid}
+              ORDER BY s.ascensionist_count DESC NULLS LAST
+              LIMIT 1
+            )`),
+          )
+        )
+        .leftJoin(
+          tables.difficultyGrades,
+          and(
+            eq(tables.difficultyGrades.boardType, tables.climbs.boardType),
+            eq(tables.difficultyGrades.difficulty, sql`CAST(${tables.climbStats.displayDifficulty} AS INTEGER)`),
+          )
+        )
+        .where(eq(tables.climbs.setterUsername, username))
+        .orderBy(
+          sortBy === 'popular'
+            ? sql`COALESCE(${tables.climbStats.ascensionistCount}, 0) DESC`
+            : sql`${tables.climbs.createdAt} DESC NULLS LAST`
+        )
+        .limit(limit + 1)
+        .offset(offset);
+
+      const hasMore = results.length > limit;
+      const trimmedResults = hasMore ? results.slice(0, limit) : results;
+
+      const climbs: Climb[] = trimmedResults.map((result) => {
+        const bt = (result.boardType || 'kilter') as BoardName;
+        return {
+          uuid: result.uuid,
+          layoutId: result.layoutId,
+          setter_username: result.setter_username || '',
+          name: result.name || '',
+          description: result.description || '',
+          frames: result.frames || '',
+          angle: result.statsAngle ?? DEFAULT_ANGLE,
+          ascensionist_count: Number(result.ascensionist_count || 0),
+          difficulty: result.difficulty || '',
+          quality_average: result.quality_average?.toString() || '0',
+          stars: Math.round((Number(result.quality_average) || 0) * 5),
+          difficulty_error: result.difficulty_error?.toString() || '0',
+          benchmark_difficulty: result.benchmark_difficulty && result.benchmark_difficulty > 0 ? result.benchmark_difficulty.toString() : null,
+          litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', bt)[0],
+          boardType: bt,
+        };
+      });
+
+      return { climbs, totalCount, hasMore };
+    }
+  },
+
+  /**
+   * Unified search for users and setters
+   */
+  searchUsersAndSetters: async (
+    _: unknown,
+    { input }: { input: { query: string; boardType?: string; limit?: number; offset?: number } },
+    ctx: ConnectionContext
+  ) => {
+    await applyRateLimit(ctx, 20);
+
+    const validatedInput = validateInput(SearchUsersInputSchema, input, 'input');
+    const query = validatedInput.query;
+    const limit = validatedInput.limit ?? 20;
+    const offset = validatedInput.offset ?? 0;
+
+    const escapedQuery = query.replace(/[%_\\]/g, '\\$&');
+    const searchPattern = `%${escapedQuery}%`;
+    const prefixPattern = `${escapedQuery}%`;
+
+    // 1. Search Boardsesh users (same as existing searchUsers)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoIso = thirtyDaysAgo.toISOString();
+
+    const userResults = await db
+      .select({
+        id: dbSchema.users.id,
+        name: dbSchema.users.name,
+        image: dbSchema.users.image,
+        displayName: dbSchema.userProfiles.displayName,
+        avatarUrl: dbSchema.userProfiles.avatarUrl,
+        followerCount: sql<number>`(select count(*)::int from user_follows where following_id = ${dbSchema.users.id})`,
+        followingCount: sql<number>`(select count(*)::int from user_follows where follower_id = ${dbSchema.users.id})`,
+        recentAscentCount: sql<number>`(select count(*)::int from boardsesh_ticks where user_id = ${dbSchema.users.id} and created_at > ${thirtyDaysAgoIso})`,
+        isFollowedByMe: (ctx.isAuthenticated && ctx.userId)
+          ? sql<boolean>`exists(select 1 from user_follows where follower_id = ${ctx.userId} and following_id = ${dbSchema.users.id})`
+          : sql<boolean>`false`,
+      })
+      .from(dbSchema.users)
+      .leftJoin(dbSchema.userProfiles, eq(dbSchema.users.id, dbSchema.userProfiles.userId))
+      .where(
+        sql`(${dbSchema.userProfiles.displayName} ILIKE ${searchPattern} OR ${dbSchema.users.name} ILIKE ${searchPattern})`
+      )
+      .orderBy(
+        sql`case when ${dbSchema.userProfiles.displayName} ilike ${prefixPattern} or ${dbSchema.users.name} ilike ${prefixPattern} then 0 else 1 end`,
+        sql`(select count(*)::int from boardsesh_ticks where user_id = ${dbSchema.users.id} and created_at > ${thirtyDaysAgoIso}) DESC`,
+      )
+      .limit(limit + offset);
+
+    // 2. Search setters from board_climbs
+    const setterResults = await db
+      .select({
+        setterUsername: dbSchema.boardClimbs.setterUsername,
+        boardTypes: sql<string[]>`array_agg(DISTINCT ${dbSchema.boardClimbs.boardType})`,
+        climbCount: sql<number>`count(DISTINCT ${dbSchema.boardClimbs.uuid})::int`,
+      })
+      .from(dbSchema.boardClimbs)
+      .where(
+        and(
+          ilike(dbSchema.boardClimbs.setterUsername, searchPattern),
+          sql`${dbSchema.boardClimbs.setterUsername} IS NOT NULL`,
+        )
+      )
+      .groupBy(dbSchema.boardClimbs.setterUsername)
+      .orderBy(sql`count(DISTINCT ${dbSchema.boardClimbs.uuid}) DESC`)
+      .limit(limit + offset);
+
+    // 3. Get linked usernames to de-duplicate
+    const linkedUsernames = new Set<string>();
+    if (userResults.length > 0) {
+      const userIds = userResults.map((r) => r.id);
+      const mappings = await db
+        .select({
+          userId: dbSchema.userBoardMappings.userId,
+          boardUsername: dbSchema.userBoardMappings.boardUsername,
+        })
+        .from(dbSchema.userBoardMappings)
+        .where(inArray(dbSchema.userBoardMappings.userId, userIds));
+
+      for (const m of mappings) {
+        if (m.boardUsername) {
+          linkedUsernames.add(m.boardUsername);
+        }
+      }
+    }
+
+    // 4. Check isFollowedByMe for setter results
+    let setterFollowedSet = new Set<string>();
+    if (ctx.isAuthenticated && ctx.userId && setterResults.length > 0) {
+      const setterUsernames = setterResults
+        .map((r) => r.setterUsername)
+        .filter((u): u is string => u !== null);
+      if (setterUsernames.length > 0) {
+        const followedSetters = await db
+          .select({ setterUsername: dbSchema.setterFollows.setterUsername })
+          .from(dbSchema.setterFollows)
+          .where(
+            and(
+              eq(dbSchema.setterFollows.followerId, ctx.userId),
+              inArray(dbSchema.setterFollows.setterUsername, setterUsernames)
+            )
+          );
+        setterFollowedSet = new Set(followedSetters.map((f) => f.setterUsername));
+      }
+    }
+
+    // 5. Build unified results
+    const results: Array<{
+      user?: {
+        id: string;
+        displayName?: string;
+        avatarUrl?: string;
+        followerCount: number;
+        followingCount: number;
+        isFollowedByMe: boolean;
+      };
+      setter?: {
+        username: string;
+        climbCount: number;
+        boardTypes: string[];
+        isFollowedByMe: boolean;
+      };
+      recentAscentCount: number;
+      matchReason?: string;
+    }> = [];
+
+    // Add user results
+    for (const row of userResults) {
+      results.push({
+        user: {
+          id: row.id,
+          displayName: row.displayName || row.name || undefined,
+          avatarUrl: row.avatarUrl || row.image || undefined,
+          followerCount: Number(row.followerCount ?? 0),
+          followingCount: Number(row.followingCount ?? 0),
+          isFollowedByMe: Boolean(row.isFollowedByMe),
+        },
+        recentAscentCount: Number(row.recentAscentCount ?? 0),
+        matchReason: 'name match',
+      });
+    }
+
+    // Add setter results (de-duplicated)
+    for (const row of setterResults) {
+      if (!row.setterUsername || linkedUsernames.has(row.setterUsername)) {
+        continue;
+      }
+      results.push({
+        setter: {
+          username: row.setterUsername,
+          climbCount: Number(row.climbCount),
+          boardTypes: row.boardTypes || [],
+          isFollowedByMe: setterFollowedSet.has(row.setterUsername),
+        },
+        recentAscentCount: 0,
+        matchReason: 'setter match',
+      });
+    }
+
+    // Sort: users first (by ascent count), then setters (by climb count)
+    results.sort((a, b) => {
+      if (a.user && !b.user) return -1;
+      if (!a.user && b.user) return 1;
+      if (a.user && b.user) return b.recentAscentCount - a.recentAscentCount;
+      if (a.setter && b.setter) return b.setter.climbCount - a.setter.climbCount;
+      return 0;
+    });
+
+    const paginatedResults = results.slice(offset, offset + limit);
+
+    return {
+      results: paginatedResults,
+      totalCount: results.length,
+      hasMore: offset + paginatedResults.length < results.length,
+    };
+  },
+};
+
+export const setterFollowMutations = {
+  /**
+   * Follow a setter (idempotent)
+   */
+  followSetter: async (
+    _: unknown,
+    { input }: { input: { setterUsername: string } },
+    ctx: ConnectionContext
+  ): Promise<boolean> => {
+    requireAuthenticated(ctx);
+    await applyRateLimit(ctx, 30, 'follow');
+
+    const validatedInput = validateInput(FollowSetterInputSchema, input, 'input');
+    const myUserId = ctx.userId!;
+    const setterUsername = validatedInput.setterUsername;
+
+    // Verify setter exists in board_climbs
+    const [exists] = await db
+      .select({ count: count() })
+      .from(dbSchema.boardClimbs)
+      .where(eq(dbSchema.boardClimbs.setterUsername, setterUsername))
+      .limit(1);
+
+    if (Number(exists?.count ?? 0) === 0) {
+      throw new Error('Setter not found');
+    }
+
+    // Insert setter follow
+    const result = await db
+      .insert(dbSchema.setterFollows)
+      .values({
+        followerId: myUserId,
+        setterUsername,
+      })
+      .onConflictDoNothing()
+      .returning();
+
+    // Check if setter has a linked Boardsesh account
+    if (result.length > 0) {
+      const linkedUsers = await db
+        .select({ userId: dbSchema.userBoardMappings.userId })
+        .from(dbSchema.userBoardMappings)
+        .where(eq(dbSchema.userBoardMappings.boardUsername, setterUsername))
+        .limit(1);
+
+      if (linkedUsers.length > 0 && linkedUsers[0].userId !== myUserId) {
+        // Also create user_follows entry
+        await db
+          .insert(dbSchema.userFollows)
+          .values({
+            followerId: myUserId,
+            followingId: linkedUsers[0].userId,
+          })
+          .onConflictDoNothing();
+      }
+
+      publishSocialEvent({
+        type: 'follow.created',
+        actorId: myUserId,
+        entityType: 'user',
+        entityId: setterUsername,
+        timestamp: Date.now(),
+        metadata: { followedSetterUsername: setterUsername },
+      }).catch((err) => console.error('[SetterFollows] Failed to publish social event:', err));
+    }
+
+    return true;
+  },
+
+  /**
+   * Unfollow a setter
+   */
+  unfollowSetter: async (
+    _: unknown,
+    { input }: { input: { setterUsername: string } },
+    ctx: ConnectionContext
+  ): Promise<boolean> => {
+    requireAuthenticated(ctx);
+    await applyRateLimit(ctx, 30, 'follow');
+
+    const validatedInput = validateInput(FollowSetterInputSchema, input, 'input');
+    const myUserId = ctx.userId!;
+    const setterUsername = validatedInput.setterUsername;
+
+    await db
+      .delete(dbSchema.setterFollows)
+      .where(
+        and(
+          eq(dbSchema.setterFollows.followerId, myUserId),
+          eq(dbSchema.setterFollows.setterUsername, setterUsername)
+        )
+      );
+
+    // Also remove user_follows if linked
+    const linkedUsers = await db
+      .select({ userId: dbSchema.userBoardMappings.userId })
+      .from(dbSchema.userBoardMappings)
+      .where(eq(dbSchema.userBoardMappings.boardUsername, setterUsername))
+      .limit(1);
+
+    if (linkedUsers.length > 0) {
+      await db
+        .delete(dbSchema.userFollows)
+        .where(
+          and(
+            eq(dbSchema.userFollows.followerId, myUserId),
+            eq(dbSchema.userFollows.followingId, linkedUsers[0].userId)
+          )
+        );
+    }
+
+    return true;
+  },
+};

@@ -23,6 +23,7 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'proposal_rejected',
   'proposal_vote',
   'proposal_created',
+  'new_climbs_synced',
 ]);
 
 export const notifications = pgTable(
@@ -81,4 +82,5 @@ export type NotificationType =
   | 'proposal_approved'
   | 'proposal_rejected'
   | 'proposal_vote'
-  | 'proposal_created';
+  | 'proposal_created'
+  | 'new_climbs_synced';

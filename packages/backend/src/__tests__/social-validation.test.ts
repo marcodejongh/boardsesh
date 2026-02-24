@@ -4,6 +4,10 @@ import {
   FollowListInputSchema,
   SearchUsersInputSchema,
   FollowingAscentsFeedInputSchema,
+  FollowSetterInputSchema,
+  SetterProfileInputSchema,
+  SetterClimbsInputSchema,
+  SetterClimbsFullInputSchema,
 } from '../validation/schemas';
 
 describe('Social Validation Schemas', () => {
@@ -173,6 +177,132 @@ describe('Social Validation Schemas', () => {
         offset: -5,
       });
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('FollowSetterInputSchema', () => {
+    it('should accept a valid setter username', () => {
+      const result = FollowSetterInputSchema.safeParse({ setterUsername: 'climber42' });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject an empty setter username', () => {
+      const result = FollowSetterInputSchema.safeParse({ setterUsername: '' });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toContain('cannot be empty');
+      }
+    });
+
+    it('should reject setter username exceeding max length', () => {
+      const result = FollowSetterInputSchema.safeParse({ setterUsername: 'a'.repeat(101) });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('SetterProfileInputSchema', () => {
+    it('should accept a valid username', () => {
+      const result = SetterProfileInputSchema.safeParse({ username: 'climber42' });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject an empty username', () => {
+      const result = SetterProfileInputSchema.safeParse({ username: '' });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toContain('cannot be empty');
+      }
+    });
+  });
+
+  describe('SetterClimbsInputSchema', () => {
+    it('should accept valid input with defaults', () => {
+      const result = SetterClimbsInputSchema.safeParse({ username: 'climber42' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.sortBy).toBe('popular');
+        expect(result.data.limit).toBe(20);
+        expect(result.data.offset).toBe(0);
+      }
+    });
+
+    it('should accept custom limit and offset', () => {
+      const result = SetterClimbsInputSchema.safeParse({
+        username: 'climber42',
+        limit: 50,
+        offset: 10,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.limit).toBe(50);
+        expect(result.data.offset).toBe(10);
+      }
+    });
+
+    it('should reject limit exceeding max (100)', () => {
+      const result = SetterClimbsInputSchema.safeParse({
+        username: 'climber42',
+        limit: 101,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept valid sortBy values', () => {
+      const popular = SetterClimbsInputSchema.safeParse({ username: 'x', sortBy: 'popular' });
+      const newSort = SetterClimbsInputSchema.safeParse({ username: 'x', sortBy: 'new' });
+      expect(popular.success).toBe(true);
+      expect(newSort.success).toBe(true);
+    });
+
+    it('should reject invalid sortBy values', () => {
+      const result = SetterClimbsInputSchema.safeParse({ username: 'x', sortBy: 'invalid' });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('SetterClimbsFullInputSchema', () => {
+    it('should accept valid input with defaults', () => {
+      const result = SetterClimbsFullInputSchema.safeParse({ username: 'climber42' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.sortBy).toBe('popular');
+        expect(result.data.limit).toBe(20);
+        expect(result.data.offset).toBe(0);
+      }
+    });
+
+    it('should accept optional angle, sizeId, and setIds', () => {
+      const result = SetterClimbsFullInputSchema.safeParse({
+        username: 'climber42',
+        angle: 40,
+        sizeId: 10,
+        setIds: '1,2,3',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.angle).toBe(40);
+        expect(result.data.sizeId).toBe(10);
+        expect(result.data.setIds).toBe('1,2,3');
+      }
+    });
+
+    it('should reject limit exceeding max (100)', () => {
+      const result = SetterClimbsFullInputSchema.safeParse({
+        username: 'climber42',
+        limit: 101,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept optional boardType', () => {
+      const result = SetterClimbsFullInputSchema.safeParse({
+        username: 'climber42',
+        boardType: 'kilter',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.boardType).toBe('kilter');
+      }
     });
   });
 });
