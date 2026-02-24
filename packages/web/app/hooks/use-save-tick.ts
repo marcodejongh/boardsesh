@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWsAuthToken } from './use-ws-auth-token';
 import { useSession } from 'next-auth/react';
@@ -41,16 +42,21 @@ export function useSaveTick(boardName: BoardName) {
   const { showMessage } = useSnackbar();
   const queryClient = useQueryClient();
 
+  // Use ref to always access the freshest token in async mutation callbacks
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+
   return useMutation({
     mutationFn: async (options: SaveTickOptions) => {
       if (sessionStatus !== 'authenticated') {
         throw new Error('Not authenticated');
       }
-      if (!token) {
+      const currentToken = tokenRef.current;
+      if (!currentToken) {
         throw new Error('Auth token not available');
       }
 
-      const client = createGraphQLHttpClient(token);
+      const client = createGraphQLHttpClient(currentToken);
       const variables: SaveTickMutationVariables = {
         input: {
           boardType: boardName,

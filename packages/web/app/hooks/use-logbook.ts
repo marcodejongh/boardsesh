@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWsAuthToken } from './use-ws-auth-token';
 import { useSession } from 'next-auth/react';
@@ -73,10 +74,14 @@ export function useLogbook(boardName: BoardName, climbUuids: ClimbUuid[]) {
   const { token } = useWsAuthToken();
   const { status: sessionStatus } = useSession();
 
+  // Use ref to always access the freshest token in async query callbacks
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+
   const query = useQuery({
     queryKey: logbookQueryKey(boardName, climbUuids),
     queryFn: async (): Promise<LogbookEntry[]> => {
-      const client = createGraphQLHttpClient(token!);
+      const client = createGraphQLHttpClient(tokenRef.current!);
       const variables: GetTicksQueryVariables = {
         input: {
           boardType: boardName,
