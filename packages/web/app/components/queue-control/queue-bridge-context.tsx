@@ -101,13 +101,13 @@ function usePersistentSessionQueueAdapter(): {
   const setCurrentClimbQueueItem = useCallback(
     (item: ClimbQueueItem) => {
       if (!boardDetails) return;
-      // Build the new queue: ensure item is in it
-      const newQueue = queue.some(q => q.uuid === item.uuid)
-        ? queue
-        : [...queue, item];
+      const alreadyInQueue = queue.some(q => q.uuid === item.uuid);
+      // Skip if item is already current and already in the queue — nothing changed
+      if (alreadyInQueue && currentClimbQueueItem?.uuid === item.uuid) return;
+      const newQueue = alreadyInQueue ? queue : [...queue, item];
       ps.setLocalQueueState(newQueue, item, baseBoardPath, boardDetails);
     },
-    [queue, boardDetails, baseBoardPath, ps],
+    [queue, currentClimbQueueItem, boardDetails, baseBoardPath, ps],
   );
 
   const addToQueue = useCallback(
@@ -293,6 +293,12 @@ export function QueueBridgeProvider({ children }: { children: React.ReactNode })
 
   // When a board route is active (isInjected), use the injected context.
   // Otherwise, fall back to the PersistentSession adapter.
+  //
+  // Why ref + version counter instead of useState? Storing the full context object
+  // in state would trigger React's cleanup/setup cycle on every context update,
+  // causing the bottom bar to briefly unmount and remount (visible flash). By
+  // keeping the value in a ref and bumping a version counter, we get a re-render
+  // that reads the latest ref value without the cleanup/setup cost.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- contextVersion forces re-read of ref
   const effectiveContext = useMemo(
     () => (isInjected && injectedContextRef.current) ? injectedContextRef.current : adapter.context,
