@@ -71,13 +71,13 @@ jobs:
         # Provide minimal env vars needed for build
         NEXTAUTH_SECRET: test-secret-for-ci
         NEXTAUTH_URL: http://localhost:3000
-        DATABASE_URL: postgresql://postgres:password@localhost:5432/main
+        DATABASE_URL: postgresql://postgres:password@db.localtest.me:5432/main
 
     - name: Run database migrations
       run: npx drizzle-kit migrate
       working-directory: packages/db
       env:
-        DATABASE_URL: postgresql://postgres:password@localhost:5432/main
+        DATABASE_URL: postgresql://postgres:password@db.localtest.me:5432/main
 
     - name: Start server and run E2E tests
       run: |
