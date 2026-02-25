@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import MuiButton from '@mui/material/Button';
 import MuiBadge from '@mui/material/Badge';
 import Typography from '@mui/material/Typography';
@@ -24,8 +24,14 @@ import { useMyBoards } from '@/app/hooks/use-my-boards';
 import BoardScrollSection from '../../board-scroll/board-scroll-section';
 import BoardScrollCard from '../../board-scroll/board-scroll-card';
 import type { UserBoard } from '@boardsesh/shared-schema';
-import type { BoardName } from '@/app/lib/types';
+import type { BoardName, BoardDetails } from '@/app/lib/types';
 import { LogAscentDrawer } from '../../logbook/log-ascent-drawer';
+
+const VALID_BOARD_NAMES: ReadonlySet<string> = new Set<BoardName>(['kilter', 'tension', 'moonboard']);
+
+function isValidBoardName(value: string): value is BoardName {
+  return VALID_BOARD_NAMES.has(value);
+}
 
 export function TickAction({
   climb,
@@ -51,6 +57,15 @@ export function TickAction({
   // Fetch user's boards when we need the board selector (no existing BoardProvider + authenticated)
   const needsBoardSelector = !boardProvider && isAuthenticated;
   const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(needsBoardSelector);
+
+  // Track whether useMyBoards has completed its initial loading cycle.
+  // useMyBoards starts with isLoading=false before the effect fires, creating a window
+  // where {boards:[], isLoading:false} looks like "loaded empty" but is actually "not started".
+  // We track when isLoading becomes true to distinguish these states.
+  const hasStartedLoadingRef = useRef(false);
+  if (isLoadingBoards) hasStartedLoadingRef.current = true;
+  if (!needsBoardSelector) hasStartedLoadingRef.current = false;
+  const boardsReady = hasStartedLoadingRef.current && !isLoadingBoards;
 
   // Filter boards to matching board type (e.g., only Kilter boards for a Kilter climb)
   const matchingBoards = useMemo(() =>
@@ -140,18 +155,39 @@ export function TickAction({
 
   // Whether to show the board selector or go straight to the form.
   // Show board selector when outside a board route, authenticated, and either still loading or have matching boards.
-  const hasMatchingBoards = !isLoadingBoards && matchingBoards.length > 0;
-  const noMatchingBoards = needsBoardSelector && !isLoadingBoards && matchingBoards.length === 0;
-  const showBoardSelector = needsBoardSelector && !selectedBoard && (hasMatchingBoards || isLoadingBoards);
+  const hasMatchingBoards = boardsReady && matchingBoards.length > 0;
+  const noMatchingBoards = needsBoardSelector && boardsReady && matchingBoards.length === 0;
+  const showBoardSelector = needsBoardSelector && !selectedBoard && (!boardsReady || hasMatchingBoards);
 
   const boardTypeLabel = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
+
+  // When a user selects a board from the selector, use its config for the tick.
+  // This ensures the tick is logged against the board the user actually climbed on.
+  const effectiveBoardDetails: BoardDetails = useMemo(() => {
+    if (!selectedBoard) return boardDetails;
+    return {
+      ...boardDetails,
+      layout_id: selectedBoard.layoutId,
+      size_id: selectedBoard.sizeId,
+      set_ids: selectedBoard.setIds.split(',').map(Number),
+      layout_name: selectedBoard.layoutName ?? boardDetails.layout_name,
+      size_name: selectedBoard.sizeName ?? boardDetails.size_name,
+      size_description: selectedBoard.sizeDescription ?? boardDetails.size_description,
+      set_names: selectedBoard.setNames ?? boardDetails.set_names,
+    };
+  }, [selectedBoard, boardDetails]);
+
+  // Validate the board name for the conditional BoardProvider
+  const resolvedBoardName: BoardName = isValidBoardName(selectedBoard?.boardType ?? '')
+    ? (selectedBoard!.boardType as BoardName)
+    : boardDetails.board_name;
 
   const renderBoardSelector = () => (
     <Stack spacing={2} sx={{ py: 2 }}>
       <Typography variant="body2" fontWeight={600} sx={{ fontSize: 16, textAlign: 'center' }}>
         Which board did you climb on?
       </Typography>
-      <BoardScrollSection loading={isLoadingBoards} size="small">
+      <BoardScrollSection loading={!boardsReady} size="small">
         {matchingBoards.map((board) => (
           <BoardScrollCard
             key={board.uuid}
@@ -168,7 +204,7 @@ export function TickAction({
   const renderLogAscentForm = () => (
     <LogAscentForm
       currentClimb={climb}
-      boardDetails={boardDetails}
+      boardDetails={effectiveBoardDetails}
       onClose={closeDrawer}
     />
   );
@@ -215,7 +251,7 @@ export function TickAction({
           {showBoardSelector ? (
             renderBoardSelector()
           ) : (
-            <BoardProvider boardName={(selectedBoard?.boardType ?? boardDetails.board_name) as BoardName}>
+            <BoardProvider boardName={resolvedBoardName}>
               {noMatchingBoards && renderNoMatchingBoardsMessage()}
               {renderLogAscentForm()}
             </BoardProvider>

@@ -1,7 +1,77 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import React from 'react';
+import type { Climb, BoardDetails, BoardName } from '@/app/lib/types';
+import type { UserBoard } from '@boardsesh/shared-schema';
+
+// --- Mock factories ---
+
+function createMockClimb(overrides?: Partial<Climb>): Climb {
+  return {
+    uuid: 'climb-1',
+    name: 'Test Climb',
+    difficulty: 'V5',
+    frames: 'p1r42',
+    quality_average: '3.5',
+    angle: 40,
+    ascensionist_count: 10,
+    display_difficulty: 5,
+    difficulty_average: 12.5,
+    setter_username: 'setter',
+    ...overrides,
+  } as Climb;
+}
+
+function createMockBoardDetails(overrides?: Partial<BoardDetails>): BoardDetails {
+  return {
+    board_name: 'kilter' as BoardName,
+    layout_id: 1,
+    size_id: 10,
+    set_ids: [1, 2],
+    layout_name: 'Original',
+    size_name: '12x12',
+    size_description: 'Full',
+    set_names: ['Standard'],
+    supportsMirroring: true,
+    images_to_holds: {},
+    holdsData: {},
+    edge_left: 0,
+    edge_right: 0,
+    edge_bottom: 0,
+    edge_top: 0,
+    boardHeight: 100,
+    boardWidth: 100,
+    ...overrides,
+  } as BoardDetails;
+}
+
+function createMockUserBoard(overrides?: Partial<UserBoard>): UserBoard {
+  return {
+    uuid: 'board-1',
+    slug: 'my-kilter',
+    ownerId: 'user-1',
+    boardType: 'kilter',
+    layoutId: 1,
+    sizeId: 10,
+    setIds: '1,2',
+    name: 'My Kilter Board',
+    isPublic: false,
+    isOwned: true,
+    angle: 40,
+    isAngleAdjustable: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    totalAscents: 0,
+    uniqueClimbers: 0,
+    followerCount: 0,
+    commentCount: 0,
+    isFollowedByMe: false,
+    layoutName: 'Original',
+    sizeName: '12x12',
+    sizeDescription: 'Full',
+    setNames: ['Standard'],
+    ...overrides,
+  };
+}
 
 // --- Mocks (must be before imports) ---
 
@@ -62,7 +132,14 @@ vi.mock('../../logbook/log-ascent-drawer', () => ({
 }));
 
 vi.mock('../../logbook/logascent-form', () => ({
-  LogAscentForm: () => <div data-testid="log-ascent-form" />,
+  LogAscentForm: ({ boardDetails }: { boardDetails: BoardDetails }) => (
+    <div
+      data-testid="log-ascent-form"
+      data-layout-id={boardDetails.layout_id}
+      data-size-id={boardDetails.size_id}
+      data-set-ids={typeof boardDetails.set_ids === 'string' ? boardDetails.set_ids : String(boardDetails.set_ids)}
+    />
+  ),
 }));
 
 vi.mock('../../board-scroll/board-scroll-section', () => ({
@@ -71,7 +148,7 @@ vi.mock('../../board-scroll/board-scroll-section', () => ({
 }));
 
 vi.mock('../../board-scroll/board-scroll-card', () => ({
-  default: ({ userBoard, onClick }: { userBoard: { uuid: string; name: string }; onClick: () => void }) => (
+  default: ({ userBoard, onClick }: { userBoard: UserBoard; onClick: () => void }) => (
     <button data-testid={`board-card-${userBoard.uuid}`} onClick={onClick}>
       {userBoard.name}
     </button>
@@ -84,26 +161,8 @@ import type { ClimbActionProps } from '../types';
 
 // --- Test data ---
 
-const mockClimb = {
-  uuid: 'climb-1',
-  name: 'Test Climb',
-  difficulty: 'V5',
-  frames: 'p1r42',
-  quality_average: '3.5',
-  angle: 40,
-} as any;
-
-const mockBoardDetails = {
-  board_name: 'kilter',
-  layout_id: 1,
-  size_id: 10,
-  set_ids: '1,2',
-  layout_name: 'Original',
-  size_name: '12x12',
-  size_description: 'Full',
-  set_names: ['Standard'],
-  supportsMirroring: true,
-} as any;
+const mockClimb = createMockClimb();
+const mockBoardDetails = createMockBoardDetails();
 
 const defaultProps: ClimbActionProps = {
   climb: mockClimb,
@@ -113,41 +172,37 @@ const defaultProps: ClimbActionProps = {
   onComplete: vi.fn(),
 };
 
-const mockUserBoard = {
-  uuid: 'board-1',
-  slug: 'my-kilter',
-  ownerId: 'user-1',
-  boardType: 'kilter',
-  layoutId: 1,
-  sizeId: 10,
-  setIds: '1,2',
-  name: 'My Kilter Board',
-  isPublic: false,
-} as any;
+const mockUserBoard = createMockUserBoard();
 
-const mockUserBoard2 = {
+const mockUserBoard2 = createMockUserBoard({
   uuid: 'board-2',
   slug: 'gym-kilter',
-  ownerId: 'user-1',
-  boardType: 'kilter',
-  layoutId: 1,
-  sizeId: 10,
-  setIds: '1,2',
   name: 'Gym Kilter',
-  isPublic: false,
-} as any;
+});
 
-const mockTensionBoard = {
+// A board with DIFFERENT layout/size config to test boardDetails override
+const mockUserBoardDifferentConfig = createMockUserBoard({
+  uuid: 'board-4',
+  slug: 'big-kilter',
+  name: 'Big Kilter 16x12',
+  layoutId: 2,
+  sizeId: 20,
+  setIds: '3,4',
+  layoutName: 'Super Wide',
+  sizeName: '16x12',
+  sizeDescription: 'Super Wide Full',
+  setNames: ['Bolt-Ons', 'Screw-Ons'],
+});
+
+const mockTensionBoard = createMockUserBoard({
   uuid: 'board-3',
   slug: 'tension-board',
-  ownerId: 'user-1',
   boardType: 'tension',
   layoutId: 2,
   sizeId: 5,
   setIds: '3',
   name: 'My Tension',
-  isPublic: false,
-} as any;
+});
 
 /**
  * Wrapper component to render TickAction (which returns ClimbActionResult, not JSX directly)
@@ -162,9 +217,10 @@ function TestTickAction(props: ClimbActionProps) {
 function setupMocks(options: {
   hasBoardProvider?: boolean;
   isAuthenticated?: boolean;
-  logbook?: any[];
-  boards?: any[];
+  logbook?: Array<{ climb_uuid: string; angle: number; is_ascent: boolean }>;
+  boards?: UserBoard[];
   isLoadingBoards?: boolean;
+  boardsError?: string | null;
   sessionStatus?: string;
 }) {
   const {
@@ -173,6 +229,7 @@ function setupMocks(options: {
     logbook = [],
     boards = [],
     isLoadingBoards = false,
+    boardsError = null,
     sessionStatus,
   } = options;
 
@@ -180,7 +237,7 @@ function setupMocks(options: {
     mockUseOptionalBoardProvider.mockReturnValue({
       isAuthenticated,
       logbook,
-      boardName: 'kilter',
+      boardName: 'kilter' as BoardName,
       isLoading: false,
       error: null,
       isInitialized: true,
@@ -201,8 +258,28 @@ function setupMocks(options: {
   mockUseMyBoards.mockReturnValue({
     boards,
     isLoading: isLoadingBoards,
-    error: null,
+    error: boardsError,
   });
+}
+
+/**
+ * Helper: simulate the full loading cycle for useMyBoards.
+ * In production, useMyBoards goes: {boards:[], isLoading:false} -> {boards:[], isLoading:true} -> {boards:[...], isLoading:false}
+ * The boardsReady ref tracks whether isLoading has been true, so tests must simulate this.
+ */
+function renderWithLoadingCycle(
+  props: ClimbActionProps,
+  finalBoards: UserBoard[],
+) {
+  // Phase 1: loading
+  setupMocks({ isAuthenticated: true, boards: [], isLoadingBoards: true });
+  const result = render(<TestTickAction {...props} />);
+
+  // Phase 2: loaded with results
+  setupMocks({ isAuthenticated: true, boards: finalBoards, isLoadingBoards: false });
+  result.rerender(<TestTickAction {...props} />);
+
+  return result;
 }
 
 // --- Tests ---
@@ -305,8 +382,7 @@ describe('TickAction', () => {
 
   describe('without BoardProvider, authenticated (outside board route)', () => {
     it('shows board selector when matching boards exist', async () => {
-      setupMocks({ isAuthenticated: true, boards: [mockUserBoard, mockUserBoard2] });
-      render(<TestTickAction {...defaultProps} />);
+      renderWithLoadingCycle(defaultProps, [mockUserBoard, mockUserBoard2]);
 
       await act(async () => {
         screen.getByRole('button', { name: /tick/i }).click();
@@ -321,8 +397,7 @@ describe('TickAction', () => {
 
     it('filters boards to matching board type', async () => {
       // Boards include both kilter and tension, but climb is kilter
-      setupMocks({ isAuthenticated: true, boards: [mockUserBoard, mockTensionBoard] });
-      render(<TestTickAction {...defaultProps} />);
+      renderWithLoadingCycle(defaultProps, [mockUserBoard, mockTensionBoard]);
 
       await act(async () => {
         screen.getByRole('button', { name: /tick/i }).click();
@@ -334,8 +409,7 @@ describe('TickAction', () => {
     });
 
     it('shows LogAscentForm wrapped in BoardProvider after selecting a board', async () => {
-      setupMocks({ isAuthenticated: true, boards: [mockUserBoard, mockUserBoard2] });
-      render(<TestTickAction {...defaultProps} />);
+      renderWithLoadingCycle(defaultProps, [mockUserBoard, mockUserBoard2]);
 
       // Open drawer
       await act(async () => {
@@ -357,8 +431,7 @@ describe('TickAction', () => {
     });
 
     it('passes selected board type to BoardProvider', async () => {
-      setupMocks({ isAuthenticated: true, boards: [mockUserBoard] });
-      render(<TestTickAction {...defaultProps} />);
+      renderWithLoadingCycle(defaultProps, [mockUserBoard]);
 
       await act(async () => {
         screen.getByRole('button', { name: /tick/i }).click();
@@ -393,29 +466,111 @@ describe('TickAction', () => {
     });
   });
 
-  describe('without BoardProvider, authenticated, no matching boards', () => {
-    it('skips board selector and goes directly to form', async () => {
-      setupMocks({ isAuthenticated: true, boards: [] });
+  describe('selected board drives form payload', () => {
+    it('passes selected board layout/size/set to LogAscentForm', async () => {
+      renderWithLoadingCycle(defaultProps, [mockUserBoardDifferentConfig]);
+
+      await act(async () => {
+        screen.getByRole('button', { name: /tick/i }).click();
+      });
+
+      await act(async () => {
+        screen.getByTestId('board-card-board-4').click();
+      });
+
+      const form = screen.getByTestId('log-ascent-form');
+      expect(form.getAttribute('data-layout-id')).toBe('2');
+      expect(form.getAttribute('data-size-id')).toBe('20');
+      expect(form.getAttribute('data-set-ids')).toBe('3,4');
+    });
+
+    it('uses original boardDetails when no board is selected (fallback)', async () => {
+      // No matching boards → skips selector, uses original boardDetails
+      renderWithLoadingCycle(defaultProps, [mockTensionBoard]);
+
+      await act(async () => {
+        screen.getByRole('button', { name: /tick/i }).click();
+      });
+
+      const form = screen.getByTestId('log-ascent-form');
+      expect(form.getAttribute('data-layout-id')).toBe('1');
+      expect(form.getAttribute('data-size-id')).toBe('10');
+      expect(form.getAttribute('data-set-ids')).toBe('1,2');
+    });
+  });
+
+  describe('loading race condition (useMyBoards starts with isLoading=false)', () => {
+    it('shows board selector loading state before first fetch starts', async () => {
+      // Simulate the initial state: isLoading=false, boards=[] (effect hasn't fired yet)
+      // Since hasStartedLoadingRef hasn't been set, boardsReady=false, showBoardSelector=true
+      setupMocks({ isAuthenticated: true, boards: [], isLoadingBoards: false });
       render(<TestTickAction {...defaultProps} />);
 
       await act(async () => {
         screen.getByRole('button', { name: /tick/i }).click();
       });
 
-      // Should not show board selector
-      expect(screen.queryByText('Which board did you climb on?')).toBeNull();
-
-      // Should show the log form directly
-      expect(screen.getByTestId('log-ascent-form')).toBeTruthy();
-
-      // Drawer title should be "Log Ascent" (not "Select Board")
+      // Should show the board selector (in loading state), NOT skip to form
       const drawer = screen.getByTestId('swipeable-drawer');
-      expect(drawer.getAttribute('data-title')).toBe('Log Ascent');
+      expect(drawer.getAttribute('data-title')).toBe('Select Board');
+      expect(screen.getByTestId('board-scroll-loading')).toBeTruthy();
     });
 
+    it('transitions from loading to showing boards after fetch completes', async () => {
+      // Start with loading
+      setupMocks({ isAuthenticated: true, boards: [], isLoadingBoards: true });
+      const { rerender } = render(<TestTickAction {...defaultProps} />);
+
+      await act(async () => {
+        screen.getByRole('button', { name: /tick/i }).click();
+      });
+
+      expect(screen.getByTestId('board-scroll-loading')).toBeTruthy();
+
+      // Simulate fetch completing with boards
+      setupMocks({ isAuthenticated: true, boards: [mockUserBoard], isLoadingBoards: false });
+      await act(async () => {
+        rerender(<TestTickAction {...defaultProps} />);
+      });
+
+      expect(screen.getByTestId('board-scroll-section')).toBeTruthy();
+      expect(screen.getByTestId('board-card-board-1')).toBeTruthy();
+    });
+
+    it('shows no-boards message only after fetch actually completes empty', async () => {
+      // Start with loading
+      setupMocks({ isAuthenticated: true, boards: [], isLoadingBoards: true });
+      const { rerender } = render(<TestTickAction {...defaultProps} />);
+
+      await act(async () => {
+        screen.getByRole('button', { name: /tick/i }).click();
+      });
+
+      // Should still be in loading state
+      expect(screen.queryByText(/don\u2019t have any Kilter boards saved/)).toBeNull();
+
+      // Fetch completes with no boards
+      setupMocks({ isAuthenticated: true, boards: [], isLoadingBoards: false });
+      await act(async () => {
+        rerender(<TestTickAction {...defaultProps} />);
+      });
+
+      // NOW should show the no-boards message with the form
+      expect(screen.getByText(/don\u2019t have any Kilter boards saved/)).toBeTruthy();
+      expect(screen.getByTestId('log-ascent-form')).toBeTruthy();
+    });
+  });
+
+  describe('without BoardProvider, authenticated, no matching boards', () => {
     it('shows informational message about no matching boards', async () => {
-      setupMocks({ isAuthenticated: true, boards: [] });
-      render(<TestTickAction {...defaultProps} />);
+      // Simulate: loading started and completed with empty boards
+      setupMocks({ isAuthenticated: true, boards: [], isLoadingBoards: true });
+      const { rerender } = render(<TestTickAction {...defaultProps} />);
+
+      setupMocks({ isAuthenticated: true, boards: [], isLoadingBoards: false });
+      await act(async () => {
+        rerender(<TestTickAction {...defaultProps} />);
+      });
 
       await act(async () => {
         screen.getByRole('button', { name: /tick/i }).click();
@@ -425,8 +580,13 @@ describe('TickAction', () => {
     });
 
     it('wraps form in BoardProvider using boardDetails.board_name as fallback', async () => {
-      setupMocks({ isAuthenticated: true, boards: [] });
-      render(<TestTickAction {...defaultProps} />);
+      setupMocks({ isAuthenticated: true, boards: [], isLoadingBoards: true });
+      const { rerender } = render(<TestTickAction {...defaultProps} />);
+
+      setupMocks({ isAuthenticated: true, boards: [], isLoadingBoards: false });
+      await act(async () => {
+        rerender(<TestTickAction {...defaultProps} />);
+      });
 
       await act(async () => {
         screen.getByRole('button', { name: /tick/i }).click();
@@ -440,8 +600,13 @@ describe('TickAction', () => {
 
     it('skips board selector when only non-matching boards exist', async () => {
       // User has tension boards but the climb is kilter
-      setupMocks({ isAuthenticated: true, boards: [mockTensionBoard] });
-      render(<TestTickAction {...defaultProps} />);
+      setupMocks({ isAuthenticated: true, boards: [mockTensionBoard], isLoadingBoards: true });
+      const { rerender } = render(<TestTickAction {...defaultProps} />);
+
+      setupMocks({ isAuthenticated: true, boards: [mockTensionBoard], isLoadingBoards: false });
+      await act(async () => {
+        rerender(<TestTickAction {...defaultProps} />);
+      });
 
       await act(async () => {
         screen.getByRole('button', { name: /tick/i }).click();
@@ -488,10 +653,61 @@ describe('TickAction', () => {
     });
   });
 
+  describe('edge cases', () => {
+    it('handles session status loading gracefully', () => {
+      setupMocks({ isAuthenticated: false, sessionStatus: 'loading' });
+      const { container } = render(<TestTickAction {...defaultProps} />);
+      expect(container).toBeTruthy();
+    });
+
+    it('handles useMyBoards error without crashing', async () => {
+      setupMocks({ isAuthenticated: true, boards: [], boardsError: 'Failed to load your boards', isLoadingBoards: true });
+      const { rerender } = render(<TestTickAction {...defaultProps} />);
+
+      // Simulate error state after loading
+      setupMocks({ isAuthenticated: true, boards: [], boardsError: 'Failed to load your boards', isLoadingBoards: false });
+      await act(async () => {
+        rerender(<TestTickAction {...defaultProps} />);
+      });
+
+      await act(async () => {
+        screen.getByRole('button', { name: /tick/i }).click();
+      });
+
+      // Should fall through to form (no matching boards after error)
+      expect(screen.getByTestId('log-ascent-form')).toBeTruthy();
+    });
+
+    it('validates board name and falls back to boardDetails.board_name for invalid types', async () => {
+      const invalidBoard = createMockUserBoard({
+        uuid: 'board-invalid',
+        boardType: 'unknown_board',
+        name: 'Invalid Board',
+      });
+
+      // Force matching by using same board_name
+      const customBoardDetails = createMockBoardDetails({ board_name: 'unknown_board' as BoardName });
+      const customProps = { ...defaultProps, boardDetails: customBoardDetails };
+      renderWithLoadingCycle(customProps, [invalidBoard]);
+
+      await act(async () => {
+        screen.getByRole('button', { name: /tick/i }).click();
+      });
+
+      await act(async () => {
+        screen.getByTestId('board-card-board-invalid').click();
+      });
+
+      // BoardProvider should receive the fallback board_name from boardDetails
+      expect(MockBoardProvider).toHaveBeenCalledWith(
+        expect.objectContaining({ boardName: 'unknown_board' }),
+      );
+    });
+  });
+
   describe('drawer close resets state', () => {
     it('resets board selection when drawer closes', async () => {
-      setupMocks({ isAuthenticated: true, boards: [mockUserBoard, mockUserBoard2] });
-      const { unmount } = render(<TestTickAction {...defaultProps} />);
+      const { unmount } = renderWithLoadingCycle(defaultProps, [mockUserBoard, mockUserBoard2]);
 
       // Open drawer
       await act(async () => {
@@ -510,6 +726,7 @@ describe('TickAction', () => {
       unmount();
 
       // Fresh render - state should start fresh (selectedBoard = null)
+      // Mocks still return boards but the ref resets, so board selector shows
       render(<TestTickAction {...defaultProps} />);
 
       // Open drawer again
