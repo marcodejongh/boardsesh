@@ -36,6 +36,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          --shm-size 256mb
 
       neon-proxy:
         image: ghcr.io/timowilhelm/local-neon-http-proxy:main
