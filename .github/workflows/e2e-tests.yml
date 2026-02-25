@@ -89,7 +89,7 @@ jobs:
     - name: Start backend and web server, then run E2E tests
       run: |
         npm run start --workspace=boardsesh-backend &
-        npx wait-on http://localhost:8080/health --timeout 30000
+        npx wait-on http-get://localhost:8080/health --timeout 30000
         npm run start --workspace=@boardsesh/web &
         npx wait-on http://localhost:3000 --timeout 60000
         npm run test:e2e --workspace=@boardsesh/web
@@ -99,6 +99,8 @@ jobs:
         NEXTAUTH_SECRET: test-secret-for-ci
         NEXTAUTH_URL: http://localhost:3000
         NEXT_PUBLIC_WS_URL: ws://localhost:8080/graphql
+        TEST_USER_EMAIL: test@boardsesh.com
+        TEST_USER_PASSWORD: test
 
     - name: Upload Playwright Report
       uses: actions/upload-artifact@v4
