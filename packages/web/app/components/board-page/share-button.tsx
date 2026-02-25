@@ -477,6 +477,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
     <>
       <Badge badgeContent={connectionCount} max={100} color="primary" invisible={connectionCount === 0}>
         <IconButton
+          aria-label="Party Mode"
           onClick={showDrawer}
           color={isSessionActive ? 'primary' : 'default'}
         >
