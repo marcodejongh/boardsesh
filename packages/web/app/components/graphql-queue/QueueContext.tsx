@@ -85,7 +85,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
   // On mount, the reducer starts with empty state. The sync effect must not
   // write to persistent session until restoration (from memory or IndexedDB)
   // has finished — otherwise it overwrites valid data with empty state,
-  // causing PersistentQueueControlBar to see an empty queue and unmount.
+  // causing the queue bridge to see an empty queue and hide the control bar.
   // Uses useState (not useRef) so the sync effect only sees hasRestored=true
   // in the render where state.queue already contains the restored data.
   // With a ref, the restore and sync effects run in the same render cycle:
