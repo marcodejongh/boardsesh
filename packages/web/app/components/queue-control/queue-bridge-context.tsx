@@ -186,9 +186,14 @@ function usePersistentSessionQueueAdapter(): {
     [queue, currentClimbQueueItem, boardDetails, baseBoardPath, ps],
   );
 
-  // No-op functions for fields not used by the bottom bar
+  // No-op functions for fields not used by the bottom bar — each matches its exact type signature
   const noop = useCallback(() => {}, []);
-  const noopAsync = useCallback(async () => '', []);
+  const noopStartSession = useCallback(
+    async (_options?: { discoverable?: boolean; name?: string; sessionId?: string }) => '',
+    [],
+  );
+  const noopJoinSession = useCallback(async (_sessionId: string) => {}, []);
+  const noopSetClimbSearchParams = useCallback((_params: SearchRequestPagination) => {}, []);
 
   const context: GraphQLQueueContextType = useMemo(
     () => ({
@@ -209,8 +214,8 @@ function usePersistentSessionQueueAdapter(): {
       // Session management
       isSessionActive: isParty && ps.hasConnected,
       sessionId: ps.activeSession?.sessionId ?? null,
-      startSession: noopAsync as GraphQLQueueContextType['startSession'],
-      joinSession: noopAsync as unknown as GraphQLQueueContextType['joinSession'],
+      startSession: noopStartSession,
+      joinSession: noopJoinSession,
       endSession: ps.deactivateSession,
       sessionSummary: null,
       dismissSessionSummary: noop,
@@ -230,7 +235,7 @@ function usePersistentSessionQueueAdapter(): {
       removeFromQueue,
       setCurrentClimb,
       setCurrentClimbQueueItem,
-      setClimbSearchParams: noop as unknown as (params: SearchRequestPagination) => void,
+      setClimbSearchParams: noopSetClimbSearchParams,
       mirrorClimb,
       fetchMoreClimbs: noop,
       getNextClimbQueueItem,
@@ -250,7 +255,9 @@ function usePersistentSessionQueueAdapter(): {
       ps.clientId,
       ps.isLeader,
       ps.error,
-      noopAsync,
+      noopStartSession,
+      noopJoinSession,
+      noopSetClimbSearchParams,
       noop,
       addToQueue,
       removeFromQueue,
@@ -376,13 +383,17 @@ export function QueueBridgeInjector({ boardDetails, angle }: QueueBridgeInjector
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardDetails, angle, inject, clear]);
 
-  // Update the context ref whenever the queue context value changes
-  // This avoids the cleanup/setup cycle that was causing the bar to disappear
+  // Update the context ref whenever the queue context value changes.
+  // Also handles deferred injection if queueContext was null during the useLayoutEffect.
   useEffect(() => {
-    if (queueContext && hasInjectedRef.current) {
+    if (!queueContext) return;
+    if (hasInjectedRef.current) {
       updateContext(queueContext);
+    } else {
+      inject(queueContext, boardDetails, angle);
+      hasInjectedRef.current = true;
     }
-  }, [queueContext, updateContext]);
+  }, [queueContext, updateContext, inject, boardDetails, angle]);
 
   return null;
 }
