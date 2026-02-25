@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo } from 'react';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
 import ListItemText from '@mui/material/ListItemText';
 import MuiAvatar from '@mui/material/Avatar';
-import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import { PersonOutlined } from '@mui/icons-material';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import FollowButton from '@/app/components/ui/follow-button';
 import {
   FOLLOW_USER,
@@ -25,7 +25,9 @@ import {
   type SearchUsersAndSettersQueryVariables,
   type SearchUsersAndSettersQueryResponse,
 } from '@/app/lib/graphql/operations';
-import type { UnifiedSearchResult } from '@boardsesh/shared-schema';
+import type { UnifiedSearchResult, UnifiedSearchConnection } from '@boardsesh/shared-schema';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 interface UserSearchResultsProps {
   query: string;
@@ -33,75 +35,40 @@ interface UserSearchResultsProps {
 }
 
 export default function UserSearchResults({ query, authToken }: UserSearchResultsProps) {
-  const [results, setResults] = useState<UnifiedSearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debouncedQuery = useDebouncedValue(query, 300);
 
-  const fetchResults = useCallback(async (searchQuery: string, offset = 0) => {
-    if (searchQuery.length < 2) {
-      setResults([]);
-      setTotalCount(0);
-      setHasMore(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<
+    UnifiedSearchConnection,
+    Error
+  >({
+    queryKey: ['searchUsersAndSetters', debouncedQuery, authToken],
+    queryFn: async ({ pageParam }) => {
       const client = createGraphQLHttpClient(authToken);
       const response = await client.request<SearchUsersAndSettersQueryResponse, SearchUsersAndSettersQueryVariables>(
         SEARCH_USERS_AND_SETTERS,
-        { input: { query: searchQuery, limit: 20, offset } }
+        { input: { query: debouncedQuery, limit: 20, offset: pageParam as number } }
       );
+      return response.searchUsersAndSetters;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (!lastPage.hasMore) return undefined;
+      return (lastPageParam as number) + lastPage.results.length;
+    },
+    enabled: debouncedQuery.length >= 2,
+    staleTime: 30 * 1000,
+  });
 
-      if (offset === 0) {
-        setResults(response.searchUsersAndSetters.results);
-      } else {
-        setResults((prev) => [...prev, ...response.searchUsersAndSetters.results]);
-      }
-      setHasMore(response.searchUsersAndSetters.hasMore);
-      setTotalCount(response.searchUsersAndSetters.totalCount);
-    } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [authToken]);
+  const results: UnifiedSearchResult[] = useMemo(
+    () => data?.pages.flatMap((p) => p.results) ?? [],
+    [data],
+  );
 
-  // Debounced search on query change
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
-    if (query.length < 2) {
-      setResults([]);
-      setTotalCount(0);
-      setHasMore(false);
-      return () => {
-        if (debounceRef.current) {
-          clearTimeout(debounceRef.current);
-        }
-      };
-    }
-
-    debounceRef.current = setTimeout(() => {
-      fetchResults(query);
-    }, 300);
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [query, fetchResults]);
-
-  const handleLoadMore = () => {
-    if (!loading && hasMore) {
-      fetchResults(query, results.length);
-    }
-  };
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    hasMore: hasNextPage ?? false,
+    isFetching: isFetchingNextPage,
+  });
 
   if (query.length < 2) {
     return (
@@ -113,7 +80,7 @@ export default function UserSearchResults({ query, authToken }: UserSearchResult
     );
   }
 
-  if (loading && results.length === 0) {
+  if (isLoading && results.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
         <CircularProgress />
@@ -121,11 +88,11 @@ export default function UserSearchResults({ query, authToken }: UserSearchResult
     );
   }
 
-  if (!loading && results.length === 0 && query.length >= 2) {
+  if (!isLoading && results.length === 0 && debouncedQuery.length >= 2) {
     return (
       <Box sx={{ py: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          No users or setters found for &quot;{query}&quot;
+          No users or setters found for &quot;{debouncedQuery}&quot;
         </Typography>
       </Box>
     );
@@ -135,7 +102,6 @@ export default function UserSearchResults({ query, authToken }: UserSearchResult
     <>
       <List>
         {results.map((result) => {
-          // User result (may also have setter info if linked)
           if (result.user) {
             return (
               <ListItem
@@ -184,7 +150,6 @@ export default function UserSearchResults({ query, authToken }: UserSearchResult
             );
           }
 
-          // Setter-only result (no linked Boardsesh user)
           if (result.setter) {
             return (
               <ListItem
@@ -238,18 +203,9 @@ export default function UserSearchResults({ query, authToken }: UserSearchResult
           return null;
         })}
       </List>
-      {hasMore && (
-        <Box sx={{ p: 2 }}>
-          <MuiButton
-            onClick={handleLoadMore}
-            disabled={loading}
-            variant="outlined"
-            fullWidth
-          >
-            {loading ? 'Loading...' : `Load more (${results.length} of ${totalCount})`}
-          </MuiButton>
-        </Box>
-      )}
+      <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+        {isFetchingNextPage && <CircularProgress size={24} />}
+      </Box>
     </>
   );
 }

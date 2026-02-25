@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import GymCard from '@/app/components/gym-entity/gym-card';
 import GymDetail from '@/app/components/gym-entity/gym-detail';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -14,7 +14,9 @@ import {
   type SearchGymsQueryVariables,
   type SearchGymsQueryResponse,
 } from '@/app/lib/graphql/operations';
-import type { Gym } from '@boardsesh/shared-schema';
+import type { Gym, GymConnection } from '@boardsesh/shared-schema';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 interface GymSearchResultsProps {
   query: string;
@@ -22,75 +24,41 @@ interface GymSearchResultsProps {
 }
 
 export default function GymSearchResults({ query, authToken }: GymSearchResultsProps) {
-  const [results, setResults] = useState<Gym[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
   const [selectedGymUuid, setSelectedGymUuid] = useState<string | null>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debouncedQuery = useDebouncedValue(query, 300);
 
-  const fetchResults = useCallback(async (searchQuery: string, offset = 0) => {
-    if (searchQuery.length < 2) {
-      setResults([]);
-      setTotalCount(0);
-      setHasMore(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<
+    GymConnection,
+    Error
+  >({
+    queryKey: ['searchGyms', debouncedQuery, authToken],
+    queryFn: async ({ pageParam }) => {
       const client = createGraphQLHttpClient(authToken);
       const response = await client.request<SearchGymsQueryResponse, SearchGymsQueryVariables>(
         SEARCH_GYMS,
-        { input: { query: searchQuery, limit: 20, offset } }
+        { input: { query: debouncedQuery, limit: 20, offset: pageParam as number } }
       );
+      return response.searchGyms;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (!lastPage.hasMore) return undefined;
+      return (lastPageParam as number) + lastPage.gyms.length;
+    },
+    enabled: debouncedQuery.length >= 2,
+    staleTime: 30 * 1000,
+  });
 
-      if (offset === 0) {
-        setResults(response.searchGyms.gyms);
-      } else {
-        setResults((prev) => [...prev, ...response.searchGyms.gyms]);
-      }
-      setHasMore(response.searchGyms.hasMore);
-      setTotalCount(response.searchGyms.totalCount);
-    } catch (error) {
-      console.error('Gym search failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [authToken]);
+  const results: Gym[] = useMemo(
+    () => data?.pages.flatMap((p) => p.gyms) ?? [],
+    [data],
+  );
 
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
-    if (query.length < 2) {
-      setResults([]);
-      setTotalCount(0);
-      setHasMore(false);
-      return () => {
-        if (debounceRef.current) {
-          clearTimeout(debounceRef.current);
-        }
-      };
-    }
-
-    debounceRef.current = setTimeout(() => {
-      fetchResults(query);
-    }, 300);
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [query, fetchResults]);
-
-  const handleLoadMore = () => {
-    if (!loading && hasMore) {
-      fetchResults(query, results.length);
-    }
-  };
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    hasMore: hasNextPage ?? false,
+    isFetching: isFetchingNextPage,
+  });
 
   if (query.length < 2) {
     return (
@@ -102,7 +70,7 @@ export default function GymSearchResults({ query, authToken }: GymSearchResultsP
     );
   }
 
-  if (loading && results.length === 0) {
+  if (isLoading && results.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
         <CircularProgress />
@@ -110,11 +78,11 @@ export default function GymSearchResults({ query, authToken }: GymSearchResultsP
     );
   }
 
-  if (!loading && results.length === 0 && query.length >= 2) {
+  if (!isLoading && results.length === 0 && debouncedQuery.length >= 2) {
     return (
       <Box sx={{ py: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          No gyms found for &quot;{query}&quot;
+          No gyms found for &quot;{debouncedQuery}&quot;
         </Typography>
       </Box>
     );
@@ -127,18 +95,9 @@ export default function GymSearchResults({ query, authToken }: GymSearchResultsP
           <GymCard key={gym.uuid} gym={gym} onClick={(g) => setSelectedGymUuid(g.uuid)} />
         ))}
       </Stack>
-      {hasMore && (
-        <Box sx={{ p: 2 }}>
-          <MuiButton
-            onClick={handleLoadMore}
-            disabled={loading}
-            variant="outlined"
-            fullWidth
-          >
-            {loading ? 'Loading...' : `Load more (${results.length} of ${totalCount})`}
-          </MuiButton>
-        </Box>
-      )}
+      <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+        {isFetchingNextPage && <CircularProgress size={24} />}
+      </Box>
       {selectedGymUuid && (
         <GymDetail
           gymUuid={selectedGymUuid}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import MuiButton from '@mui/material/Button';
@@ -12,6 +12,7 @@ import type { GroupedNotification } from '@boardsesh/shared-schema';
 import { useUnreadNotificationCount } from '@/app/hooks/use-unread-notification-count';
 import { useGroupedNotifications } from '@/app/hooks/use-grouped-notifications';
 import { useMarkGroupAsRead, useMarkAllAsRead } from '@/app/hooks/use-mark-notifications-read';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 import NotificationItem from './notification-item';
 
 export default function NotificationList() {
@@ -61,41 +62,11 @@ export default function NotificationList() {
     [markGroupAsReadMutation, router, navigateToClimb],
   );
 
-  // Inline IntersectionObserver — same pattern as climbs-list.tsx
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const handleLoadMoreRef = useRef(handleLoadMore);
-  const hasMoreRef = useRef(hasMore);
-  const isFetchingMoreRef = useRef(isFetchingMore);
-  handleLoadMoreRef.current = handleLoadMore;
-  hasMoreRef.current = hasMore;
-  isFetchingMoreRef.current = isFetchingMore;
-
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries;
-      if (target.isIntersecting && hasMoreRef.current && !isFetchingMoreRef.current) {
-        handleLoadMoreRef.current();
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const element = sentinelRef.current;
-    if (!element) return;
-
-    const observer = new IntersectionObserver(handleObserver, {
-      root: null,
-      rootMargin: '200px',
-      threshold: 0,
-    });
-
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [handleObserver]);
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: handleLoadMore,
+    hasMore,
+    isFetching: isFetchingMore,
+  });
 
   if (isLoading) {
     return (
@@ -141,11 +112,9 @@ export default function NotificationList() {
       )}
 
       {/* Infinite scroll sentinel */}
-      {hasMore && (
-        <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
-          {isFetchingMore && <CircularProgress size={16} />}
-        </Box>
-      )}
+      <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+        {isFetchingMore && <CircularProgress size={16} />}
+      </Box>
     </Box>
   );
 }
