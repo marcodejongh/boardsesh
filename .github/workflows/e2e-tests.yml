@@ -21,6 +21,8 @@ jobs:
   e2e:
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-noble
 
     services:
       postgres:
@@ -29,8 +31,6 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
           POSTGRES_DB: main
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -42,17 +42,22 @@ jobs:
         env:
           PG_CONNECTION_STRING: postgres://postgres:password@postgres:5432/main
           POSTGRES_DB: main
-        ports:
-          - 4444:4444
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Point db.localtest.me to neon-proxy service
+      run: |
+        # Resolve the neon-proxy service IP and add a hosts entry so the
+        # Neon driver's fetchEndpoint (http://db.localtest.me:4444/sql) reaches
+        # the proxy container instead of localhost.
+        PROXY_IP=$(getent hosts neon-proxy | awk '{ print $1 }')
+        echo "$PROXY_IP db.localtest.me" >> /etc/hosts
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
 
     - name: Install dependencies
       run: npm ci --legacy-peer-deps
@@ -62,10 +67,6 @@ jobs:
 
     - name: Build db package
       run: npm run build --workspace=@boardsesh/db
-
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps chromium
-      working-directory: packages/web
 
     - name: Build backend
       run: npm run build --workspace=boardsesh-backend
@@ -83,7 +84,7 @@ jobs:
       run: npx drizzle-kit migrate
       working-directory: packages/db
       env:
-        DATABASE_URL: postgresql://postgres:password@db.localtest.me:5432/main
+        DATABASE_URL: postgresql://postgres:password@postgres:5432/main
 
     - name: Start backend and web server, then run E2E tests
       run: |
