@@ -4,84 +4,86 @@ import { test, expect, Page } from '@playwright/test';
  * E2E tests for queue persistence across navigation.
  *
  * These tests verify that the queue state is preserved when navigating
- * away from the board page and back.
+ * away from the board page and back, using the queue bridge architecture.
  */
 
-// Helper to wait for the page to be ready
+// Helper to wait for the board page to be ready
 async function waitForBoardPage(page: Page) {
-  // Wait for the queue control bar to be visible
-  await page.waitForSelector('[data-testid="queue-control-bar"]', { timeout: 30000 }).catch(() => {
-    // Fallback: wait for any content to load
-    return page.waitForLoadState('networkidle');
-  });
+  await page
+    .waitForSelector('#onboarding-climb-card, [data-testid="climb-card"]', {
+      timeout: 30000,
+    })
+    .catch(() => {
+      return page.waitForLoadState('networkidle');
+    });
 }
 
-// Helper to add a climb to the queue
+// Helper to add a climb to the queue via double-click (list mode requires double-click)
 async function addClimbToQueue(page: Page) {
-  // Click on a climb card to add it to queue
-  const climbCard = page.locator('[data-testid="climb-card"]').first();
-  if (await climbCard.isVisible()) {
-    await climbCard.click();
-    // Wait for the climb to be added
-    await page.waitForTimeout(500);
-  }
+  const climbCard = page.locator('#onboarding-climb-card');
+  await expect(climbCard).toBeVisible({ timeout: 15000 });
+  await climbCard.dblclick();
+  await page.waitForSelector('[data-testid="queue-control-bar"]', { timeout: 10000 });
+}
+
+// Helper to verify the queue bar is visible (meaning queue has items)
+async function verifyQueueHasItems(page: Page) {
+  await expect(page.locator('[data-testid="queue-control-bar"]')).toBeVisible({ timeout: 10000 });
+}
+
+// Helper to get the current climb name from the queue toggle button
+async function getQueueClimbName(page: Page): Promise<string> {
+  const queueToggle = page.locator('#onboarding-queue-toggle');
+  await expect(queueToggle).toBeVisible({ timeout: 5000 });
+  return ((await queueToggle.textContent()) ?? '').trim();
 }
 
 test.describe('Queue Persistence - Local Mode', () => {
-  // Use a known board configuration for testing
   const boardUrl = '/kilter/original/12x12-square/screw_bolt/40/list';
 
   test.beforeEach(async ({ page }) => {
-    // Navigate to the board page
     await page.goto(boardUrl);
     await waitForBoardPage(page);
   });
 
-  test('queue should persist when navigating to settings and back', async ({ page }) => {
-    // Get initial queue state
-    const initialQueueCount = await page.locator('[data-testid="queue-item"]').count();
+  test('queue should persist when navigating to home and back', async ({ page }) => {
+    // Add a climb to the queue
+    await addClimbToQueue(page);
 
-    // Add a climb to the queue if none exist
-    if (initialQueueCount === 0) {
-      await addClimbToQueue(page);
-    }
+    // Verify queue bar is visible and capture the climb name
+    await verifyQueueHasItems(page);
+    const climbNameBefore = await getQueueClimbName(page);
+    expect(climbNameBefore).toBeTruthy();
 
-    // Verify queue has items
-    const queueCountBefore = await page.locator('[data-testid="queue-item"]').count();
-    expect(queueCountBefore).toBeGreaterThan(0);
+    // Navigate to home via bottom tab bar (client-side navigation preserves state)
+    await page.getByRole('button', { name: 'Home' }).last().click();
+    await expect(page).toHaveURL(/localhost:3000\/($|\?)/, { timeout: 15000 });
 
-    // Navigate to settings
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    // Queue bar should still be visible on home page
+    await verifyQueueHasItems(page);
 
-    // Verify we're on settings page
-    await expect(page).toHaveURL(/\/settings/);
+    // Navigate back to the board via bottom tab bar
+    await page.getByRole('button', { name: 'Climb', exact: true }).click();
+    await expect(page).toHaveURL(/\/kilter\//, { timeout: 20000 });
 
-    // Navigate back to the board
-    await page.goto(boardUrl);
-    await waitForBoardPage(page);
-
-    // Verify queue items are preserved
-    const queueCountAfter = await page.locator('[data-testid="queue-item"]').count();
-    expect(queueCountAfter).toBe(queueCountBefore);
+    // Verify queue bar is still visible with the same climb
+    await verifyQueueHasItems(page);
+    const climbNameAfter = await getQueueClimbName(page);
+    expect(climbNameAfter).toBe(climbNameBefore);
   });
 
   test('global bar should appear when navigating away with queue items', async ({ page }) => {
     // Add a climb to the queue
     await addClimbToQueue(page);
 
-    // Verify queue has items
-    const queueCount = await page.locator('[data-testid="queue-item"]').count();
-    if (queueCount === 0) {
-      test.skip();
-      return;
-    }
+    // Verify queue bar is visible
+    await verifyQueueHasItems(page);
 
-    // Navigate to settings (or any non-board page)
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    // Navigate to home via bottom tab bar (client-side navigation)
+    await page.getByRole('button', { name: 'Home' }).last().click();
+    await expect(page).toHaveURL(/localhost:3000\/($|\?)/, { timeout: 15000 });
 
-    // Check for queue control bar (same unified component used everywhere)
+    // Check for queue control bar on the non-board page
     const globalBar = page.locator('[data-testid="queue-control-bar"]');
     await expect(globalBar).toBeVisible({ timeout: 5000 });
   });
@@ -112,7 +114,6 @@ test.describe('Queue Persistence - Local Mode', () => {
     };
 
     // 1. Navigate to Home via bottom tab bar (client-side navigation preserves React state)
-    // Use last() in case both board-route and root bars briefly coexist during transition
     await page.getByRole('button', { name: 'Home' }).last().click();
     await expect(page).toHaveURL(/localhost:3000\/($|\?)/, { timeout: 15000 });
     await verifyQueueBarShowsClimb();
@@ -123,10 +124,7 @@ test.describe('Queue Persistence - Local Mode', () => {
     await expect(settingsLink).toBeVisible({ timeout: 5000 });
     // Wait for drawer slide animation to settle before clicking
     await page.waitForTimeout(500);
-    await Promise.all([
-      page.waitForURL(/\/settings/, { timeout: 15000 }),
-      settingsLink.click(),
-    ]);
+    await Promise.all([page.waitForURL(/\/settings/, { timeout: 15000 }), settingsLink.click()]);
     await verifyQueueBarShowsClimb();
 
     // 3. Navigate to Your Library via bottom tab bar
@@ -146,57 +144,48 @@ test.describe('Queue Persistence - Local Mode', () => {
     await verifyQueueBarShowsClimb(15000);
   });
 
-  test('clicking global bar should navigate back to board', async ({ page }) => {
+  test('clicking global bar thumbnail should navigate back to board', async ({ page }) => {
     // Add a climb to the queue
     await addClimbToQueue(page);
 
-    // Verify queue has items
-    const queueCount = await page.locator('[data-testid="queue-item"]').count();
-    if (queueCount === 0) {
-      test.skip();
-      return;
-    }
+    // Verify queue bar is visible
+    await verifyQueueHasItems(page);
 
-    // Navigate to settings
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    // Navigate to home via bottom tab bar (client-side navigation preserves queue state)
+    await page.getByRole('button', { name: 'Home' }).last().click();
+    await expect(page).toHaveURL(/localhost:3000\/($|\?)/, { timeout: 15000 });
 
-    // Click the queue control bar
-    const globalBar = page.locator('[data-testid="queue-control-bar"]');
-    if (await globalBar.isVisible()) {
-      await globalBar.click();
+    // Click the thumbnail link within the queue bar (not the bar itself, which opens the play drawer)
+    const queueBar = page.locator('[data-testid="queue-control-bar"]');
+    await expect(queueBar).toBeVisible({ timeout: 5000 });
+    const thumbnailLink = queueBar.locator('a').first();
+    await thumbnailLink.click();
 
-      // Verify we're back on a board page
-      await expect(page).toHaveURL(/\/(kilter|tension)\//);
-    }
+    // Verify we're back on a board page
+    await expect(page).toHaveURL(/\/(kilter|tension)\//, { timeout: 10000 });
   });
 });
 
 test.describe('Queue Persistence - Board Switch', () => {
-  test('queue should clear when switching to different board configuration', async ({ page }) => {
+  test('queue should persist across angle changes within same board', async ({ page }) => {
     const boardUrl1 = '/kilter/original/12x12-square/screw_bolt/40/list';
     const boardUrl2 = '/kilter/original/12x12-square/screw_bolt/45/list'; // Different angle
 
-    // Navigate to first board
+    // Navigate to first board and add a climb
     await page.goto(boardUrl1);
     await waitForBoardPage(page);
-
-    // Add a climb to the queue
     await addClimbToQueue(page);
 
-    // Get queue count
-    const queueCountOnBoard1 = await page.locator('[data-testid="queue-item"]').count();
+    // Verify queue bar is visible and capture climb name
+    await verifyQueueHasItems(page);
+    const climbName = await getQueueClimbName(page);
+    expect(climbName).toBeTruthy();
 
-    // Navigate to different board configuration
+    // Navigate to different angle
     await page.goto(boardUrl2);
     await waitForBoardPage(page);
 
-    // Queue should be empty (cleared on board switch)
-    const queueCountOnBoard2 = await page.locator('[data-testid="queue-item"]').count();
-
-    // If we had items before, they should be cleared
-    if (queueCountOnBoard1 > 0) {
-      expect(queueCountOnBoard2).toBe(0);
-    }
+    // Queue bar should still be visible (queue bridge persists across angle changes)
+    await verifyQueueHasItems(page);
   });
 });
