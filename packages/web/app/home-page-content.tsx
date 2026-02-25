@@ -59,6 +59,7 @@ export default function HomePageContent({
   const [subscriptions, setSubscriptions] = useState<NewClimbSubscription[]>([]);
 
   const isAuthenticated = status === 'authenticated' && !!session?.user;
+  const authSessionLoading = status === 'loading';
   const { token: wsAuthToken } = useWsAuthToken();
   const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(isAuthenticated);
 
@@ -199,6 +200,7 @@ export default function HomePageContent({
             </Box>
             <ActivityFeed
               isAuthenticated={isAuthenticated}
+              authSessionLoading={authSessionLoading}
               boardUuid={selectedBoardUuid}
               sortBy={sortBy}
               onFindClimbers={() => setSearchOpen(true)}
