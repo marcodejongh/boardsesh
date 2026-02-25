@@ -1,14 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { PartyProfileProvider } from '../party-manager/party-profile-context';
 import { PersistentSessionProvider } from '../persistent-session';
 import { QueueBridgeProvider, useQueueBridgeBoardInfo } from '../queue-control/queue-bridge-context';
+import { useQueueContext } from '../graphql-queue';
 import QueueControlBar from '../queue-control/queue-control-bar';
 import BottomTabBar from '../bottom-tab-bar/bottom-tab-bar';
 import { BoardProvider } from '../board-provider/board-provider-context';
 import { ConnectionSettingsProvider } from '../connection-manager/connection-settings-context';
 import { BluetoothProvider } from '../board-bluetooth-control/bluetooth-context';
+import { FavoritesProvider } from '../climb-actions/favorites-batch-context';
+import { PlaylistsProvider } from '../climb-actions/playlists-batch-context';
+import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
 import ErrorBoundary from '../error-boundary';
 import bottomBarStyles from '../bottom-tab-bar/bottom-bar-wrapper.module.css';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
@@ -53,7 +57,7 @@ function RootBottomBar({ boardConfigs }: { boardConfigs: BoardConfigData }) {
           <BoardProvider boardName={boardDetails.board_name}>
             <ConnectionSettingsProvider>
               <BluetoothProvider boardDetails={boardDetails}>
-                <QueueControlBar boardDetails={boardDetails} angle={angle} />
+                <RootQueueControlBarWithProviders boardDetails={boardDetails} angle={angle} />
               </BluetoothProvider>
             </ConnectionSettingsProvider>
           </BoardProvider>
@@ -61,5 +65,43 @@ function RootBottomBar({ boardConfigs }: { boardConfigs: BoardConfigData }) {
       )}
       <BottomTabBar boardConfigs={boardConfigs} />
     </div>
+  );
+}
+
+/**
+ * Wraps QueueControlBar with FavoritesProvider and PlaylistsProvider.
+ * Must be rendered inside QueueContext.Provider (via QueueBridge) so useQueueContext works.
+ * React Query deduplicates API calls with the board route's providers.
+ */
+function RootQueueControlBarWithProviders({
+  boardDetails,
+  angle,
+}: {
+  boardDetails: NonNullable<ReturnType<typeof useQueueBridgeBoardInfo>['boardDetails']>;
+  angle: number;
+}) {
+  const { queue, currentClimb } = useQueueContext();
+
+  const climbUuids = useMemo(() => {
+    const queueUuids = queue.map((item) => item.climb?.uuid).filter(Boolean) as string[];
+    if (currentClimb?.uuid) {
+      queueUuids.push(currentClimb.uuid);
+    }
+    return Array.from(new Set(queueUuids)).sort();
+  }, [queue, currentClimb]);
+
+  const { favoritesProviderProps, playlistsProviderProps } = useClimbActionsData({
+    boardName: boardDetails.board_name,
+    layoutId: boardDetails.layout_id,
+    angle,
+    climbUuids,
+  });
+
+  return (
+    <FavoritesProvider {...favoritesProviderProps}>
+      <PlaylistsProvider {...playlistsProviderProps}>
+        <QueueControlBar boardDetails={boardDetails} angle={angle} />
+      </PlaylistsProvider>
+    </FavoritesProvider>
   );
 }
