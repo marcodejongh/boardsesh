@@ -22,7 +22,7 @@ jobs:
 
     services:
       postgres:
-        image: ghcr.io/marcodejongh/boardsesh-postgres-postgis:latest
+        image: ghcr.io/marcodejongh/boardsesh-dev-db:latest
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -67,7 +67,7 @@ jobs:
 
     - name: Run database migrations
       run: npx drizzle-kit migrate
-      working-directory: packages/web
+      working-directory: packages/db
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/boardsesh_test
 
