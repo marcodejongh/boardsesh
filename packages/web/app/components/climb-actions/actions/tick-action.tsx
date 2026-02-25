@@ -138,9 +138,13 @@ export function TickAction({
   const icon = <CheckOutlined sx={{ fontSize: iconSize }} />;
   const badgeColor = hasSuccessfulAscent ? themeTokens.colors.success : themeTokens.colors.error;
 
-  // Whether to skip the board selector and go straight to the form
-  // (either we have a BoardProvider already, or there are no matching boards to choose from)
-  const skipBoardSelector = !needsBoardSelector || (!isLoadingBoards && matchingBoards.length === 0);
+  // Whether to show the board selector or go straight to the form.
+  // Show board selector when outside a board route, authenticated, and either still loading or have matching boards.
+  const hasMatchingBoards = !isLoadingBoards && matchingBoards.length > 0;
+  const noMatchingBoards = needsBoardSelector && !isLoadingBoards && matchingBoards.length === 0;
+  const showBoardSelector = needsBoardSelector && !selectedBoard && (hasMatchingBoards || isLoadingBoards);
+
+  const boardTypeLabel = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
 
   const renderBoardSelector = () => (
     <Stack spacing={2} sx={{ py: 2 }}>
@@ -169,6 +173,14 @@ export function TickAction({
     />
   );
 
+  const renderNoMatchingBoardsMessage = () => (
+    <Stack spacing={2} sx={{ py: 2, textAlign: 'center' }}>
+      <Typography variant="body2" color="text.secondary">
+        {`You don\u2019t have any ${boardTypeLabel} boards saved yet. Logging tick for ${boardTypeLabel}.`}
+      </Typography>
+    </Stack>
+  );
+
   const drawers = (
     <>
       {boardProvider ? (
@@ -194,18 +206,19 @@ export function TickAction({
       ) : isAuthenticated ? (
         // Outside board route, authenticated - board selector + log form
         <SwipeableDrawer
-          title={selectedBoard || skipBoardSelector ? 'Log Ascent' : 'Select Board'}
+          title={showBoardSelector ? 'Select Board' : 'Log Ascent'}
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
-          styles={{ wrapper: { height: selectedBoard || skipBoardSelector ? '100%' : '60%' } }}
+          styles={{ wrapper: { height: showBoardSelector ? '60%' : '100%' } }}
         >
-          {selectedBoard || skipBoardSelector ? (
+          {showBoardSelector ? (
+            renderBoardSelector()
+          ) : (
             <BoardProvider boardName={(selectedBoard?.boardType ?? boardDetails.board_name) as BoardName}>
+              {noMatchingBoards && renderNoMatchingBoardsMessage()}
               {renderLogAscentForm()}
             </BoardProvider>
-          ) : (
-            renderBoardSelector()
           )}
         </SwipeableDrawer>
       ) : (
