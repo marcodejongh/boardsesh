@@ -43,6 +43,7 @@ interface HomePageContentProps {
   initialTrendingFeed?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean } | null;
   isAuthenticatedSSR?: boolean;
   initialFeedSource?: 'personalized' | 'trending';
+  initialMyBoards?: UserBoard[] | null;
 }
 
 export default function HomePageContent({
@@ -53,6 +54,7 @@ export default function HomePageContent({
   initialTrendingFeed,
   isAuthenticatedSSR,
   initialFeedSource,
+  initialMyBoards,
 }: HomePageContentProps) {
   const { status } = useSession();
   const router = useRouter();
@@ -65,7 +67,7 @@ export default function HomePageContent({
   // Trust the SSR hint during the loading phase to prevent flash of unauthenticated content
   const isAuthenticated = status === 'authenticated' ? true : (status === 'loading' ? (isAuthenticatedSSR ?? false) : false);
   const { token: wsAuthToken } = useWsAuthToken();
-  const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(isAuthenticated);
+  const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(isAuthenticated, 50, initialMyBoards);
 
   // Read state from URL params (with fallbacks to server-provided initial values)
   const activeTab = (searchParams.get('tab') === 'newClimbs' ? 'newClimbs' : (searchParams.get('tab') || initialTab)) as 'activity' | 'newClimbs';

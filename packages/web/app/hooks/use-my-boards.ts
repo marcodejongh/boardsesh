@@ -7,18 +7,26 @@ import type { UserBoard } from '@boardsesh/shared-schema';
 /**
  * Fetches the current user's boards (owned + followed) via GraphQL.
  * Boards are fetched when `enabled` becomes true and the user is authenticated.
+ *
+ * When `initialBoards` is provided (from SSR), they are used as the initial state
+ * so the UI renders immediately without a loading skeleton. The client-side fetch
+ * still runs to refresh the data.
  */
-export function useMyBoards(enabled: boolean, limit = 50) {
+export function useMyBoards(enabled: boolean, limit = 50, initialBoards?: UserBoard[] | null) {
+  const hasInitialData = initialBoards != null && initialBoards.length > 0;
   const { token, isAuthenticated } = useWsAuthToken();
-  const [boards, setBoards] = useState<UserBoard[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [boards, setBoards] = useState<UserBoard[]>(initialBoards ?? []);
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enabled || !isAuthenticated || !token) return;
 
     let cancelled = false;
-    setIsLoading(true);
+    // Only show loading if we don't already have data
+    if (boards.length === 0) {
+      setIsLoading(true);
+    }
     setError(null);
 
     const client = createGraphQLHttpClient(token);
@@ -38,6 +46,7 @@ export function useMyBoards(enabled: boolean, limit = 50) {
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, isAuthenticated, token, limit]);
 
   return { boards, isLoading, error };

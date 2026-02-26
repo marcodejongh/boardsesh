@@ -167,6 +167,28 @@ async function executeAuthenticatedGraphQL<T = unknown, V extends Variables = Va
 type ActivityFeedResult = { items: import('@boardsesh/shared-schema').ActivityFeedItem[]; cursor: string | null; hasMore: boolean };
 
 /**
+ * Server-side fetch of the current user's boards (owned + followed).
+ * NOT cached — personalized data is per-user.
+ */
+export async function serverMyBoards(
+  authToken: string,
+): Promise<import('@boardsesh/shared-schema').UserBoard[] | null> {
+  const { GET_MY_BOARDS } = await import('@/app/lib/graphql/operations/boards');
+  type GetMyBoardsQueryResponse = import('@/app/lib/graphql/operations/boards').GetMyBoardsQueryResponse;
+
+  try {
+    const response = await executeAuthenticatedGraphQL<GetMyBoardsQueryResponse>(
+      GET_MY_BOARDS,
+      { input: { limit: 50, offset: 0 } },
+      authToken,
+    );
+    return response.myBoards.boards;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Cached server-side trending feed query.
  * Used for SSR on the home page for unauthenticated users.
  */
