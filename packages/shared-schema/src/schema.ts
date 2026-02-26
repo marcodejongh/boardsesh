@@ -2572,6 +2572,7 @@ export const typeDefs = /* GraphQL */ `
     sessionId: ID!
     sessionType: String!
     sessionName: String
+    ownerUserId: ID
     participants: [SessionFeedParticipant!]!
     totalSends: Int!
     totalFlashes: Int!
@@ -2630,6 +2631,7 @@ export const typeDefs = /* GraphQL */ `
     sessionId: ID!
     sessionType: String!
     sessionName: String
+    ownerUserId: ID
     participants: [SessionFeedParticipant!]!
     totalSends: Int!
     totalFlashes: Int!

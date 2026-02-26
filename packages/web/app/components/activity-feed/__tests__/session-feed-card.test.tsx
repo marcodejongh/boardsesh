@@ -47,6 +47,7 @@ function makeSession(overrides: Partial<SessionFeedItem> = {}): SessionFeedItem 
     sessionId: 'session-1',
     sessionType: 'inferred',
     sessionName: null,
+    ownerUserId: 'user-1',
     participants: [{
       userId: 'user-1',
       displayName: 'Test User',

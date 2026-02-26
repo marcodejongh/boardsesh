@@ -760,6 +760,7 @@ export type SessionFeedItem = {
   sessionId: string;
   sessionType: 'party' | 'inferred';
   sessionName?: string | null;
+  ownerUserId?: string | null;
   participants: SessionFeedParticipant[];
   totalSends: number;
   totalFlashes: number;
@@ -809,6 +810,7 @@ export type SessionDetail = {
   sessionId: string;
   sessionType: 'party' | 'inferred';
   sessionName?: string | null;
+  ownerUserId?: string | null;
   participants: SessionFeedParticipant[];
   totalSends: number;
   totalFlashes: number;

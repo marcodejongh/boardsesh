@@ -105,7 +105,8 @@ Tracks when a user is manually added to another user's session.
 **Resolver:** `packages/backend/src/graphql/resolvers/social/session-feed.ts`
 
 The `sessionGroupedFeed` query returns sessions ordered by `last_tick_at`. Each session includes:
-- Participant info with per-user stats
+- `ownerUserId` — the actual session owner (`inferred_sessions.user_id` or `board_sessions.created_by_user_id`), used by the frontend to determine who can be removed
+- Participant info with per-user stats (sorted by sends DESC)
 - Grade distribution
 - Board types used
 - Hardest grade sent

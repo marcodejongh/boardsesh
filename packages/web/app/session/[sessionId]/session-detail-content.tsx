@@ -198,8 +198,8 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   // For multi-user sessions, group ticks by climb to show per-user results
   const climbGroups = isMultiUser ? groupTicksByClimb(ticks) : null;
 
-  // Determine which user is the "owner" (first participant by convention)
-  const ownerUserId = participants[0]?.userId;
+  // Use the actual owner from the backend (inferred_sessions.userId or board_sessions.created_by_user_id)
+  const ownerUserId = session.ownerUserId ?? null;
 
   const handleStartEdit = useCallback(() => {
     setEditName(sessionName || '');

@@ -199,6 +199,7 @@ export const sessionFeedQueries = {
           sessionId: row.session_id,
           sessionType: row.session_type as 'party' | 'inferred',
           sessionName: sessionMeta?.name || null,
+          ownerUserId: sessionMeta?.ownerUserId || null,
           participants,
           totalSends: Number(row.total_sends),
           totalFlashes: Number(row.total_flashes),
@@ -381,11 +382,15 @@ export const sessionFeedQueries = {
     const goal = isParty
       ? partySession?.goal || null
       : inferredSession?.description || null;
+    const ownerUserId = isParty
+      ? partySession?.createdByUserId || null
+      : inferredSession?.userId || null;
 
     return {
       sessionId,
       sessionType: isParty ? 'party' : 'inferred',
       sessionName,
+      ownerUserId,
       participants,
       totalSends,
       totalFlashes,
@@ -540,22 +545,28 @@ function buildGradeDistributionFromTicks(
 async function fetchSessionMeta(
   sessionId: string,
   sessionType: string,
-): Promise<{ name: string | null; goal: string | null } | null> {
+): Promise<{ name: string | null; goal: string | null; ownerUserId: string | null } | null> {
   if (sessionType === 'party') {
     const [session] = await db
-      .select({ name: dbSchema.boardSessions.name, goal: dbSchema.boardSessions.goal })
+      .select({
+        name: dbSchema.boardSessions.name,
+        goal: dbSchema.boardSessions.goal,
+        createdByUserId: dbSchema.boardSessions.createdByUserId,
+      })
       .from(dbSchema.boardSessions)
       .where(eq(dbSchema.boardSessions.id, sessionId))
       .limit(1);
 
-    return session || null;
+    if (!session) return null;
+    return { name: session.name, goal: session.goal, ownerUserId: session.createdByUserId };
   }
 
-  // Inferred session — look up name and description
+  // Inferred session — look up name, description, and owner
   const [session] = await db
     .select({
       name: dbSchema.inferredSessions.name,
       description: dbSchema.inferredSessions.description,
+      userId: dbSchema.inferredSessions.userId,
     })
     .from(dbSchema.inferredSessions)
     .where(eq(dbSchema.inferredSessions.id, sessionId))
@@ -566,5 +577,6 @@ async function fetchSessionMeta(
   return {
     name: session.name || null,
     goal: session.description || null,
+    ownerUserId: session.userId,
   };
 }

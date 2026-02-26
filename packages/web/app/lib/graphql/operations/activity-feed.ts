@@ -9,6 +9,7 @@ const SESSION_FEED_ITEM_FIELDS = `
   sessionId
   sessionType
   sessionName
+  ownerUserId
   participants {
     userId
     displayName
