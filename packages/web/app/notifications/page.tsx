@@ -1,16 +1,12 @@
 import React from 'react';
 import Box from '@mui/material/Box';
 import MuiTypography from '@mui/material/Typography';
-import { cookies } from 'next/headers';
 import { NotificationList } from '@/app/components/notifications';
 import { serverGroupedNotifications } from '@/app/lib/graphql/server-cached-client';
+import { getServerAuthToken } from '@/app/lib/auth/server-auth';
 
 export default async function NotificationsPage() {
-  // Read the NextAuth JWT from the cookie (same token the ws-auth endpoint returns)
-  const cookieStore = await cookies();
-  const authToken =
-    cookieStore.get('__Secure-next-auth.session-token')?.value ??
-    cookieStore.get('next-auth.session-token')?.value;
+  const authToken = await getServerAuthToken();
 
   let initialData = null;
   if (authToken) {

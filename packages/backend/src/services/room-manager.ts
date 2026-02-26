@@ -12,6 +12,7 @@ import {
   initializeDistributedState,
   getDistributedState,
   shutdownDistributedState,
+  forceResetDistributedState,
 } from './distributed-state';
 
 /**
@@ -80,6 +81,31 @@ class RoomManager {
   reset(): void {
     this.clients.clear();
     this.sessions.clear();
+    this.redisStore = null;
+    this.distributedState = null;
+
+    // Clear all pending debounce timers
+    for (const timer of this.postgresWriteTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.postgresWriteTimers.clear();
+    this.pendingWrites.clear();
+
+    // Clear grace timers
+    for (const timer of this.sessionGraceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.sessionGraceTimers.clear();
+
+    // Clear retry state
+    this.writeRetryAttempts.clear();
+    for (const timer of this.retryTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.retryTimers.clear();
+
+    // Reset the distributed state singleton so initialize() creates a fresh one
+    forceResetDistributedState();
   }
 
   /**
@@ -676,10 +702,12 @@ class RoomManager {
     // Write to Redis immediately (source of truth for active sessions)
     if (this.redisStore) {
       await this.redisStore.updateQueueState(sessionId, queue, currentClimbQueueItem, newVersion, newSequence, stateHash);
+      // Debounce Postgres write (30 seconds) - eventual consistency when Redis provides fast reads
+      this.schedulePostgresWrite(sessionId, queue, currentClimbQueueItem, newVersion, newSequence);
+    } else {
+      // No Redis - write to Postgres immediately since it's the only read source
+      await this.writeQueueStateToPostgres(sessionId, { queue, currentClimbQueueItem, version: newVersion, sequence: newSequence });
     }
-
-    // Debounce Postgres write (30 seconds) - eventual consistency
-    this.schedulePostgresWrite(sessionId, queue, currentClimbQueueItem, newVersion, newSequence);
 
     return { version: newVersion, sequence: newSequence, stateHash };
   }
@@ -833,10 +861,12 @@ class RoomManager {
       await this.redisStore.updateQueueState(
         sessionId, queue, currentClimbQueueItem, newVersion, newSequence, stateHash
       );
+      // Debounce Postgres write - eventual consistency when Redis provides fast reads
+      this.schedulePostgresWrite(sessionId, queue, currentClimbQueueItem, newVersion, newSequence);
+    } else {
+      // No Redis - write to Postgres immediately since it's the only read source
+      await this.writeQueueStateToPostgres(sessionId, { queue, currentClimbQueueItem, version: newVersion, sequence: newSequence });
     }
-
-    // Debounce Postgres write (for queue history - eventual consistency)
-    this.schedulePostgresWrite(sessionId, queue, currentClimbQueueItem, newVersion, newSequence);
 
     return { version: newVersion, sequence: newSequence, stateHash };
   }

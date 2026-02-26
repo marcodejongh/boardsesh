@@ -53,6 +53,50 @@ function mapFeedItemToGraphQL(row: typeof dbSchema.feedItems.$inferSelect) {
   };
 }
 
+type TickJoinRow = {
+  tick: typeof dbSchema.boardseshTicks.$inferSelect;
+  userName: string | null;
+  userImage: string | null;
+  userDisplayName: string | null;
+  userAvatarUrl: string | null;
+  climbName: string | null;
+  setterUsername: string | null;
+  layoutId: number | null;
+  frames: string | null;
+  difficultyName: string | null;
+};
+
+function mapTickRowToFeedItem({ tick, userName, userImage, userDisplayName, userAvatarUrl, climbName, setterUsername, layoutId, frames, difficultyName }: TickJoinRow) {
+  return {
+    id: tick.id.toString(),
+    type: 'ascent' as const,
+    entityType: 'tick' as const,
+    entityId: tick.uuid,
+    boardUuid: null,
+    actorId: tick.userId,
+    actorDisplayName: userDisplayName || userName || null,
+    actorAvatarUrl: userAvatarUrl || userImage || null,
+    climbName: climbName || 'Unknown Climb',
+    climbUuid: tick.climbUuid,
+    boardType: tick.boardType,
+    layoutId,
+    gradeName: difficultyName,
+    status: tick.status,
+    angle: tick.angle,
+    frames,
+    setterUsername,
+    commentBody: null,
+    isMirror: tick.isMirror ?? false,
+    isBenchmark: tick.isBenchmark ?? false,
+    difficulty: tick.difficulty,
+    difficultyName,
+    quality: tick.quality,
+    attemptCount: tick.attemptCount,
+    comment: tick.comment || null,
+    createdAt: tick.climbedAt,
+  };
+}
+
 export const activityFeedQueries = {
   /**
    * Materialized activity feed for authenticated user (fan-out-on-write).
@@ -218,50 +262,10 @@ export const activityFeedQueries = {
       if (intervalCond) conditions.push(intervalCond);
     }
 
-    // Helper to map a result row to the GraphQL shape
-    const mapRow = ({ tick, userName, userImage, userDisplayName, userAvatarUrl, climbName, setterUsername, layoutId, frames, difficultyName }: {
-      tick: typeof dbSchema.boardseshTicks.$inferSelect;
-      userName: string | null;
-      userImage: string | null;
-      userDisplayName: string | null;
-      userAvatarUrl: string | null;
-      climbName: string | null;
-      setterUsername: string | null;
-      layoutId: number | null;
-      frames: string | null;
-      difficultyName: string | null;
-    }) => ({
-      id: tick.id.toString(),
-      type: 'ascent' as const,
-      entityType: 'tick' as const,
-      entityId: tick.uuid,
-      boardUuid: null,
-      actorId: tick.userId,
-      actorDisplayName: userDisplayName || userName || null,
-      actorAvatarUrl: userAvatarUrl || userImage || null,
-      climbName: climbName || 'Unknown Climb',
-      climbUuid: tick.climbUuid,
-      boardType: tick.boardType,
-      layoutId,
-      gradeName: difficultyName,
-      status: tick.status,
-      angle: tick.angle,
-      frames,
-      setterUsername,
-      commentBody: null,
-      isMirror: tick.isMirror ?? false,
-      isBenchmark: tick.isBenchmark ?? false,
-      difficulty: tick.difficulty,
-      difficultyName,
-      quality: tick.quality,
-      attemptCount: tick.attemptCount,
-      comment: tick.comment || null,
-      createdAt: tick.climbedAt,
-    });
 
     // Common base JOINs builder
-    const baseQuery = () => {
-      let query = db
+    const baseQuery = () =>
+      db
         .select({
           tick: dbSchema.boardseshTicks,
           userName: dbSchema.users.name,
@@ -291,8 +295,6 @@ export const activityFeedQueries = {
             eq(dbSchema.boardseshTicks.boardType, dbSchema.boardDifficultyGrades.boardType)
           )
         );
-      return query;
-    };
 
     if (sortBy === 'new') {
       // Keyset pagination for chronological sort
@@ -320,7 +322,7 @@ export const activityFeedQueries = {
 
       const hasMore = results.length > limit;
       const resultRows = hasMore ? results.slice(0, limit) : results;
-      const items = resultRows.map(mapRow);
+      const items = resultRows.map(mapTickRowToFeedItem);
 
       let nextCursor: string | null = null;
       if (hasMore && resultRows.length > 0) {
@@ -405,7 +407,7 @@ export const activityFeedQueries = {
 
     const hasMore = results.length > limit;
     const resultRows = hasMore ? results.slice(0, limit) : results;
-    const items = resultRows.map(mapRow);
+    const items = resultRows.map(mapTickRowToFeedItem);
     const nextCursor = hasMore ? encodeOffsetCursor(offset + limit) : null;
 
     return { items, cursor: nextCursor, hasMore };

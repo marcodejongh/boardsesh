@@ -7,7 +7,7 @@ describe('Climb Query Functions', () => {
   const testParams: ParsedBoardRouteParameters = {
     board_name: 'kilter',
     layout_id: 1,
-    size_id: 1,
+    size_id: 7,
     set_ids: [1, 2],
     angle: 40,
   };

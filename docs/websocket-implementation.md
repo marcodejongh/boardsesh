@@ -832,6 +832,15 @@ sequenceDiagram
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### Postgres-Only Fallback (Single Instance Mode)
+
+When Redis is unavailable, RoomManager falls back to **Postgres-only mode**:
+
+- Queue mutations write **directly to Postgres** (no debouncing, since there's no Redis to serve as a fast read layer)
+- Session restoration from Redis is skipped; only Postgres restoration is available
+- Distributed state (cross-instance leader election, connection tracking) is disabled
+- This mode only supports a single backend instance (no horizontal scaling)
+
 ### Session State Tiers
 
 | Tier | Storage | TTL | Use Case |

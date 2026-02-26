@@ -96,6 +96,7 @@ export class RedisSessionStore {
     const multi = this.redis.multi();
 
     multi.hmset(key, {
+      sessionId,
       queue: JSON.stringify(queue),
       currentClimbQueueItem: currentClimbQueueItem
         ? JSON.stringify(currentClimbQueueItem)

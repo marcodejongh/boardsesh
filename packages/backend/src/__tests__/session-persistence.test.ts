@@ -1,188 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Redis from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
 import { roomManager } from '../services/room-manager';
-import { RedisSessionStore } from '../services/redis-session-store';
 import { db } from '../db/client';
 import { boardSessions, boardSessionQueues } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
-
-// Mock Redis for testing
-const createMockRedis = (): Redis => {
-  const store = new Map<string, string>();
-  const sets = new Map<string, Set<string>>();
-  const hashes = new Map<string, Record<string, string>>();
-  const sortedSets = new Map<string, Array<{ score: number; member: string }>>();
-
-  const mockRedis = {
-    set: vi.fn(async (key: string, value: string) => {
-      store.set(key, value);
-      return 'OK';
-    }),
-    get: vi.fn(async (key: string) => {
-      return store.get(key) || null;
-    }),
-    del: vi.fn(async (...keys: string[]) => {
-      let count = 0;
-      for (const key of keys) {
-        if (store.delete(key)) count++;
-        if (sets.delete(key)) count++;
-        if (hashes.delete(key)) count++;
-        if (sortedSets.delete(key)) count++;
-      }
-      return count;
-    }),
-    exists: vi.fn(async (key: string) => {
-      return store.has(key) || hashes.has(key) ? 1 : 0;
-    }),
-    expire: vi.fn(async () => 1),
-    hmset: vi.fn(async (key: string, obj: Record<string, string>) => {
-      hashes.set(key, { ...hashes.get(key), ...obj });
-      return 'OK';
-    }),
-    hgetall: vi.fn(async (key: string) => {
-      return hashes.get(key) || {};
-    }),
-    sadd: vi.fn(async (key: string, ...members: string[]) => {
-      if (!sets.has(key)) sets.set(key, new Set());
-      const set = sets.get(key)!;
-      let count = 0;
-      for (const member of members) {
-        if (!set.has(member)) {
-          set.add(member);
-          count++;
-        }
-      }
-      return count;
-    }),
-    srem: vi.fn(async (key: string, ...members: string[]) => {
-      const set = sets.get(key);
-      if (!set) return 0;
-      let count = 0;
-      for (const member of members) {
-        if (set.delete(member)) count++;
-      }
-      return count;
-    }),
-    zadd: vi.fn(async (key: string, score: number, member: string) => {
-      if (!sortedSets.has(key)) sortedSets.set(key, []);
-      const zset = sortedSets.get(key)!;
-      const existing = zset.findIndex((item) => item.member === member);
-      if (existing >= 0) {
-        zset[existing].score = score;
-        return 0;
-      } else {
-        zset.push({ score, member });
-        return 1;
-      }
-    }),
-    zrem: vi.fn(async (key: string, member: string) => {
-      const zset = sortedSets.get(key);
-      if (!zset) return 0;
-      const index = zset.findIndex((item) => item.member === member);
-      if (index >= 0) {
-        zset.splice(index, 1);
-        return 1;
-      }
-      return 0;
-    }),
-    multi: vi.fn(() => {
-      const commands: Array<() => Promise<unknown>> = [];
-      const chainable = {
-        hmset: (key: string, obj: Record<string, string>) => {
-          commands.push(() => mockRedis.hmset(key, obj));
-          return chainable;
-        },
-        expire: (_key: string, _seconds: number) => {
-          commands.push(() => mockRedis.expire(_key, _seconds));
-          return chainable;
-        },
-        zadd: (key: string, score: number, member: string) => {
-          commands.push(() => mockRedis.zadd(key, score, member));
-          return chainable;
-        },
-        del: (...keys: string[]) => {
-          commands.push(() => mockRedis.del(...keys));
-          return chainable;
-        },
-        sadd: (key: string, ...members: string[]) => {
-          commands.push(() => mockRedis.sadd(key, ...members));
-          return chainable;
-        },
-        srem: (key: string, ...members: string[]) => {
-          commands.push(() => mockRedis.srem(key, ...members));
-          return chainable;
-        },
-        zrem: (key: string, member: string) => {
-          commands.push(() => mockRedis.zrem(key, member));
-          return chainable;
-        },
-        exec: async () => {
-          const results = [];
-          for (const cmd of commands) {
-            results.push([null, await cmd()]);
-          }
-          return results;
-        },
-      };
-      return chainable;
-    }),
-    smembers: vi.fn(async (key: string) => {
-      const set = sets.get(key);
-      return set ? Array.from(set) : [];
-    }),
-    scard: vi.fn(async (key: string) => {
-      const set = sets.get(key);
-      return set ? set.size : 0;
-    }),
-    hset: vi.fn(async (key: string, field: string, value: string) => {
-      if (!hashes.has(key)) hashes.set(key, {});
-      const hash = hashes.get(key)!;
-      const isNew = !(field in hash);
-      hash[field] = value;
-      return isNew ? 1 : 0;
-    }),
-    setex: vi.fn(async (key: string, _seconds: number, value: string) => {
-      store.set(key, value);
-      return 'OK';
-    }),
-    watch: vi.fn(async () => 'OK'),
-    unwatch: vi.fn(async () => 'OK'),
-    pipeline: vi.fn(() => {
-      const commands: Array<() => Promise<unknown>> = [];
-      const chainable = {
-        hget: (key: string, field: string) => {
-          commands.push(async () => {
-            const hash = hashes.get(key);
-            return hash ? (hash[field] ?? null) : null;
-          });
-          return chainable;
-        },
-        hgetall: (key: string) => {
-          commands.push(async () => {
-            return hashes.get(key) || {};
-          });
-          return chainable;
-        },
-        exec: async () => {
-          const results = [];
-          for (const cmd of commands) {
-            results.push([null, await cmd()]);
-          }
-          return results;
-        },
-      };
-      return chainable;
-    }),
-    eval: vi.fn(async () => 1),
-    // For distributed lock support
-    _store: store,
-    _hashes: hashes,
-  } as unknown as Redis;
-
-  return mockRedis;
-};
+import { createMockRedis, type MockRedis } from './helpers/mock-redis';
 
 const createTestClimb = (): ClimbQueueItem => ({
   uuid: uuidv4(),
@@ -219,7 +42,7 @@ const registerAndJoinSession = async (
 };
 
 describe('Session Persistence - Hybrid Redis + Postgres', () => {
-  let mockRedis: Redis;
+  let mockRedis: MockRedis;
 
   beforeEach(async () => {
     // Create fresh mock Redis for each test
@@ -311,8 +134,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
         .limit(1);
       expect(session[0]?.status).toBe('ended');
 
-      // Verify removed from Redis
-      expect(mockRedis.exists).toHaveBeenCalledWith(`boardsesh:session:${sessionId}`);
+      // Verify removed from Redis (deleteSession uses multi.del)
+      expect(mockRedis.del).toHaveBeenCalledWith(`boardsesh:session:${sessionId}`);
     });
   });
 
@@ -353,6 +176,13 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Clear in-memory state
       roomManager.reset();
       await roomManager.initialize(mockRedis);
+
+      // Register clients before joining
+      await Promise.all([
+        roomManager.registerClient('client-2'),
+        roomManager.registerClient('client-3'),
+        roomManager.registerClient('client-4'),
+      ]);
 
       // Multiple users join concurrently
       const results = await Promise.all([
@@ -422,7 +252,9 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
 
   describe('Debounced Writes and Flush', () => {
     beforeEach(() => {
-      vi.useFakeTimers();
+      // shouldAdvanceTime: true allows real I/O (Postgres queries) to complete
+      // while still giving control over timer advancement via advanceTimersByTimeAsync
+      vi.useFakeTimers({ shouldAdvanceTime: true });
     });
 
     afterEach(() => {
@@ -457,8 +289,13 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
         expect(queue.length).toBeLessThan(2);
       }
 
-      // Fast-forward 30 seconds
+      // Fast-forward 30 seconds to trigger the debounce callback
       await vi.advanceTimersByTimeAsync(30000);
+
+      // The debounce callback fires and starts writeQueueStateToPostgres asynchronously.
+      // Switch to real timers and wait briefly for the Postgres I/O to complete.
+      vi.useRealTimers();
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       // Now check Postgres - should have latest state
       queueRows = await db
@@ -529,8 +366,13 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
         expect(queue.length).toBeLessThan(2);
       }
 
-      // Wait final 15 seconds (30s from second update)
+      // Wait final 15 seconds (30s from second update) to trigger the debounce callback
       await vi.advanceTimersByTimeAsync(15000);
+
+      // The debounce callback fires and starts writeQueueStateToPostgres asynchronously.
+      // Switch to real timers and wait briefly for the Postgres I/O to complete.
+      vi.useRealTimers();
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       // Now should be written
       queueRows = await db
@@ -742,19 +584,27 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
     it('should only store connected users in Redis, not Postgres', async () => {
       const sessionId = uuidv4();
       const boardPath = '/kilter/1/2/3/40';
+      const climb = createTestClimb();
 
-      // Create session
+      // Create session and join users
       await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
       await registerAndJoinSession('client-2', sessionId, boardPath, 'User2');
 
-      // Verify users in Redis
-      const redisHashes = (mockRedis as any)._hashes as Map<string, Record<string, string>>;
-      const redisUsers = redisHashes.get(`boardsesh:session:${sessionId}:users`);
-      expect(Object.keys(redisUsers || {}).length).toBeGreaterThan(0);
+      // Update queue to trigger Redis session hash creation
+      // (new sessions only get their Redis hash written on queue update, not on creation)
+      const currentState = await roomManager.getQueueState(sessionId);
+      await roomManager.updateQueueState(sessionId, [climb], null, currentState.version);
 
-      // Users should NOT be persisted to Postgres in new model
-      // (board_session_clients table is deprecated in favor of Redis-only user storage)
-      // We can verify by checking that session metadata is updated but user list is ephemeral
+      // With distributed state enabled, users are tracked via the distributed state manager
+      // (session members set), not via redisStore.saveUsers(). Verify users are accessible
+      // through the roomManager API.
+      const users = await roomManager.getSessionUsers(sessionId);
+      expect(users.length).toBeGreaterThan(0);
+
+      // Session queue state should be in Redis (written by updateQueueState)
+      const redisHashes = (mockRedis as any)._hashes as Map<string, Record<string, string>>;
+      const redisSession = redisHashes.get(`boardsesh:session:${sessionId}`);
+      expect(redisSession).toBeDefined();
     });
   });
 
@@ -782,7 +632,7 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
     });
 
     it('should handle Redis operations failing gracefully', async () => {
-      // Create Redis mock that fails
+      // Create Redis mock that fails on hmset
       const failingRedis = createMockRedis();
       failingRedis.hmset = vi.fn(async () => {
         throw new Error('Redis connection error');
@@ -794,10 +644,13 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const sessionId = uuidv4();
       const boardPath = '/kilter/1/2/3/40';
 
-      // Should not crash, might fall back to Postgres-only behavior
-      await expect(async () => {
-        await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
-      }).rejects.toThrow();
+      // When hmset fails, registerClient's distributed state registerConnection()
+      // calls redis.multi().hmset()...exec() which triggers the error. The room
+      // manager catches this and throws "Failed to register client: distributed
+      // state error", preventing the client from being in an inconsistent state.
+      await expect(
+        registerAndJoinSession('client-1', sessionId, boardPath, 'User1')
+      ).rejects.toThrow('Failed to register client: distributed state error');
     });
   });
 });

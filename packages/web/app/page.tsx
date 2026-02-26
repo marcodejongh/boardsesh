@@ -1,5 +1,5 @@
 import React from 'react';
-import { cookies } from 'next/headers';
+import { getServerAuthToken } from './lib/auth/server-auth';
 import ConsolidatedBoardConfig from './components/setup-wizard/consolidated-board-config';
 import { getAllBoardConfigs } from './lib/server-board-configs';
 import HomePageContent from './home-page-content';
@@ -26,9 +26,7 @@ export default async function Home({ searchParams }: HomeProps) {
     ? params.sort : 'new') as SortMode;
 
   // Read auth cookie to determine if user is authenticated at SSR time
-  const cookieStore = await cookies();
-  const authToken = cookieStore.get('next-auth.session-token')?.value
-    ?? cookieStore.get('__Secure-next-auth.session-token')?.value;
+  const authToken = await getServerAuthToken();
   const isAuthenticatedSSR = !!authToken;
 
   // SSR: fetch boards + feed in parallel for authenticated users

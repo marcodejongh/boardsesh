@@ -4,6 +4,7 @@ import postgres from 'postgres';
 import { sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { roomManager } from '../services/room-manager';
+import { resetAllRateLimits } from '../utils/rate-limiter';
 
 const TEST_DB_NAME = 'boardsesh_backend_test';
 const connectionString =
@@ -46,6 +47,13 @@ const createTablesSQL = `
     "discoverable" boolean DEFAULT false NOT NULL,
     "created_by_user_id" text REFERENCES "users"("id") ON DELETE SET NULL,
     "name" text,
+    "board_id" bigint,
+    "goal" text,
+    "is_public" boolean DEFAULT true NOT NULL,
+    "started_at" timestamp,
+    "ended_at" timestamp,
+    "is_permanent" boolean DEFAULT false NOT NULL,
+    "color" text,
     CONSTRAINT "board_sessions_status_check" CHECK (status IN ('active', 'inactive', 'ended'))
   );
 
@@ -98,6 +106,100 @@ const createTablesSQL = `
   CREATE INDEX IF NOT EXISTS "esp32_controllers_user_idx" ON "esp32_controllers" ("user_id");
   CREATE INDEX IF NOT EXISTS "esp32_controllers_api_key_idx" ON "esp32_controllers" ("api_key");
   CREATE INDEX IF NOT EXISTS "esp32_controllers_session_idx" ON "esp32_controllers" ("authorized_session_id");
+
+  -- Drop and recreate board data tables (needed for climb-queries tests)
+  DROP TABLE IF EXISTS "board_climb_stats" CASCADE;
+  DROP TABLE IF EXISTS "board_climbs" CASCADE;
+  DROP TABLE IF EXISTS "board_difficulty_grades" CASCADE;
+
+  -- Create board_difficulty_grades table
+  CREATE TABLE IF NOT EXISTS "board_difficulty_grades" (
+    "board_type" text NOT NULL,
+    "difficulty" integer NOT NULL,
+    "boulder_name" text,
+    "route_name" text,
+    "is_listed" boolean,
+    PRIMARY KEY ("board_type", "difficulty")
+  );
+
+  -- Create board_climbs table
+  CREATE TABLE IF NOT EXISTS "board_climbs" (
+    "uuid" text PRIMARY KEY NOT NULL,
+    "board_type" text NOT NULL,
+    "layout_id" integer NOT NULL,
+    "setter_id" integer,
+    "setter_username" text,
+    "name" text,
+    "description" text DEFAULT '',
+    "hsm" integer,
+    "edge_left" integer,
+    "edge_right" integer,
+    "edge_bottom" integer,
+    "edge_top" integer,
+    "angle" integer,
+    "frames_count" integer DEFAULT 1,
+    "frames_pace" integer DEFAULT 0,
+    "frames" text,
+    "is_draft" boolean DEFAULT false,
+    "is_listed" boolean,
+    "created_at" text,
+    "synced" boolean DEFAULT true NOT NULL,
+    "sync_error" text,
+    "user_id" text REFERENCES "users"("id") ON DELETE SET NULL
+  );
+
+  -- Create board_climb_stats table
+  CREATE TABLE IF NOT EXISTS "board_climb_stats" (
+    "board_type" text NOT NULL,
+    "climb_uuid" text NOT NULL,
+    "angle" integer NOT NULL,
+    "display_difficulty" double precision,
+    "benchmark_difficulty" double precision,
+    "ascensionist_count" bigint,
+    "difficulty_average" double precision,
+    "quality_average" double precision,
+    "fa_username" text,
+    "fa_at" timestamp,
+    PRIMARY KEY ("board_type", "climb_uuid", "angle")
+  );
+
+  -- Create enum types for boardsesh_ticks
+  DO $$ BEGIN
+    CREATE TYPE tick_status AS ENUM ('flash', 'send', 'attempt');
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END $$;
+
+  -- Create boardsesh_ticks table (needed for climb queries with userId)
+  DROP TABLE IF EXISTS "boardsesh_ticks" CASCADE;
+  CREATE TABLE IF NOT EXISTS "boardsesh_ticks" (
+    "id" bigserial PRIMARY KEY NOT NULL,
+    "uuid" text NOT NULL UNIQUE,
+    "user_id" text NOT NULL,
+    "board_type" text NOT NULL,
+    "climb_uuid" text NOT NULL,
+    "angle" integer NOT NULL,
+    "is_mirror" boolean DEFAULT false,
+    "status" tick_status NOT NULL,
+    "attempt_count" integer NOT NULL DEFAULT 1,
+    "quality" integer,
+    "difficulty" integer,
+    "is_benchmark" boolean DEFAULT false,
+    "comment" text DEFAULT '',
+    "climbed_at" timestamp NOT NULL,
+    "created_at" timestamp DEFAULT now() NOT NULL,
+    "updated_at" timestamp DEFAULT now() NOT NULL,
+    "session_id" text,
+    "board_id" bigint,
+    "aurora_type" text,
+    "aurora_id" text,
+    "aurora_synced_at" timestamp,
+    "aurora_sync_error" text
+  );
+
+  -- Insert common test users (needed for FK constraints in session tests)
+  INSERT INTO "users" (id, email, name, created_at, updated_at)
+  VALUES ('user-123', 'user-123@test.com', 'Test User 123', now(), now())
+  ON CONFLICT (id) DO NOTHING;
 `;
 
 beforeAll(async () => {
@@ -134,6 +236,9 @@ beforeAll(async () => {
 beforeEach(async () => {
   // Reset room manager state
   roomManager.reset();
+
+  // Reset rate limiter to prevent state leaking between tests
+  resetAllRateLimits();
 
   // Clear all tables in correct order (respect foreign keys)
   await db.execute(sql`TRUNCATE TABLE board_session_queues CASCADE`);
