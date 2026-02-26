@@ -151,11 +151,18 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     // 1. Try effectiveBoardDetails (from current route or active session)
     let url = listUrl;
 
-    // 2. Try getLastUsedBoard() from IndexedDB
+    // 2. Try getLastUsedBoard() from IndexedDB (with timeout to prevent hanging)
     if (!url) {
-      const lastUsed = await getLastUsedBoard();
-      if (lastUsed?.url) {
-        url = lastUsed.url;
+      try {
+        const lastUsed = await Promise.race([
+          getLastUsedBoard(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+        ]);
+        if (lastUsed?.url) {
+          url = lastUsed.url;
+        }
+      } catch {
+        // Ignore errors
       }
     }
 
@@ -168,9 +175,12 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
       return;
     }
 
-    // Auto-apply most recent filter
+    // Auto-apply most recent filter (with timeout to prevent blocking navigation)
     try {
-      const recentSearches = await getRecentSearches();
+      const recentSearches = await Promise.race([
+        getRecentSearches(),
+        new Promise<never[]>((resolve) => setTimeout(() => resolve([]), 1000)),
+      ]);
       if (recentSearches.length > 0) {
         const mostRecent = recentSearches[0];
         const filterParams = searchParamsToUrlParams(mostRecent.filters as Parameters<typeof searchParamsToUrlParams>[0]);

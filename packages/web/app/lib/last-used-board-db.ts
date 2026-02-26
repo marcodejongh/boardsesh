@@ -15,10 +15,21 @@ export interface LastUsedBoardData {
 
 let migrationDone = false;
 
+// In-memory cache to avoid race conditions where getLastUsedBoard() is called
+// before a pending setLastUsedBoard() IndexedDB write has completed.
+let memoryCache: LastUsedBoardData | null = null;
+
 export const getLastUsedBoard = async (): Promise<LastUsedBoardData | null> => {
   try {
     const stored = await getPreference<LastUsedBoardData>(KEY);
-    if (stored) return stored;
+    if (stored) {
+      memoryCache = stored;
+      return stored;
+    }
+
+    // Return in-memory cache if IndexedDB doesn't have data yet
+    // (write may still be pending)
+    if (memoryCache) return memoryCache;
 
     // One-time migration from default_board_url cookie
     if (!migrationDone && typeof document !== 'undefined') {
@@ -41,6 +52,7 @@ export const getLastUsedBoard = async (): Promise<LastUsedBoardData | null> => {
           await setPreference(KEY, partial);
           // Delete the cookie
           document.cookie = `${LEGACY_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
+          memoryCache = partial;
           return partial;
         }
       }
@@ -49,11 +61,15 @@ export const getLastUsedBoard = async (): Promise<LastUsedBoardData | null> => {
     return null;
   } catch (error) {
     console.error('Failed to get last used board:', error);
-    return null;
+    // Fall back to in-memory cache on error
+    return memoryCache;
   }
 };
 
 export const setLastUsedBoard = async (data: LastUsedBoardData): Promise<void> => {
+  // Update in-memory cache immediately so subsequent reads see the data
+  // even before the async IndexedDB write completes.
+  memoryCache = data;
   try {
     await setPreference(KEY, data);
   } catch (error) {
@@ -62,6 +78,7 @@ export const setLastUsedBoard = async (data: LastUsedBoardData): Promise<void> =
 };
 
 export const clearLastUsedBoard = async (): Promise<void> => {
+  memoryCache = null;
   try {
     await removePreference(KEY);
   } catch (error) {

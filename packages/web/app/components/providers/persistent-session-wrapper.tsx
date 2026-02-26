@@ -63,7 +63,7 @@ function RootBottomBar({ boardConfigs }: { boardConfigs: BoardConfigData }) {
           </BoardProvider>
         </ErrorBoundary>
       )}
-      <BottomTabBar boardConfigs={boardConfigs} />
+      <BottomTabBar boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} />
     </div>
   );
 }
