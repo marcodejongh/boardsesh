@@ -140,100 +140,87 @@ export async function assignInferredSession(
   tickUuid: string,
   userId: string,
   climbedAt: string,
-  status: string,
+  _status: string,
 ): Promise<string | null> {
-  // Find user's most recent tick (excluding the current one)
-  const [prevTick] = await db
-    .select({
-      inferredSessionId: dbSchema.boardseshTicks.inferredSessionId,
-      climbedAt: dbSchema.boardseshTicks.climbedAt,
-    })
-    .from(dbSchema.boardseshTicks)
-    .where(
-      and(
-        eq(dbSchema.boardseshTicks.userId, userId),
-        sql`${dbSchema.boardseshTicks.uuid} != ${tickUuid}`,
-        isNull(dbSchema.boardseshTicks.sessionId),
-      ),
-    )
-    .orderBy(desc(dbSchema.boardseshTicks.climbedAt))
-    .limit(1);
-
-  const currentTime = new Date(climbedAt).getTime();
-
-  if (prevTick) {
-    const prevTime = new Date(prevTick.climbedAt).getTime();
-    const gap = Math.abs(currentTime - prevTime);
-
-    if (gap <= SESSION_GAP_MS && prevTick.inferredSessionId) {
-      // Within 4h of previous tick — join the same inferred session
-      const sessionId = prevTick.inferredSessionId;
-
-      // Update the tick with the inferred session ID
-      await db
-        .update(dbSchema.boardseshTicks)
-        .set({ inferredSessionId: sessionId })
-        .where(eq(dbSchema.boardseshTicks.uuid, tickUuid));
-
-      // Update the inferred session stats
-      await db
-        .update(dbSchema.inferredSessions)
-        .set({
-          lastTickAt: climbedAt > prevTick.climbedAt ? climbedAt : sql`${dbSchema.inferredSessions.lastTickAt}`,
-          tickCount: sql`${dbSchema.inferredSessions.tickCount} + 1`,
-          totalSends: status === 'flash' || status === 'send'
-            ? sql`${dbSchema.inferredSessions.totalSends} + 1`
-            : sql`${dbSchema.inferredSessions.totalSends}`,
-          totalFlashes: status === 'flash'
-            ? sql`${dbSchema.inferredSessions.totalFlashes} + 1`
-            : sql`${dbSchema.inferredSessions.totalFlashes}`,
-          totalAttempts: status === 'attempt'
-            ? sql`${dbSchema.inferredSessions.totalAttempts} + 1`
-            : sql`${dbSchema.inferredSessions.totalAttempts}`,
-        })
-        .where(eq(dbSchema.inferredSessions.id, sessionId));
-
-      return sessionId;
-    }
-  }
-
-  // No previous tick within 4h or no previous inferred session — create a new one
-  const sessionId = generateInferredSessionId(userId, climbedAt);
-
-  await db.insert(dbSchema.inferredSessions).values({
-    id: sessionId,
-    userId,
-    firstTickAt: climbedAt,
-    lastTickAt: climbedAt,
-    totalSends: 0,
-    totalFlashes: 0,
-    totalAttempts: 0,
-    tickCount: 0,
-  }).onConflictDoNothing();
-
-  // Update the tick with the inferred session ID
-  await db
-    .update(dbSchema.boardseshTicks)
-    .set({ inferredSessionId: sessionId })
-    .where(eq(dbSchema.boardseshTicks.uuid, tickUuid));
-
-  // Recalculate stats from actual ticks (safe under concurrency)
-  await recalculateSessionStats(sessionId);
-
-  // If there was a previous inferred session, mark it as ended
-  if (prevTick?.inferredSessionId && prevTick.inferredSessionId !== sessionId) {
-    await db
-      .update(dbSchema.inferredSessions)
-      .set({ endedAt: prevTick.climbedAt })
+  return db.transaction(async (tx) => {
+    // Find user's most recent tick (excluding the current one)
+    const [prevTick] = await tx
+      .select({
+        inferredSessionId: dbSchema.boardseshTicks.inferredSessionId,
+        climbedAt: dbSchema.boardseshTicks.climbedAt,
+      })
+      .from(dbSchema.boardseshTicks)
       .where(
         and(
-          eq(dbSchema.inferredSessions.id, prevTick.inferredSessionId),
-          isNull(dbSchema.inferredSessions.endedAt),
+          eq(dbSchema.boardseshTicks.userId, userId),
+          sql`${dbSchema.boardseshTicks.uuid} != ${tickUuid}`,
+          isNull(dbSchema.boardseshTicks.sessionId),
         ),
-      );
-  }
+      )
+      .orderBy(desc(dbSchema.boardseshTicks.climbedAt))
+      .limit(1);
 
-  return sessionId;
+    const currentTime = new Date(climbedAt).getTime();
+
+    if (prevTick) {
+      const prevTime = new Date(prevTick.climbedAt).getTime();
+      const gap = Math.abs(currentTime - prevTime);
+
+      if (gap <= SESSION_GAP_MS && prevTick.inferredSessionId) {
+        // Within 4h of previous tick — join the same inferred session
+        const sessionId = prevTick.inferredSessionId;
+
+        // Assign tick to the existing session
+        await tx
+          .update(dbSchema.boardseshTicks)
+          .set({ inferredSessionId: sessionId })
+          .where(eq(dbSchema.boardseshTicks.uuid, tickUuid));
+
+        // Recalculate stats from actual ticks (safe under concurrency)
+        await recalculateSessionStats(sessionId);
+
+        return sessionId;
+      }
+    }
+
+    // No previous tick within 4h or no previous inferred session — create a new one
+    const sessionId = generateInferredSessionId(userId, climbedAt);
+
+    await tx.insert(dbSchema.inferredSessions).values({
+      id: sessionId,
+      userId,
+      firstTickAt: climbedAt,
+      lastTickAt: climbedAt,
+      totalSends: 0,
+      totalFlashes: 0,
+      totalAttempts: 0,
+      tickCount: 0,
+    }).onConflictDoNothing();
+
+    // Assign tick to the new session
+    await tx
+      .update(dbSchema.boardseshTicks)
+      .set({ inferredSessionId: sessionId })
+      .where(eq(dbSchema.boardseshTicks.uuid, tickUuid));
+
+    // Recalculate stats from actual ticks (safe under concurrency)
+    await recalculateSessionStats(sessionId);
+
+    // If there was a previous inferred session, mark it as ended
+    if (prevTick?.inferredSessionId && prevTick.inferredSessionId !== sessionId) {
+      await tx
+        .update(dbSchema.inferredSessions)
+        .set({ endedAt: prevTick.climbedAt })
+        .where(
+          and(
+            eq(dbSchema.inferredSessions.id, prevTick.inferredSessionId),
+            isNull(dbSchema.inferredSessions.endedAt),
+          ),
+        );
+    }
+
+    return sessionId;
+  });
 }
 
 /**

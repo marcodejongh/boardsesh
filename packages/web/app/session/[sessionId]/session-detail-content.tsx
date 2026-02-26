@@ -282,7 +282,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   return (
     <Box sx={{ minHeight: '100dvh', pb: '60px' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderBottom: '1px solid var(--neutral-200)' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderBottom: `1px solid ${themeTokens.neutral[200]}` }}>
         <IconButton component={Link} href="/" size="small">
           <ArrowBackOutlined />
         </IconButton>
@@ -555,7 +555,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
                               alignItems: 'center',
                               gap: 0.75,
                               py: 0.25,
-                              borderTop: '1px solid var(--neutral-100)',
+                              borderTop: `1px solid ${themeTokens.neutral[100]}`,
                             }}
                           >
                             <Avatar
