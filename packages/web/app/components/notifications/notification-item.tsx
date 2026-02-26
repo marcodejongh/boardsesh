@@ -157,6 +157,7 @@ export default function NotificationItem({ notification, onClick }: Notification
         )}
       </ListItemAvatar>
       <ListItemText
+        disableTypography
         primary={
           <MuiTypography
             variant="body2"
@@ -178,6 +179,7 @@ export default function NotificationItem({ notification, onClick }: Notification
             </MuiTypography>
             {!notification.isRead && (
               <Box
+                component="span"
                 sx={{
                   width: 6,
                   height: 6,
