@@ -737,6 +737,97 @@ export type ActivityFeedInput = {
 };
 
 // ============================================
+// Session-Grouped Feed Types
+// ============================================
+
+export type SessionFeedParticipant = {
+  userId: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  sends: number;
+  flashes: number;
+  attempts: number;
+};
+
+export type SessionGradeDistributionItem = {
+  grade: string;
+  flash: number;
+  send: number;
+  attempt: number;
+};
+
+export type SessionFeedItem = {
+  sessionId: string;
+  sessionType: 'party' | 'inferred';
+  sessionName?: string | null;
+  participants: SessionFeedParticipant[];
+  totalSends: number;
+  totalFlashes: number;
+  totalAttempts: number;
+  tickCount: number;
+  gradeDistribution: SessionGradeDistributionItem[];
+  boardTypes: string[];
+  hardestGrade?: string | null;
+  firstTickAt: string;
+  lastTickAt: string;
+  durationMinutes?: number | null;
+  goal?: string | null;
+  upvotes: number;
+  downvotes: number;
+  voteScore: number;
+  commentCount: number;
+};
+
+export type SessionFeedResult = {
+  sessions: SessionFeedItem[];
+  cursor?: string | null;
+  hasMore: boolean;
+};
+
+export type SessionDetailTick = {
+  uuid: string;
+  climbUuid: string;
+  climbName?: string | null;
+  boardType: string;
+  layoutId?: number | null;
+  angle: number;
+  status: string;
+  attemptCount: number;
+  difficulty?: number | null;
+  difficultyName?: string | null;
+  quality?: number | null;
+  isMirror: boolean;
+  isBenchmark: boolean;
+  comment?: string | null;
+  frames?: string | null;
+  setterUsername?: string | null;
+  climbedAt: string;
+};
+
+export type SessionDetail = {
+  sessionId: string;
+  sessionType: 'party' | 'inferred';
+  sessionName?: string | null;
+  participants: SessionFeedParticipant[];
+  totalSends: number;
+  totalFlashes: number;
+  totalAttempts: number;
+  tickCount: number;
+  gradeDistribution: SessionGradeDistributionItem[];
+  boardTypes: string[];
+  hardestGrade?: string | null;
+  firstTickAt: string;
+  lastTickAt: string;
+  durationMinutes?: number | null;
+  goal?: string | null;
+  ticks: SessionDetailTick[];
+  upvotes: number;
+  downvotes: number;
+  voteScore: number;
+  commentCount: number;
+};
+
+// ============================================
 // Notification Types
 // ============================================
 
@@ -945,7 +1036,8 @@ export type SocialEntityType =
   | 'comment'
   | 'proposal'
   | 'board'
-  | 'gym';
+  | 'gym'
+  | 'session';
 
 export type SortMode = 'new' | 'top' | 'controversial' | 'hot';
 

@@ -1,44 +1,49 @@
 import { gql } from 'graphql-request';
-import type { ActivityFeedResult, ActivityFeedInput } from '@boardsesh/shared-schema';
+import type { ActivityFeedInput } from '@boardsesh/shared-schema';
 
 // ============================================
-// Activity Feed Queries
+// Session-Grouped Feed Queries
 // ============================================
 
-const ACTIVITY_FEED_ITEM_FIELDS = `
-  id
-  type
-  entityType
-  entityId
-  boardUuid
-  actorId
-  actorDisplayName
-  actorAvatarUrl
-  climbName
-  climbUuid
-  boardType
-  layoutId
-  gradeName
-  status
-  angle
-  frames
-  setterUsername
-  commentBody
-  isMirror
-  isBenchmark
-  difficulty
-  difficultyName
-  quality
-  attemptCount
-  comment
-  createdAt
+const SESSION_FEED_ITEM_FIELDS = `
+  sessionId
+  sessionType
+  sessionName
+  participants {
+    userId
+    displayName
+    avatarUrl
+    sends
+    flashes
+    attempts
+  }
+  totalSends
+  totalFlashes
+  totalAttempts
+  tickCount
+  gradeDistribution {
+    grade
+    flash
+    send
+    attempt
+  }
+  boardTypes
+  hardestGrade
+  firstTickAt
+  lastTickAt
+  durationMinutes
+  goal
+  upvotes
+  downvotes
+  voteScore
+  commentCount
 `;
 
-export const GET_ACTIVITY_FEED = gql`
-  query GetActivityFeed($input: ActivityFeedInput) {
-    activityFeed(input: $input) {
-      items {
-        ${ACTIVITY_FEED_ITEM_FIELDS}
+export const GET_SESSION_GROUPED_FEED = gql`
+  query GetSessionGroupedFeed($input: ActivityFeedInput) {
+    sessionGroupedFeed(input: $input) {
+      sessions {
+        ${SESSION_FEED_ITEM_FIELDS}
       }
       cursor
       hasMore
@@ -46,14 +51,29 @@ export const GET_ACTIVITY_FEED = gql`
   }
 `;
 
-export const GET_TRENDING_FEED = gql`
-  query GetTrendingFeed($input: ActivityFeedInput) {
-    trendingFeed(input: $input) {
-      items {
-        ${ACTIVITY_FEED_ITEM_FIELDS}
+export const GET_SESSION_DETAIL = gql`
+  query GetSessionDetail($sessionId: ID!) {
+    sessionDetail(sessionId: $sessionId) {
+      ${SESSION_FEED_ITEM_FIELDS}
+      ticks {
+        uuid
+        climbUuid
+        climbName
+        boardType
+        layoutId
+        angle
+        status
+        attemptCount
+        difficulty
+        difficultyName
+        quality
+        isMirror
+        isBenchmark
+        comment
+        frames
+        setterUsername
+        climbedAt
       }
-      cursor
-      hasMore
     }
   }
 `;
@@ -62,18 +82,18 @@ export const GET_TRENDING_FEED = gql`
 // Query Variable Types
 // ============================================
 
-export interface GetActivityFeedQueryVariables {
+export interface GetSessionGroupedFeedQueryVariables {
   input?: ActivityFeedInput;
 }
 
-export interface GetActivityFeedQueryResponse {
-  activityFeed: ActivityFeedResult;
+export interface GetSessionGroupedFeedQueryResponse {
+  sessionGroupedFeed: import('@boardsesh/shared-schema').SessionFeedResult;
 }
 
-export interface GetTrendingFeedQueryVariables {
-  input?: ActivityFeedInput;
+export interface GetSessionDetailQueryVariables {
+  sessionId: string;
 }
 
-export interface GetTrendingFeedQueryResponse {
-  trendingFeed: ActivityFeedResult;
+export interface GetSessionDetailQueryResponse {
+  sessionDetail: import('@boardsesh/shared-schema').SessionDetail | null;
 }

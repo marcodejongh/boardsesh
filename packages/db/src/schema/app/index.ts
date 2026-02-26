@@ -2,6 +2,7 @@ export * from './gyms';
 export * from './boards';
 export * from './sessions';
 export * from './favorites';
+export * from './inferred-sessions';
 export * from './ascents';
 export * from './playlists';
 export * from './hold-classifications';

@@ -2,20 +2,8 @@
 
 import React from 'react';
 import { Bar, Pie } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title as ChartTitle,
-  Tooltip,
-  Legend,
-  ArcElement,
-  TooltipItem,
-} from 'chart.js';
-
-// Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, BarElement, ChartTitle, Tooltip, Legend, ArcElement);
+import '@/app/components/charts/chart-registry';
+import type { TooltipItem } from 'chart.js';
 
 export interface ChartData {
   labels: string[];
