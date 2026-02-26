@@ -29,6 +29,8 @@ import { socialSearchQueries } from './social/search';
 import { setterFollowQueries, setterFollowMutations } from './social/setter-follows';
 import { socialFeedQueries } from './social/feed';
 import { activityFeedQueries } from './social/activity-feed';
+import { sessionFeedQueries } from './social/session-feed';
+import { sessionEditMutations } from './social/session-mutations';
 import { socialCommentQueries, socialCommentMutations } from './social/comments';
 import { socialVoteQueries, socialVoteMutations } from './social/votes';
 import { socialBoardQueries, socialBoardMutations } from './social/boards';
@@ -65,6 +67,7 @@ export const resolvers = {
     ...socialBoardQueries,
     ...socialGymQueries,
     ...activityFeedQueries,
+    ...sessionFeedQueries,
     ...socialNotificationQueries,
     ...socialProposalQueries,
     ...socialRoleQueries,
@@ -92,6 +95,7 @@ export const resolvers = {
     ...socialRoleMutations,
     ...socialCommunitySettingsMutations,
     ...newClimbSubscriptionResolvers.Mutation,
+    ...sessionEditMutations,
   },
 
   Subscription: {

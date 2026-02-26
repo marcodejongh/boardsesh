@@ -55,7 +55,7 @@ The polymorphic system uses a string enum `entity_type` to identify what's being
 | `proposal` | A community proposal on a climb | proposal `uuid` | Discussion thread on the proposal |
 | `board` | A user-created board entity | board `uuid` | Board discussion / community thread |
 
-This is extensible -- new entity types (e.g. `session`) can be added later by extending the enum.
+The `session` entity type has been implemented — see [`docs/inferred-sessions.md`](./inferred-sessions.md) for the inferred session system, session-grouped activity feed, and session editing mutations (rename, add/remove users).
 
 **Key distinction**: A climb can have comments in two independent scopes:
 - `playlist_climb` with `entity_id = "{playlist_uuid}:{climb_uuid}"` -- discussion in the context of a curated playlist
@@ -3056,6 +3056,8 @@ Add `gym` to `social_entity_type` enum: `ALTER TYPE social_entity_type ADD VALUE
 - Gym profile page shows boards, members, follower count
 
 ### Milestone 11: Enhanced Sessions
+
+> **Note**: Inferred sessions and session editing have been implemented. See [`docs/inferred-sessions.md`](./inferred-sessions.md) for the current system: automatic session grouping via 4-hour gap heuristic, session-grouped activity feed, and mutations for renaming sessions and adding/removing users. The plan below covers additional party mode enhancements not yet built.
 
 **User value**: "I can set goals for my session, see a summary when I'm done, and sessions automatically end when everyone leaves."
 

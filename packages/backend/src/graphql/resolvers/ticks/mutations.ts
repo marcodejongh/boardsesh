@@ -7,6 +7,7 @@ import { requireAuthenticated, validateInput } from '../shared/helpers';
 import { SaveTickInputSchema } from '../../../validation/schemas';
 import { resolveBoardFromPath } from '../social/boards';
 import { publishSocialEvent } from '../../../events';
+import { assignInferredSession } from '../../../jobs/inferred-session-builder';
 
 export const tickMutations = {
   /**
@@ -90,6 +91,14 @@ export const tickMutations = {
       auroraId: tick.auroraId,
       auroraSyncedAt: tick.auroraSyncedAt,
     };
+
+    // Assign inferred session for ticks not in party mode (fire-and-forget).
+    // On failure, the tick stays unassigned until the background builder picks it up (~30 min).
+    if (!validatedInput.sessionId) {
+      assignInferredSession(uuid, userId, climbedAt, validatedInput.status).catch((err) => {
+        console.error(`[saveTick] Failed to assign inferred session for tick ${uuid} (user ${userId}):`, err);
+      });
+    }
 
     // Publish ascent.logged event for feed fan-out (only for successful ascents)
     if (tick.status === 'flash' || tick.status === 'send') {

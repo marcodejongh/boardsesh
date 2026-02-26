@@ -137,6 +137,25 @@ export async function validateEntityExists(
       break;
     }
 
+    case 'session': {
+      // Check both inferred sessions and party mode sessions
+      const [inferred] = await db
+        .select({ id: dbSchema.inferredSessions.id })
+        .from(dbSchema.inferredSessions)
+        .where(eq(dbSchema.inferredSessions.id, entityId))
+        .limit(1);
+      if (inferred) break;
+
+      const [party] = await db
+        .select({ id: dbSchema.boardSessions.id })
+        .from(dbSchema.boardSessions)
+        .where(eq(dbSchema.boardSessions.id, entityId))
+        .limit(1);
+      if (party) break;
+
+      throw new Error('Session not found');
+    }
+
     default: {
       throw new Error(`Unknown entity type: ${entityType}`);
     }

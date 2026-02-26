@@ -16,6 +16,7 @@
     "test:db:migrate": "DATABASE_URL=postgresql://postgres:postgres@localhost:5433/boardsesh_backend_test drizzle-kit migrate",
     "test:integration": "vitest run src/__tests__/integration.test.ts",
     "test:redis": "vitest run src/__tests__/redis-pubsub.test.ts",
+    "backfill-sessions": "tsx src/scripts/backfill-inferred-sessions.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"

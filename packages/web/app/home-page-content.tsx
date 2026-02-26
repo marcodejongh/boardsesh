@@ -20,7 +20,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import BoardScrollSection from '@/app/components/board-scroll/board-scroll-section';
 import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
-import type { SortMode, ActivityFeedItem } from '@boardsesh/shared-schema';
+import type { SortMode, SessionFeedResult } from '@boardsesh/shared-schema';
 import { NewClimbFeed } from '@/app/components/new-climb-feed';
 import type { UserBoard, NewClimbSubscription } from '@boardsesh/shared-schema';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
@@ -40,9 +40,8 @@ interface HomePageContentProps {
   initialTab?: 'activity' | 'newClimbs';
   initialBoardUuid?: string;
   initialSortBy?: SortMode;
-  initialFeedResult?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean } | null;
+  initialFeedResult?: SessionFeedResult | null;
   isAuthenticatedSSR?: boolean;
-  initialFeedSource?: 'personalized' | 'trending';
   initialMyBoards?: UserBoard[] | null;
 }
 
@@ -53,7 +52,6 @@ export default function HomePageContent({
   initialSortBy = 'new',
   initialFeedResult,
   isAuthenticatedSSR,
-  initialFeedSource,
   initialMyBoards,
 }: HomePageContentProps) {
   const { status } = useSession();
@@ -209,8 +207,7 @@ export default function HomePageContent({
               boardUuid={selectedBoardUuid}
               sortBy={sortBy}
               onFindClimbers={() => setSearchOpen(true)}
-              initialFeedResult={initialFeedResult ?? undefined}
-              initialFeedSource={initialFeedSource}
+              initialFeedResult={initialFeedResult}
             />
           </>
         )}

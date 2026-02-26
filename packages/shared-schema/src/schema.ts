@@ -1963,6 +1963,7 @@ export const typeDefs = /* GraphQL */ `
     proposal
     board
     gym
+    session
   }
 
   enum SortMode {
@@ -2273,6 +2274,38 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
+  Input for updating an inferred session's metadata.
+  """
+  input UpdateInferredSessionInput {
+    "ID of the inferred session to update"
+    sessionId: ID!
+    "New session name (optional)"
+    name: String
+    "New session description/notes (optional)"
+    description: String
+  }
+
+  """
+  Input for adding a user to an inferred session.
+  """
+  input AddUserToSessionInput {
+    "ID of the inferred session"
+    sessionId: ID!
+    "User ID to add"
+    userId: ID!
+  }
+
+  """
+  Input for removing a user from an inferred session.
+  """
+  input RemoveUserFromSessionInput {
+    "ID of the inferred session"
+    sessionId: ID!
+    "User ID to remove"
+    userId: ID!
+  }
+
+  """
   Input for adding a comment.
   """
   input AddCommentInput {
@@ -2504,6 +2537,118 @@ export const typeDefs = /* GraphQL */ `
     sortBy: SortMode
     "Time period for top/controversial sorts"
     topPeriod: TimePeriod
+  }
+
+  # ============================================
+  # Session-Grouped Feed Types
+  # ============================================
+
+  """
+  A participant in a climbing session.
+  """
+  type SessionFeedParticipant {
+    userId: ID!
+    displayName: String
+    avatarUrl: String
+    sends: Int!
+    flashes: Int!
+    attempts: Int!
+  }
+
+  """
+  Grade distribution item with flash/send/attempt breakdown.
+  """
+  type SessionGradeDistributionItem {
+    grade: String!
+    flash: Int!
+    send: Int!
+    attempt: Int!
+  }
+
+  """
+  A session feed card representing a group of ticks from a climbing session.
+  """
+  type SessionFeedItem {
+    sessionId: ID!
+    sessionType: String!
+    sessionName: String
+    ownerUserId: ID
+    participants: [SessionFeedParticipant!]!
+    totalSends: Int!
+    totalFlashes: Int!
+    totalAttempts: Int!
+    tickCount: Int!
+    gradeDistribution: [SessionGradeDistributionItem!]!
+    boardTypes: [String!]!
+    hardestGrade: String
+    firstTickAt: String!
+    lastTickAt: String!
+    durationMinutes: Int
+    goal: String
+    upvotes: Int!
+    downvotes: Int!
+    voteScore: Int!
+    commentCount: Int!
+  }
+
+  """
+  Paginated session-grouped feed result.
+  """
+  type SessionFeedResult {
+    sessions: [SessionFeedItem!]!
+    cursor: String
+    hasMore: Boolean!
+  }
+
+  """
+  An individual tick within a session detail view.
+  """
+  type SessionDetailTick {
+    uuid: ID!
+    userId: String!
+    climbUuid: String!
+    climbName: String
+    boardType: String!
+    layoutId: Int
+    angle: Int!
+    status: String!
+    attemptCount: Int!
+    difficulty: Int
+    difficultyName: String
+    quality: Int
+    isMirror: Boolean!
+    isBenchmark: Boolean!
+    comment: String
+    frames: String
+    setterUsername: String
+    climbedAt: String!
+  }
+
+  """
+  Full detail for a single session, including all ticks.
+  """
+  type SessionDetail {
+    sessionId: ID!
+    sessionType: String!
+    sessionName: String
+    ownerUserId: ID
+    participants: [SessionFeedParticipant!]!
+    totalSends: Int!
+    totalFlashes: Int!
+    totalAttempts: Int!
+    tickCount: Int!
+    gradeDistribution: [SessionGradeDistributionItem!]!
+    boardTypes: [String!]!
+    hardestGrade: String
+    firstTickAt: String!
+    lastTickAt: String!
+    durationMinutes: Int
+    goal: String
+    ticks: [SessionDetailTick!]!
+    upvotes: Int!
+    downvotes: Int!
+    voteScore: Int!
+    commentCount: Int!
   }
 
   """
@@ -2902,6 +3047,17 @@ export const typeDefs = /* GraphQL */ `
     Get trending feed of recent activity (public, no auth required).
     """
     trendingFeed(input: ActivityFeedInput): ActivityFeedResult!
+
+    """
+    Get session-grouped activity feed (public, no auth required).
+    Groups ticks into sessions (party mode or inferred by 4-hour gap).
+    """
+    sessionGroupedFeed(input: ActivityFeedInput): SessionFeedResult!
+
+    """
+    Get full detail for a single session (party mode or inferred).
+    """
+    sessionDetail(sessionId: ID!): SessionDetail
 
     """
     Get a feed of newly created climbs for a board type and layout.
@@ -3338,6 +3494,28 @@ export const typeDefs = /* GraphQL */ `
     Link or unlink a board to/from a gym.
     """
     linkBoardToGym(input: LinkBoardToGymInput!): Boolean!
+
+    # ============================================
+    # Session Editing Mutations (require auth)
+    # ============================================
+
+    """
+    Update an inferred session's name and/or description.
+    Must be a participant of the session.
+    """
+    updateInferredSession(input: UpdateInferredSessionInput!): SessionDetail
+
+    """
+    Add a user to an inferred session by reassigning their overlapping ticks.
+    Must be a participant of the session.
+    """
+    addUserToSession(input: AddUserToSessionInput!): SessionDetail
+
+    """
+    Remove a user from an inferred session, restoring their ticks to original sessions.
+    Must be a participant of the session.
+    """
+    removeUserFromSession(input: RemoveUserFromSessionInput!): SessionDetail
 
     # ============================================
     # Notification Mutations (require auth)

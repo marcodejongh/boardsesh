@@ -16,6 +16,7 @@ import { handleSyncCron } from './handlers/sync';
 import { handleOcrTestDataUpload } from './handlers/ocr-test-data';
 import { createYogaInstance } from './graphql/yoga';
 import { setupWebSocketServer } from './websocket/setup';
+import { runInferredSessionBuilderBatched } from './jobs/inferred-session-builder';
 
 /**
  * Start the Boardsesh Backend server
@@ -285,6 +286,19 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     }
   }, 120000); // 2 minutes
   intervals.push(ttlRefreshInterval);
+
+  // Periodic inferred session builder (every 30 minutes)
+  const inferredSessionInterval = setInterval(async () => {
+    try {
+      const result = await runInferredSessionBuilderBatched();
+      if (result.ticksAssigned > 0) {
+        console.log(`[Server] Inferred session builder: assigned ${result.ticksAssigned} ticks for ${result.usersProcessed} users`);
+      }
+    } catch (error) {
+      console.error('[Server] Inferred session builder error:', error);
+    }
+  }, 30 * 60 * 1000);
+  intervals.push(inferredSessionInterval);
 
   // Periodic auto-end for stale inactive sessions (every 5 minutes)
   const SESSION_AUTO_END_MINUTES = parseInt(process.env.SESSION_AUTO_END_MINUTES || '30', 10);

@@ -581,6 +581,7 @@ export const SocialEntityTypeSchema = z.enum([
   'proposal',
   'board',
   'gym',
+  'session',
 ]);
 
 /**
