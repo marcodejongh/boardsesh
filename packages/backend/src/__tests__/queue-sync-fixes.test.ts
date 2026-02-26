@@ -4,7 +4,6 @@
  * 2. addQueueItem - event publishing fix (only publish when item added)
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Redis from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
 import { roomManager, VersionConflictError } from '../services/room-manager';
 import { db } from '../db/client';
@@ -13,252 +12,7 @@ import { eq } from 'drizzle-orm';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 import { queueMutations } from '../graphql/resolvers/queue/mutations';
 import { pubsub } from '../pubsub/index';
-
-// Mock Redis for testing
-const createMockRedis = (): Redis & { _store: Map<string, string>; _hashes: Map<string, Record<string, string>> } => {
-  const store = new Map<string, string>();
-  const sets = new Map<string, Set<string>>();
-  const hashes = new Map<string, Record<string, string>>();
-  const sortedSets = new Map<string, Array<{ score: number; member: string }>>();
-
-  const mockRedis = {
-    set: vi.fn(async (key: string, value: string, ...opts: unknown[]) => {
-      // Support NX flag (only set if key doesn't exist) used by acquireLock
-      const hasNX = opts.some(o => typeof o === 'string' && o.toUpperCase() === 'NX');
-      if (hasNX && store.has(key)) {
-        return null; // Key exists, NX prevents overwrite
-      }
-      store.set(key, value);
-      return 'OK';
-    }),
-    get: vi.fn(async (key: string) => {
-      return store.get(key) || null;
-    }),
-    del: vi.fn(async (...keys: string[]) => {
-      let count = 0;
-      for (const key of keys) {
-        if (store.delete(key)) count++;
-        if (sets.delete(key)) count++;
-        if (hashes.delete(key)) count++;
-        if (sortedSets.delete(key)) count++;
-      }
-      return count;
-    }),
-    exists: vi.fn(async (key: string) => {
-      return store.has(key) || hashes.has(key) ? 1 : 0;
-    }),
-    expire: vi.fn(async () => 1),
-    hmset: vi.fn(async (key: string, obj: Record<string, string>) => {
-      hashes.set(key, { ...hashes.get(key), ...obj });
-      return 'OK';
-    }),
-    hgetall: vi.fn(async (key: string) => {
-      return hashes.get(key) || {};
-    }),
-    sadd: vi.fn(async (key: string, ...members: string[]) => {
-      if (!sets.has(key)) sets.set(key, new Set());
-      const set = sets.get(key)!;
-      let count = 0;
-      for (const member of members) {
-        if (!set.has(member)) {
-          set.add(member);
-          count++;
-        }
-      }
-      return count;
-    }),
-    srem: vi.fn(async (key: string, ...members: string[]) => {
-      const set = sets.get(key);
-      if (!set) return 0;
-      let count = 0;
-      for (const member of members) {
-        if (set.delete(member)) count++;
-      }
-      return count;
-    }),
-    zadd: vi.fn(async (key: string, score: number, member: string) => {
-      if (!sortedSets.has(key)) sortedSets.set(key, []);
-      const zset = sortedSets.get(key)!;
-      const existing = zset.findIndex((item) => item.member === member);
-      if (existing >= 0) {
-        zset[existing].score = score;
-        return 0;
-      } else {
-        zset.push({ score, member });
-        return 1;
-      }
-    }),
-    zrem: vi.fn(async (key: string, member: string) => {
-      const zset = sortedSets.get(key);
-      if (!zset) return 0;
-      const index = zset.findIndex((item) => item.member === member);
-      if (index >= 0) {
-        zset.splice(index, 1);
-        return 1;
-      }
-      return 0;
-    }),
-    smembers: vi.fn(async (key: string) => {
-      const set = sets.get(key);
-      return set ? Array.from(set) : [];
-    }),
-    scard: vi.fn(async (key: string) => {
-      const set = sets.get(key);
-      return set ? set.size : 0;
-    }),
-    hset: vi.fn(async (key: string, field: string, value: string) => {
-      if (!hashes.has(key)) hashes.set(key, {});
-      const hash = hashes.get(key)!;
-      const isNew = !(field in hash);
-      hash[field] = value;
-      return isNew ? 1 : 0;
-    }),
-    setex: vi.fn(async (key: string, _seconds: number, value: string) => {
-      store.set(key, value);
-      return 'OK';
-    }),
-    watch: vi.fn(async () => 'OK'),
-    unwatch: vi.fn(async () => 'OK'),
-    pipeline: vi.fn(() => {
-      const commands: Array<() => Promise<unknown>> = [];
-      const chainable = {
-        hget: (key: string, field: string) => {
-          commands.push(async () => {
-            const hash = hashes.get(key);
-            return hash ? (hash[field] ?? null) : null;
-          });
-          return chainable;
-        },
-        hgetall: (key: string) => {
-          commands.push(async () => {
-            return hashes.get(key) || {};
-          });
-          return chainable;
-        },
-        exists: (key: string) => {
-          commands.push(async () => {
-            return store.has(key) || hashes.has(key) ? 1 : 0;
-          });
-          return chainable;
-        },
-        exec: async () => {
-          const results = [];
-          for (const cmd of commands) {
-            results.push([null, await cmd()]);
-          }
-          return results;
-        },
-      };
-      return chainable;
-    }),
-    multi: vi.fn(() => {
-      const commands: Array<() => Promise<unknown>> = [];
-      const chainable = {
-        hmset: (key: string, obj: Record<string, string>) => {
-          commands.push(() => mockRedis.hmset(key, obj));
-          return chainable;
-        },
-        expire: (_key: string, _seconds: number) => {
-          commands.push(() => mockRedis.expire(_key, _seconds));
-          return chainable;
-        },
-        zadd: (key: string, score: number, member: string) => {
-          commands.push(() => mockRedis.zadd(key, score, member));
-          return chainable;
-        },
-        del: (...keys: string[]) => {
-          commands.push(() => mockRedis.del(...keys));
-          return chainable;
-        },
-        sadd: (key: string, ...members: string[]) => {
-          commands.push(() => mockRedis.sadd(key, ...members));
-          return chainable;
-        },
-        srem: (key: string, ...members: string[]) => {
-          commands.push(() => mockRedis.srem(key, ...members));
-          return chainable;
-        },
-        zrem: (key: string, member: string) => {
-          commands.push(() => mockRedis.zrem(key, member));
-          return chainable;
-        },
-        exec: async () => {
-          const results = [];
-          for (const cmd of commands) {
-            results.push([null, await cmd()]);
-          }
-          return results;
-        },
-      };
-      return chainable;
-    }),
-    eval: vi.fn(async (_script: string, numkeys: number, ...args: unknown[]) => {
-      // RELEASE_LOCK_SCRIPT (numkeys=1): Delete key if value matches
-      if (numkeys === 1) {
-        const key = args[0] as string;
-        const value = args[1] as string;
-        if (store.get(key) === value) {
-          store.delete(key);
-          return 1;
-        }
-        return 0;
-      }
-      // numkeys=3: Both JOIN and LEAVE use 3 keys
-      // Distinguish by argument count: JOIN has 9+ args, LEAVE has 6
-      if (numkeys === 3) {
-        const connectionKey = args[0] as string;
-        const sessionMembersKey = args[1] as string;
-        const leaderKey = args[2] as string;
-        const connectionId = args[3] as string;
-
-        if (args.length > 6) {
-          // JOIN_SESSION_SCRIPT
-          const username = args[7] as string;
-          const avatarUrl = args[8] as string;
-
-          if (!hashes.has(connectionKey)) hashes.set(connectionKey, {});
-          const connData = hashes.get(connectionKey)!;
-          connData.connectionId = connectionId;
-          connData.sessionId = args[4] as string;
-          if (username && username !== '__BOARDSESH_UNSET__') connData.username = username;
-          if (avatarUrl !== undefined && avatarUrl !== '__BOARDSESH_UNSET__') connData.avatarUrl = avatarUrl;
-          connData.isLeader = 'false';
-
-          if (!sets.has(sessionMembersKey)) sets.set(sessionMembersKey, new Set());
-          sets.get(sessionMembersKey)!.add(connectionId);
-
-          if (!store.has(leaderKey)) {
-            store.set(leaderKey, connectionId);
-            connData.isLeader = 'true';
-            return 1;
-          }
-          return 0;
-        } else {
-          // LEAVE_SESSION_SCRIPT
-          const memberSet = sets.get(sessionMembersKey);
-          if (memberSet) memberSet.delete(connectionId);
-          store.delete(connectionKey);
-          hashes.delete(connectionKey);
-          const currentLeader = store.get(leaderKey);
-          if (currentLeader !== connectionId) return null;
-          if (memberSet && memberSet.size > 0) {
-            const newLeader = Array.from(memberSet)[0];
-            store.set(leaderKey, newLeader);
-            return newLeader;
-          }
-          store.delete(leaderKey);
-          return null;
-        }
-      }
-      return null;
-    }),
-    // For test access
-    _store: store,
-    _hashes: hashes,
-  } as unknown as Redis & { _store: Map<string, string>; _hashes: Map<string, Record<string, string>> };
-
-  return mockRedis;
-};
+import { createMockRedis, type MockRedis } from './helpers/mock-redis';
 
 const createTestClimb = (uuid?: string): ClimbQueueItem => ({
   uuid: uuid || uuidv4(),
@@ -295,7 +49,7 @@ const registerAndJoinSession = async (
 };
 
 describe('updateQueueOnly - Redis-first approach', () => {
-  let mockRedis: Redis & { _store: Map<string, string>; _hashes: Map<string, Record<string, string>> };
+  let mockRedis: MockRedis;
 
   beforeEach(async () => {
     // Create fresh mock Redis for each test
@@ -531,7 +285,7 @@ describe('updateQueueOnly - Redis-first approach', () => {
 });
 
 describe('addQueueItem - Event publishing fix', () => {
-  let mockRedis: Redis & { _store: Map<string, string>; _hashes: Map<string, Record<string, string>> };
+  let mockRedis: MockRedis;
   let publishSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
@@ -720,7 +474,7 @@ describe('addQueueItem - Event publishing fix', () => {
 });
 
 describe('reorderQueueItem - Return type handling', () => {
-  let mockRedis: Redis & { _store: Map<string, string>; _hashes: Map<string, Record<string, string>> };
+  let mockRedis: MockRedis;
   let publishSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {

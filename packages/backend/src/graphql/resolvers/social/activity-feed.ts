@@ -264,8 +264,8 @@ export const activityFeedQueries = {
 
 
     // Common base JOINs builder
-    const baseQuery = () => {
-      let query = db
+    const baseQuery = () =>
+      db
         .select({
           tick: dbSchema.boardseshTicks,
           userName: dbSchema.users.name,
@@ -295,8 +295,6 @@ export const activityFeedQueries = {
             eq(dbSchema.boardseshTicks.boardType, dbSchema.boardDifficultyGrades.boardType)
           )
         );
-      return query;
-    };
 
     if (sortBy === 'new') {
       // Keyset pagination for chronological sort
