@@ -46,6 +46,25 @@ function TestComponent(props: {
   return React.createElement('div', { ref: sentinelRef, 'data-testid': 'sentinel' });
 }
 
+// Test component where sentinel appears conditionally (deferred mount)
+function DeferredSentinelComponent(props: {
+  onLoadMore: () => void;
+  hasMore: boolean;
+  isFetching?: boolean;
+  showSentinel: boolean;
+}) {
+  const { showSentinel, ...scrollProps } = props;
+  const { sentinelRef } = useInfiniteScroll(scrollProps);
+  return React.createElement(
+    'div',
+    null,
+    React.createElement('span', null, 'content'),
+    showSentinel
+      ? React.createElement('div', { ref: sentinelRef, 'data-testid': 'sentinel' })
+      : null,
+  );
+}
+
 describe('useInfiniteScroll', () => {
   it('creates an IntersectionObserver with default rootMargin', () => {
     const onLoadMore = vi.fn();
@@ -189,5 +208,37 @@ describe('useInfiniteScroll', () => {
     triggerIntersection(true);
     triggerIntersection(true);
     expect(onLoadMore).toHaveBeenCalledTimes(3);
+  });
+
+  it('creates observer when sentinel mounts after initial render (deferred mount)', () => {
+    const onLoadMore = vi.fn();
+
+    // Initially render without the sentinel
+    const { rerender } = render(
+      React.createElement(DeferredSentinelComponent, {
+        onLoadMore,
+        hasMore: true,
+        showSentinel: false,
+      }),
+    );
+
+    // Observer should NOT have been created yet
+    expect(mockObserve).not.toHaveBeenCalled();
+
+    // Now show the sentinel
+    rerender(
+      React.createElement(DeferredSentinelComponent, {
+        onLoadMore,
+        hasMore: true,
+        showSentinel: true,
+      }),
+    );
+
+    // Observer should now be observing
+    expect(mockObserve).toHaveBeenCalledTimes(1);
+
+    // And intersection should trigger onLoadMore
+    triggerIntersection(true);
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 interface UseInfiniteScrollOptions {
   /** Called when sentinel becomes visible and hasMore is true */
@@ -15,8 +15,11 @@ interface UseInfiniteScrollOptions {
 
 /**
  * Reusable IntersectionObserver hook for infinite scroll.
- * Returns a sentinelRef to attach to a div at the bottom of the list.
+ * Returns a sentinelRef callback to attach to a div at the bottom of the list.
  * When the sentinel enters the viewport, onLoadMore is called.
+ *
+ * Uses a callback ref + useState so the observer is created when the
+ * sentinel mounts into the DOM, even if it appears after the initial render.
  */
 export function useInfiniteScroll({
   onLoadMore,
@@ -24,7 +27,12 @@ export function useInfiniteScroll({
   isFetching = false,
   rootMargin = '200px',
 }: UseInfiniteScrollOptions) {
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [sentinelElement, setSentinelElement] = useState<HTMLDivElement | null>(null);
+
+  // Callback ref — works identically with JSX ref props
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    setSentinelElement(node);
+  }, []);
 
   // Store callback values in refs to prevent observer recreation
   const onLoadMoreRef = useRef(onLoadMore);
@@ -46,8 +54,7 @@ export function useInfiniteScroll({
   );
 
   useEffect(() => {
-    const element = sentinelRef.current;
-    if (!element) return;
+    if (!sentinelElement) return;
 
     const observer = new IntersectionObserver(handleObserver, {
       root: null,
@@ -55,12 +62,12 @@ export function useInfiniteScroll({
       threshold: 0,
     });
 
-    observer.observe(element);
+    observer.observe(sentinelElement);
 
     return () => {
       observer.disconnect();
     };
-  }, [handleObserver, rootMargin]);
+  }, [sentinelElement, handleObserver, rootMargin]);
 
   return { sentinelRef };
 }

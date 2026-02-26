@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { GraphQLClient, RequestDocument, Variables } from 'graphql-request';
 import { sortObjectKeys } from '@/app/lib/cache-utils';
 import { getGraphQLHttpUrl } from './client';
+import type { GroupedNotificationConnection } from '@boardsesh/shared-schema';
 
 /**
  * Cache durations for climb search queries (in seconds)
@@ -239,4 +240,25 @@ export async function serverActivityFeed(
   // Fall back to trending
   const trendingResult = await cachedTrendingFeed(sortBy, boardUuid);
   return { result: trendingResult, source: 'trending' };
+}
+
+/**
+ * Fetch the first page of grouped notifications server-side.
+ * Returns null on failure so the client can fall back to client-side fetching.
+ */
+export async function serverGroupedNotifications(
+  authToken: string,
+  limit: number = 20,
+  offset: number = 0,
+): Promise<GroupedNotificationConnection> {
+  const { GET_GROUPED_NOTIFICATIONS } = await import('@/app/lib/graphql/operations/notifications');
+  type Response = { groupedNotifications: GroupedNotificationConnection };
+
+  const data = await executeAuthenticatedGraphQL<Response>(
+    GET_GROUPED_NOTIFICATIONS,
+    { limit, offset },
+    authToken,
+  );
+
+  return data.groupedNotifications;
 }
