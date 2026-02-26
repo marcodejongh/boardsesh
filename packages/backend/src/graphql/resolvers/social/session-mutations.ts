@@ -318,9 +318,14 @@ export const sessionEditMutations = {
 
 /**
  * Recalculate aggregate stats for an inferred session from its current ticks.
+ * Accepts an optional db/transaction connection — pass the transaction `tx`
+ * when calling from within a db.transaction() to ensure consistent reads.
  */
-export async function recalculateSessionStats(sessionId: string): Promise<void> {
-  const result = await db.execute(sql`
+export async function recalculateSessionStats(
+  sessionId: string,
+  conn: Pick<typeof db, 'execute' | 'update'> = db,
+): Promise<void> {
+  const result = await conn.execute(sql`
     SELECT
       COUNT(*) AS tick_count,
       COUNT(*) FILTER (WHERE status IN ('flash', 'send')) AS total_sends,
@@ -343,7 +348,7 @@ export async function recalculateSessionStats(sessionId: string): Promise<void> 
 
   if (rows.length === 0 || rows[0].first_tick_at === null) {
     // No ticks remain — session is empty but keep it for reference
-    await db
+    await conn
       .update(dbSchema.inferredSessions)
       .set({
         tickCount: 0,
@@ -356,7 +361,7 @@ export async function recalculateSessionStats(sessionId: string): Promise<void> 
   }
 
   const stats = rows[0];
-  await db
+  await conn
     .update(dbSchema.inferredSessions)
     .set({
       tickCount: Number(stats.tick_count),

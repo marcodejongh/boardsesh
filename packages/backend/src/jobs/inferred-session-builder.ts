@@ -176,8 +176,8 @@ export async function assignInferredSession(
           .set({ inferredSessionId: sessionId })
           .where(eq(dbSchema.boardseshTicks.uuid, tickUuid));
 
-        // Recalculate stats from actual ticks (safe under concurrency)
-        await recalculateSessionStats(sessionId);
+        // Recalculate stats within the transaction for consistent reads
+        await recalculateSessionStats(sessionId, tx);
 
         return sessionId;
       }
@@ -203,8 +203,8 @@ export async function assignInferredSession(
       .set({ inferredSessionId: sessionId })
       .where(eq(dbSchema.boardseshTicks.uuid, tickUuid));
 
-    // Recalculate stats from actual ticks (safe under concurrency)
-    await recalculateSessionStats(sessionId);
+    // Recalculate stats within the transaction for consistent reads
+    await recalculateSessionStats(sessionId, tx);
 
     // If there was a previous inferred session, mark it as ended
     if (prevTick?.inferredSessionId && prevTick.inferredSessionId !== sessionId) {

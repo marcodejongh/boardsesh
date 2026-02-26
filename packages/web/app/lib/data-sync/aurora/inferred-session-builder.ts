@@ -13,17 +13,17 @@ const SESSION_GAP_MS = 4 * 60 * 60 * 1000;
  * Generate a deterministic UUID v5 for an inferred session.
  * Same (userId, firstTickTimestamp) always produces the same ID.
  */
-function generateInferredSessionId(userId: string, firstTickTimestamp: string): string {
+export function generateInferredSessionId(userId: string, firstTickTimestamp: string): string {
   return uuidv5(`${userId}:${firstTickTimestamp}`, INFERRED_SESSION_NAMESPACE);
 }
 
-interface TickForGrouping {
+export interface TickForGrouping {
   uuid: string;
   climbedAt: string;
   status: string;
 }
 
-interface SessionGroup {
+export interface SessionGroup {
   sessionId: string;
   firstTickAt: string;
   lastTickAt: string;
@@ -34,7 +34,7 @@ interface SessionGroup {
   tickCount: number;
 }
 
-function groupTicks(userId: string, ticks: TickForGrouping[]): SessionGroup[] {
+export function groupTicks(userId: string, ticks: TickForGrouping[]): SessionGroup[] {
   if (ticks.length === 0) return [];
 
   const sorted = [...ticks].sort(
