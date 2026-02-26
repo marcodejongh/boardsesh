@@ -25,6 +25,8 @@ import SessionSummaryFeedItem from './session-summary-feed-item';
 
 interface ActivityFeedProps {
   isAuthenticated: boolean;
+  /** Whether the NextAuth session is still loading. Prevents premature fetches. */
+  authSessionLoading?: boolean;
   boardUuid?: string | null;
   sortBy?: SortMode;
   topPeriod?: TimePeriod;
@@ -50,6 +52,7 @@ function renderFeedItem(item: ActivityFeedItem) {
 
 export default function ActivityFeed({
   isAuthenticated,
+  authSessionLoading = false,
   boardUuid,
   sortBy = 'new',
   topPeriod = 'all',
@@ -66,8 +69,10 @@ export default function ActivityFeed({
 
   // Track dependencies for reset
   const prevDeps = useRef({ boardUuid, sortBy });
+  // Monotonically increasing ID to discard stale fetch results
+  const fetchIdRef = useRef(0);
 
-  const fetchFeed = useCallback(async (cursorValue: string | null = null) => {
+  const fetchFeed = useCallback(async (cursorValue: string | null = null, currentFetchId?: number) => {
     if (cursorValue === null) {
       setLoading(true);
     } else {
@@ -91,6 +96,10 @@ export default function ActivityFeed({
           GET_ACTIVITY_FEED,
           { input }
         );
+
+        // Discard stale results if a newer fetch has been initiated
+        if (currentFetchId !== undefined && currentFetchId !== fetchIdRef.current) return;
+
         const { items: newItems, cursor: nextCursor, hasMore: more } = response.activityFeed;
 
         if (cursorValue === null) {
@@ -105,6 +114,10 @@ export default function ActivityFeed({
           GET_TRENDING_FEED,
           { input }
         );
+
+        // Discard stale results if a newer fetch has been initiated
+        if (currentFetchId !== undefined && currentFetchId !== fetchIdRef.current) return;
+
         const { items: newItems, cursor: nextCursor, hasMore: more } = response.trendingFeed;
 
         if (cursorValue === null) {
@@ -116,18 +129,26 @@ export default function ActivityFeed({
         setHasMore(more);
       }
     } catch (err) {
+      // Discard stale errors too
+      if (currentFetchId !== undefined && currentFetchId !== fetchIdRef.current) return;
       console.error('Error fetching activity feed:', err);
       if (cursorValue === null) {
         setError('Failed to load activity feed. Please try again.');
       }
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      // Only clear loading if this fetch is still current
+      if (currentFetchId === undefined || currentFetchId === fetchIdRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [isAuthenticated, token, boardUuid, sortBy, topPeriod]);
 
   // Initial load and reset on dependency changes
   useEffect(() => {
+    // Don't fetch while the NextAuth session is still resolving
+    if (authSessionLoading) return;
+
     const depsChanged =
       prevDeps.current.boardUuid !== boardUuid ||
       prevDeps.current.sortBy !== sortBy;
@@ -148,12 +169,13 @@ export default function ActivityFeed({
       setError(null);
     }
 
-    fetchFeed(null);
-  }, [isAuthenticated, token, authLoading, boardUuid, sortBy, fetchFeed]);
+    const id = ++fetchIdRef.current;
+    fetchFeed(null, id);
+  }, [authSessionLoading, isAuthenticated, token, authLoading, boardUuid, sortBy, fetchFeed]);
 
-  if ((authLoading || loading) && items.length === 0) {
+  if ((authSessionLoading || authLoading || loading) && items.length === 0) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+      <Box data-testid="activity-feed-loading" sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
         <CircularProgress />
       </Box>
     );
@@ -172,7 +194,7 @@ export default function ActivityFeed({
           icon={<ErrorOutline fontSize="inherit" />}
           description={error}
         >
-          <MuiButton variant="contained" onClick={() => fetchFeed(null)}>
+          <MuiButton variant="contained" onClick={() => fetchFeed(null, ++fetchIdRef.current)}>
             Retry
           </MuiButton>
         </EmptyState>
@@ -180,16 +202,18 @@ export default function ActivityFeed({
 
       {!error && items.length === 0 ? (
         isAuthenticated ? (
-          <EmptyState
-            icon={<PersonSearchOutlined fontSize="inherit" />}
-            description="Follow climbers to see their activity here"
-          >
-            {onFindClimbers && (
-              <MuiButton variant="contained" onClick={onFindClimbers}>
-                Find Climbers
-              </MuiButton>
-            )}
-          </EmptyState>
+          <Box data-testid="activity-feed-empty-state">
+            <EmptyState
+              icon={<PersonSearchOutlined fontSize="inherit" />}
+              description="Follow climbers to see their activity here"
+            >
+              {onFindClimbers && (
+                <MuiButton variant="contained" onClick={onFindClimbers}>
+                  Find Climbers
+                </MuiButton>
+              )}
+            </EmptyState>
+          </Box>
         ) : (
           <EmptyState
             icon={<PublicOutlined fontSize="inherit" />}
@@ -197,12 +221,12 @@ export default function ActivityFeed({
           />
         )
       ) : (
-        <>
+        <Box data-testid="activity-feed-items">
           {items.map(renderFeedItem)}
           {hasMore && (
             <Box sx={{ py: 2 }}>
               <MuiButton
-                onClick={() => fetchFeed(cursor)}
+                onClick={() => fetchFeed(cursor, fetchIdRef.current)}
                 disabled={loadingMore}
                 variant="outlined"
                 fullWidth
@@ -211,7 +235,7 @@ export default function ActivityFeed({
               </MuiButton>
             </Box>
           )}
-        </>
+        </Box>
       )}
     </Box>
   );
