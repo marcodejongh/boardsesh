@@ -66,3 +66,49 @@ test.describe('Activity Feed - Unauthenticated', () => {
     await expect(feedItems.first()).toBeVisible({ timeout: 15000 });
   });
 });
+
+test.describe('Activity Feed - Authenticated', () => {
+  test.beforeEach(async ({ page }) => {
+    // Log in via the auth login form
+    await page.goto('/auth/login');
+    await page.getByLabel('Email').fill('test@boardsesh.com');
+    await page.getByLabel('Password').fill('test');
+    await page.getByRole('button', { name: 'Login' }).click();
+
+    // Wait for redirect to home page after login
+    await page.waitForURL('/', { timeout: 15000 });
+  });
+
+  test('renders personalized feed without sign-in alert', async ({ page }) => {
+    // The Activity tab should be active by default
+    const activityTab = page.getByRole('tab', { name: 'Activity' });
+    await expect(activityTab).toBeVisible({ timeout: 15000 });
+    await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+
+    // Wait for feed items to render
+    const feedItems = page.locator('[data-testid="activity-feed-item"]');
+    await expect(feedItems.first()).toBeVisible({ timeout: 30000 });
+
+    // Should NOT show the "Sign in" alert
+    await expect(page.getByText('Sign in to see a personalized feed')).not.toBeVisible();
+  });
+
+  test('infinite scroll pagination works with authenticated feed', async ({ page }) => {
+    // Wait for initial items to render
+    const feedItems = page.locator('[data-testid="activity-feed-item"]');
+    await expect(feedItems.first()).toBeVisible({ timeout: 30000 });
+
+    const initialCount = await feedItems.count();
+    expect(initialCount).toBeGreaterThan(0);
+
+    // Scroll the sentinel element into view to trigger loading more
+    const sentinel = page.locator('[data-testid="activity-feed-sentinel"]');
+    await sentinel.scrollIntoViewIfNeeded();
+
+    // Wait for more items to appear
+    await expect(async () => {
+      const newCount = await feedItems.count();
+      expect(newCount).toBeGreaterThan(initialCount);
+    }).toPass({ timeout: 15000 });
+  });
+});

@@ -363,7 +363,7 @@ async function seedSocialData() {
 
     // Get climbs for each board type
     const boardTypes = ['kilter', 'tension', 'moonboard'];
-    const climbsByBoard: Record<string, { uuid: string; boardType: string; angle: number | null }[]> = {};
+    const climbsByBoard: Record<string, { uuid: string; boardType: string; angle: number | null; name: string | null }[]> = {};
     const gradesByBoard: Record<string, number[]> = {};
 
     for (const boardType of boardTypes) {
@@ -372,6 +372,7 @@ async function seedSocialData() {
           uuid: boardClimbs.uuid,
           boardType: boardClimbs.boardType,
           angle: boardClimbs.angle,
+          name: boardClimbs.name,
         })
         .from(boardClimbs)
         .where(
@@ -772,7 +773,7 @@ async function seedSocialData() {
     for (const boardType of availableBoardTypes) {
       const climbs = climbsByBoard[boardType];
       for (const c of climbs) {
-        climbNameLookup.set(`${c.boardType}:${c.uuid}`, c.uuid);
+        climbNameLookup.set(`${c.boardType}:${c.uuid}`, c.name || 'Unknown Climb');
       }
     }
 
@@ -793,7 +794,7 @@ async function seedSocialData() {
         metadata: {
           actorDisplayName: profile.displayName,
           actorAvatarUrl: profile.avatarUrl,
-          climbName: 'Seeded Climb',
+          climbName: climbNameLookup.get(`${tick.boardType}:${tick.climbUuid}`) || 'Seeded Climb',
           climbUuid: tick.climbUuid,
           boardType: tick.boardType,
           status: tick.status,

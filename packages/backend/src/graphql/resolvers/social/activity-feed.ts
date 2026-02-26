@@ -200,8 +200,8 @@ export const activityFeedQueries = {
       const cursor = decodeCursor(validatedInput.cursor);
       if (cursor) {
         conditions.push(
-          sql`(${dbSchema.boardseshTicks.climbedAt} < ${cursor.createdAt}
-            OR (${dbSchema.boardseshTicks.climbedAt} = ${cursor.createdAt}
+          sql`(${dbSchema.boardseshTicks.climbedAt} < ${cursor.createdAt}::timestamp
+            OR (${dbSchema.boardseshTicks.climbedAt} = ${cursor.createdAt}::timestamp
                 AND ${dbSchema.boardseshTicks.id} < ${cursor.id}))`
         );
       }

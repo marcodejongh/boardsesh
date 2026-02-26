@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import MuiButton from '@mui/material/Button';
 import MuiAlert from '@mui/material/Alert';
@@ -8,7 +8,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined';
 import PublicOutlined from '@mui/icons-material/PublicOutlined';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -24,6 +24,9 @@ import FeedItemNewClimb from './feed-item-new-climb';
 import FeedItemComment from './feed-item-comment';
 import SessionSummaryFeedItem from './session-summary-feed-item';
 import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
+
+/** Extends the base result with a tag indicating which data source produced it. */
+export type ActivityFeedPage = ActivityFeedResult & { _source: 'personalized' | 'trending' };
 
 interface ActivityFeedProps {
   isAuthenticated: boolean;
@@ -59,30 +62,20 @@ export default function ActivityFeed({
   initialFeedResult,
 }: ActivityFeedProps) {
   const { token, isLoading: authLoading } = useWsAuthToken();
-
-  // Track whether the authenticated user's personalized feed (feed_items) is
-  // empty, so we fall back to trendingFeed (boardsesh_ticks). These two tables
-  // have different id spaces, so cursors must never cross between them.
-  //
-  // When SSR initialData is present (always from trendingFeed), we start with
-  // fallback=true so that if the user scrolls before the background refetch,
-  // page 2+ correctly uses trendingFeed cursors. The background refetch of
-  // page 1 checks activityFeed — if it has items, fallback is cleared and
-  // React Query refetches all pages from the personalized source.
-  const fallbackToTrending = useRef(false);
+  const queryClient = useQueryClient();
 
   const hasInitialData = !!initialFeedResult && initialFeedResult.items.length > 0;
 
-  // When query params change, re-evaluate the fallback. If SSR data is present
-  // and user is authenticated, start with fallback=true for safe cursor handling.
-  useEffect(() => {
-    fallbackToTrending.current = isAuthenticated && hasInitialData;
-  }, [isAuthenticated, hasInitialData, boardUuid, sortBy, topPeriod]);
-
   const queryKey = ['activityFeed', isAuthenticated, boardUuid, sortBy, topPeriod] as const;
 
+  // Track the previous source so we can detect when a background refetch
+  // switches between personalized and trending (e.g. user gains their first
+  // follower activity). When this happens we trim cached pages to page 1
+  // to prevent cursor cross-contamination between the two tables.
+  const prevSourceRef = useRef<'personalized' | 'trending' | null>(null);
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error, refetch } = useInfiniteQuery<
-    ActivityFeedResult,
+    ActivityFeedPage,
     Error
   >({
     queryKey,
@@ -97,36 +90,39 @@ export default function ActivityFeed({
       };
 
       if (isAuthenticated) {
-        // Page 1 (no cursor): always check the personalized feed to determine
-        // the correct data source. This runs both on initial load and on
-        // background refetches (when staleTime expires).
         if (!pageParam) {
+          // Page 1 (no cursor): probe the personalized feed to determine
+          // the data source. If it has items, use personalized; otherwise
+          // fall through to trending.
           const response = await client.request<GetActivityFeedQueryResponse>(
             GET_ACTIVITY_FEED,
             { input },
           );
           if (response.activityFeed.items.length > 0) {
-            fallbackToTrending.current = false;
-            return response.activityFeed;
+            return { ...response.activityFeed, _source: 'personalized' as const };
           }
-          fallbackToTrending.current = true;
-          // Fall through to trending
-        } else if (!fallbackToTrending.current) {
-          // Page 2+ with personalized feed active
-          const response = await client.request<GetActivityFeedQueryResponse>(
-            GET_ACTIVITY_FEED,
-            { input },
-          );
-          return response.activityFeed;
+          // Personalized feed is empty — fall through to trending
+        } else {
+          // Page 2+: read the source from page 1 in the query cache
+          const cached = queryClient.getQueryData<InfiniteData<ActivityFeedPage>>(queryKey);
+          const page1Source = cached?.pages[0]?._source;
+
+          if (page1Source === 'personalized') {
+            const response = await client.request<GetActivityFeedQueryResponse>(
+              GET_ACTIVITY_FEED,
+              { input },
+            );
+            return { ...response.activityFeed, _source: 'personalized' as const };
+          }
+          // page1Source is 'trending' or unavailable — fall through
         }
-        // Page 2+ with trending fallback — fall through
       }
 
       const response = await client.request<GetTrendingFeedQueryResponse>(
         GET_TRENDING_FEED,
         { input },
       );
-      return response.trendingFeed;
+      return { ...response.trendingFeed, _source: 'trending' as const };
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => {
@@ -138,12 +134,31 @@ export default function ActivityFeed({
     ...(hasInitialData
       ? {
           initialData: {
-            pages: [initialFeedResult],
+            pages: [{ ...initialFeedResult, _source: 'trending' as const }],
             pageParams: [null],
           },
         }
       : {}),
   });
+
+  // When a background refetch of page 1 changes the data source (e.g.
+  // personalized feed gains items, or becomes empty), trim cached pages
+  // to just page 1 so that page 2+ cursors match the new source.
+  useEffect(() => {
+    const currentSource = data?.pages[0]?._source ?? null;
+    if (prevSourceRef.current !== null && currentSource !== null && prevSourceRef.current !== currentSource) {
+      if (data && data.pages.length > 1) {
+        queryClient.setQueryData<InfiniteData<ActivityFeedPage>>(queryKey, (old) => {
+          if (!old || old.pages.length <= 1) return old;
+          return {
+            pages: [old.pages[0]],
+            pageParams: [old.pageParams[0]],
+          };
+        });
+      }
+    }
+    prevSourceRef.current = currentSource;
+  }, [data?.pages[0]?._source, queryClient, queryKey, data]);
 
   const items: ActivityFeedItem[] = useMemo(
     () => data?.pages.flatMap((p) => p.items) ?? [],
