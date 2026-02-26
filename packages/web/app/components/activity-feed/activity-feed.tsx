@@ -164,7 +164,7 @@ export default function ActivityFeed({
       }
     }
     prevSourceRef.current = currentSource;
-  }, [data?.pages[0]?._source, queryClient, queryKey, data]);
+  }, [data?.pages[0]?._source, queryClient, queryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const items: ActivityFeedItem[] = useMemo(
     () => data?.pages.flatMap((p) => p.items) ?? [],

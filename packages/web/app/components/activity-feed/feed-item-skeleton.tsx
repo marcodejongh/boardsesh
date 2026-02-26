@@ -11,7 +11,7 @@ import styles from './ascents-feed.module.css';
  */
 export default function FeedItemSkeleton() {
   return (
-    <MuiCard className={styles.feedItem}>
+    <MuiCard className={styles.feedItem} data-testid="feed-item-skeleton">
       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
         {/* User header row */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>

@@ -40,7 +40,7 @@ interface HomePageContentProps {
   initialTab?: 'activity' | 'newClimbs';
   initialBoardUuid?: string;
   initialSortBy?: SortMode;
-  initialTrendingFeed?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean } | null;
+  initialFeedResult?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean } | null;
   isAuthenticatedSSR?: boolean;
   initialFeedSource?: 'personalized' | 'trending';
   initialMyBoards?: UserBoard[] | null;
@@ -51,7 +51,7 @@ export default function HomePageContent({
   initialTab = 'activity',
   initialBoardUuid,
   initialSortBy = 'new',
-  initialTrendingFeed,
+  initialFeedResult,
   isAuthenticatedSSR,
   initialFeedSource,
   initialMyBoards,
@@ -209,7 +209,7 @@ export default function HomePageContent({
               boardUuid={selectedBoardUuid}
               sortBy={sortBy}
               onFindClimbers={() => setSearchOpen(true)}
-              initialFeedResult={initialTrendingFeed ?? undefined}
+              initialFeedResult={initialFeedResult ?? undefined}
               initialFeedSource={initialFeedSource}
             />
           </>

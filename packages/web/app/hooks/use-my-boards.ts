@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { GET_MY_BOARDS, type GetMyBoardsQueryResponse } from '@/app/lib/graphql/operations';
@@ -16,15 +16,20 @@ export function useMyBoards(enabled: boolean, limit = 50, initialBoards?: UserBo
   const hasInitialData = initialBoards != null && initialBoards.length > 0;
   const { token, isAuthenticated } = useWsAuthToken();
   const [boards, setBoards] = useState<UserBoard[]>(initialBoards ?? []);
-  const [isLoading, setIsLoading] = useState(!hasInitialData);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Track whether we already have data (from SSR or a prior fetch) to avoid
+  // re-showing the loading skeleton on refetches. Using a ref instead of reading
+  // `boards` state avoids adding it to the effect's dependency array.
+  const hasDataRef = useRef(hasInitialData);
 
   useEffect(() => {
     if (!enabled || !isAuthenticated || !token) return;
 
     let cancelled = false;
     // Only show loading if we don't already have data
-    if (boards.length === 0) {
+    if (!hasDataRef.current) {
       setIsLoading(true);
     }
     setError(null);
@@ -33,7 +38,10 @@ export function useMyBoards(enabled: boolean, limit = 50, initialBoards?: UserBo
     client
       .request<GetMyBoardsQueryResponse>(GET_MY_BOARDS, { input: { limit, offset: 0 } })
       .then((data) => {
-        if (!cancelled) setBoards(data.myBoards.boards);
+        if (!cancelled) {
+          setBoards(data.myBoards.boards);
+          hasDataRef.current = true;
+        }
       })
       .catch((err) => {
         console.error('Failed to fetch boards:', err);

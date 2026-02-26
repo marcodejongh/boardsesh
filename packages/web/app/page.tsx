@@ -64,7 +64,7 @@ export default async function Home({ searchParams }: HomeProps) {
       initialTab={tab}
       initialBoardUuid={boardUuid}
       initialSortBy={sortBy}
-      initialTrendingFeed={initialFeedResult}
+      initialFeedResult={initialFeedResult}
       isAuthenticatedSSR={isAuthenticatedSSR}
       initialFeedSource={initialFeedSource}
       initialMyBoards={initialMyBoards}
