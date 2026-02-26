@@ -31,13 +31,6 @@ export interface LoginResponse {
   username: string;
 }
 
-export interface GymInfo {
-  id: number;
-  username: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-}
 export interface SyncOptions {
   tables?: string[];
   walls?: Array<{
@@ -118,11 +111,6 @@ export const HOST_BASES: Record<AuroraBoardName, string> = {
   tension: 'tensionboardapp2',
   // touchstone: 'touchstoneboardapp',
 };
-
-//
-export const API_HOSTS: Record<AuroraBoardName, string> = Object.fromEntries(
-  Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://api.${hostBase}.com`]),
-) as Record<AuroraBoardName, string>;
 
 export const WEB_HOSTS: Record<AuroraBoardName, string> = Object.fromEntries(
   Object.entries(HOST_BASES).map(([board, hostBase]) => [board, `https://${hostBase}.com`]),

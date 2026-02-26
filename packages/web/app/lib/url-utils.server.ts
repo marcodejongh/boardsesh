@@ -7,7 +7,7 @@ import {
   BoardName,
 } from '@/app/lib/types';
 import { getLayoutBySlug, getSizeBySlug, getSetsBySlug } from './slug-utils';
-import { isNumericId, extractUuidFromSlug } from './url-utils';
+import { isNumericId, extractUuidFromSlug, parseBoardRouteParams } from './url-utils';
 import {
   MOONBOARD_LAYOUTS,
   MOONBOARD_SETS,
@@ -173,4 +173,37 @@ export async function parseBoardRouteParamsWithSlugs<T extends BoardRouteParamet
   }
 
   return parsedParams as T extends BoardRouteParametersWithUuid ? never : ParsedBoardRouteParameters;
+}
+
+/**
+ * Checks whether route parameters contain numeric IDs (old URL format) vs slugs (new format),
+ * then parses them accordingly. Returns both the parsed params and a flag indicating the format.
+ *
+ * This consolidates the repeated hasNumericParams + parse pattern used across route files.
+ */
+export async function parseRouteParams<T extends BoardRouteParameters>(
+  params: T,
+): Promise<{
+  parsedParams: T extends BoardRouteParametersWithUuid ? ParsedBoardRouteParametersWithUuid : ParsedBoardRouteParameters;
+  isNumericFormat: boolean;
+}> {
+  const isNumericFormat = [params.layout_id, params.size_id, params.set_ids].some((param) =>
+    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
+  );
+
+  if (isNumericFormat) {
+    // For UUID routes, extract the UUID from the slug before parsing
+    const paramsToPass = (params as BoardRouteParametersWithUuid).climb_uuid
+      ? { ...params, climb_uuid: extractUuidFromSlug((params as BoardRouteParametersWithUuid).climb_uuid) }
+      : params;
+    return {
+      parsedParams: parseBoardRouteParams(paramsToPass as T),
+      isNumericFormat: true,
+    };
+  }
+
+  return {
+    parsedParams: await parseBoardRouteParamsWithSlugs(params),
+    isNumericFormat: false,
+  };
 }

@@ -66,7 +66,7 @@ describe('useColorMode', () => {
       currentMode = currentMode === 'light' ? 'dark' : 'light';
     });
 
-    const { result, rerender } = renderHook(() => useColorMode(), {
+    const { result } = renderHook(() => useColorMode(), {
       wrapper: createWrapper({ mode: currentMode, toggleMode }),
     });
 

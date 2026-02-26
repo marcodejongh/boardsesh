@@ -1,7 +1,7 @@
 import React from 'react';
 import { BoardRouteParametersWithUuid } from '@/app/lib/types';
-import { parseBoardRouteParams, extractUuidFromSlug, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
-import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
+import { parseRouteParams } from '@/app/lib/url-utils.server';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { getClimb } from '@/app/lib/data/queries';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
@@ -13,7 +13,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
   const params = await props.params;
 
   try {
-    const parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    const { parsedParams } = await parseRouteParams(params);
     const [boardDetails, currentClimb] = await Promise.all([getBoardDetailsForBoard(parsedParams), getClimb(parsedParams)]);
 
     const climbName = currentClimb.name || `${boardDetails.board_name} Climb`;
@@ -82,21 +82,7 @@ export default async function PlayPage(props: {
 }): Promise<React.JSX.Element> {
   const params = await props.params;
 
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
-
-  let parsedParams;
-
-  if (hasNumericParams) {
-    parsedParams = parseBoardRouteParams({
-      ...params,
-      climb_uuid: extractUuidFromSlug(params.climb_uuid),
-    });
-  } else {
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
-  }
+  const { parsedParams } = await parseRouteParams(params);
 
   const boardDetails = getBoardDetailsForBoard(parsedParams);
 

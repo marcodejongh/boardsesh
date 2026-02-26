@@ -44,14 +44,10 @@ function createPosition(
 describe('useGeolocation', () => {
   let mockGetCurrentPosition: ReturnType<typeof vi.fn>;
   let mockPermissionQuery: ReturnType<typeof vi.fn>;
-  let originalNavigator: Navigator;
 
   beforeEach(() => {
     mockGetCurrentPosition = vi.fn();
     mockPermissionQuery = vi.fn();
-
-    // Store the original navigator descriptor to restore later
-    originalNavigator = navigator;
 
     // Set up geolocation mock
     Object.defineProperty(navigator, 'geolocation', {
