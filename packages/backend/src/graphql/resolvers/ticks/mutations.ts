@@ -92,10 +92,11 @@ export const tickMutations = {
       auroraSyncedAt: tick.auroraSyncedAt,
     };
 
-    // Assign inferred session for ticks not in party mode (fire-and-forget)
+    // Assign inferred session for ticks not in party mode (fire-and-forget).
+    // On failure, the tick stays unassigned until the background builder picks it up (~30 min).
     if (!validatedInput.sessionId) {
       assignInferredSession(uuid, userId, climbedAt, validatedInput.status).catch((err) => {
-        console.error(`[saveTick] Failed to assign inferred session for tick ${uuid}:`, err);
+        console.error(`[saveTick] Failed to assign inferred session for tick ${uuid} (user ${userId}):`, err);
       });
     }
 

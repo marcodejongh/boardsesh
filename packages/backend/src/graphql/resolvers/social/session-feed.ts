@@ -187,8 +187,8 @@ export const sessionFeedQueries = {
     const sessionTypes = new Map(resultRows.map((r) => [r.session_id, r.session_type]));
 
     const [participantMap, gradeDistMap, metaMap] = await Promise.all([
-      fetchParticipantsBatch(sessionIds, sessionTypes),
-      fetchGradeDistributionBatch(sessionIds, sessionTypes),
+      fetchParticipantsBatch(sessionIds),
+      fetchGradeDistributionBatch(sessionIds),
       fetchSessionMetaBatch(sessionIds, sessionTypes),
     ]);
 
@@ -512,7 +512,6 @@ function buildGradeDistributionFromTicks(
  */
 async function fetchParticipantsBatch(
   sessionIds: string[],
-  sessionTypes: Map<string, string>,
 ): Promise<Map<string, SessionFeedParticipant[]>> {
   if (sessionIds.length === 0) return new Map();
 
@@ -565,7 +564,6 @@ async function fetchParticipantsBatch(
  */
 async function fetchGradeDistributionBatch(
   sessionIds: string[],
-  sessionTypes: Map<string, string>,
 ): Promise<Map<string, SessionGradeDistributionItem[]>> {
   if (sessionIds.length === 0) return new Map();
 

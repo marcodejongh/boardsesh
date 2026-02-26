@@ -348,13 +348,12 @@ class RoomManager {
     client.isLeader = isLeader;
     sessionClientIds.add(connectionId);
 
+    // Await status update so callers see consistent Postgres state after join returns.
+    await db.update(sessions).set({ status: 'active', lastActivity: new Date() }).where(eq(sessions.id, sessionId));
+
     // Fire-and-forget Postgres metadata writes - Redis is the source of truth.
-    // These don't affect the return value and shouldn't block the join response.
-    // Failures are logged at warn level since Postgres will be inconsistent until next write.
-    Promise.all([
-      this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined),
-      db.update(sessions).set({ status: 'active', lastActivity: new Date() }).where(eq(sessions.id, sessionId)),
-    ]).catch(err => console.warn(`[RoomManager] Background Postgres persist failed for session ${sessionId} (Redis is source of truth):`, err));
+    this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined)
+      .catch(err => console.warn(`[RoomManager] Background Postgres persist failed for session ${sessionId}:`, err));
 
     // Initialize queue state for new sessions with provided initial queue
     if (isNewSession && initialQueue && initialQueue.length > 0) {
