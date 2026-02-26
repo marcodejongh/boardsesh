@@ -9,6 +9,8 @@ import ToggleButton from '@mui/material/ToggleButton';
 import { DatePicker as MuiDatePicker } from '@mui/x-date-pickers/DatePicker';
 import MuiAvatar from '@mui/material/Avatar';
 import MuiTooltip from '@mui/material/Tooltip';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import CircularProgress from '@mui/material/CircularProgress';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import MuiCard from '@mui/material/Card';
@@ -212,7 +214,11 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
   const [profileStats, setProfileStats] = useState<GetUserProfileStatsQueryResponse['userProfileStats'] | null>(null);
   const [loadingProfileStats, setLoadingProfileStats] = useState(false);
 
+  // Tab navigation state
+  const [activeTab, setActiveTab] = useState<'activity' | 'createdClimbs'>('activity');
+
   const isOwnProfile = session?.user?.id === userId;
+  const hasCredentials = (profile?.credentials?.length ?? 0) > 0;
   const { showMessage } = useSnackbar();
 
   // Fetch profile data for the userId in the URL
@@ -948,21 +954,32 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
           </>
         </CardContent></MuiCard>
 
-        {/* Recent Ascents Feed */}
-        <MuiCard className={styles.statsCard}><CardContent>
-          <Typography variant="h6" component="h5">Recent Activity</Typography>
-          <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
-            Latest ascents and attempts
-          </Typography>
-          <AscentsFeed userId={userId} pageSize={10} />
-        </CardContent></MuiCard>
+        {/* Tab Navigation: Activity / Created Climbs */}
+        {hasCredentials && (
+          <Tabs
+            value={activeTab}
+            onChange={(_, val) => setActiveTab(val)}
+            variant="fullWidth"
+            sx={{ mb: 2 }}
+          >
+            <Tab label="Activity" value="activity" />
+            <Tab label="Created Climbs" value="createdClimbs" />
+          </Tabs>
+        )}
 
-        {/* Created Climbs (from linked Aurora accounts) */}
-        {(() => {
-          const creds = profile?.credentials;
-          if (!creds || creds.length === 0) return null;
+        {(!hasCredentials || activeTab === 'activity') && (
+          <MuiCard className={styles.statsCard}><CardContent>
+            <Typography variant="h6" component="h5">Recent Activity</Typography>
+            <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
+              Latest ascents and attempts
+            </Typography>
+            <AscentsFeed userId={userId} pageSize={10} />
+          </CardContent></MuiCard>
+        )}
+
+        {activeTab === 'createdClimbs' && profile?.credentials && (() => {
           const uniqueSetters = Array.from(
-            new Map(creds.map((c) => [c.auroraUsername, c])).values()
+            new Map(profile.credentials.map((c) => [c.auroraUsername, c])).values()
           );
           return uniqueSetters.map((cred) => (
             <MuiCard key={cred.auroraUsername} className={styles.statsCard}>
