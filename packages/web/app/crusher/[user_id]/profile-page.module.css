@@ -5,11 +5,11 @@
 
 .layout {
   min-height: 100vh;
-  background: var(--background, #F9FAFB);
+  background: var(--semantic-background, #F9FAFB);
 }
 
 .header {
-  background: var(--surface, #FFFFFF);
+  background: var(--semantic-surface, #FFFFFF);
   padding: 0 16px; /* spacing.4 */
   display: flex;
   align-items: center;
