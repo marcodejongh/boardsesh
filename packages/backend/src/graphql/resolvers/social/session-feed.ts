@@ -475,48 +475,6 @@ async function fetchParticipants(
 }
 
 /**
- * Fetch grade distribution for a session
- */
-async function fetchGradeDistribution(
-  sessionId: string,
-  sessionType: string,
-): Promise<SessionGradeDistributionItem[]> {
-  const whereClause = tickSessionFilter(sessionId, sessionType);
-
-  const rows = await db.execute(sql`
-    SELECT
-      dg.boulder_name AS grade,
-      dg.difficulty AS diff_num,
-      COUNT(*) FILTER (WHERE t.status = 'flash')::int AS flash,
-      COUNT(*) FILTER (WHERE t.status = 'send')::int AS send,
-      COUNT(*) FILTER (WHERE t.status = 'attempt')::int AS attempt
-    FROM boardsesh_ticks t
-    LEFT JOIN board_difficulty_grades dg
-      ON dg.difficulty = t.difficulty AND dg.board_type = t.board_type
-    WHERE ${whereClause}
-      AND t.difficulty IS NOT NULL
-    GROUP BY dg.boulder_name, dg.difficulty
-    ORDER BY dg.difficulty DESC
-  `);
-
-  // db.execute() returns QueryResult with .rows property
-  return ((rows as unknown as { rows: Array<{
-    grade: string | null;
-    diff_num: number;
-    flash: number;
-    send: number;
-    attempt: number;
-  }> }).rows)
-    .filter((r): r is typeof r & { grade: string } => r.grade != null)
-    .map((r) => ({
-      grade: r.grade,
-      flash: r.flash,
-      send: r.send,
-      attempt: r.attempt,
-    }));
-}
-
-/**
  * Build grade distribution from pre-fetched tick rows (for session detail)
  */
 function buildGradeDistributionFromTicks(
@@ -542,48 +500,6 @@ function buildGradeDistributionFromTicks(
   return [...gradeMap.values()]
     .sort((a, b) => b.difficulty - a.difficulty)
     .map(({ grade, flash, send, attempt }) => ({ grade, flash, send, attempt }));
-}
-
-/**
- * Fetch session metadata (name, goal) from party mode or inferred sessions
- */
-async function fetchSessionMeta(
-  sessionId: string,
-  sessionType: string,
-): Promise<{ name: string | null; goal: string | null; ownerUserId: string | null } | null> {
-  if (sessionType === 'party') {
-    const [session] = await db
-      .select({
-        name: dbSchema.boardSessions.name,
-        goal: dbSchema.boardSessions.goal,
-        createdByUserId: dbSchema.boardSessions.createdByUserId,
-      })
-      .from(dbSchema.boardSessions)
-      .where(eq(dbSchema.boardSessions.id, sessionId))
-      .limit(1);
-
-    if (!session) return null;
-    return { name: session.name, goal: session.goal, ownerUserId: session.createdByUserId };
-  }
-
-  // Inferred session — look up name, description, and owner
-  const [session] = await db
-    .select({
-      name: dbSchema.inferredSessions.name,
-      description: dbSchema.inferredSessions.description,
-      userId: dbSchema.inferredSessions.userId,
-    })
-    .from(dbSchema.inferredSessions)
-    .where(eq(dbSchema.inferredSessions.id, sessionId))
-    .limit(1);
-
-  if (!session) return null;
-
-  return {
-    name: session.name || null,
-    goal: session.description || null,
-    ownerUserId: session.userId,
-  };
 }
 
 // ============================================

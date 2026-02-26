@@ -161,34 +161,37 @@ export const sessionEditMutations = {
         .filter((id): id is string => id !== null && id !== validated.sessionId),
     );
 
-    // For each tick: save previousInferredSessionId and reassign
-    const tickUuids = ticksToReassign.map((t) => t.uuid);
+    // Wrap tick reassignment, override insert, and stats recalculation in a transaction
+    await db.transaction(async (tx) => {
+      const tickUuids = ticksToReassign.map((t) => t.uuid);
 
-    await db
-      .update(dbSchema.boardseshTicks)
-      .set({
-        previousInferredSessionId: dbSchema.boardseshTicks.inferredSessionId,
-        inferredSessionId: validated.sessionId,
-      })
-      .where(inArray(dbSchema.boardseshTicks.uuid, tickUuids));
+      // Save previousInferredSessionId and reassign
+      await tx
+        .update(dbSchema.boardseshTicks)
+        .set({
+          previousInferredSessionId: dbSchema.boardseshTicks.inferredSessionId,
+          inferredSessionId: validated.sessionId,
+        })
+        .where(inArray(dbSchema.boardseshTicks.uuid, tickUuids));
 
-    // Insert session_member_overrides record
-    await db
-      .insert(dbSchema.sessionMemberOverrides)
-      .values({
-        sessionId: validated.sessionId,
-        userId: validated.userId,
-        addedByUserId: userId,
-      })
-      .onConflictDoNothing();
+      // Insert session_member_overrides record
+      await tx
+        .insert(dbSchema.sessionMemberOverrides)
+        .values({
+          sessionId: validated.sessionId,
+          userId: validated.userId,
+          addedByUserId: userId,
+        })
+        .onConflictDoNothing();
 
-    // Recalculate stats for the target session
-    await recalculateSessionStats(validated.sessionId);
+      // Recalculate stats for the target session
+      await recalculateSessionStats(validated.sessionId, tx);
 
-    // Recalculate stats for original sessions (may be empty now)
-    for (const origSessionId of originalSessionIds) {
-      await recalculateSessionStats(origSessionId);
-    }
+      // Recalculate stats for original sessions (may be empty now)
+      for (const origSessionId of originalSessionIds) {
+        await recalculateSessionStats(origSessionId, tx);
+      }
+    });
 
     return sessionFeedQueries.sessionDetail(null, { sessionId: validated.sessionId });
   },
@@ -292,7 +295,7 @@ export const sessionEditMutations = {
             .where(inArray(dbSchema.boardseshTicks.uuid, orphanedTicks.map((t) => t.uuid)));
 
           for (const tick of orphanedTickData) {
-            await assignInferredSession(tick.uuid, tick.userId, tick.climbedAt, tick.status);
+            await assignInferredSession(tick.uuid, tick.userId, tick.climbedAt, tick.status, tx);
           }
         }
       }
