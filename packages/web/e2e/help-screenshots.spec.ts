@@ -48,8 +48,8 @@ test.describe('Help Page Screenshots', () => {
     // Open search drawer and expand the "Holds" section
     await page.locator('#onboarding-search-button').click();
     await page.getByText('Grade').first().waitFor({ state: 'visible' });
-    // Click the "Holds" collapsible section to expand it
-    await page.getByText('Holds').click();
+    // Click the "Holds" collapsible section to expand it (exact match to avoid "Classify Holds" etc.)
+    await page.getByText('Holds', { exact: true }).click();
     await page.screenshot({ path: `${SCREENSHOT_DIR}/search-by-hold.png` });
   });
 
@@ -57,7 +57,7 @@ test.describe('Help Page Screenshots', () => {
     // Open search drawer and expand the "Holds" section
     await page.locator('#onboarding-search-button').click();
     await page.getByText('Grade').first().waitFor({ state: 'visible' });
-    await page.getByText('Holds').click();
+    await page.getByText('Holds', { exact: true }).click();
 
     // Click "Show Heatmap" button within the holds section
     await page.getByRole('button', { name: 'Show Heatmap' }).click();
@@ -157,6 +157,8 @@ test.describe('Help Page Screenshots - Authenticated', () => {
   });
 
   test('party mode active session', async ({ page }) => {
+    test.slow(); // WebSocket connection setup can be slow in CI
+
     // First add a climb to queue so the queue bar appears
     const climbCard = page.locator('#onboarding-climb-card');
     await climbCard.dblclick();
@@ -172,8 +174,8 @@ test.describe('Help Page Screenshots - Authenticated', () => {
     // Start a party session
     await page.getByRole('button', { name: 'Start Party Mode' }).click();
 
-    // Wait for session to be active - look for Leave button
-    await page.waitForSelector('button:has-text("Leave")', { state: 'visible', timeout: 10000 });
+    // Wait for session to be active - WebSocket connection needs time to establish
+    await page.waitForSelector('button:has-text("Leave")', { state: 'visible', timeout: 30000 });
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/party-mode-active.png` });
 
