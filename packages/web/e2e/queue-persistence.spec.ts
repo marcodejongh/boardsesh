@@ -132,7 +132,7 @@ test.describe('Queue Persistence - Local Mode', () => {
 
     // Click the thumbnail link within the queue bar (not the bar itself, which opens the play drawer)
     const queueBar = page.locator(queueControlBar);
-    const thumbnailLink = queueBar.locator('a').first();
+    const thumbnailLink = queueBar.locator('[data-testid="climb-thumbnail-link"]');
     await thumbnailLink.click();
 
     // Verify we're back on a board page with the same climb
