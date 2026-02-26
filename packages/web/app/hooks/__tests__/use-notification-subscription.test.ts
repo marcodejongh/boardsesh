@@ -20,8 +20,8 @@ const mockCreateGraphQLClient = vi.fn(() => ({
 const mockSubscribe = vi.fn(() => mockUnsub);
 
 vi.mock('@/app/components/graphql-queue/graphql-client', () => ({
-  createGraphQLClient: (...args: unknown[]) => mockCreateGraphQLClient(...args),
-  subscribe: (...args: unknown[]) => mockSubscribe(...args),
+  createGraphQLClient: (...args: any[]) => mockCreateGraphQLClient(...args),
+  subscribe: (...args: any[]) => mockSubscribe(...args),
 }));
 
 const mockHttpRequest = vi.fn();
@@ -187,8 +187,8 @@ describe('useNotificationSubscription', () => {
     renderHook(() => useNotificationSubscription());
 
     // Get the subscription callbacks
-    const subscribeCall = mockSubscribe.mock.calls[0];
-    const callbacks = subscribeCall[2];
+    const subscribeCall = mockSubscribe.mock.calls[0] as any[];
+    const callbacks = subscribeCall[2] as { next: (data: any) => void; error: (err: any) => void };
 
     // Simulate receiving a notification
     callbacks.next({
@@ -237,8 +237,8 @@ describe('useNotificationSubscription', () => {
 
     renderHook(() => useNotificationSubscription());
 
-    const subscribeCall = mockSubscribe.mock.calls[0];
-    const callbacks = subscribeCall[2];
+    const subscribeCall = mockSubscribe.mock.calls[0] as any[];
+    const callbacks = subscribeCall[2] as { next: (data: any) => void; error: (err: any) => void };
 
     callbacks.next({
       notificationReceived: {
@@ -274,8 +274,8 @@ describe('useNotificationSubscription', () => {
 
     renderHook(() => useNotificationSubscription());
 
-    const subscribeCall = mockSubscribe.mock.calls[0];
-    const callbacks = subscribeCall[2];
+    const subscribeCall = mockSubscribe.mock.calls[0] as any[];
+    const callbacks = subscribeCall[2] as { next: (data: any) => void; error: (err: any) => void };
 
     // Should not throw
     expect(() => {
@@ -300,8 +300,8 @@ describe('useNotificationSubscription', () => {
 
     renderHook(() => useNotificationSubscription());
 
-    const subscribeCall = mockSubscribe.mock.calls[0];
-    const callbacks = subscribeCall[2];
+    const subscribeCall = mockSubscribe.mock.calls[0] as any[];
+    const callbacks = subscribeCall[2] as { next: (data: any) => void; error: (err: any) => void };
 
     callbacks.next({
       notificationReceived: {
