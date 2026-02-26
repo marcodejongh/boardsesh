@@ -93,7 +93,7 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
 
   return (
     <Card
-      data-testid="session-feed-card"
+      data-testid="activity-feed-item"
       sx={{
         transition: `box-shadow ${themeTokens.transitions.normal}`,
         '&:hover': {

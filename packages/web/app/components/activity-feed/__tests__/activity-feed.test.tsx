@@ -26,7 +26,7 @@ vi.mock('@/app/hooks/use-infinite-scroll', () => ({
 
 vi.mock('../session-feed-card', () => ({
   default: ({ session }: { session: SessionFeedItem }) => (
-    <div data-testid="session-feed-card">{session.sessionId}</div>
+    <div data-testid="activity-feed-item">{session.sessionId}</div>
   ),
 }));
 vi.mock('../feed-item-skeleton', () => ({
@@ -118,7 +118,7 @@ describe('ActivityFeed', () => {
       render(<ActivityFeed isAuthenticated={false} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getAllByTestId('session-feed-card')).toHaveLength(2);
+        expect(screen.getAllByTestId('activity-feed-item')).toHaveLength(2);
       });
 
       expect(mockRequest).toHaveBeenCalledTimes(1);
@@ -169,7 +169,7 @@ describe('ActivityFeed', () => {
       render(<ActivityFeed isAuthenticated={true} />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getAllByTestId('session-feed-card')).toHaveLength(2);
+        expect(screen.getAllByTestId('activity-feed-item')).toHaveLength(2);
       });
 
       expect(mockRequest).toHaveBeenCalledTimes(1);

@@ -79,7 +79,7 @@ describe('SessionFeedCard', () => {
   it('renders session data', () => {
     render(<SessionFeedCard session={makeSession()} />);
 
-    expect(screen.getByTestId('session-feed-card')).toBeTruthy();
+    expect(screen.getByTestId('activity-feed-item')).toBeTruthy();
     expect(screen.getByText('Test User')).toBeTruthy();
     expect(screen.getByText('5 sends')).toBeTruthy();
     expect(screen.getByText('2 flashes')).toBeTruthy();
