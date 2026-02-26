@@ -127,7 +127,7 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
       subscriptionRef.current?.();
       subscriptionRef.current = undefined;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-subscribe when board/layout changes. ensureWsClient, queryClient, and queryKey are stable refs/constants.
   }, [boardType, layoutId]);
 
   return (
