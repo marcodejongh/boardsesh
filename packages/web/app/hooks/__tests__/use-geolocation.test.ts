@@ -19,17 +19,25 @@ function createPosition(
   longitude: number,
   accuracy: number,
 ): GeolocationPosition {
-  return {
-    coords: {
-      latitude,
-      longitude,
-      accuracy,
-      altitude: null,
-      altitudeAccuracy: null,
-      heading: null,
-      speed: null,
+  const coords: GeolocationCoordinates = {
+    latitude,
+    longitude,
+    accuracy,
+    altitude: null,
+    altitudeAccuracy: null,
+    heading: null,
+    speed: null,
+    toJSON() {
+      return { latitude, longitude, accuracy, altitude: null, altitudeAccuracy: null, heading: null, speed: null };
     },
-    timestamp: Date.now(),
+  };
+  const timestamp = Date.now();
+  return {
+    coords,
+    timestamp,
+    toJSON() {
+      return { coords, timestamp };
+    },
   };
 }
 

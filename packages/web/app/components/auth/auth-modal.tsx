@@ -220,6 +220,7 @@ export default function AuthModal({
               sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
             >
               <TextField
+                id="login_email"
                 label="Email"
                 placeholder="your@email.com"
                 variant="outlined"
@@ -244,6 +245,7 @@ export default function AuthModal({
               />
 
               <TextField
+                id="login_password"
                 label="Password"
                 type="password"
                 placeholder="Password"

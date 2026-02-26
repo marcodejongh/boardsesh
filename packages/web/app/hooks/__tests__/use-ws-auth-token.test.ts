@@ -3,12 +3,18 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { createQueryWrapper } from '@/app/test-utils/test-providers';
 import { useWsAuthToken } from '../use-ws-auth-token';
 
+const mockUseSession = vi.fn();
+vi.mock('next-auth/react', () => ({
+  useSession: () => mockUseSession(),
+}));
+
 const mockFetch = vi.fn();
 
 describe('useWsAuthToken', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockReset();
+    mockUseSession.mockReturnValue({ status: 'authenticated' });
   });
 
   afterEach(() => {
@@ -123,5 +129,26 @@ describe('useWsAuthToken', () => {
     });
 
     expect(result.current.token).toBeNull();
+  });
+
+  it('returns loading when session status is loading', () => {
+    mockUseSession.mockReturnValue({ status: 'loading' });
+    mockFetch.mockReturnValue(new Promise(() => {}));
+
+    const { result } = renderHook(() => useWsAuthToken(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    expect(result.current.isLoading).toBe(true);
+  });
+
+  it('does not fetch when session status is loading', () => {
+    mockUseSession.mockReturnValue({ status: 'loading' });
+
+    renderHook(() => useWsAuthToken(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });

@@ -51,7 +51,7 @@ function RootBottomBar({ boardConfigs }: { boardConfigs: BoardConfigData }) {
   const { boardDetails, angle, hasActiveQueue } = useQueueBridgeBoardInfo();
 
   return (
-    <div className={bottomBarStyles.bottomBarWrapper}>
+    <div className={bottomBarStyles.bottomBarWrapper} data-testid="bottom-bar-wrapper">
       {hasActiveQueue && boardDetails && (
         <ErrorBoundary>
           <BoardProvider boardName={boardDetails.board_name}>

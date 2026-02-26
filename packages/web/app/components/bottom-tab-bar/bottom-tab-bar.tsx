@@ -304,6 +304,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
   return (
     <>
       <BottomNavigation
+        data-testid="bottom-tab-bar"
         value={activeTab}
         onChange={handleTabChange}
         showLabels
