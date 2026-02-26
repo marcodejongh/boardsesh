@@ -8,16 +8,20 @@ import MuiTypography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import NotificationsNoneOutlined from '@mui/icons-material/NotificationsNoneOutlined';
 import { useRouter } from 'next/navigation';
-import type { GroupedNotification } from '@boardsesh/shared-schema';
+import type { GroupedNotification, GroupedNotificationConnection } from '@boardsesh/shared-schema';
 import { useUnreadNotificationCount } from '@/app/hooks/use-unread-notification-count';
 import { useGroupedNotifications } from '@/app/hooks/use-grouped-notifications';
 import { useMarkGroupAsRead, useMarkAllAsRead } from '@/app/hooks/use-mark-notifications-read';
 import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 import NotificationItem from './notification-item';
 
-export default function NotificationList() {
+interface NotificationListProps {
+  initialData?: GroupedNotificationConnection | null;
+}
+
+export default function NotificationList({ initialData }: NotificationListProps) {
   const unreadCount = useUnreadNotificationCount();
-  const { groupedNotifications, isLoading, hasMore, isFetchingMore, fetchMore } = useGroupedNotifications();
+  const { groupedNotifications, isLoading, hasMore, isFetchingMore, fetchMore } = useGroupedNotifications(initialData ?? undefined);
   const markGroupAsReadMutation = useMarkGroupAsRead();
   const markAllAsReadMutation = useMarkAllAsRead();
   const router = useRouter();
@@ -68,50 +72,50 @@ export default function NotificationList() {
     isFetching: isFetchingMore,
   });
 
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress size={24} />
-      </Box>
-    );
-  }
-
   return (
     <Box>
-      {/* Header with mark all as read */}
-      {groupedNotifications.length > 0 && unreadCount > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 2, py: 1 }}>
-          <MuiButton
-            onClick={() => markAllAsReadMutation.mutate()}
-            size="small"
-            sx={{ textTransform: 'none' }}
-          >
-            Mark all as read
-          </MuiButton>
-        </Box>
-      )}
-
-      {/* Notification list */}
-      {groupedNotifications.length === 0 ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 6, gap: 1 }}>
-          <NotificationsNoneOutlined sx={{ fontSize: 40, color: 'var(--neutral-300)' }} />
-          <MuiTypography variant="body2" color="text.secondary">
-            No notifications yet
-          </MuiTypography>
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress size={24} />
         </Box>
       ) : (
-        <List disablePadding>
-          {groupedNotifications.map((notification) => (
-            <NotificationItem
-              key={notification.uuid}
-              notification={notification}
-              onClick={handleNotificationClick}
-            />
-          ))}
-        </List>
+        <>
+          {/* Header with mark all as read */}
+          {groupedNotifications.length > 0 && unreadCount > 0 && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 2, py: 1 }}>
+              <MuiButton
+                onClick={() => markAllAsReadMutation.mutate()}
+                size="small"
+                sx={{ textTransform: 'none' }}
+              >
+                Mark all as read
+              </MuiButton>
+            </Box>
+          )}
+
+          {/* Notification list */}
+          {groupedNotifications.length === 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 6, gap: 1 }}>
+              <NotificationsNoneOutlined sx={{ fontSize: 40, color: 'var(--neutral-300)' }} />
+              <MuiTypography variant="body2" color="text.secondary">
+                No notifications yet
+              </MuiTypography>
+            </Box>
+          ) : (
+            <List disablePadding>
+              {groupedNotifications.map((notification) => (
+                <NotificationItem
+                  key={notification.uuid}
+                  notification={notification}
+                  onClick={handleNotificationClick}
+                />
+              ))}
+            </List>
+          )}
+        </>
       )}
 
-      {/* Infinite scroll sentinel */}
+      {/* Infinite scroll sentinel — always in the DOM so the observer connects */}
       <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
         {isFetchingMore && <CircularProgress size={16} />}
       </Box>

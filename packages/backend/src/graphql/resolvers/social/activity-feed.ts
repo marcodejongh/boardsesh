@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, lt, or } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
@@ -49,7 +49,7 @@ function mapFeedItemToGraphQL(row: typeof dbSchema.feedItems.$inferSelect) {
     quality: (meta.quality as number) ?? null,
     attemptCount: (meta.attemptCount as number) ?? null,
     comment: (meta.comment as string) ?? null,
-    createdAt: row.createdAt.toISOString(),
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
   };
 }
 
@@ -85,17 +85,16 @@ export const activityFeedQueries = {
 
     if (sortBy === 'new') {
       // Keyset pagination for chronological sort (stable — order doesn't change)
+      // Use raw SQL with the cursor string passed directly to PostgreSQL to avoid
+      // timezone issues from JavaScript's new Date() interpreting PG timestamps
+      // without timezone indicators as local time instead of UTC.
       if (validatedInput.cursor) {
         const cursor = decodeCursor(validatedInput.cursor);
         if (cursor) {
           conditions.push(
-            or(
-              lt(dbSchema.feedItems.createdAt, new Date(cursor.createdAt)),
-              and(
-                eq(dbSchema.feedItems.createdAt, new Date(cursor.createdAt)),
-                lt(dbSchema.feedItems.id, cursor.id)
-              )
-            )!
+            sql`(${dbSchema.feedItems.createdAt} < ${cursor.createdAt}::timestamp
+              OR (${dbSchema.feedItems.createdAt} = ${cursor.createdAt}::timestamp
+                  AND ${dbSchema.feedItems.id} < ${cursor.id}))`
           );
         }
       }
@@ -190,70 +189,48 @@ export const activityFeedQueries = {
   ) => {
     const validatedInput = validateInput(ActivityFeedInputSchema, input || {}, 'input');
     const limit = validatedInput.limit ?? 20;
+    const sortBy = validatedInput.sortBy ?? 'new';
 
     // Build conditions - only successful ascents for trending
     const conditions = [
       sql`${dbSchema.boardseshTicks.status} IN ('flash', 'send')`,
     ];
 
-    // Decode cursor
-    if (validatedInput.cursor) {
-      const cursor = decodeCursor(validatedInput.cursor);
-      if (cursor) {
-        conditions.push(
-          sql`(${dbSchema.boardseshTicks.climbedAt} < ${cursor.createdAt}
-            OR (${dbSchema.boardseshTicks.climbedAt} = ${cursor.createdAt}
-                AND ${dbSchema.boardseshTicks.id} < ${cursor.id}))`
-        );
+    // Board filter: look up board config and filter by boardType + layoutId
+    let layoutIdFilter: number | null = null;
+    if (validatedInput.boardUuid) {
+      const board = await db
+        .select({ boardType: dbSchema.userBoards.boardType, layoutId: dbSchema.userBoards.layoutId })
+        .from(dbSchema.userBoards)
+        .where(eq(dbSchema.userBoards.uuid, validatedInput.boardUuid))
+        .limit(1)
+        .then(rows => rows[0]);
+
+      if (board) {
+        conditions.push(eq(dbSchema.boardseshTicks.boardType, board.boardType));
+        layoutIdFilter = board.layoutId;
       }
     }
 
-    // Time period filter
-    if (validatedInput.topPeriod && validatedInput.topPeriod !== 'all') {
+    // Apply time period filter for top/controversial/hot sorts
+    if (sortBy !== 'new' && validatedInput.topPeriod && validatedInput.topPeriod !== 'all') {
       const intervalCond = timePeriodIntervalSql(dbSchema.boardseshTicks.climbedAt, validatedInput.topPeriod);
       if (intervalCond) conditions.push(intervalCond);
     }
 
-    const whereClause = and(...conditions);
-
-    const results = await db
-      .select({
-        tick: dbSchema.boardseshTicks,
-        userName: dbSchema.users.name,
-        userImage: dbSchema.users.image,
-        userDisplayName: dbSchema.userProfiles.displayName,
-        userAvatarUrl: dbSchema.userProfiles.avatarUrl,
-        climbName: dbSchema.boardClimbs.name,
-        setterUsername: dbSchema.boardClimbs.setterUsername,
-        layoutId: dbSchema.boardClimbs.layoutId,
-        frames: dbSchema.boardClimbs.frames,
-        difficultyName: dbSchema.boardDifficultyGrades.boulderName,
-      })
-      .from(dbSchema.boardseshTicks)
-      .innerJoin(dbSchema.users, eq(dbSchema.boardseshTicks.userId, dbSchema.users.id))
-      .leftJoin(dbSchema.userProfiles, eq(dbSchema.boardseshTicks.userId, dbSchema.userProfiles.userId))
-      .leftJoin(
-        dbSchema.boardClimbs,
-        and(
-          eq(dbSchema.boardseshTicks.climbUuid, dbSchema.boardClimbs.uuid),
-          eq(dbSchema.boardseshTicks.boardType, dbSchema.boardClimbs.boardType)
-        )
-      )
-      .leftJoin(
-        dbSchema.boardDifficultyGrades,
-        and(
-          eq(dbSchema.boardseshTicks.difficulty, dbSchema.boardDifficultyGrades.difficulty),
-          eq(dbSchema.boardseshTicks.boardType, dbSchema.boardDifficultyGrades.boardType)
-        )
-      )
-      .where(whereClause)
-      .orderBy(desc(dbSchema.boardseshTicks.climbedAt), desc(dbSchema.boardseshTicks.id))
-      .limit(limit + 1);
-
-    const hasMore = results.length > limit;
-    const resultRows = hasMore ? results.slice(0, limit) : results;
-
-    const items = resultRows.map(({ tick, userName, userImage, userDisplayName, userAvatarUrl, climbName, setterUsername, layoutId, frames, difficultyName }) => ({
+    // Helper to map a result row to the GraphQL shape
+    const mapRow = ({ tick, userName, userImage, userDisplayName, userAvatarUrl, climbName, setterUsername, layoutId, frames, difficultyName }: {
+      tick: typeof dbSchema.boardseshTicks.$inferSelect;
+      userName: string | null;
+      userImage: string | null;
+      userDisplayName: string | null;
+      userAvatarUrl: string | null;
+      climbName: string | null;
+      setterUsername: string | null;
+      layoutId: number | null;
+      frames: string | null;
+      difficultyName: string | null;
+    }) => ({
       id: tick.id.toString(),
       type: 'ascent' as const,
       entityType: 'tick' as const,
@@ -280,18 +257,157 @@ export const activityFeedQueries = {
       attemptCount: tick.attemptCount,
       comment: tick.comment || null,
       createdAt: tick.climbedAt,
-    }));
+    });
 
-    let nextCursor: string | null = null;
-    if (hasMore && resultRows.length > 0) {
-      const lastResult = resultRows[resultRows.length - 1];
-      nextCursor = encodeCursor(lastResult.tick.climbedAt, Number(lastResult.tick.id));
+    // Common base JOINs builder
+    const baseQuery = () => {
+      let query = db
+        .select({
+          tick: dbSchema.boardseshTicks,
+          userName: dbSchema.users.name,
+          userImage: dbSchema.users.image,
+          userDisplayName: dbSchema.userProfiles.displayName,
+          userAvatarUrl: dbSchema.userProfiles.avatarUrl,
+          climbName: dbSchema.boardClimbs.name,
+          setterUsername: dbSchema.boardClimbs.setterUsername,
+          layoutId: dbSchema.boardClimbs.layoutId,
+          frames: dbSchema.boardClimbs.frames,
+          difficultyName: dbSchema.boardDifficultyGrades.boulderName,
+        })
+        .from(dbSchema.boardseshTicks)
+        .innerJoin(dbSchema.users, eq(dbSchema.boardseshTicks.userId, dbSchema.users.id))
+        .leftJoin(dbSchema.userProfiles, eq(dbSchema.boardseshTicks.userId, dbSchema.userProfiles.userId))
+        .leftJoin(
+          dbSchema.boardClimbs,
+          and(
+            eq(dbSchema.boardseshTicks.climbUuid, dbSchema.boardClimbs.uuid),
+            eq(dbSchema.boardseshTicks.boardType, dbSchema.boardClimbs.boardType)
+          )
+        )
+        .leftJoin(
+          dbSchema.boardDifficultyGrades,
+          and(
+            eq(dbSchema.boardseshTicks.difficulty, dbSchema.boardDifficultyGrades.difficulty),
+            eq(dbSchema.boardseshTicks.boardType, dbSchema.boardDifficultyGrades.boardType)
+          )
+        );
+      return query;
+    };
+
+    if (sortBy === 'new') {
+      // Keyset pagination for chronological sort
+      if (validatedInput.cursor) {
+        const cursor = decodeCursor(validatedInput.cursor);
+        if (cursor) {
+          conditions.push(
+            sql`(${dbSchema.boardseshTicks.climbedAt} < ${cursor.createdAt}::timestamp
+              OR (${dbSchema.boardseshTicks.climbedAt} = ${cursor.createdAt}::timestamp
+                  AND ${dbSchema.boardseshTicks.id} < ${cursor.id}))`
+          );
+        }
+      }
+
+      // Apply layoutId filter from board config lookup
+      if (layoutIdFilter !== null) {
+        conditions.push(eq(dbSchema.boardClimbs.layoutId, layoutIdFilter));
+      }
+
+      const whereClause = and(...conditions);
+      const results = await baseQuery()
+        .where(whereClause)
+        .orderBy(desc(dbSchema.boardseshTicks.climbedAt), desc(dbSchema.boardseshTicks.id))
+        .limit(limit + 1);
+
+      const hasMore = results.length > limit;
+      const resultRows = hasMore ? results.slice(0, limit) : results;
+      const items = resultRows.map(mapRow);
+
+      let nextCursor: string | null = null;
+      if (hasMore && resultRows.length > 0) {
+        const lastResult = resultRows[resultRows.length - 1];
+        nextCursor = encodeCursor(lastResult.tick.climbedAt, Number(lastResult.tick.id));
+      }
+
+      return { items, cursor: nextCursor, hasMore };
     }
 
-    return {
-      items,
-      cursor: nextCursor,
-      hasMore,
-    };
+    // Vote-based sort modes (top/controversial/hot) use offset pagination
+    const offset = validatedInput.cursor
+      ? (decodeOffsetCursor(validatedInput.cursor) ?? 0)
+      : 0;
+
+    // Apply layoutId filter from board config lookup
+    if (layoutIdFilter !== null) {
+      conditions.push(eq(dbSchema.boardClimbs.layoutId, layoutIdFilter));
+    }
+
+    const whereClause = and(...conditions);
+
+    const results = await db
+      .select({
+        tick: dbSchema.boardseshTicks,
+        userName: dbSchema.users.name,
+        userImage: dbSchema.users.image,
+        userDisplayName: dbSchema.userProfiles.displayName,
+        userAvatarUrl: dbSchema.userProfiles.avatarUrl,
+        climbName: dbSchema.boardClimbs.name,
+        setterUsername: dbSchema.boardClimbs.setterUsername,
+        layoutId: dbSchema.boardClimbs.layoutId,
+        frames: dbSchema.boardClimbs.frames,
+        difficultyName: dbSchema.boardDifficultyGrades.boulderName,
+        score: sql<number>`COALESCE(${dbSchema.voteCounts.score}, 0)`.as('sort_score'),
+        upvotes: sql<number>`COALESCE(${dbSchema.voteCounts.upvotes}, 0)`.as('sort_upvotes'),
+        downvotes: sql<number>`COALESCE(${dbSchema.voteCounts.downvotes}, 0)`.as('sort_downvotes'),
+      })
+      .from(dbSchema.boardseshTicks)
+      .innerJoin(dbSchema.users, eq(dbSchema.boardseshTicks.userId, dbSchema.users.id))
+      .leftJoin(dbSchema.userProfiles, eq(dbSchema.boardseshTicks.userId, dbSchema.userProfiles.userId))
+      .leftJoin(
+        dbSchema.boardClimbs,
+        and(
+          eq(dbSchema.boardseshTicks.climbUuid, dbSchema.boardClimbs.uuid),
+          eq(dbSchema.boardseshTicks.boardType, dbSchema.boardClimbs.boardType)
+        )
+      )
+      .leftJoin(
+        dbSchema.boardDifficultyGrades,
+        and(
+          eq(dbSchema.boardseshTicks.difficulty, dbSchema.boardDifficultyGrades.difficulty),
+          eq(dbSchema.boardseshTicks.boardType, dbSchema.boardDifficultyGrades.boardType)
+        )
+      )
+      .leftJoin(
+        dbSchema.voteCounts,
+        and(
+          sql`${dbSchema.voteCounts.entityType} = 'tick'`,
+          eq(dbSchema.boardseshTicks.uuid, dbSchema.voteCounts.entityId),
+        )
+      )
+      .where(whereClause)
+      .orderBy(
+        sortBy === 'top'
+          ? desc(sql`COALESCE(${dbSchema.voteCounts.score}, 0)`)
+          : sortBy === 'controversial'
+            ? desc(sql`
+                CASE WHEN COALESCE(${dbSchema.voteCounts.upvotes}, 0) + COALESCE(${dbSchema.voteCounts.downvotes}, 0) = 0 THEN 0
+                ELSE LEAST(COALESCE(${dbSchema.voteCounts.upvotes}, 0), COALESCE(${dbSchema.voteCounts.downvotes}, 0))::float
+                     / (COALESCE(${dbSchema.voteCounts.upvotes}, 0) + COALESCE(${dbSchema.voteCounts.downvotes}, 0))
+                     * LN(COALESCE(${dbSchema.voteCounts.upvotes}, 0) + COALESCE(${dbSchema.voteCounts.downvotes}, 0) + 1)
+                END`)
+            : desc(sql`SIGN(COALESCE(${dbSchema.voteCounts.score}, 0))
+                * LN(GREATEST(ABS(COALESCE(${dbSchema.voteCounts.score}, 0)), 1))
+                + EXTRACT(EPOCH FROM ${dbSchema.boardseshTicks.climbedAt}) / 45000.0`),
+        desc(dbSchema.boardseshTicks.climbedAt),
+        desc(dbSchema.boardseshTicks.id),
+      )
+      .offset(offset)
+      .limit(limit + 1);
+
+    const hasMore = results.length > limit;
+    const resultRows = hasMore ? results.slice(0, limit) : results;
+    const items = resultRows.map(mapRow);
+    const nextCursor = hasMore ? encodeOffsetCursor(offset + limit) : null;
+
+    return { items, cursor: nextCursor, hasMore };
   },
 };

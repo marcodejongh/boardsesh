@@ -40,7 +40,10 @@ interface HomePageContentProps {
   initialTab?: 'activity' | 'newClimbs';
   initialBoardUuid?: string;
   initialSortBy?: SortMode;
-  initialTrendingFeed?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean } | null;
+  initialFeedResult?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean } | null;
+  isAuthenticatedSSR?: boolean;
+  initialFeedSource?: 'personalized' | 'trending';
+  initialMyBoards?: UserBoard[] | null;
 }
 
 export default function HomePageContent({
@@ -48,9 +51,12 @@ export default function HomePageContent({
   initialTab = 'activity',
   initialBoardUuid,
   initialSortBy = 'new',
-  initialTrendingFeed,
+  initialFeedResult,
+  isAuthenticatedSSR,
+  initialFeedSource,
+  initialMyBoards,
 }: HomePageContentProps) {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -58,9 +64,10 @@ export default function HomePageContent({
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
   const [subscriptions, setSubscriptions] = useState<NewClimbSubscription[]>([]);
 
-  const isAuthenticated = status === 'authenticated' && !!session?.user;
+  // Trust the SSR hint during the loading phase to prevent flash of unauthenticated content
+  const isAuthenticated = status === 'authenticated' ? true : (status === 'loading' ? (isAuthenticatedSSR ?? false) : false);
   const { token: wsAuthToken } = useWsAuthToken();
-  const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(isAuthenticated);
+  const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(isAuthenticated, 50, initialMyBoards);
 
   // Read state from URL params (with fallbacks to server-provided initial values)
   const activeTab = (searchParams.get('tab') === 'newClimbs' ? 'newClimbs' : (searchParams.get('tab') || initialTab)) as 'activity' | 'newClimbs';
@@ -202,7 +209,8 @@ export default function HomePageContent({
               boardUuid={selectedBoardUuid}
               sortBy={sortBy}
               onFindClimbers={() => setSearchOpen(true)}
-              initialFeedResult={initialTrendingFeed ?? undefined}
+              initialFeedResult={initialFeedResult ?? undefined}
+              initialFeedSource={initialFeedSource}
             />
           </>
         )}

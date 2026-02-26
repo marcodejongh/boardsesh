@@ -52,7 +52,7 @@ export default function SessionSummaryFeedItem({ item }: SessionSummaryFeedItemP
   };
 
   return (
-    <Card>
+    <Card data-testid="activity-feed-item">
       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>

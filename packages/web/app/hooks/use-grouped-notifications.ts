@@ -18,8 +18,9 @@ export const GROUPED_NOTIFICATIONS_QUERY_KEY = ['notifications', 'grouped'] as c
 
 /**
  * Hook to fetch paginated grouped notifications using useInfiniteQuery.
+ * Accepts optional `initialData` from SSR to avoid a loading flash.
  */
-export function useGroupedNotifications() {
+export function useGroupedNotifications(initialData?: GroupedNotificationConnection) {
   const { token, isAuthenticated } = useWsAuthToken();
   const queryClient = useQueryClient();
 
@@ -44,6 +45,12 @@ export function useGroupedNotifications() {
     },
     enabled: isAuthenticated && !!token,
     staleTime: 60 * 1000,
+    ...(initialData
+      ? {
+          initialData: { pages: [initialData], pageParams: [0] },
+          initialDataUpdatedAt: Date.now(),
+        }
+      : {}),
   });
 
   const groupedNotifications: GroupedNotification[] = useMemo(

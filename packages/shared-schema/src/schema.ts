@@ -2415,6 +2415,7 @@ export const typeDefs = /* GraphQL */ `
     new_climb
     comment
     proposal_approved
+    session_summary
   }
 
   """

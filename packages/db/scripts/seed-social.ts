@@ -9,6 +9,7 @@ import { userBoards, boardFollows } from '../src/schema/app/boards.js';
 import { boardClimbs, boardClimbStats, boardDifficultyGrades } from '../src/schema/boards/unified.js';
 import { notifications } from '../src/schema/app/notifications.js';
 import { comments, votes } from '../src/schema/app/social.js';
+import { feedItems } from '../src/schema/app/feed.js';
 import { createScriptDb, getScriptDatabaseUrl } from './db-connection.js';
 import {
   pickTickComment,
@@ -362,7 +363,7 @@ async function seedSocialData() {
 
     // Get climbs for each board type
     const boardTypes = ['kilter', 'tension', 'moonboard'];
-    const climbsByBoard: Record<string, { uuid: string; boardType: string; angle: number | null }[]> = {};
+    const climbsByBoard: Record<string, { uuid: string; boardType: string; angle: number | null; name: string | null }[]> = {};
     const gradesByBoard: Record<string, number[]> = {};
 
     for (const boardType of boardTypes) {
@@ -371,6 +372,7 @@ async function seedSocialData() {
           uuid: boardClimbs.uuid,
           boardType: boardClimbs.boardType,
           angle: boardClimbs.angle,
+          name: boardClimbs.name,
         })
         .from(boardClimbs)
         .where(
@@ -740,6 +742,80 @@ async function seedSocialData() {
       await db.insert(boardseshTicks).values(batch).onConflictDoNothing();
     }
     console.log(`  Fixture ticks: ${fixtureTickRecords.length}`);
+
+    // =========================================================================
+    // Step 8.6: Seed feed_items for authenticated activity feed
+    // =========================================================================
+    console.log('\n--- Step 8.6: Seeding feed_items for activity feed ---');
+
+    // Find which fake users the test user follows
+    const testUserFollowing = followRecords
+      .filter(f => f.followerId === TEST_USER_ID)
+      .map(f => f.followingId!);
+
+    // Collect ticks from followed users (flash/send only, matching the trendingFeed filter)
+    const followedUserTicks = tickRecords.filter(
+      t => testUserFollowing.includes(t.userId!) && (t.status === 'flash' || t.status === 'send')
+    );
+
+    // Build a profile lookup for metadata
+    const profileLookup = new Map<string, { displayName: string | null; avatarUrl: string | null }>();
+    for (const p of profileRecords) {
+      profileLookup.set(p.userId!, { displayName: p.displayName ?? null, avatarUrl: p.avatarUrl ?? null });
+    }
+    // Include fixture user profiles
+    for (const u of FIXTURE_USERS) {
+      profileLookup.set(u.id, { displayName: u.displayName ?? null, avatarUrl: u.avatarUrl ?? null });
+    }
+
+    // Build a climb name lookup
+    const climbNameLookup = new Map<string, string>();
+    for (const boardType of availableBoardTypes) {
+      const climbs = climbsByBoard[boardType];
+      for (const c of climbs) {
+        climbNameLookup.set(`${c.boardType}:${c.uuid}`, c.name || 'Unknown Climb');
+      }
+    }
+
+    // Create feed items — take up to 60 ticks so pagination (page size 20) triggers
+    const feedItemTicks = faker.helpers.shuffle([...followedUserTicks]).slice(0, 60);
+    const feedItemRecords: (typeof feedItems.$inferInsert)[] = [];
+
+    for (const tick of feedItemTicks) {
+      const profile = profileLookup.get(tick.userId!) || { displayName: null, avatarUrl: null };
+
+      feedItemRecords.push({
+        recipientId: TEST_USER_ID,
+        actorId: tick.userId!,
+        type: 'ascent',
+        entityType: 'tick',
+        entityId: tick.uuid!,
+        boardUuid: null,
+        metadata: {
+          actorDisplayName: profile.displayName,
+          actorAvatarUrl: profile.avatarUrl,
+          climbName: climbNameLookup.get(`${tick.boardType}:${tick.climbUuid}`) || 'Seeded Climb',
+          climbUuid: tick.climbUuid,
+          boardType: tick.boardType,
+          status: tick.status,
+          angle: tick.angle,
+          isMirror: tick.isMirror ?? false,
+          isBenchmark: tick.isBenchmark ?? false,
+          difficulty: tick.difficulty,
+          quality: tick.quality,
+          attemptCount: tick.attemptCount,
+          comment: tick.comment || null,
+        },
+        createdAt: new Date(tick.climbedAt!),
+      });
+    }
+
+    // Batch insert feed items
+    for (let i = 0; i < feedItemRecords.length; i += BATCH_SIZE) {
+      const batch = feedItemRecords.slice(i, i + BATCH_SIZE);
+      await db.insert(feedItems).values(batch).onConflictDoNothing();
+    }
+    console.log(`Inserted ${feedItemRecords.length} feed items for test user activity feed`);
 
     // =========================================================================
     // Step 9: Create threaded comments on ticks
@@ -1217,6 +1293,7 @@ async function seedSocialData() {
     console.log(`  Comments: ${parentCount + replyCount} (${parentCount} top-level, ${replyCount} replies in ${threadCount} threads)`);
     console.log(`  Fixture comments: ${fixtureCommentIdMap.size} (${fixtureParentCount} parents + ${fixtureReplyCount} replies)`);
     console.log(`  Fixture votes: ${fixtureVoteRecords.length}`);
+    console.log(`  Feed items: ${feedItemRecords.length} (for test user activity feed)`);
     console.log(`  Notifications: ${notificationRecords.length} (${unreadNotifications} unread)`);
     console.log(`    Dev user notifications: ${devUserNotifications} (${devUserUnread} unread)`);
 

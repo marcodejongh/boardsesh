@@ -21,6 +21,7 @@ vi.mock('../use-unread-notification-count', () => ({
   UNREAD_COUNT_QUERY_KEY: ['notifications', 'unreadCount'],
 }));
 
+import type { GroupedNotificationConnection } from '@boardsesh/shared-schema';
 import { useWsAuthToken } from '../use-ws-auth-token';
 import { useGroupedNotifications, GROUPED_NOTIFICATIONS_QUERY_KEY } from '../use-grouped-notifications';
 
@@ -206,6 +207,34 @@ describe('useGroupedNotifications', () => {
 
   it('uses correct query key', () => {
     expect(GROUPED_NOTIFICATIONS_QUERY_KEY).toEqual(['notifications', 'grouped']);
+  });
+
+  it('uses initialData without triggering a fetch', async () => {
+    mockUseWsAuthToken.mockReturnValue({
+      token: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+    });
+
+    const ssrData = {
+      groups: [createMockGroup({ uuid: 'ssr-group-1' }), createMockGroup({ uuid: 'ssr-group-2' })],
+      totalCount: 2,
+      unreadCount: 0,
+      hasMore: false,
+    } as GroupedNotificationConnection;
+
+    const { result } = renderHook(() => useGroupedNotifications(ssrData), {
+      wrapper: createQueryWrapper(),
+    });
+
+    // Data should be available immediately from initialData
+    expect(result.current.groupedNotifications.length).toBe(2);
+    expect(result.current.groupedNotifications[0].uuid).toBe('ssr-group-1');
+    expect(result.current.isLoading).toBe(false);
+
+    // No network request should have been made
+    expect(mockRequest).not.toHaveBeenCalled();
   });
 
   it('initial page param is 0', async () => {

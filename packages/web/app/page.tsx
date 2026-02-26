@@ -1,8 +1,9 @@
 import React from 'react';
+import { cookies } from 'next/headers';
 import ConsolidatedBoardConfig from './components/setup-wizard/consolidated-board-config';
 import { getAllBoardConfigs } from './lib/server-board-configs';
 import HomePageContent from './home-page-content';
-import { cachedTrendingFeed } from './lib/graphql/server-cached-client';
+import { cachedTrendingFeed, serverActivityFeed, serverMyBoards } from './lib/graphql/server-cached-client';
 import type { SortMode } from '@boardsesh/shared-schema';
 
 type HomeProps = {
@@ -24,13 +25,36 @@ export default async function Home({ searchParams }: HomeProps) {
   const sortBy = (['new', 'top', 'controversial', 'hot'].includes(params.sort as string)
     ? params.sort : 'new') as SortMode;
 
-  // SSR: fetch initial trending feed (no auth needed)
-  let initialTrendingFeed = null;
-  if (tab === 'activity') {
+  // Read auth cookie to determine if user is authenticated at SSR time
+  const cookieStore = await cookies();
+  const authToken = cookieStore.get('next-auth.session-token')?.value
+    ?? cookieStore.get('__Secure-next-auth.session-token')?.value;
+  const isAuthenticatedSSR = !!authToken;
+
+  // SSR: fetch boards + feed in parallel for authenticated users
+  let initialFeedResult: { items: import('@boardsesh/shared-schema').ActivityFeedItem[]; cursor: string | null; hasMore: boolean } | null = null;
+  let initialFeedSource: 'personalized' | 'trending' = 'trending';
+  let initialMyBoards: import('@boardsesh/shared-schema').UserBoard[] | null = null;
+
+  if (authToken) {
+    const feedPromise = tab === 'activity'
+      ? serverActivityFeed(authToken, sortBy, boardUuid).catch(() => null)
+      : Promise.resolve(null);
+    const boardsPromise = serverMyBoards(authToken);
+
+    const [feedResult, boardsResult] = await Promise.all([feedPromise, boardsPromise]);
+
+    if (feedResult) {
+      initialFeedResult = feedResult.result;
+      initialFeedSource = feedResult.source;
+    }
+    initialMyBoards = boardsResult;
+  } else if (tab === 'activity') {
     try {
-      initialTrendingFeed = await cachedTrendingFeed(sortBy, boardUuid);
+      initialFeedResult = await cachedTrendingFeed(sortBy, boardUuid);
+      initialFeedSource = 'trending';
     } catch {
-      // Trending feed fetch failed, client will retry
+      // Feed fetch failed, client will retry
     }
   }
 
@@ -40,7 +64,10 @@ export default async function Home({ searchParams }: HomeProps) {
       initialTab={tab}
       initialBoardUuid={boardUuid}
       initialSortBy={sortBy}
-      initialTrendingFeed={initialTrendingFeed}
+      initialFeedResult={initialFeedResult}
+      isAuthenticatedSSR={isAuthenticatedSSR}
+      initialFeedSource={initialFeedSource}
+      initialMyBoards={initialMyBoards}
     />
   );
 }
