@@ -10,6 +10,43 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+vi.mock('next-auth/react', () => ({
+  useSession: () => ({ data: null, status: 'unauthenticated' }),
+}));
+
+vi.mock('@/app/hooks/use-ws-auth-token', () => ({
+  useWsAuthToken: () => ({ token: null, isAuthenticated: false, isLoading: false, error: null }),
+}));
+
+vi.mock('@/app/components/providers/snackbar-provider', () => ({
+  useSnackbar: () => ({ showMessage: vi.fn() }),
+}));
+
+vi.mock('@/app/lib/graphql/client', () => ({
+  createGraphQLHttpClient: () => ({ request: vi.fn() }),
+}));
+
+vi.mock('@/app/lib/graphql/operations/activity-feed', () => ({
+  UPDATE_INFERRED_SESSION: 'mutation UpdateInferredSession',
+  ADD_USER_TO_SESSION: 'mutation AddUserToSession',
+  REMOVE_USER_FROM_SESSION: 'mutation RemoveUserFromSession',
+}));
+
+vi.mock('@/app/theme/theme-config', () => ({
+  themeTokens: {
+    transitions: { normal: '200ms ease' },
+    shadows: { md: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
+    borderRadius: { full: 9999, sm: 4 },
+    colors: { amber: '#FBBF24', success: '#6B9080', successBg: '#EFF5F2' },
+    typography: { fontSize: { xs: 12 } },
+    neutral: { 300: '#D1D5DB' },
+  },
+}));
+
+vi.mock('../[sessionId]/user-search-dialog', () => ({
+  default: () => null,
+}));
+
 vi.mock('@/app/components/charts/grade-distribution-bar', () => ({
   default: () => <div data-testid="grade-distribution-bar" />,
 }));
