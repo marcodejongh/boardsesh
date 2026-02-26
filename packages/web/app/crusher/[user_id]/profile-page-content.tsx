@@ -955,53 +955,19 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
         </CardContent></MuiCard>
 
         {/* Tab Navigation: Activity / Created Climbs */}
-        {hasCredentials ? (
-          <>
-            <Tabs
-              value={activeTab}
-              onChange={(_, val) => setActiveTab(val)}
-              variant="fullWidth"
-              sx={{ mb: 2 }}
-            >
-              <Tab label="Activity" value="activity" />
-              <Tab label="Created Climbs" value="createdClimbs" />
-            </Tabs>
+        {hasCredentials && (
+          <Tabs
+            value={activeTab}
+            onChange={(_, val) => setActiveTab(val)}
+            variant="fullWidth"
+            sx={{ mb: 2 }}
+          >
+            <Tab label="Activity" value="activity" />
+            <Tab label="Created Climbs" value="createdClimbs" />
+          </Tabs>
+        )}
 
-            {activeTab === 'activity' && (
-              <MuiCard className={styles.statsCard}><CardContent>
-                <Typography variant="h6" component="h5">Recent Activity</Typography>
-                <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
-                  Latest ascents and attempts
-                </Typography>
-                <AscentsFeed userId={userId} pageSize={10} />
-              </CardContent></MuiCard>
-            )}
-
-            {activeTab === 'createdClimbs' && (() => {
-              const creds = profile?.credentials;
-              if (!creds || creds.length === 0) return null;
-              const uniqueSetters = Array.from(
-                new Map(creds.map((c) => [c.auroraUsername, c])).values()
-              );
-              return uniqueSetters.map((cred) => (
-                <MuiCard key={cred.auroraUsername} className={styles.statsCard}>
-                  <CardContent>
-                    <Typography variant="h6" component="h5">
-                      Created Climbs
-                    </Typography>
-                    <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
-                      Climbs set by {cred.auroraUsername} on {cred.boardType.charAt(0).toUpperCase() + cred.boardType.slice(1)}
-                    </Typography>
-                    <SetterClimbList
-                      username={cred.auroraUsername}
-                      authToken={authToken}
-                    />
-                  </CardContent>
-                </MuiCard>
-              ));
-            })()}
-          </>
-        ) : (
+        {(!hasCredentials || activeTab === 'activity') && (
           <MuiCard className={styles.statsCard}><CardContent>
             <Typography variant="h6" component="h5">Recent Activity</Typography>
             <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
@@ -1010,6 +976,28 @@ export default function ProfilePageContent({ userId }: { userId: string }) {
             <AscentsFeed userId={userId} pageSize={10} />
           </CardContent></MuiCard>
         )}
+
+        {activeTab === 'createdClimbs' && profile?.credentials && (() => {
+          const uniqueSetters = Array.from(
+            new Map(profile.credentials.map((c) => [c.auroraUsername, c])).values()
+          );
+          return uniqueSetters.map((cred) => (
+            <MuiCard key={cred.auroraUsername} className={styles.statsCard}>
+              <CardContent>
+                <Typography variant="h6" component="h5">
+                  Created Climbs
+                </Typography>
+                <Typography variant="body2" component="span" color="text.secondary" className={styles.chartDescription}>
+                  Climbs set by {cred.auroraUsername} on {cred.boardType.charAt(0).toUpperCase() + cred.boardType.slice(1)}
+                </Typography>
+                <SetterClimbList
+                  username={cred.auroraUsername}
+                  authToken={authToken}
+                />
+              </CardContent>
+            </MuiCard>
+          ));
+        })()}
       </Box>
     </Box>
   );
