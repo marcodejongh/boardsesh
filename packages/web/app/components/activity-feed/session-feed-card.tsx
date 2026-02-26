@@ -18,6 +18,7 @@ import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutl
 import Link from 'next/link';
 import type { SessionFeedItem } from '@boardsesh/shared-schema';
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
+import OutcomeDoughnut from '@/app/components/charts/outcome-doughnut';
 import VoteButton from '@/app/components/social/vote-button';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeColor, getGradeTextColor } from '@/app/lib/grade-colors';
@@ -237,16 +238,46 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
             )}
           </Box>
 
-          {/* Grade chart (compact) */}
+          {/* Grade chart (compact) + outcome doughnut on desktop */}
           {gradeDistribution.length > 0 && (
-            <Box sx={{ mb: 1 }}>
-              <GradeDistributionBar
-                gradeDistribution={gradeDistribution}
-                height={100}
-                compact
-                showAttempts
-                stacked
-              />
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                mb: 1,
+                '@media (min-width: 768px)': {
+                  flexDirection: 'row',
+                  alignItems: 'stretch',
+                  gap: 1,
+                },
+              }}
+            >
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <GradeDistributionBar
+                  gradeDistribution={gradeDistribution}
+                  height={100}
+                  compact
+                  showAttempts
+                  stacked
+                />
+              </Box>
+              <Box
+                sx={{
+                  display: 'none',
+                  '@media (min-width: 768px)': {
+                    display: 'block',
+                    flex: '0 0 120px',
+                  },
+                }}
+              >
+                <OutcomeDoughnut
+                  flashes={totalFlashes}
+                  sends={totalSends}
+                  attempts={totalAttempts}
+                  height={100}
+                  compact
+                />
+              </Box>
             </Box>
           )}
 

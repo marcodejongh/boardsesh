@@ -14,6 +14,10 @@ vi.mock('@/app/components/charts/grade-distribution-bar', () => ({
   default: () => <div data-testid="grade-distribution-bar" />,
 }));
 
+vi.mock('@/app/components/charts/outcome-doughnut', () => ({
+  default: () => <div data-testid="outcome-doughnut" />,
+}));
+
 vi.mock('@/app/components/social/vote-button', () => ({
   default: ({ entityType, entityId }: { entityType: string; entityId: string }) => (
     <div data-testid="vote-button" data-entity-type={entityType} data-entity-id={entityId} />
