@@ -57,6 +57,7 @@ export const GET_SESSION_DETAIL = gql`
       ${SESSION_FEED_ITEM_FIELDS}
       ticks {
         uuid
+        userId
         climbUuid
         climbName
         boardType

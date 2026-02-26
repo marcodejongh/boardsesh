@@ -786,6 +786,7 @@ export type SessionFeedResult = {
 
 export type SessionDetailTick = {
   uuid: string;
+  userId: string;
   climbUuid: string;
   climbName?: string | null;
   boardType: string;

@@ -18,13 +18,15 @@ async function fetchSessionDetail(sessionId: string) {
       { sessionId },
     );
     return data.sessionDetail;
-  } catch {
+  } catch (err) {
+    console.error('[SessionDetailPage] Failed to fetch session:', sessionId, err);
     return null;
   }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { sessionId } = await params;
+  const { sessionId: rawSessionId } = await params;
+  const sessionId = decodeURIComponent(rawSessionId);
   const session = await fetchSessionDetail(sessionId);
 
   if (!session) {
@@ -42,7 +44,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function SessionDetailPage({ params }: Props) {
-  const { sessionId } = await params;
+  const { sessionId: rawSessionId } = await params;
+  const sessionId = decodeURIComponent(rawSessionId);
   const session = await fetchSessionDetail(sessionId);
 
   return <SessionDetailContent session={session} />;

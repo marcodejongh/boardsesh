@@ -305,7 +305,12 @@ export const sessionFeedQueries = {
     // Handle ungrouped sessions (synthetic IDs like "ug:userId:groupNumber")
     const ungroupedMatch = sessionId.match(/^ug:(.+):(\d+)$/);
     if (ungroupedMatch) {
-      return resolveUngroupedSession(sessionId, ungroupedMatch[1], parseInt(ungroupedMatch[2], 10));
+      try {
+        return await resolveUngroupedSession(sessionId, ungroupedMatch[1], parseInt(ungroupedMatch[2], 10));
+      } catch (err) {
+        console.error('[sessionDetail] Error resolving ungrouped session:', sessionId, err);
+        return null;
+      }
     }
 
     // Check if it's a party mode session
@@ -365,6 +370,7 @@ export const sessionFeedQueries = {
     // Build ticks
     const ticks: SessionDetailTick[] = tickRows.map((row) => ({
       uuid: row.tick.uuid,
+      userId: row.tick.userId,
       climbUuid: row.tick.climbUuid,
       climbName: row.climbName || null,
       boardType: row.tick.boardType,
@@ -759,6 +765,7 @@ async function resolveUngroupedSession(
   // Build ticks
   const ticks: SessionDetailTick[] = rows.map((r) => ({
     uuid: r.uuid,
+    userId: r.user_id,
     climbUuid: r.climb_uuid,
     climbName: r.climb_name || null,
     boardType: r.board_type,

@@ -59,6 +59,7 @@ function makeSession(overrides: Partial<SessionDetail> = {}): SessionDetail {
     ticks: [
       {
         uuid: 'tick-1',
+        userId: 'user-1',
         climbUuid: 'climb-1',
         climbName: 'Test Climb',
         boardType: 'kilter',
@@ -137,9 +138,10 @@ describe('SessionDetailContent', () => {
     expect(screen.getByText('Evening Crush')).toBeTruthy();
   });
 
-  it('shows default title when no session name', () => {
+  it('generates title from day and board type when no session name', () => {
+    // 2024-01-15 is a Monday, boardTypes is ['kilter']
     render(<SessionDetailContent session={makeSession()} />);
-    expect(screen.getByText('Climbing Session')).toBeTruthy();
+    expect(screen.getByText('Monday Kilter Session')).toBeTruthy();
   });
 
   it('shows goal when available', () => {

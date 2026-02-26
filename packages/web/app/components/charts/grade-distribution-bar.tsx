@@ -1,12 +1,8 @@
 'use client';
 
 import React from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import { Bar } from 'react-chartjs-2';
 import './chart-registry'; // Ensure Chart.js components are registered
-import { getGradeColor, getGradeTextColor } from '@/app/lib/grade-colors';
-import { themeTokens } from '@/app/theme/theme-config';
 
 export interface GradeDistributionItem {
   grade: string;
@@ -19,7 +15,7 @@ export interface GradeDistributionItem {
 interface GradeDistributionBarProps {
   gradeDistribution: GradeDistributionItem[];
   height?: number;
-  /** Compact mode for feed cards: custom horizontal bar layout */
+  /** Compact mode for feed cards: smaller fonts, no legend/tooltips */
   compact?: boolean;
   /** Include attempt bars */
   showAttempts?: boolean;
@@ -27,104 +23,10 @@ interface GradeDistributionBarProps {
   stacked?: boolean;
 }
 
-/** Compact horizontal bar row for feed cards */
-function CompactGradeDistribution({
-  gradeDistribution,
-  showAttempts,
-}: {
-  gradeDistribution: GradeDistributionItem[];
-  showAttempts: boolean;
-}) {
-  const maxCount = Math.max(
-    ...gradeDistribution.map((g) => (g.flash ?? 0) + (g.send ?? g.count ?? 0) + (showAttempts ? (g.attempt ?? 0) : 0)),
-    1,
-  );
-
-  return (
-    <Box data-testid="grade-distribution-bar" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-      {gradeDistribution.map((g) => {
-        const flash = g.flash ?? 0;
-        const send = g.send ?? (g.count ?? 0);
-        const attempt = showAttempts ? (g.attempt ?? 0) : 0;
-        const total = flash + send + attempt;
-        const gradeColor = getGradeColor(g.grade);
-        const textColor = getGradeTextColor(gradeColor);
-
-        return (
-          <Box key={g.grade} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-            {/* Grade pill */}
-            <Typography
-              variant="caption"
-              sx={{
-                minWidth: 32,
-                textAlign: 'center',
-                fontWeight: 600,
-                fontSize: themeTokens.typography.fontSize.xs - 1,
-                bgcolor: gradeColor || 'var(--neutral-200)',
-                color: textColor,
-                borderRadius: themeTokens.borderRadius.sm,
-                px: 0.5,
-                py: 0.125,
-                lineHeight: 1.4,
-              }}
-            >
-              {g.grade}
-            </Typography>
-
-            {/* Stacked bar */}
-            <Box
-              sx={{
-                flex: 1,
-                height: 8,
-                bgcolor: 'var(--neutral-100)',
-                borderRadius: themeTokens.borderRadius.sm,
-                overflow: 'hidden',
-                display: 'flex',
-              }}
-            >
-              {flash > 0 && (
-                <Box
-                  sx={{
-                    width: `${(flash / maxCount) * 100}%`,
-                    height: '100%',
-                    bgcolor: themeTokens.colors.amber,
-                  }}
-                />
-              )}
-              {send > 0 && (
-                <Box
-                  sx={{
-                    width: `${(send / maxCount) * 100}%`,
-                    height: '100%',
-                    bgcolor: themeTokens.colors.success,
-                  }}
-                />
-              )}
-              {attempt > 0 && (
-                <Box
-                  sx={{
-                    width: `${(attempt / maxCount) * 100}%`,
-                    height: '100%',
-                    bgcolor: 'var(--neutral-300)',
-                  }}
-                />
-              )}
-            </Box>
-
-            {/* Count */}
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ minWidth: 16, textAlign: 'right', fontSize: themeTokens.typography.fontSize.xs - 1 }}
-            >
-              {total}
-            </Typography>
-          </Box>
-        );
-      })}
-    </Box>
-  );
-}
+// Match profile page "Ascents by Difficulty" colors
+const FLASH_COLOR = 'rgba(75,192,192,0.5)';
+const SEND_COLOR = 'rgba(192,75,75,0.5)';
+const ATTEMPT_COLOR = 'rgba(158,158,158,0.5)';
 
 export default function GradeDistributionBar({
   gradeDistribution,
@@ -135,12 +37,14 @@ export default function GradeDistributionBar({
 }: GradeDistributionBarProps) {
   if (gradeDistribution.length === 0) return null;
 
-  // Use custom compact layout for feed cards
-  if (compact) {
-    return <CompactGradeDistribution gradeDistribution={gradeDistribution} showAttempts={showAttempts} />;
-  }
+  // Data comes sorted hardest-first from backend; reverse to show lowest→highest on x-axis
+  const sorted = [...gradeDistribution].reverse();
 
-  const labels = gradeDistribution.map((g) => g.grade);
+  const labels = sorted.map((g) => g.grade);
+
+  // In compact mode, use near-full width bars for a dense chart
+  const barPct = compact ? 0.95 : 0.8;
+  const catPct = compact ? 0.95 : 0.8;
 
   const datasets: Array<{
     label: string;
@@ -152,30 +56,30 @@ export default function GradeDistributionBar({
   }> = [
     {
       label: 'Flash',
-      data: gradeDistribution.map((g) => g.flash ?? 0),
-      backgroundColor: themeTokens.colors.amber,
-      borderRadius: 2,
-      barPercentage: 0.8,
-      categoryPercentage: 0.8,
+      data: sorted.map((g) => g.flash ?? 0),
+      backgroundColor: FLASH_COLOR,
+      borderRadius: compact ? 1 : 2,
+      barPercentage: barPct,
+      categoryPercentage: catPct,
     },
     {
-      label: 'Send',
-      data: gradeDistribution.map((g) => g.send ?? (g.count ?? 0)),
-      backgroundColor: themeTokens.colors.success,
-      borderRadius: 2,
-      barPercentage: 0.8,
-      categoryPercentage: 0.8,
+      label: 'Redpoint',
+      data: sorted.map((g) => g.send ?? (g.count ?? 0)),
+      backgroundColor: SEND_COLOR,
+      borderRadius: compact ? 1 : 2,
+      barPercentage: barPct,
+      categoryPercentage: catPct,
     },
   ];
 
   if (showAttempts) {
     datasets.push({
       label: 'Attempt',
-      data: gradeDistribution.map((g) => g.attempt ?? 0),
-      backgroundColor: themeTokens.neutral[300],
-      borderRadius: 2,
-      barPercentage: 0.8,
-      categoryPercentage: 0.8,
+      data: sorted.map((g) => g.attempt ?? 0),
+      backgroundColor: ATTEMPT_COLOR,
+      borderRadius: compact ? 1 : 2,
+      barPercentage: barPct,
+      categoryPercentage: catPct,
     });
   }
 
@@ -186,27 +90,30 @@ export default function GradeDistributionBar({
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: true,
+        display: !compact,
         position: 'top' as const,
+        ...(compact && { labels: { font: { size: 9 } } }),
       },
       title: {
-        display: false,
+        display: !compact,
+        text: 'Ascents by Difficulty',
       },
       tooltip: {
-        enabled: true,
+        enabled: !compact,
       },
     },
     scales: {
       x: {
         stacked,
-        display: true,
+        ticks: compact ? { font: { size: 9 } } : undefined,
       },
       y: {
         stacked,
-        display: true,
+        display: !compact,
         beginAtZero: true,
       },
     },
+    ...(compact && { layout: { padding: 0 } }),
   };
 
   return (

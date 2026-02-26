@@ -26,6 +26,16 @@ interface SessionFeedCardProps {
   session: SessionFeedItem;
 }
 
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function generateSessionName(firstTickAt: string, boardTypes: string[]): string {
+  const day = DAYS[new Date(firstTickAt).getDay()];
+  const boards = boardTypes
+    .map((bt) => bt.charAt(0).toUpperCase() + bt.slice(1))
+    .join(' & ');
+  return `${day} ${boards} Session`;
+}
+
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes}min`;
   const hours = Math.floor(minutes / 60);
@@ -75,6 +85,8 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
   const primaryParticipant = participants[0];
   const isMultiUser = participants.length > 1;
 
+  const displayName = sessionName || generateSessionName(firstTickAt, boardTypes);
+
   const hardestGradeColor = getGradeColor(hardestGrade);
   const hardestGradeTextColor = getGradeTextColor(hardestGradeColor);
 
@@ -118,7 +130,7 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
             </Avatar>
           )}
 
-          <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ minWidth: 0 }}>
             <Typography
               variant="body2"
               fontWeight={600}
@@ -146,9 +158,16 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
               )}
             </Box>
           </Box>
-          {sessionName && (
-            <Chip label={sessionName} size="small" color="primary" variant="outlined" sx={{ maxWidth: 100 }} />
-          )}
+
+          {/* Session title — prominent, right-aligned */}
+          <Typography
+            variant="subtitle2"
+            fontWeight={600}
+            noWrap
+            sx={{ ml: 'auto', flexShrink: 1, minWidth: 0, textAlign: 'right' }}
+          >
+            {displayName}
+          </Typography>
         </Box>
 
         {/* Clickable body that links to session detail */}
@@ -223,6 +242,7 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
             <Box sx={{ mb: 1 }}>
               <GradeDistributionBar
                 gradeDistribution={gradeDistribution}
+                height={100}
                 compact
                 showAttempts
                 stacked

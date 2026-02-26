@@ -18,14 +18,25 @@ import CheckCircleOutlineOutlined from '@mui/icons-material/CheckCircleOutlineOu
 import ErrorOutlineOutlined from '@mui/icons-material/ErrorOutlineOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import Link from 'next/link';
-import type { SessionDetail } from '@boardsesh/shared-schema';
+import type { SessionDetail, SessionDetailTick, SessionFeedParticipant } from '@boardsesh/shared-schema';
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
 import VoteButton from '@/app/components/social/vote-button';
 import CommentSection from '@/app/components/social/comment-section';
 import AscentThumbnail from '@/app/components/activity-feed/ascent-thumbnail';
+import { themeTokens } from '@/app/theme/theme-config';
 
 interface SessionDetailContentProps {
   session: SessionDetail | null;
+}
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function generateSessionName(firstTickAt: string, boardTypes: string[]): string {
+  const day = DAYS[new Date(firstTickAt).getDay()];
+  const boards = boardTypes
+    .map((bt) => bt.charAt(0).toUpperCase() + bt.slice(1))
+    .join(' & ');
+  return `${day} ${boards} Session`;
 }
 
 function formatDuration(minutes: number): string {
@@ -42,6 +53,57 @@ function formatDate(isoString: string): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+/** Group of ticks for the same climb (climbUuid) */
+interface ClimbGroup {
+  climbUuid: string;
+  climbName: string | null;
+  boardType: string;
+  layoutId: number | null;
+  angle: number;
+  frames: string | null;
+  isMirror: boolean;
+  difficultyName: string | null;
+  ticks: SessionDetailTick[];
+}
+
+/**
+ * Group ticks by climbUuid, preserving the order of first appearance.
+ * Each group contains all ticks for that climb (potentially from multiple users).
+ */
+function groupTicksByClimb(ticks: SessionDetailTick[]): ClimbGroup[] {
+  const groupMap = new Map<string, ClimbGroup>();
+  const order: string[] = [];
+
+  for (const tick of ticks) {
+    const key = tick.climbUuid;
+    const existing = groupMap.get(key);
+    if (existing) {
+      existing.ticks.push(tick);
+    } else {
+      order.push(key);
+      groupMap.set(key, {
+        climbUuid: tick.climbUuid,
+        climbName: tick.climbName ?? null,
+        boardType: tick.boardType,
+        layoutId: tick.layoutId ?? null,
+        angle: tick.angle,
+        frames: tick.frames ?? null,
+        isMirror: tick.isMirror,
+        difficultyName: tick.difficultyName ?? null,
+        ticks: [tick],
+      });
+    }
+  }
+
+  return order.map((key) => groupMap.get(key)!);
+}
+
+function getStatusColor(status: string): 'success' | 'primary' | 'default' {
+  if (status === 'flash') return 'success';
+  if (status === 'send') return 'primary';
+  return 'default';
 }
 
 export default function SessionDetailContent({ session }: SessionDetailContentProps) {
@@ -63,7 +125,6 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
 
   const {
     sessionId,
-    sessionType,
     sessionName,
     participants,
     totalSends,
@@ -80,9 +141,20 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
     ticks,
     upvotes,
     downvotes,
-    voteScore,
     commentCount,
   } = session;
+
+  const isMultiUser = participants.length > 1;
+  const displayName = sessionName || generateSessionName(firstTickAt, boardTypes);
+
+  // Build a lookup from userId to participant info
+  const participantMap = new Map<string, SessionFeedParticipant>();
+  for (const p of participants) {
+    participantMap.set(p.userId, p);
+  }
+
+  // For multi-user sessions, group ticks by climb to show per-user results
+  const climbGroups = isMultiUser ? groupTicksByClimb(ticks) : null;
 
   return (
     <Box sx={{ minHeight: '100dvh', pb: '60px' }}>
@@ -93,7 +165,7 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
         </IconButton>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h6" noWrap>
-            {sessionName || 'Climbing Session'}
+            {displayName}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             {formatDate(firstTickAt)}
@@ -106,16 +178,26 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
         <Card>
           <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              {participants.length > 1 ? (
+              {isMultiUser ? (
                 <AvatarGroup max={5} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: 14 } }}>
                   {participants.map((p) => (
-                    <Avatar key={p.userId} src={p.avatarUrl ?? undefined}>
+                    <Avatar
+                      key={p.userId}
+                      src={p.avatarUrl ?? undefined}
+                      component="a"
+                      href={`/crusher/${p.userId}`}
+                    >
                       {!p.avatarUrl && <PersonOutlined sx={{ fontSize: 16 }} />}
                     </Avatar>
                   ))}
                 </AvatarGroup>
               ) : participants[0] && (
-                <Avatar src={participants[0].avatarUrl ?? undefined} sx={{ width: 40, height: 40 }}>
+                <Avatar
+                  src={participants[0].avatarUrl ?? undefined}
+                  component="a"
+                  href={`/crusher/${participants[0].userId}`}
+                  sx={{ width: 40, height: 40 }}
+                >
                   {!participants[0].avatarUrl && <PersonOutlined />}
                 </Avatar>
               )}
@@ -130,7 +212,7 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
             </Box>
 
             {/* Per-participant stats */}
-            {participants.length > 1 && (
+            {isMultiUser && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
                 {participants.map((p) => (
                   <Box key={p.userId} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -244,74 +326,165 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
 
         {/* Tick list */}
         <Typography variant="subtitle1" fontWeight={600}>
-          Climbs ({ticks.length})
+          Climbs ({isMultiUser ? climbGroups!.length : ticks.length})
         </Typography>
 
-        {ticks.map((tick) => (
-          <Card key={tick.uuid}>
-            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-              <Box sx={{ display: 'flex', gap: 1.5 }}>
-                {/* Thumbnail */}
-                {tick.frames && tick.layoutId && (
-                  <Box sx={{ width: 60, flexShrink: 0 }}>
-                    <AscentThumbnail
-                      boardType={tick.boardType}
-                      layoutId={tick.layoutId}
-                      angle={tick.angle}
-                      climbUuid={tick.climbUuid}
-                      climbName={tick.climbName || 'Unknown'}
-                      frames={tick.frames}
-                      isMirror={tick.isMirror}
-                    />
-                  </Box>
-                )}
+        {isMultiUser && climbGroups ? (
+          /* Multi-user: group by climb, show per-user results */
+          climbGroups.map((group) => (
+            <Card key={group.climbUuid}>
+              <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                  {/* Thumbnail */}
+                  {group.frames && group.layoutId && (
+                    <Box sx={{ width: 60, flexShrink: 0 }}>
+                      <AscentThumbnail
+                        boardType={group.boardType}
+                        layoutId={group.layoutId}
+                        angle={group.angle}
+                        climbUuid={group.climbUuid}
+                        climbName={group.climbName || 'Unknown'}
+                        frames={group.frames}
+                        isMirror={group.isMirror}
+                      />
+                    </Box>
+                  )}
 
-                {/* Tick info */}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="body2" fontWeight={600} noWrap>
-                    {tick.climbName || 'Unknown Climb'}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
-                    {tick.difficultyName && (
-                      <Chip label={tick.difficultyName} size="small" />
-                    )}
-                    <Chip
-                      label={tick.status}
-                      size="small"
-                      color={tick.status === 'flash' ? 'success' : tick.status === 'send' ? 'primary' : 'default'}
-                      variant={tick.status === 'attempt' ? 'outlined' : 'filled'}
-                    />
-                    <Typography variant="caption" color="text.secondary">
-                      {tick.angle}&deg;
+                  {/* Climb info + per-user results */}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" fontWeight={600} noWrap>
+                      {group.climbName || 'Unknown Climb'}
                     </Typography>
-                    {tick.attemptCount > 1 && (
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', mt: 0.5 }}>
+                      {group.difficultyName && (
+                        <Chip label={group.difficultyName} size="small" />
+                      )}
                       <Typography variant="caption" color="text.secondary">
-                        {tick.attemptCount} attempts
+                        {group.angle}&deg;
+                      </Typography>
+                    </Box>
+
+                    {/* Per-user tick rows */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                      {group.ticks.map((tick) => {
+                        const participant = participantMap.get(tick.userId);
+                        return (
+                          <Box
+                            key={tick.uuid}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.75,
+                              py: 0.25,
+                              borderTop: '1px solid var(--neutral-100)',
+                            }}
+                          >
+                            <Avatar
+                              src={participant?.avatarUrl ?? undefined}
+                              sx={{ width: 18, height: 18 }}
+                            >
+                              {!participant?.avatarUrl && <PersonOutlined sx={{ fontSize: 10 }} />}
+                            </Avatar>
+                            <Typography variant="caption" sx={{ flex: 1, minWidth: 0 }} noWrap>
+                              {participant?.displayName || 'Climber'}
+                            </Typography>
+                            <Chip
+                              label={tick.status}
+                              size="small"
+                              color={getStatusColor(tick.status)}
+                              variant={tick.status === 'attempt' ? 'outlined' : 'filled'}
+                              sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontSize: themeTokens.typography.fontSize.xs - 1 } }}
+                            />
+                            {tick.attemptCount > 1 && (
+                              <Typography variant="caption" color="text.secondary">
+                                {tick.attemptCount}x
+                              </Typography>
+                            )}
+                            <VoteButton
+                              entityType="tick"
+                              entityId={tick.uuid}
+                              initialUpvotes={0}
+                              initialDownvotes={0}
+                              initialUserVote={0}
+                              likeOnly
+                            />
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          /* Single-user: show flat tick list */
+          ticks.map((tick) => (
+            <Card key={tick.uuid}>
+              <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                  {/* Thumbnail */}
+                  {tick.frames && tick.layoutId && (
+                    <Box sx={{ width: 60, flexShrink: 0 }}>
+                      <AscentThumbnail
+                        boardType={tick.boardType}
+                        layoutId={tick.layoutId}
+                        angle={tick.angle}
+                        climbUuid={tick.climbUuid}
+                        climbName={tick.climbName || 'Unknown'}
+                        frames={tick.frames}
+                        isMirror={tick.isMirror}
+                      />
+                    </Box>
+                  )}
+
+                  {/* Tick info */}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" fontWeight={600} noWrap>
+                      {tick.climbName || 'Unknown Climb'}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
+                      {tick.difficultyName && (
+                        <Chip label={tick.difficultyName} size="small" />
+                      )}
+                      <Chip
+                        label={tick.status}
+                        size="small"
+                        color={getStatusColor(tick.status)}
+                        variant={tick.status === 'attempt' ? 'outlined' : 'filled'}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {tick.angle}&deg;
+                      </Typography>
+                      {tick.attemptCount > 1 && (
+                        <Typography variant="caption" color="text.secondary">
+                          {tick.attemptCount} attempts
+                        </Typography>
+                      )}
+                    </Box>
+                    {tick.comment && (
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                        {tick.comment}
                       </Typography>
                     )}
                   </Box>
-                  {tick.comment && (
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                      {tick.comment}
-                    </Typography>
-                  )}
-                </Box>
 
-                {/* Per-tick vote */}
-                <Box sx={{ flexShrink: 0 }}>
-                  <VoteButton
-                    entityType="tick"
-                    entityId={tick.uuid}
-                    initialUpvotes={0}
-                    initialDownvotes={0}
-                    initialUserVote={0}
-                    likeOnly
-                  />
+                  {/* Per-tick vote */}
+                  <Box sx={{ flexShrink: 0 }}>
+                    <VoteButton
+                      entityType="tick"
+                      entityId={tick.uuid}
+                      initialUpvotes={0}
+                      initialDownvotes={0}
+                      initialUserVote={0}
+                      likeOnly
+                    />
+                  </Box>
                 </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </Box>
     </Box>
   );

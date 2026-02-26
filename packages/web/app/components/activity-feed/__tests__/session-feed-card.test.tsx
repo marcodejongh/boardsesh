@@ -162,4 +162,10 @@ describe('SessionFeedCard', () => {
     render(<SessionFeedCard session={makeSession({ goal: 'Send V7' })} />);
     expect(screen.getByText('Send V7')).toBeTruthy();
   });
+
+  it('generates session name from day and board type when no name provided', () => {
+    // 2024-01-15 is a Monday
+    render(<SessionFeedCard session={makeSession({ sessionName: null, boardTypes: ['kilter'] })} />);
+    expect(screen.getByText('Monday Kilter Session')).toBeTruthy();
+  });
 });

@@ -2572,6 +2572,7 @@ export const typeDefs = /* GraphQL */ `
   """
   type SessionDetailTick {
     uuid: ID!
+    userId: String!
     climbUuid: String!
     climbName: String
     boardType: String!
