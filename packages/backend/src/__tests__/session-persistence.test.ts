@@ -634,7 +634,6 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
     it('should handle Redis operations failing gracefully', async () => {
       // Create Redis mock that fails on hmset
       const failingRedis = createMockRedis();
-      const originalHmset = failingRedis.hmset;
       failingRedis.hmset = vi.fn(async () => {
         throw new Error('Redis connection error');
       });
@@ -645,18 +644,13 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       const sessionId = uuidv4();
       const boardPath = '/kilter/1/2/3/40';
 
-      // joinSession should propagate Redis failures since Redis operations are
-      // critical path (distributed state, queue state). When hmset fails during
-      // distributed state registration or session operations, the error propagates.
-      try {
-        await registerAndJoinSession('client-1', sessionId, boardPath, 'User1');
-        // If it doesn't throw, verify session is still usable
-        const state = await roomManager.getQueueState(sessionId);
-        expect(state).toBeDefined();
-      } catch {
-        // Expected - Redis failure may propagate through distributed state operations
-        // This is acceptable behavior since Redis is a critical dependency when enabled
-      }
+      // When hmset fails, registerClient's distributed state registerConnection()
+      // calls redis.multi().hmset()...exec() which triggers the error. The room
+      // manager catches this and throws "Failed to register client: distributed
+      // state error", preventing the client from being in an inconsistent state.
+      await expect(
+        registerAndJoinSession('client-1', sessionId, boardPath, 'User1')
+      ).rejects.toThrow('Failed to register client: distributed state error');
     });
   });
 });

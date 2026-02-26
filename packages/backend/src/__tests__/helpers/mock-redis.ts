@@ -7,6 +7,12 @@ export type MockRedis = Redis & {
 };
 
 /**
+ * Sentinel value matching UNSET_SENTINEL in distributed-state.ts.
+ * Used in JOIN_SESSION_SCRIPT Lua to mean "don't update this field".
+ */
+const UNSET_SENTINEL = '__UNSET__';
+
+/**
  * Create a mock Redis instance for testing.
  *
  * Supports the subset of Redis commands used by RedisSessionStore and
@@ -261,8 +267,8 @@ export const createMockRedis = (): MockRedis => {
           const connData = hashes.get(connectionKey)!;
           connData.connectionId = connectionId;
           connData.sessionId = args[4] as string;
-          if (username && username !== '__BOARDSESH_UNSET__' && username !== '__UNSET__') connData.username = username;
-          if (avatarUrl !== undefined && avatarUrl !== '__BOARDSESH_UNSET__' && avatarUrl !== '__UNSET__') connData.avatarUrl = avatarUrl;
+          if (username && username !== UNSET_SENTINEL) connData.username = username;
+          if (avatarUrl !== undefined && avatarUrl !== UNSET_SENTINEL) connData.avatarUrl = avatarUrl;
           connData.isLeader = 'false';
 
           // Add to session members set
