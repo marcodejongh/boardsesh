@@ -2274,6 +2274,38 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
+  Input for updating an inferred session's metadata.
+  """
+  input UpdateInferredSessionInput {
+    "ID of the inferred session to update"
+    sessionId: ID!
+    "New session name (optional)"
+    name: String
+    "New session description/notes (optional)"
+    description: String
+  }
+
+  """
+  Input for adding a user to an inferred session.
+  """
+  input AddUserToSessionInput {
+    "ID of the inferred session"
+    sessionId: ID!
+    "User ID to add"
+    userId: ID!
+  }
+
+  """
+  Input for removing a user from an inferred session.
+  """
+  input RemoveUserFromSessionInput {
+    "ID of the inferred session"
+    sessionId: ID!
+    "User ID to remove"
+    userId: ID!
+  }
+
+  """
   Input for adding a comment.
   """
   input AddCommentInput {
@@ -3460,6 +3492,28 @@ export const typeDefs = /* GraphQL */ `
     Link or unlink a board to/from a gym.
     """
     linkBoardToGym(input: LinkBoardToGymInput!): Boolean!
+
+    # ============================================
+    # Session Editing Mutations (require auth)
+    # ============================================
+
+    """
+    Update an inferred session's name and/or description.
+    Must be a participant of the session.
+    """
+    updateInferredSession(input: UpdateInferredSessionInput!): SessionDetail
+
+    """
+    Add a user to an inferred session by reassigning their overlapping ticks.
+    Must be a participant of the session.
+    """
+    addUserToSession(input: AddUserToSessionInput!): SessionDetail
+
+    """
+    Remove a user from an inferred session, restoring their ticks to original sessions.
+    Must be a participant of the session.
+    """
+    removeUserFromSession(input: RemoveUserFromSessionInput!): SessionDetail
 
     # ============================================
     # Notification Mutations (require auth)

@@ -24,6 +24,7 @@ export const sessionFeedQueries = {
   /**
    * Session-grouped activity feed (public, no auth required).
    * Groups ticks into sessions based on party mode sessionId or inferred sessions.
+   * Every tick now has either session_id or inferred_session_id set.
    * Uses offset pagination since session groups are computed at read time.
    */
   sessionGroupedFeed: async (
@@ -37,9 +38,6 @@ export const sessionFeedQueries = {
     const offset = validatedInput.cursor
       ? (decodeOffsetCursor(validatedInput.cursor) ?? 0)
       : 0;
-
-    // Build conditions for tick filtering
-    const tickConditions: ReturnType<typeof sql>[] = [];
 
     // Board filter
     let boardTypeFilter: string | null = null;
@@ -64,10 +62,6 @@ export const sessionFeedQueries = {
       timePeriodCond = timePeriodIntervalSql(sql`session_last_tick`, validatedInput.topPeriod);
     }
 
-    // Build the session grouping query using a CTE
-    // Step 1: Compute an effective session ID per tick using COALESCE
-    // Step 2: Group by (effective_session_id) and aggregate stats
-    // Step 3: Sort + paginate
     const boardFilterSql = boardTypeFilter
       ? sql`AND t.board_type = ${boardTypeFilter}`
       : sql``;
@@ -101,16 +95,12 @@ export const sessionFeedQueries = {
         + EXTRACT(EPOCH FROM session_last_tick) / 45000.0 DESC, session_last_tick DESC`;
     }
 
-    // Use raw SQL CTE for the complex session grouping.
-    // Handles three cases:
-    //   1. Party mode ticks (session_id set) — grouped by session_id
-    //   2. Inferred session ticks (inferred_session_id set) — grouped by inferred_session_id
-    //   3. Ungrouped ticks (neither set) — grouped at read time using LAG() window function
-    //      to detect 4-hour gaps per user, then assigned synthetic session IDs
+    // Simplified CTE: every tick now has either session_id or inferred_session_id.
+    // No more ungrouped handling needed.
     let sessionRows;
     try {
       sessionRows = await db.execute(sql`
-        WITH all_ticks AS (
+        WITH tick_sessions AS (
           SELECT
             t.uuid AS tick_uuid,
             t.user_id,
@@ -118,55 +108,14 @@ export const sessionFeedQueries = {
             t.status,
             t.board_type,
             t.difficulty,
-            t.session_id,
-            t.inferred_session_id,
-            CASE
-              WHEN t.session_id IS NOT NULL THEN 'party'
-              WHEN t.inferred_session_id IS NOT NULL THEN 'inferred'
-              ELSE 'ungrouped'
-            END AS session_type
+            COALESCE(t.session_id, t.inferred_session_id) AS effective_session_id,
+            CASE WHEN t.session_id IS NOT NULL THEN 'party' ELSE 'inferred' END AS session_type
           FROM boardsesh_ticks t
           LEFT JOIN board_climbs c
             ON c.uuid = t.climb_uuid AND c.board_type = t.board_type
-          WHERE 1=1
+          WHERE COALESCE(t.session_id, t.inferred_session_id) IS NOT NULL
             ${boardFilterSql}
             ${layoutFilterSql}
-        ),
-        ungrouped_breaks AS (
-          SELECT
-            tick_uuid, user_id, climbed_at, status, board_type, difficulty,
-            session_id, inferred_session_id, session_type,
-            CASE
-              WHEN LAG(climbed_at) OVER (PARTITION BY user_id ORDER BY climbed_at) IS NULL THEN 1
-              WHEN EXTRACT(EPOCH FROM (climbed_at - LAG(climbed_at) OVER (PARTITION BY user_id ORDER BY climbed_at))) > 14400 THEN 1
-              ELSE 0
-            END AS is_break
-          FROM all_ticks
-          WHERE session_type = 'ungrouped'
-        ),
-        ungrouped_sessions AS (
-          SELECT
-            tick_uuid, user_id, climbed_at, status, board_type, difficulty,
-            session_id, inferred_session_id, session_type, is_break,
-            SUM(is_break) OVER (
-              PARTITION BY user_id ORDER BY climbed_at
-              ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-            ) AS grp
-          FROM ungrouped_breaks
-        ),
-        tick_sessions AS (
-          SELECT
-            tick_uuid, user_id, climbed_at, status, board_type, difficulty,
-            COALESCE(session_id, inferred_session_id) AS effective_session_id,
-            session_type
-          FROM all_ticks
-          WHERE session_type != 'ungrouped'
-          UNION ALL
-          SELECT
-            tick_uuid, user_id, climbed_at, status, board_type, difficulty,
-            'ug:' || user_id || ':' || grp::text AS effective_session_id,
-            'inferred'::text AS session_type
-          FROM ungrouped_sessions
         ),
         session_agg AS (
           SELECT
@@ -236,23 +185,9 @@ export const sessionFeedQueries = {
     // Enrich with participant info and grade distribution
     const sessions: SessionFeedItem[] = await Promise.all(
       resultRows.map(async (row) => {
-        // For ungrouped sessions (synthetic IDs), use time-range filter
-        const isUngrouped = row.session_id.startsWith('ug:');
-        const ungroupedFilter: UngroupedFilter | undefined = isUngrouped
-          ? {
-              userIds: row.user_ids,
-              from: typeof row.session_first_tick === 'object'
-                ? (row.session_first_tick as unknown as Date).toISOString()
-                : String(row.session_first_tick),
-              to: typeof row.session_last_tick === 'object'
-                ? (row.session_last_tick as unknown as Date).toISOString()
-                : String(row.session_last_tick),
-            }
-          : undefined;
-
         const [participants, gradeDistribution, sessionMeta] = await Promise.all([
-          fetchParticipants(row.session_id, row.session_type, row.user_ids, ungroupedFilter),
-          fetchGradeDistribution(row.session_id, row.session_type, ungroupedFilter),
+          fetchParticipants(row.session_id, row.session_type, row.user_ids),
+          fetchGradeDistribution(row.session_id, row.session_type),
           fetchSessionMeta(row.session_id, row.session_type),
         ]);
 
@@ -302,17 +237,6 @@ export const sessionFeedQueries = {
   ): Promise<SessionDetail | null> => {
     if (!sessionId) return null;
 
-    // Handle ungrouped sessions (synthetic IDs like "ug:userId:groupNumber")
-    const ungroupedMatch = sessionId.match(/^ug:(.+):(\d+)$/);
-    if (ungroupedMatch) {
-      try {
-        return await resolveUngroupedSession(sessionId, ungroupedMatch[1], parseInt(ungroupedMatch[2], 10));
-      } catch (err) {
-        console.error('[sessionDetail] Error resolving ungrouped session:', sessionId, err);
-        return null;
-      }
-    }
-
     // Check if it's a party mode session
     const [partySession] = await db
       .select()
@@ -323,14 +247,16 @@ export const sessionFeedQueries = {
     const isParty = !!partySession;
 
     // Check if it's an inferred session
+    let inferredSession: typeof dbSchema.inferredSessions.$inferSelect | undefined;
     if (!isParty) {
-      const [inferredSession] = await db
+      const [result] = await db
         .select()
         .from(dbSchema.inferredSessions)
         .where(eq(dbSchema.inferredSessions.id, sessionId))
         .limit(1);
 
-      if (!inferredSession) return null;
+      if (!result) return null;
+      inferredSession = result;
     }
 
     // Fetch ticks for this session
@@ -448,10 +374,18 @@ export const sessionFeedQueries = {
         ),
       );
 
+    // Session metadata
+    const sessionName = isParty
+      ? partySession?.name || null
+      : inferredSession?.name || null;
+    const goal = isParty
+      ? partySession?.goal || null
+      : inferredSession?.description || null;
+
     return {
       sessionId,
       sessionType: isParty ? 'party' : 'inferred',
-      sessionName: isParty ? partySession?.name || null : null,
+      sessionName,
       participants,
       totalSends,
       totalFlashes,
@@ -463,7 +397,7 @@ export const sessionFeedQueries = {
       firstTickAt,
       lastTickAt,
       durationMinutes,
-      goal: isParty ? partySession?.goal || null : null,
+      goal,
       ticks,
       upvotes: voteData ? Number(voteData.upvotes) : 0,
       downvotes: voteData ? Number(voteData.downvotes) : 0,
@@ -473,38 +407,12 @@ export const sessionFeedQueries = {
   },
 };
 
-
-/** Filter for ungrouped session tick lookups (by user + time range) */
-interface UngroupedFilter {
-  userIds: string[];
-  from: string;
-  to: string;
-}
-
 /**
  * Build WHERE clause for tick lookups.
  * - Party mode: filter by session_id
  * - Inferred: filter by inferred_session_id
- * - Ungrouped: filter by user_id + time range + no session assigned
  */
-function tickSessionFilter(
-  sessionId: string,
-  sessionType: string,
-  ungrouped?: UngroupedFilter,
-) {
-  if (ungrouped) {
-    // Ungrouped sessions are per-user, so userIds always has one entry.
-    // Use IN (...) with individual params to avoid array-passing issues.
-    const userIdConditions = sql.join(
-      ungrouped.userIds.map((id) => sql`${id}`),
-      sql`, `,
-    );
-    return sql`t.user_id IN (${userIdConditions})
-      AND t.session_id IS NULL
-      AND t.inferred_session_id IS NULL
-      AND t.climbed_at >= ${ungrouped.from}::timestamp
-      AND t.climbed_at <= ${ungrouped.to}::timestamp`;
-  }
+function tickSessionFilter(sessionId: string, sessionType: string) {
   return sessionType === 'party'
     ? sql`t.session_id = ${sessionId}`
     : sql`t.inferred_session_id = ${sessionId}`;
@@ -517,11 +425,10 @@ async function fetchParticipants(
   sessionId: string,
   sessionType: string,
   userIds: string[],
-  ungrouped?: UngroupedFilter,
 ): Promise<SessionFeedParticipant[]> {
   if (userIds.length === 0) return [];
 
-  const whereClause = tickSessionFilter(sessionId, sessionType, ungrouped);
+  const whereClause = tickSessionFilter(sessionId, sessionType);
 
   const participantRows = await db.execute(sql`
     SELECT
@@ -563,9 +470,8 @@ async function fetchParticipants(
 async function fetchGradeDistribution(
   sessionId: string,
   sessionType: string,
-  ungrouped?: UngroupedFilter,
 ): Promise<SessionGradeDistributionItem[]> {
-  const whereClause = tickSessionFilter(sessionId, sessionType, ungrouped);
+  const whereClause = tickSessionFilter(sessionId, sessionType);
 
   const rows = await db.execute(sql`
     SELECT
@@ -629,249 +535,36 @@ function buildGradeDistributionFromTicks(
 }
 
 /**
- * Fetch session metadata (name, goal) from party mode sessions table
+ * Fetch session metadata (name, goal) from party mode or inferred sessions
  */
 async function fetchSessionMeta(
   sessionId: string,
   sessionType: string,
 ): Promise<{ name: string | null; goal: string | null } | null> {
-  if (sessionType !== 'party') return null;
+  if (sessionType === 'party') {
+    const [session] = await db
+      .select({ name: dbSchema.boardSessions.name, goal: dbSchema.boardSessions.goal })
+      .from(dbSchema.boardSessions)
+      .where(eq(dbSchema.boardSessions.id, sessionId))
+      .limit(1);
 
+    return session || null;
+  }
+
+  // Inferred session — look up name and description
   const [session] = await db
-    .select({ name: dbSchema.boardSessions.name, goal: dbSchema.boardSessions.goal })
-    .from(dbSchema.boardSessions)
-    .where(eq(dbSchema.boardSessions.id, sessionId))
-    .limit(1);
-
-  return session || null;
-}
-
-/**
- * Resolve an ungrouped session by re-running the LAG window query
- * for a specific user and finding the group matching the given number.
- */
-async function resolveUngroupedSession(
-  sessionId: string,
-  userId: string,
-  groupNumber: number,
-): Promise<SessionDetail | null> {
-  // Re-run the LAG window query to find the time range for this group
-  const groupResult = await db.execute(sql`
-    WITH ungrouped_ticks AS (
-      SELECT
-        uuid,
-        climbed_at,
-        CASE
-          WHEN LAG(climbed_at) OVER (ORDER BY climbed_at) IS NULL THEN 1
-          WHEN EXTRACT(EPOCH FROM (climbed_at - LAG(climbed_at) OVER (ORDER BY climbed_at))) > 14400 THEN 1
-          ELSE 0
-        END AS is_break
-      FROM boardsesh_ticks
-      WHERE user_id = ${userId}
-        AND session_id IS NULL
-        AND inferred_session_id IS NULL
-    ),
-    grouped AS (
-      SELECT
-        uuid,
-        climbed_at,
-        SUM(is_break) OVER (ORDER BY climbed_at ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS grp
-      FROM ungrouped_ticks
-    )
-    SELECT
-      MIN(climbed_at) AS range_start,
-      MAX(climbed_at) AS range_end
-    FROM grouped
-    WHERE grp = ${groupNumber}
-  `);
-
-  const groupRows = (groupResult as unknown as { rows: Array<{
-    range_start: string | Date | null;
-    range_end: string | Date | null;
-  }> }).rows;
-
-  if (groupRows.length === 0 || !groupRows[0].range_start || !groupRows[0].range_end) {
-    return null;
-  }
-
-  const rangeStart = typeof groupRows[0].range_start === 'object'
-    ? (groupRows[0].range_start as Date).toISOString()
-    : String(groupRows[0].range_start);
-  const rangeEnd = typeof groupRows[0].range_end === 'object'
-    ? (groupRows[0].range_end as Date).toISOString()
-    : String(groupRows[0].range_end);
-
-  const ungroupedFilter: UngroupedFilter = {
-    userIds: [userId],
-    from: rangeStart,
-    to: rangeEnd,
-  };
-
-  // Fetch ticks using the existing tickSessionFilter with UngroupedFilter
-  const whereClause = tickSessionFilter(sessionId, 'ungrouped', ungroupedFilter);
-
-  const tickRows = await db.execute(sql`
-    SELECT
-      t.uuid,
-      t.user_id,
-      t.climb_uuid,
-      t.board_type,
-      t.climbed_at,
-      t.status,
-      t.attempt_count,
-      t.difficulty,
-      t.quality,
-      t.angle,
-      t.is_mirror,
-      t.is_benchmark,
-      t.comment,
-      c.name AS climb_name,
-      c.setter_username,
-      c.layout_id,
-      c.frames,
-      dg.boulder_name AS difficulty_name
-    FROM boardsesh_ticks t
-    LEFT JOIN board_climbs c
-      ON c.uuid = t.climb_uuid AND c.board_type = t.board_type
-    LEFT JOIN board_difficulty_grades dg
-      ON dg.difficulty = t.difficulty AND dg.board_type = t.board_type
-    WHERE ${whereClause}
-    ORDER BY t.climbed_at DESC
-  `);
-
-  const rows = (tickRows as unknown as { rows: Array<{
-    uuid: string;
-    user_id: string;
-    climb_uuid: string;
-    board_type: string;
-    climbed_at: string | Date;
-    status: string;
-    attempt_count: number;
-    difficulty: number | null;
-    quality: number | null;
-    angle: number;
-    is_mirror: boolean | null;
-    is_benchmark: boolean | null;
-    comment: string | null;
-    climb_name: string | null;
-    setter_username: string | null;
-    layout_id: number | null;
-    frames: string | null;
-    difficulty_name: string | null;
-  }> }).rows;
-
-  if (rows.length === 0) return null;
-
-  // Build ticks
-  const ticks: SessionDetailTick[] = rows.map((r) => ({
-    uuid: r.uuid,
-    userId: r.user_id,
-    climbUuid: r.climb_uuid,
-    climbName: r.climb_name || null,
-    boardType: r.board_type,
-    layoutId: r.layout_id,
-    angle: r.angle,
-    status: r.status,
-    attemptCount: r.attempt_count,
-    difficulty: r.difficulty,
-    difficultyName: r.difficulty_name || null,
-    quality: r.quality,
-    isMirror: r.is_mirror ?? false,
-    isBenchmark: r.is_benchmark ?? false,
-    comment: r.comment || null,
-    frames: r.frames || null,
-    setterUsername: r.setter_username || null,
-    climbedAt: typeof r.climbed_at === 'object' ? (r.climbed_at as Date).toISOString() : String(r.climbed_at),
-  }));
-
-  // Compute aggregates
-  const userIds = [...new Set(rows.map((r) => r.user_id))];
-  const boardTypes = [...new Set(rows.map((r) => r.board_type))];
-
-  let totalSends = 0;
-  let totalFlashes = 0;
-  let totalAttempts = 0;
-  for (const row of rows) {
-    if (row.status === 'flash') { totalFlashes++; totalSends++; }
-    else if (row.status === 'send') { totalSends++; }
-    else if (row.status === 'attempt') { totalAttempts++; }
-  }
-
-  const participants = await fetchParticipants(sessionId, 'ungrouped', userIds, ungroupedFilter);
-  const gradeDistribution = buildGradeDistributionFromTicks(
-    rows.map((r) => ({
-      tick: { status: r.status, difficulty: r.difficulty, boardType: r.board_type },
-      difficultyName: r.difficulty_name,
-    })),
-  );
-
-  // Timestamps
-  const sortedRows = [...rows].sort(
-    (a, b) => new Date(a.climbed_at).getTime() - new Date(b.climbed_at).getTime(),
-  );
-  const firstTickAt = typeof sortedRows[0].climbed_at === 'object'
-    ? (sortedRows[0].climbed_at as Date).toISOString()
-    : String(sortedRows[0].climbed_at);
-  const lastTickAt = typeof sortedRows[sortedRows.length - 1].climbed_at === 'object'
-    ? (sortedRows[sortedRows.length - 1].climbed_at as Date).toISOString()
-    : String(sortedRows[sortedRows.length - 1].climbed_at);
-  const durationMinutes = Math.round(
-    (new Date(lastTickAt).getTime() - new Date(firstTickAt).getTime()) / 60000,
-  ) || null;
-
-  // Hardest grade
-  const gradesSorted = rows
-    .filter((r) => r.difficulty_name && (r.status === 'flash' || r.status === 'send'))
-    .sort((a, b) => (b.difficulty ?? 0) - (a.difficulty ?? 0));
-  const hardestGrade = gradesSorted.length > 0 ? gradesSorted[0].difficulty_name : null;
-
-  // Vote/comment counts
-  const [voteData] = await db
     .select({
-      upvotes: sql<number>`COALESCE(upvotes, 0)`,
-      downvotes: sql<number>`COALESCE(downvotes, 0)`,
-      score: sql<number>`COALESCE(score, 0)`,
+      name: dbSchema.inferredSessions.name,
+      description: dbSchema.inferredSessions.description,
     })
-    .from(dbSchema.voteCounts)
-    .where(
-      and(
-        sql`${dbSchema.voteCounts.entityType} = 'session'`,
-        eq(dbSchema.voteCounts.entityId, sessionId),
-      ),
-    )
+    .from(dbSchema.inferredSessions)
+    .where(eq(dbSchema.inferredSessions.id, sessionId))
     .limit(1);
 
-  const [commentData] = await db
-    .select({ count: drizzleCount() })
-    .from(dbSchema.comments)
-    .where(
-      and(
-        sql`${dbSchema.comments.entityType} = 'session'`,
-        eq(dbSchema.comments.entityId, sessionId),
-        isNull(dbSchema.comments.deletedAt),
-      ),
-    );
+  if (!session) return null;
 
   return {
-    sessionId,
-    sessionType: 'inferred',
-    sessionName: null,
-    participants,
-    totalSends,
-    totalFlashes,
-    totalAttempts,
-    tickCount: rows.length,
-    gradeDistribution,
-    boardTypes,
-    hardestGrade,
-    firstTickAt,
-    lastTickAt,
-    durationMinutes,
-    goal: null,
-    ticks,
-    upvotes: voteData ? Number(voteData.upvotes) : 0,
-    downvotes: voteData ? Number(voteData.downvotes) : 0,
-    voteScore: voteData ? Number(voteData.score) : 0,
-    commentCount: commentData ? Number(commentData.count) : 0,
+    name: session.name || null,
+    goal: session.description || null,
   };
 }

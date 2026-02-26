@@ -414,6 +414,20 @@
       "when": 1772114675674,
       "tag": "0058_wealthy_zarek",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1772121188986,
+      "tag": "0059_thin_colossus",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1772150000000,
+      "tag": "0060_backfill_inferred_sessions",
+      "breakpoints": true
     }
   ]
 }

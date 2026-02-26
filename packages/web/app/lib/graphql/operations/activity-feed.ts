@@ -80,6 +80,94 @@ export const GET_SESSION_DETAIL = gql`
 `;
 
 // ============================================
+// Session Editing Mutations
+// ============================================
+
+export const UPDATE_INFERRED_SESSION = gql`
+  mutation UpdateInferredSession($input: UpdateInferredSessionInput!) {
+    updateInferredSession(input: $input) {
+      ${SESSION_FEED_ITEM_FIELDS}
+      ticks {
+        uuid
+        userId
+        climbUuid
+        climbName
+        boardType
+        layoutId
+        angle
+        status
+        attemptCount
+        difficulty
+        difficultyName
+        quality
+        isMirror
+        isBenchmark
+        comment
+        frames
+        setterUsername
+        climbedAt
+      }
+    }
+  }
+`;
+
+export const ADD_USER_TO_SESSION = gql`
+  mutation AddUserToSession($input: AddUserToSessionInput!) {
+    addUserToSession(input: $input) {
+      ${SESSION_FEED_ITEM_FIELDS}
+      ticks {
+        uuid
+        userId
+        climbUuid
+        climbName
+        boardType
+        layoutId
+        angle
+        status
+        attemptCount
+        difficulty
+        difficultyName
+        quality
+        isMirror
+        isBenchmark
+        comment
+        frames
+        setterUsername
+        climbedAt
+      }
+    }
+  }
+`;
+
+export const REMOVE_USER_FROM_SESSION = gql`
+  mutation RemoveUserFromSession($input: RemoveUserFromSessionInput!) {
+    removeUserFromSession(input: $input) {
+      ${SESSION_FEED_ITEM_FIELDS}
+      ticks {
+        uuid
+        userId
+        climbUuid
+        climbName
+        boardType
+        layoutId
+        angle
+        status
+        attemptCount
+        difficulty
+        difficultyName
+        quality
+        isMirror
+        isBenchmark
+        comment
+        frames
+        setterUsername
+        climbedAt
+      }
+    }
+  }
+`;
+
+// ============================================
 // Query Variable Types
 // ============================================
 

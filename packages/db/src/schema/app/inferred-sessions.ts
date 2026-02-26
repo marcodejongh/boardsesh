@@ -33,6 +33,8 @@ export const inferredSessions = pgTable(
     totalAttempts: integer('total_attempts').default(0).notNull(),
     totalFlashes: integer('total_flashes').default(0).notNull(),
     tickCount: integer('tick_count').default(0).notNull(),
+    name: text('name'), // User-editable session name
+    description: text('description'), // User-editable notes (maps to "goal" in the feed)
     createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   },
   (table) => ({

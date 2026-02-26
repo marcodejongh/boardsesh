@@ -1,7 +1,7 @@
 import { v5 as uuidv5 } from 'uuid';
 import { db } from '../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
-import { sql, eq, and, isNull, desc } from 'drizzle-orm';
+import { sql, eq, and, isNull, desc, inArray } from 'drizzle-orm';
 
 // Namespace UUID for generating deterministic inferred session IDs
 const INFERRED_SESSION_NAMESPACE = '6ba7b812-9dad-11d1-80b4-00c04fd430c8';
@@ -248,78 +248,142 @@ export async function assignInferredSession(
 }
 
 /**
- * Background job: assign inferred sessions to bulk-imported ticks
- * (e.g. from Aurora sync) that don't have a sessionId or inferredSessionId.
+ * Upsert an inferred session and bulk-update its ticks.
+ * Shared by the batched builder and the web-side post-sync builder.
  */
-export async function runInferredSessionBuilder(): Promise<number> {
-  // Find unassigned ticks from the last 48 hours
-  const unassignedTicks = await db
-    .select({
-      id: dbSchema.boardseshTicks.id,
-      uuid: dbSchema.boardseshTicks.uuid,
-      userId: dbSchema.boardseshTicks.userId,
-      climbedAt: dbSchema.boardseshTicks.climbedAt,
-      status: dbSchema.boardseshTicks.status,
-      sessionId: dbSchema.boardseshTicks.sessionId,
-      inferredSessionId: dbSchema.boardseshTicks.inferredSessionId,
+async function upsertSessionAndAssignTicks(group: InferredSessionGroup): Promise<void> {
+  // Upsert the inferred session
+  await db
+    .insert(dbSchema.inferredSessions)
+    .values({
+      id: group.sessionId,
+      userId: group.userId,
+      firstTickAt: group.firstTickAt,
+      lastTickAt: group.lastTickAt,
+      totalSends: group.totalSends,
+      totalFlashes: group.totalFlashes,
+      totalAttempts: group.totalAttempts,
+      tickCount: group.tickCount,
     })
-    .from(dbSchema.boardseshTicks)
-    .where(
-      and(
+    .onConflictDoUpdate({
+      target: dbSchema.inferredSessions.id,
+      set: {
+        firstTickAt: sql`LEAST(${dbSchema.inferredSessions.firstTickAt}, EXCLUDED.first_tick_at)`,
+        lastTickAt: sql`GREATEST(${dbSchema.inferredSessions.lastTickAt}, EXCLUDED.last_tick_at)`,
+        tickCount: sql`${dbSchema.inferredSessions.tickCount} + EXCLUDED.tick_count`,
+        totalSends: sql`${dbSchema.inferredSessions.totalSends} + EXCLUDED.total_sends`,
+        totalFlashes: sql`${dbSchema.inferredSessions.totalFlashes} + EXCLUDED.total_flashes`,
+        totalAttempts: sql`${dbSchema.inferredSessions.totalAttempts} + EXCLUDED.total_attempts`,
+      },
+    });
+
+  // Bulk-update ticks with IN (...) instead of per-tick updates
+  await db
+    .update(dbSchema.boardseshTicks)
+    .set({ inferredSessionId: group.sessionId })
+    .where(inArray(dbSchema.boardseshTicks.uuid, group.tickUuids));
+}
+
+/**
+ * Background job: assign inferred sessions to all unassigned ticks.
+ * Processes per-user in batches, checking if the first unassigned tick
+ * should join the user's latest open inferred session.
+ */
+export async function runInferredSessionBuilderBatched(options?: {
+  userId?: string;
+  batchSize?: number;
+}): Promise<{ usersProcessed: number; ticksAssigned: number }> {
+  const batchSize = options?.batchSize ?? 5000;
+
+  // Find distinct users with unassigned ticks
+  const userFilter = options?.userId
+    ? and(
         isNull(dbSchema.boardseshTicks.sessionId),
         isNull(dbSchema.boardseshTicks.inferredSessionId),
-        sql`${dbSchema.boardseshTicks.climbedAt} > NOW() - INTERVAL '48 hours'`,
-      ),
-    )
-    .orderBy(dbSchema.boardseshTicks.climbedAt);
+        eq(dbSchema.boardseshTicks.userId, options.userId),
+      )
+    : and(
+        isNull(dbSchema.boardseshTicks.sessionId),
+        isNull(dbSchema.boardseshTicks.inferredSessionId),
+      );
 
-  if (unassignedTicks.length === 0) return 0;
+  const usersWithUnassigned = await db
+    .selectDistinct({ userId: dbSchema.boardseshTicks.userId })
+    .from(dbSchema.boardseshTicks)
+    .where(userFilter);
 
-  const groups = groupTicksIntoSessions(
-    unassignedTicks.map((t) => ({
-      ...t,
-      id: t.id,
-      sessionId: t.sessionId,
-      inferredSessionId: t.inferredSessionId,
-    })),
-  );
-
-  let assigned = 0;
-  for (const group of groups) {
-    // Upsert the inferred session
-    await db
-      .insert(dbSchema.inferredSessions)
-      .values({
-        id: group.sessionId,
-        userId: group.userId,
-        firstTickAt: group.firstTickAt,
-        lastTickAt: group.lastTickAt,
-        totalSends: group.totalSends,
-        totalFlashes: group.totalFlashes,
-        totalAttempts: group.totalAttempts,
-        tickCount: group.tickCount,
-      })
-      .onConflictDoUpdate({
-        target: dbSchema.inferredSessions.id,
-        set: {
-          lastTickAt: sql`GREATEST(${dbSchema.inferredSessions.lastTickAt}, EXCLUDED.last_tick_at)`,
-          tickCount: sql`${dbSchema.inferredSessions.tickCount} + EXCLUDED.tick_count`,
-          totalSends: sql`${dbSchema.inferredSessions.totalSends} + EXCLUDED.total_sends`,
-          totalFlashes: sql`${dbSchema.inferredSessions.totalFlashes} + EXCLUDED.total_flashes`,
-          totalAttempts: sql`${dbSchema.inferredSessions.totalAttempts} + EXCLUDED.total_attempts`,
-        },
-      });
-
-    // Update ticks with the inferred session ID
-    for (const tickUuid of group.tickUuids) {
-      await db
-        .update(dbSchema.boardseshTicks)
-        .set({ inferredSessionId: group.sessionId })
-        .where(eq(dbSchema.boardseshTicks.uuid, tickUuid));
-    }
-
-    assigned += group.tickUuids.length;
+  if (usersWithUnassigned.length === 0) {
+    return { usersProcessed: 0, ticksAssigned: 0 };
   }
 
-  return assigned;
+  let totalAssigned = 0;
+
+  for (const { userId } of usersWithUnassigned) {
+    // Fetch all unassigned ticks for this user, ordered by climbed_at ASC
+    const unassignedTicks = await db
+      .select({
+        id: dbSchema.boardseshTicks.id,
+        uuid: dbSchema.boardseshTicks.uuid,
+        userId: dbSchema.boardseshTicks.userId,
+        climbedAt: dbSchema.boardseshTicks.climbedAt,
+        status: dbSchema.boardseshTicks.status,
+        sessionId: dbSchema.boardseshTicks.sessionId,
+        inferredSessionId: dbSchema.boardseshTicks.inferredSessionId,
+      })
+      .from(dbSchema.boardseshTicks)
+      .where(
+        and(
+          eq(dbSchema.boardseshTicks.userId, userId),
+          isNull(dbSchema.boardseshTicks.sessionId),
+          isNull(dbSchema.boardseshTicks.inferredSessionId),
+        ),
+      )
+      .orderBy(dbSchema.boardseshTicks.climbedAt)
+      .limit(batchSize);
+
+    if (unassignedTicks.length === 0) continue;
+
+    // Check user's latest open inferred session to see if the first tick should join it
+    const [latestSession] = await db
+      .select({
+        id: dbSchema.inferredSessions.id,
+        lastTickAt: dbSchema.inferredSessions.lastTickAt,
+      })
+      .from(dbSchema.inferredSessions)
+      .where(
+        and(
+          eq(dbSchema.inferredSessions.userId, userId),
+          isNull(dbSchema.inferredSessions.endedAt),
+        ),
+      )
+      .orderBy(desc(dbSchema.inferredSessions.lastTickAt))
+      .limit(1);
+
+    // Group ticks into sessions
+    const groups = groupTicksIntoSessions(unassignedTicks);
+
+    // Check if the first group should merge into the user's latest open session
+    if (latestSession && groups.length > 0) {
+      const firstGroup = groups[0];
+      const latestSessionTime = new Date(latestSession.lastTickAt).getTime();
+      const firstTickTime = new Date(firstGroup.firstTickAt).getTime();
+      const gap = firstTickTime - latestSessionTime;
+
+      if (gap <= SESSION_GAP_MS && gap >= 0) {
+        // First group should merge into the existing session — use its ID instead
+        groups[0] = {
+          ...firstGroup,
+          sessionId: latestSession.id,
+        };
+      }
+    }
+
+    // Upsert sessions and assign ticks
+    for (const group of groups) {
+      await upsertSessionAndAssignTicks(group);
+      totalAssigned += group.tickUuids.length;
+    }
+  }
+
+  return { usersProcessed: usersWithUnassigned.length, ticksAssigned: totalAssigned };
 }

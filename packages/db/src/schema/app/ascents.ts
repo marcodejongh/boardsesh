@@ -67,6 +67,9 @@ export const boardseshTicks = pgTable(
     // Optional link to inferred session (for ticks not in party mode)
     inferredSessionId: text('inferred_session_id').references(() => inferredSessions.id, { onDelete: 'set null' }),
 
+    // Stores original inferredSessionId before manual reassignment (for undo)
+    previousInferredSessionId: text('previous_inferred_session_id').references(() => inferredSessions.id, { onDelete: 'set null' }),
+
     // Optional link to the board entity this tick was recorded on
     boardId: bigint('board_id', { mode: 'number' }).references(() => userBoards.id, { onDelete: 'set null' }),
 

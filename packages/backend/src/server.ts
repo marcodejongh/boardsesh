@@ -16,7 +16,7 @@ import { handleSyncCron } from './handlers/sync';
 import { handleOcrTestDataUpload } from './handlers/ocr-test-data';
 import { createYogaInstance } from './graphql/yoga';
 import { setupWebSocketServer } from './websocket/setup';
-import { runInferredSessionBuilder } from './jobs/inferred-session-builder';
+import { runInferredSessionBuilderBatched } from './jobs/inferred-session-builder';
 
 /**
  * Start the Boardsesh Backend server
@@ -290,9 +290,9 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
   // Periodic inferred session builder (every 30 minutes)
   const inferredSessionInterval = setInterval(async () => {
     try {
-      const assigned = await runInferredSessionBuilder();
-      if (assigned > 0) {
-        console.log(`[Server] Inferred session builder: assigned ${assigned} ticks to sessions`);
+      const result = await runInferredSessionBuilderBatched();
+      if (result.ticksAssigned > 0) {
+        console.log(`[Server] Inferred session builder: assigned ${result.ticksAssigned} ticks for ${result.usersProcessed} users`);
       }
     } catch (error) {
       console.error('[Server] Inferred session builder error:', error);

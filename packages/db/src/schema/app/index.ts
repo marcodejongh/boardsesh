@@ -3,6 +3,7 @@ export * from './boards';
 export * from './sessions';
 export * from './favorites';
 export * from './inferred-sessions';
+export * from './session-member-overrides';
 export * from './ascents';
 export * from './playlists';
 export * from './hold-classifications';

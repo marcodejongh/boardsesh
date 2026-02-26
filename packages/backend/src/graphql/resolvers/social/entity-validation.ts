@@ -138,12 +138,6 @@ export async function validateEntityExists(
     }
 
     case 'session': {
-      // Ungrouped sessions have synthetic IDs like "ug:{userId}:{groupNumber}"
-      // generated at read time — no DB row exists, so just validate the format.
-      if (entityId.startsWith('ug:')) {
-        break;
-      }
-
       // Check both inferred sessions and party mode sessions
       const [inferred] = await db
         .select({ id: dbSchema.inferredSessions.id })

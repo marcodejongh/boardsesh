@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
@@ -10,6 +10,13 @@ import AvatarGroup from '@mui/material/AvatarGroup';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import CircularProgress from '@mui/material/CircularProgress';
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined';
 import TimerOutlined from '@mui/icons-material/TimerOutlined';
 import FlagOutlined from '@mui/icons-material/FlagOutlined';
@@ -17,13 +24,28 @@ import FlashOnOutlined from '@mui/icons-material/FlashOnOutlined';
 import CheckCircleOutlineOutlined from '@mui/icons-material/CheckCircleOutlineOutlined';
 import ErrorOutlineOutlined from '@mui/icons-material/ErrorOutlineOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
+import EditOutlined from '@mui/icons-material/EditOutlined';
+import PersonAddOutlined from '@mui/icons-material/PersonAddOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import RemoveCircleOutlineOutlined from '@mui/icons-material/RemoveCircleOutlineOutlined';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import type { SessionDetail, SessionDetailTick, SessionFeedParticipant } from '@boardsesh/shared-schema';
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
 import VoteButton from '@/app/components/social/vote-button';
 import CommentSection from '@/app/components/social/comment-section';
 import AscentThumbnail from '@/app/components/activity-feed/ascent-thumbnail';
+import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import {
+  UPDATE_INFERRED_SESSION,
+  ADD_USER_TO_SESSION,
+  REMOVE_USER_FROM_SESSION,
+} from '@/app/lib/graphql/operations/activity-feed';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { themeTokens } from '@/app/theme/theme-config';
+import UserSearchDialog from './user-search-dialog';
 
 interface SessionDetailContentProps {
   session: SessionDetail | null;
@@ -106,7 +128,19 @@ function getStatusColor(status: string): 'success' | 'primary' | 'default' {
   return 'default';
 }
 
-export default function SessionDetailContent({ session }: SessionDetailContentProps) {
+export default function SessionDetailContent({ session: initialSession }: SessionDetailContentProps) {
+  const { data: authSession } = useSession();
+  const { token: authToken } = useWsAuthToken();
+  const { showMessage } = useSnackbar();
+
+  const [session, setSession] = useState(initialSession);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+
   if (!session) {
     return (
       <Box sx={{ p: 2 }}>
@@ -125,6 +159,7 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
 
   const {
     sessionId,
+    sessionType,
     sessionName,
     participants,
     totalSends,
@@ -144,6 +179,13 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
     commentCount,
   } = session;
 
+  const currentUserId = authSession?.user?.id;
+  const isInferred = sessionType === 'inferred';
+  const isParticipant = currentUserId
+    ? participants.some((p) => p.userId === currentUserId)
+    : false;
+  const canEdit = isInferred && isParticipant;
+
   const isMultiUser = participants.length > 1;
   const displayName = sessionName || generateSessionName(firstTickAt, boardTypes);
 
@@ -156,6 +198,87 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
   // For multi-user sessions, group ticks by climb to show per-user results
   const climbGroups = isMultiUser ? groupTicksByClimb(ticks) : null;
 
+  // Determine which user is the "owner" (first participant by convention)
+  const ownerUserId = participants[0]?.userId;
+
+  const handleStartEdit = useCallback(() => {
+    setEditName(sessionName || '');
+    setEditDescription(goal || '');
+    setIsEditing(true);
+  }, [sessionName, goal]);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+  }, []);
+
+  const handleSaveEdit = useCallback(async () => {
+    setSaving(true);
+    try {
+      const client = createGraphQLHttpClient(authToken);
+      const result = await client.request<{ updateInferredSession: SessionDetail }>(
+        UPDATE_INFERRED_SESSION,
+        {
+          input: {
+            sessionId,
+            name: editName || null,
+            description: editDescription || null,
+          },
+        },
+      );
+      if (result.updateInferredSession) {
+        setSession(result.updateInferredSession);
+      }
+      setIsEditing(false);
+      showMessage('Session updated', 'success');
+    } catch (err) {
+      console.error('Failed to update session:', err);
+      showMessage('Failed to update session', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }, [authToken, sessionId, editName, editDescription, showMessage]);
+
+  const handleAddUser = useCallback(async (userId: string) => {
+    setAddUserDialogOpen(false);
+    setSaving(true);
+    try {
+      const client = createGraphQLHttpClient(authToken);
+      const result = await client.request<{ addUserToSession: SessionDetail }>(
+        ADD_USER_TO_SESSION,
+        { input: { sessionId, userId } },
+      );
+      if (result.addUserToSession) {
+        setSession(result.addUserToSession);
+      }
+      showMessage('User added to session', 'success');
+    } catch (err) {
+      console.error('Failed to add user:', err);
+      showMessage('Failed to add user to session', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }, [authToken, sessionId, showMessage]);
+
+  const handleRemoveUser = useCallback(async (userId: string) => {
+    setRemovingUserId(userId);
+    try {
+      const client = createGraphQLHttpClient(authToken);
+      const result = await client.request<{ removeUserFromSession: SessionDetail }>(
+        REMOVE_USER_FROM_SESSION,
+        { input: { sessionId, userId } },
+      );
+      if (result.removeUserFromSession) {
+        setSession(result.removeUserFromSession);
+      }
+      showMessage('User removed from session', 'success');
+    } catch (err) {
+      console.error('Failed to remove user:', err);
+      showMessage('Failed to remove user', 'error');
+    } finally {
+      setRemovingUserId(null);
+    }
+  }, [authToken, sessionId, showMessage]);
+
   return (
     <Box sx={{ minHeight: '100dvh', pb: '60px' }}>
       {/* Header */}
@@ -164,13 +287,39 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
           <ArrowBackOutlined />
         </IconButton>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="h6" noWrap>
-            {displayName}
-          </Typography>
+          {isEditing ? (
+            <TextField
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder={generateSessionName(firstTickAt, boardTypes)}
+              size="small"
+              fullWidth
+              autoFocus
+            />
+          ) : (
+            <Typography variant="h6" noWrap>
+              {displayName}
+            </Typography>
+          )}
           <Typography variant="caption" color="text.secondary">
             {formatDate(firstTickAt)}
           </Typography>
         </Box>
+        {canEdit && !isEditing && (
+          <IconButton size="small" onClick={handleStartEdit}>
+            <EditOutlined fontSize="small" />
+          </IconButton>
+        )}
+        {isEditing && (
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <IconButton size="small" onClick={handleCancelEdit} disabled={saving}>
+              <CloseOutlined fontSize="small" />
+            </IconButton>
+            <IconButton size="small" onClick={handleSaveEdit} disabled={saving} color="primary">
+              {saving ? <CircularProgress size={18} /> : <CheckOutlined fontSize="small" />}
+            </IconButton>
+          </Box>
+        )}
       </Box>
 
       <Box sx={{ px: 2, py: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -201,7 +350,7 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
                   {!participants[0].avatarUrl && <PersonOutlined />}
                 </Avatar>
               )}
-              <Box>
+              <Box sx={{ flex: 1 }}>
                 <Typography variant="body2" fontWeight={600}>
                   {participants.map((p) => p.displayName || 'Climber').join(', ')}
                 </Typography>
@@ -209,6 +358,11 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
                   {participants.length} participant{participants.length !== 1 ? 's' : ''}
                 </Typography>
               </Box>
+              {canEdit && (
+                <IconButton size="small" onClick={() => setAddUserDialogOpen(true)} disabled={saving}>
+                  <PersonAddOutlined fontSize="small" />
+                </IconButton>
+              )}
             </Box>
 
             {/* Per-participant stats */}
@@ -225,6 +379,21 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
                     <Typography variant="caption" color="text.secondary">
                       {p.sends}S {p.flashes}F {p.attempts}A
                     </Typography>
+                    {/* Show remove button for non-owner participants when editing */}
+                    {canEdit && p.userId !== ownerUserId && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleRemoveUser(p.userId)}
+                        disabled={removingUserId === p.userId}
+                        sx={{ p: 0.25 }}
+                      >
+                        {removingUserId === p.userId ? (
+                          <CircularProgress size={14} />
+                        ) : (
+                          <RemoveCircleOutlineOutlined sx={{ fontSize: 14 }} color="error" />
+                        )}
+                      </IconButton>
+                    )}
                   </Box>
                 ))}
               </Box>
@@ -232,15 +401,25 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
           </CardContent>
         </Card>
 
-        {/* Goal */}
-        {goal && (
+        {/* Goal / Description */}
+        {isEditing ? (
+          <TextField
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+            placeholder="Session notes or goal..."
+            size="small"
+            fullWidth
+            multiline
+            minRows={2}
+          />
+        ) : goal ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <FlagOutlined sx={{ fontSize: 16 }} color="action" />
             <Typography variant="body2" color="text.secondary">
               Goal: {goal}
             </Typography>
           </Box>
-        )}
+        ) : null}
 
         {/* Summary stats */}
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -486,6 +665,14 @@ export default function SessionDetailContent({ session }: SessionDetailContentPr
           ))
         )}
       </Box>
+
+      {/* Add User Dialog */}
+      <UserSearchDialog
+        open={addUserDialogOpen}
+        onClose={() => setAddUserDialogOpen(false)}
+        onSelectUser={handleAddUser}
+        excludeUserIds={participants.map((p) => p.userId)}
+      />
     </Box>
   );
 }
