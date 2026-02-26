@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
 import { roomManager } from '../services/room-manager';
 import { db } from '../db/client';
-import { boardSessions, boardSessionQueues } from '../db/schema';
+import { sessions, sessionQueues } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 import { createMockRedis, type MockRedis } from './helpers/mock-redis';
@@ -68,8 +68,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Verify active status
       let session = await db
         .select()
-        .from(boardSessions)
-        .where(eq(boardSessions.id, sessionId))
+        .from(sessions)
+        .where(eq(sessions.id, sessionId))
         .limit(1);
       expect(session[0]?.status).toBe('active');
 
@@ -79,8 +79,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Verify inactive status
       session = await db
         .select()
-        .from(boardSessions)
-        .where(eq(boardSessions.id, sessionId))
+        .from(sessions)
+        .where(eq(sessions.id, sessionId))
         .limit(1);
       expect(session[0]?.status).toBe('inactive');
 
@@ -99,8 +99,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Verify inactive
       let session = await db
         .select()
-        .from(boardSessions)
-        .where(eq(boardSessions.id, sessionId))
+        .from(sessions)
+        .where(eq(sessions.id, sessionId))
         .limit(1);
       expect(session[0]?.status).toBe('inactive');
 
@@ -110,8 +110,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Verify back to active
       session = await db
         .select()
-        .from(boardSessions)
-        .where(eq(boardSessions.id, sessionId))
+        .from(sessions)
+        .where(eq(sessions.id, sessionId))
         .limit(1);
       expect(session[0]?.status).toBe('active');
     });
@@ -129,8 +129,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Verify ended status
       const session = await db
         .select()
-        .from(boardSessions)
-        .where(eq(boardSessions.id, sessionId))
+        .from(sessions)
+        .where(eq(sessions.id, sessionId))
         .limit(1);
       expect(session[0]?.status).toBe('ended');
 
@@ -280,8 +280,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Check Postgres immediately - should not have latest state yet
       let queueRows = await db
         .select()
-        .from(boardSessionQueues)
-        .where(eq(boardSessionQueues.sessionId, sessionId));
+        .from(sessionQueues)
+        .where(eq(sessionQueues.sessionId, sessionId));
 
       // Either no row yet, or old state
       if (queueRows.length > 0) {
@@ -300,8 +300,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Now check Postgres - should have latest state
       queueRows = await db
         .select()
-        .from(boardSessionQueues)
-        .where(eq(boardSessionQueues.sessionId, sessionId));
+        .from(sessionQueues)
+        .where(eq(sessionQueues.sessionId, sessionId));
 
       expect(queueRows.length).toBe(1);
       const queue = queueRows[0]?.queue as unknown[];
@@ -324,8 +324,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Verify data in Postgres
       const queueRows = await db
         .select()
-        .from(boardSessionQueues)
-        .where(eq(boardSessionQueues.sessionId, sessionId));
+        .from(sessionQueues)
+        .where(eq(sessionQueues.sessionId, sessionId));
 
       expect(queueRows.length).toBe(1);
       const queue = queueRows[0]?.queue as unknown[];
@@ -358,8 +358,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Should not be written yet (timer was reset)
       let queueRows = await db
         .select()
-        .from(boardSessionQueues)
-        .where(eq(boardSessionQueues.sessionId, sessionId));
+        .from(sessionQueues)
+        .where(eq(sessionQueues.sessionId, sessionId));
 
       if (queueRows.length > 0) {
         const queue = queueRows[0]?.queue as unknown[];
@@ -377,8 +377,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Now should be written
       queueRows = await db
         .select()
-        .from(boardSessionQueues)
-        .where(eq(boardSessionQueues.sessionId, sessionId));
+        .from(sessionQueues)
+        .where(eq(sessionQueues.sessionId, sessionId));
 
       expect(queueRows.length).toBe(1);
       const queue = queueRows[0]?.queue as unknown[];
@@ -523,8 +523,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Session should be marked inactive in Postgres
       const session = await db
         .select()
-        .from(boardSessions)
-        .where(eq(boardSessions.id, sessionId))
+        .from(sessions)
+        .where(eq(sessions.id, sessionId))
         .limit(1);
       expect(session[0]?.status).toBe('inactive');
     });
@@ -575,8 +575,8 @@ describe('Session Persistence - Hybrid Redis + Postgres', () => {
       // Verify in Postgres
       const pgQueue = await db
         .select()
-        .from(boardSessionQueues)
-        .where(eq(boardSessionQueues.sessionId, sessionId));
+        .from(sessionQueues)
+        .where(eq(sessionQueues.sessionId, sessionId));
       expect(pgQueue).toHaveLength(1);
       expect((pgQueue[0]?.queue as unknown[])).toHaveLength(1);
     });

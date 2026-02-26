@@ -7,7 +7,6 @@ import {
   parseBoardRouteParams,
   constructClimbViewUrl,
   constructClimbInfoUrl,
-  generateClimbSlug,
   generateLayoutSlug,
   generateSizeSlug,
   generateSetSlug,
@@ -16,7 +15,6 @@ import {
   extractUuidFromSlug,
   isUuidOnly,
   isNumericId,
-  isSlugFormat,
   getBaseBoardPath,
   DEFAULT_SEARCH_PARAMS
 } from '../url-utils';
@@ -389,20 +387,6 @@ describe('URL construction functions', () => {
 });
 
 describe('Slug generation functions', () => {
-  describe('generateClimbSlug', () => {
-    it('should generate clean slug from climb name', () => {
-      expect(generateClimbSlug('Test Climb Name')).toBe('test-climb-name');
-      expect(generateClimbSlug('Special!@# Characters%')).toBe('special-characters');
-      expect(generateClimbSlug('  Multiple   Spaces  ')).toBe('multiple-spaces');
-    });
-
-    it('should handle empty and edge cases', () => {
-      expect(generateClimbSlug('')).toBe('');
-      expect(generateClimbSlug('   ')).toBe('');
-      expect(generateClimbSlug('A')).toBe('a');
-    });
-  });
-
   describe('generateLayoutSlug', () => {
     it('should remove board name prefix', () => {
       expect(generateLayoutSlug('Kilter Board Layout')).toBe('layout');
@@ -727,17 +711,6 @@ describe('Utility functions', () => {
     });
   });
 
-  describe('isSlugFormat', () => {
-    it('should return true for non-numeric strings', () => {
-      expect(isSlugFormat('test-slug')).toBe(true);
-      expect(isSlugFormat('12x12')).toBe(true);
-    });
-
-    it('should return false for numeric strings', () => {
-      expect(isSlugFormat('123')).toBe(false);
-      expect(isSlugFormat('0')).toBe(false);
-    });
-  });
 });
 
 describe('getBaseBoardPath', () => {
