@@ -156,8 +156,11 @@ test.describe('Help Page Screenshots - Authenticated', () => {
     await page.screenshot({ path: `${SCREENSHOT_DIR}/personal-progress.png` });
   });
 
-  test('party mode active session', async ({ page }) => {
+  test('party mode active session', async ({ page, context }) => {
     test.slow(); // WebSocket connection setup can be slow in CI
+
+    // Grant geolocation permission so session creation doesn't wait for permission prompt
+    await context.grantPermissions(['geolocation']);
 
     // First add a climb to queue so the queue bar appears
     const climbCard = page.locator('#onboarding-climb-card');
