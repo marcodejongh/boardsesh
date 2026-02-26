@@ -2,7 +2,7 @@ import React from 'react';
 
 import { PropsWithChildren } from 'react';
 
-import { BoardRouteParameters, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
+import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';

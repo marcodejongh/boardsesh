@@ -20,6 +20,7 @@ import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getSoftGradeColor, getGradeTintColor, extractVGrade } from '@/app/lib/grade-colors';
 import { useIsDarkMode } from '@/app/hooks/use-is-dark-mode';
+import { getExcludedClimbActions } from '@/app/lib/climb-action-utils';
 
 // Maximum swipe distance
 const MAX_SWIPE = 120;
@@ -60,11 +61,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   const gradeColor = getSoftGradeColor(climb.difficulty, isDark);
   const hasQuality = climb.quality_average && climb.quality_average !== '0';
 
-  // Build exclude list for moonboard
-  const excludeActions: ('tick' | 'openInApp' | 'mirror' | 'share' | 'viewDetails')[] = [];
-  if (boardDetails.board_name === 'moonboard') {
-    excludeActions.push('viewDetails');
-  }
+  const excludeActions = getExcludedClimbActions(boardDetails.board_name, 'list');
 
   // Memoize style objects to prevent recreation on every render
   const containerStyle = useMemo(

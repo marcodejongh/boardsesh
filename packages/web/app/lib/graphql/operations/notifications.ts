@@ -2,7 +2,6 @@ import { gql } from 'graphql-request';
 import type {
   Notification,
   NotificationConnection,
-  GroupedNotification,
   GroupedNotificationConnection,
   NotificationType,
   SocialEntityType,

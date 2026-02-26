@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
 import { roomManager, VersionConflictError } from '../services/room-manager';
 import { db } from '../db/client';
-import { boardSessions, boardSessionQueues } from '../db/schema';
+import { sessions, sessionQueues } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 import { queueMutations } from '../graphql/resolvers/queue/mutations';

@@ -23,7 +23,7 @@ export function OpenInAppAction({
   onComplete,
   auroraAppUrl,
 }: OpenInAppActionProps): ClimbActionResult {
-  const url = auroraAppUrl || constructClimbInfoUrl(boardDetails, climb.uuid, angle);
+  const url = auroraAppUrl || constructClimbInfoUrl(boardDetails, climb.uuid);
   const { iconSize } = computeActionDisplay(viewMode, size, showLabel);
 
   const handleClick = useCallback((e?: React.MouseEvent) => {

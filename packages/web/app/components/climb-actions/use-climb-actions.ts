@@ -96,7 +96,7 @@ export function useClimbActions({
 
   const openInAppUrl = useMemo(() => {
     if (!climb) return '';
-    return auroraAppUrl || constructClimbInfoUrl(boardDetails, climb.uuid, angle);
+    return auroraAppUrl || constructClimbInfoUrl(boardDetails, climb.uuid);
   }, [climb, boardDetails, angle, auroraAppUrl]);
 
   // Action handlers

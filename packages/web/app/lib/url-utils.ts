@@ -6,7 +6,6 @@ import {
   SearchRequestPagination,
   ClimbUuid,
   BoardDetails,
-  Angle,
 } from '@/app/lib/types';
 import { BOARD_NAME_PREFIX_REGEX } from '@/app/lib/board-constants';
 import { PAGE_LIMIT } from '../components/board-page/constants';
@@ -218,7 +217,7 @@ export const constructClimbViewUrl = (
 ) => {
   const baseUrl = `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/`;
   if (climbName && climbName.trim()) {
-    const slug = generateClimbSlug(climbName.trim());
+    const slug = generateSlugFromText(climbName.trim());
     if (slug) {
       return `${baseUrl}${slug}-${climb_uuid}`;
     }
@@ -243,7 +242,7 @@ export const constructClimbViewUrlWithSlugs = (
 
   const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/view/`;
   if (climbName && climbName.trim()) {
-    const climbSlug = generateClimbSlug(climbName.trim());
+    const climbSlug = generateSlugFromText(climbName.trim());
     if (climbSlug) {
       return `${baseUrl}${climbSlug}-${climb_uuid}`;
     }
@@ -254,8 +253,6 @@ export const constructClimbViewUrlWithSlugs = (
 export const constructClimbInfoUrl = (
   { board_name }: BoardDetails,
   climb_uuid: ClimbUuid,
-   
-  angle: Angle,
 ) => `https://${board_name}boardapp${board_name === 'tension' ? '2' : ''}.com/climbs/${climb_uuid}`;
 
 //`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
@@ -281,30 +278,6 @@ export const constructClimbListWithSlugs = (
   const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
   const setSlug = generateSetSlug(setNames);
   return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/list`;
-};
-
-export const constructCreateClimbWithSlugs = (
-  board_name: string,
-  layoutName: string,
-  sizeName: string,
-  sizeDescription: string | undefined,
-  setNames: string[],
-  angle: number,
-) => {
-  const layoutSlug = generateLayoutSlug(layoutName);
-  const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
-  const setSlug = generateSetSlug(setNames);
-  return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/create`;
-};
-
-export const generateClimbSlug = (climbName: string): string => {
-  return climbName
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
 };
 
 /**
@@ -443,26 +416,6 @@ export const isNumericId = (value: string): boolean => {
   return /^\d+$/.test(value);
 };
 
-export const isSlugFormat = (value: string): boolean => {
-  return !isNumericId(value);
-};
-
-// Construct URL for play mode (fullscreen queue view)
-export const constructPlayUrl = (
-  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
-  climb_uuid: ClimbUuid,
-  climbName?: string,
-) => {
-  const baseUrl = `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/play/`;
-  if (climbName && climbName.trim()) {
-    const slug = generateClimbSlug(climbName.trim());
-    if (slug) {
-      return `${baseUrl}${slug}-${climb_uuid}`;
-    }
-  }
-  return `${baseUrl}${climb_uuid}`;
-};
-
 // Construct play URL with slug-based board parameters
 export const constructPlayUrlWithSlugs = (
   board_name: string,
@@ -480,7 +433,7 @@ export const constructPlayUrlWithSlugs = (
 
   const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/play/`;
   if (climbName && climbName.trim()) {
-    const climbSlug = generateClimbSlug(climbName.trim());
+    const climbSlug = generateSlugFromText(climbName.trim());
     if (climbSlug) {
       return `${baseUrl}${climbSlug}-${climb_uuid}`;
     }

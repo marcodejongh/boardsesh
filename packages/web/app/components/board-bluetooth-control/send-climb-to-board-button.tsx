@@ -15,13 +15,7 @@ import { useBluetoothContext } from './bluetooth-context';
 import { useQueueContext } from '../graphql-queue';
 import './send-climb-to-board-button.css';
 
-type SendClimbToBoardButtonProps = {
-  buttonType?: 'default' | 'text';
-};
-
-const SendClimbToBoardButton: React.FC<SendClimbToBoardButtonProps> = ({
-  buttonType = 'default',
-}) => {
+const SendClimbToBoardButton: React.FC = () => {
   const { currentClimbQueueItem } = useQueueContext();
   const { isConnected, loading, connect, isBluetoothSupported, isIOS } =
     useBluetoothContext();

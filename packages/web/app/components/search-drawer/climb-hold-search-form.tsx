@@ -50,7 +50,6 @@ const ClimbHoldSearchForm: React.FC<ClimbHoldSearchFormProps> = ({ boardDetails 
     { value: 'NOT', label: 'Exclude', icon: <CancelOutlined style={{ color: themeTokens.colors.error }} /> },
   ];
 
-  const selectedHoldsCount = Object.keys(uiSearchParams.holdsFilter || {}).length;
   const anyHoldsCount = Object.values(uiSearchParams.holdsFilter || {}).filter(h => h.state === 'ANY').length;
   const notHoldsCount = Object.values(uiSearchParams.holdsFilter || {}).filter(h => h.state === 'NOT').length;
 

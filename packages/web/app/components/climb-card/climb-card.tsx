@@ -13,6 +13,7 @@ import { ClimbActions } from '../climb-actions';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useColorMode } from '@/app/hooks/use-color-mode';
+import { getExcludedClimbActions } from '@/app/lib/climb-action-utils';
 
 type ClimbCardProps = {
   climb?: Climb;
@@ -75,16 +76,7 @@ function ClimbCardWithActions({
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} onDoubleClick={onCoverDoubleClick} />;
   const cardTitle = <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />;
 
-  // Build exclude list - MoonBoard doesn't have a view details page yet
-  const excludeActions: ('tick' | 'openInApp' | 'mirror' | 'share' | 'viewDetails')[] = [
-    'tick',
-    'openInApp',
-    'mirror',
-    'share',
-  ];
-  if (boardDetails.board_name === 'moonboard') {
-    excludeActions.push('viewDetails');
-  }
+  const excludeActions = getExcludedClimbActions(boardDetails.board_name, 'card');
 
   return (
     <div data-testid="climb-card" style={unsupported ? { opacity: 0.5, filter: 'grayscale(80%)' } : undefined}>

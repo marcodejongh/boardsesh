@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import CircularProgress from '@mui/material/CircularProgress';
 import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
 import Favorite from '@mui/icons-material/Favorite';
 import { track } from '@vercel/analytics';
@@ -77,7 +76,6 @@ export function FavoriteAction({
   const label = isFavorited ? 'Favorited' : 'Favorite';
   const HeartIcon = isFavorited ? Favorite : FavoriteBorderOutlined;
   const iconStyle = isFavorited ? { color: themeTokens.colors.error, fontSize: iconSize } : { fontSize: iconSize };
-  const icon = isLoading ? <CircularProgress size={16} /> : <HeartIcon sx={iconStyle} />;
 
   const authModalElement = (
     <AuthModal

@@ -231,7 +231,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const [queue, setQueueState] = useState<LocalClimbQueueItem[]>([]);
 
   // Sequence tracking for gap detection and state verification
-  const [lastReceivedSequence, setLastReceivedSequence] = useState<number | null>(null);
   const [lastReceivedStateHash, setLastReceivedStateHash] = useState<string | null>(null);
   // Ref for synchronous access to sequence (avoids stale closure in handleQueueEvent)
   const lastReceivedSequenceRef = useRef<number | null>(null);
@@ -308,10 +307,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     sessionEventSubscribersRef.current.forEach((callback) => callback(event));
   }, []);
 
-  // Helper to update sequence in both ref and state
+  // Helper to update sequence ref
   const updateLastReceivedSequence = useCallback((sequence: number) => {
     lastReceivedSequenceRef.current = sequence;
-    setLastReceivedSequence(sequence);
   }, []);
 
   // Handle queue events internally

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { queueReducer } from '../reducer';
-import { QueueState, QueueAction, ClimbQueueItem } from '../types';
+import { QueueState, ClimbQueueItem } from '../types';
 import { SearchRequestPagination, Climb } from '@/app/lib/types';
 
 const mockClimb: Climb = {

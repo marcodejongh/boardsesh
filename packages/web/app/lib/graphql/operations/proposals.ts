@@ -5,7 +5,6 @@ import type {
   Proposal,
   ProposalConnection,
   ClimbCommunityStatusType,
-  ClimbClassicStatusType,
   CommunityRoleAssignment,
   CommunityRoleType,
   CommunitySettingType,

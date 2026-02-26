@@ -170,7 +170,7 @@ function LedConnectionTab() {
   );
 }
 
-export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'default' | 'text' }) => {
+export const ShareBoardButton = () => {
   const { showMessage } = useSnackbar();
   const {
     users,

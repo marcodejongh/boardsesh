@@ -111,12 +111,6 @@ export const END_SESSION = `
   }
 `;
 
-export const UPDATE_USERNAME = `
-  mutation UpdateUsername($username: String!, $avatarUrl: String) {
-    updateUsername(username: $username, avatarUrl: $avatarUrl)
-  }
-`;
-
 export const ADD_QUEUE_ITEM = `
   mutation AddQueueItem($item: ClimbQueueItemInput!, $position: Int) {
     addQueueItem(item: $item, position: $position) {

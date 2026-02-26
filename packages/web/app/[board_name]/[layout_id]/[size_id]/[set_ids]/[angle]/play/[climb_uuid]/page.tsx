@@ -1,5 +1,5 @@
 import React from 'react';
-import { BoardRouteParametersWithUuid, BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
+import { BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { parseBoardRouteParams, extractUuidFromSlug, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';

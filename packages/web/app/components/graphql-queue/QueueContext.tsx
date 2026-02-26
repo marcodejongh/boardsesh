@@ -11,7 +11,7 @@ import { Climb, ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types
 import { useConnectionSettings } from '../connection-manager/connection-settings-context';
 import { usePartyProfile } from '../party-manager/party-profile-context';
 import { SubscriptionQueueEvent } from '@boardsesh/shared-schema';
-import { saveSessionToHistory } from '../setup-wizard/session-history-panel';
+import { saveSessionToHistory } from '@/app/lib/session-history-db';
 import { usePersistentSession } from '../persistent-session';
 import { FavoritesProvider } from '../climb-actions/favorites-batch-context';
 import { PlaylistsProvider } from '../climb-actions/playlists-batch-context';

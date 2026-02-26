@@ -167,7 +167,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
   const handleOpenInApp = useCallback(() => {
     if (!item.climb) return;
-    const url = constructClimbInfoUrl(boardDetails, item.climb.uuid, item.climb.angle);
+    const url = constructClimbInfoUrl(boardDetails, item.climb.uuid);
     window.open(url, '_blank', 'noopener');
   }, [item.climb, boardDetails]);
 
