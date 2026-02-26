@@ -22,8 +22,6 @@ vi.mock('../../persistent-session', () => ({
   usePersistentSession: () => mockPersistentSession,
 }));
 
-// Mock QueueContext used by QueueBridgeInjector to read the board route's context
-let mockQueueContextValue: unknown = undefined;
 vi.mock('../../graphql-queue/QueueContext', () => {
   const React = require('react');
   const ctx = React.createContext(undefined);
@@ -222,7 +220,6 @@ describe('queue-bridge-context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUuidCounter = 0;
-    mockQueueContextValue = undefined;
     mockPersistentSession = createDefaultPersistentSession();
   });
 

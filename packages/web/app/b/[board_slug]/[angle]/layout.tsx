@@ -3,9 +3,7 @@ import { PropsWithChildren } from 'react';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { resolveBoardBySlug, boardToRouteParams } from '@/app/lib/board-slug-utils';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
-import { ParsedBoardRouteParameters, BoardDetails } from '@/app/lib/types';
+import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { GraphQLQueueProvider } from '@/app/components/graphql-queue';
 import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';
@@ -24,16 +22,6 @@ import { themeTokens } from '@/app/theme/theme-config';
 interface BoardSlugRouteParams {
   board_slug: string;
   angle: string;
-}
-
-function getBoardDetailsUniversal(parsedParams: ParsedBoardRouteParameters): BoardDetails {
-  if (parsedParams.board_name === 'moonboard') {
-    return getMoonBoardDetails({
-      layout_id: parsedParams.layout_id,
-      set_ids: parsedParams.set_ids,
-    }) as BoardDetails;
-  }
-  return getBoardDetails(parsedParams);
 }
 
 export async function generateMetadata(props: { params: Promise<BoardSlugRouteParams> }): Promise<Metadata> {
@@ -66,7 +54,7 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
   const parsedParams = boardToRouteParams(board, angle);
 
   const [boardDetails, boardConfigs] = await Promise.all([
-    Promise.resolve(getBoardDetailsUniversal(parsedParams)),
+    Promise.resolve(getBoardDetailsForBoard(parsedParams)),
     getAllBoardConfigs(),
   ]);
 

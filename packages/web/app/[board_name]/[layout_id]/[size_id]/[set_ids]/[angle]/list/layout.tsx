@@ -2,9 +2,9 @@ import React from 'react';
 
 import { PropsWithChildren } from 'react';
 
-import { BoardRouteParameters, ParsedBoardRouteParameters } from '@/app/lib/types';
-import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
-import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { BoardRouteParameters } from '@/app/lib/types';
+import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseRouteParams } from '@/app/lib/url-utils.server';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { permanentRedirect } from 'next/navigation';
 import ListLayoutClient from './layout-client';
@@ -19,18 +19,10 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
 
   const { children } = props;
 
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
+  const { parsedParams, isNumericFormat } = await parseRouteParams(params);
 
-  let parsedParams: ParsedBoardRouteParameters;
-
-  if (hasNumericParams) {
-    // For old URLs, use the simple parsing function first
-    parsedParams = parseBoardRouteParams(params);
-
-    // Redirect old URLs to new slug format
+  // Redirect old numeric URLs to new slug format
+  if (isNumericFormat) {
     const boardDetails = getBoardDetailsForBoard(parsedParams);
 
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
@@ -45,9 +37,6 @@ export default async function ListLayout(props: PropsWithChildren<LayoutProps>) 
 
       permanentRedirect(newUrl);
     }
-  } else {
-    // For new URLs, use the slug parsing function
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
   }
 
   // Fetch the climbs and board details server-side

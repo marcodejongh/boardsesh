@@ -3,11 +3,10 @@ import React from 'react';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { BoardRouteParametersWithUuid, SearchRequestPagination, BoardDetails } from '@/app/lib/types';
 import {
-  parseBoardRouteParams,
   parsedRouteSearchParamsToSearchParams,
   constructClimbListWithSlugs,
 } from '@/app/lib/url-utils';
-import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { parseRouteParams } from '@/app/lib/url-utils.server';
 import BoardPageClimbsList from '@/app/components/board-page/board-page-climbs-list';
 import { cachedSearchClimbs } from '@/app/lib/graphql/server-cached-client';
 import { SEARCH_CLIMBS, type ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
@@ -20,18 +19,10 @@ export default async function DynamicResultsPage(props: {
 }) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
+  const { parsedParams, isNumericFormat } = await parseRouteParams(params);
 
-  let parsedParams;
-
-  if (hasNumericParams) {
-    // For old URLs, use the simple parsing function first
-    parsedParams = parseBoardRouteParams(params);
-
-    // Redirect old URLs to new slug format
+  // Redirect old numeric URLs to new slug format
+  if (isNumericFormat) {
     const boardDetails = getBoardDetailsForBoard(parsedParams);
 
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
@@ -60,9 +51,6 @@ export default async function DynamicResultsPage(props: {
 
       permanentRedirect(finalUrl);
     }
-  } else {
-    // For new URLs, use the slug parsing function
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
   }
 
   const searchParamsObject: SearchRequestPagination = parsedRouteSearchParamsToSearchParams(searchParams);

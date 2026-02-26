@@ -14,7 +14,6 @@ interface OpenInAppActionProps extends ClimbActionProps {
 export function OpenInAppAction({
   climb,
   boardDetails,
-  angle,
   viewMode,
   size = 'default',
   showLabel,

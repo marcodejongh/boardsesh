@@ -87,11 +87,8 @@ describe('useAlwaysTickInApp', () => {
     });
 
     // Start the enable call but don't resolve yet
-    let enableDone = false;
     act(() => {
-      result.current.enableAlwaysUseApp().then(() => {
-        enableDone = true;
-      });
+      result.current.enableAlwaysUseApp();
     });
 
     // The set hasn't resolved yet, so alwaysUseApp should still be false

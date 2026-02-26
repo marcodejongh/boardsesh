@@ -174,7 +174,7 @@ describe('useQueueDataFetching', () => {
     });
 
     // Mock GraphQL client requests
-    mockGraphQLRequest.mockImplementation(async (document, variables) => {
+    mockGraphQLRequest.mockImplementation(async (document) => {
       const query = String(document);
 
       // Check which query is being made

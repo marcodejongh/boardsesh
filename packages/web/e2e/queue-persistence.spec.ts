@@ -12,13 +12,10 @@ const queueControlBar = '[data-testid="queue-control-bar"]';
 
 // Helper to wait for the board page to be ready
 async function waitForBoardPage(page: Page) {
-  await page
-    .waitForSelector('#onboarding-climb-card, [data-testid="climb-card"]', {
-      timeout: 30000,
-    })
-    .catch(() => {
-      return page.waitForLoadState('networkidle');
-    });
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForSelector('#onboarding-climb-card, [data-testid="climb-card"]', {
+    timeout: 30000,
+  });
 }
 
 // Helper to add a climb to the queue via double-click and return the climb name

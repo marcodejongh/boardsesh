@@ -1,11 +1,10 @@
 import React, { Suspense } from 'react';
 import { PropsWithChildren } from 'react';
-import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '@/app/lib/types';
-import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
-import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { BoardRouteParameters } from '@/app/lib/types';
+import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseRouteParams } from '@/app/lib/url-utils.server';
 import { permanentRedirect } from 'next/navigation';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
+import { getBoardDetailsForBoard, generateBoardTitle } from '@/app/lib/board-utils';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { GraphQLQueueProvider } from '@/app/components/graphql-queue';
 import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';
@@ -20,73 +19,12 @@ import LastUsedBoardTracker from '@/app/components/board-page/last-used-board-tr
 import { themeTokens } from '@/app/theme/theme-config';
 import { getAllBoardConfigs } from '@/app/lib/server-board-configs';
 
-// Helper to get board details for any board type
-function getBoardDetailsUniversal(parsedParams: ParsedBoardRouteParameters): BoardDetails {
-  if (parsedParams.board_name === 'moonboard') {
-    return getMoonBoardDetails({
-      layout_id: parsedParams.layout_id,
-      set_ids: parsedParams.set_ids,
-    }) as BoardDetails;
-  }
-  return getBoardDetails(parsedParams);
-}
-
-/**
- * Generates a user-friendly page title from board details.
- * Example output: "Kilter Original 12x12 | Boardsesh"
- */
-function generateBoardTitle(boardDetails: BoardDetails): string {
-  const parts: string[] = [];
-
-  // Capitalize board name
-  const boardName = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
-  parts.push(boardName);
-
-  // Add layout name if available, but strip out board name prefix to avoid duplication
-  if (boardDetails.layout_name) {
-    // Remove board name prefix (e.g., "Kilter Board Original" -> "Original")
-    const layoutName = boardDetails.layout_name
-      .replace(new RegExp(`^${boardDetails.board_name}\\s*(board)?\\s*`, 'i'), '')
-      .trim();
-
-    if (layoutName) {
-      parts.push(layoutName);
-    }
-  }
-
-  // Add size info - prefer size_name, fallback to size_description
-  if (boardDetails.size_name) {
-    // Extract dimensions if present (e.g., "12 x 12 Commercial" -> "12x12")
-    const sizeMatch = boardDetails.size_name.match(/(\d+)\s*x\s*(\d+)/i);
-    if (sizeMatch) {
-      parts.push(`${sizeMatch[1]}x${sizeMatch[2]}`);
-    } else {
-      parts.push(boardDetails.size_name);
-    }
-  } else if (boardDetails.size_description) {
-    parts.push(boardDetails.size_description);
-  }
-
-  return `${parts.join(' ')} | Boardsesh`;
-}
-
 export async function generateMetadata(props: { params: Promise<BoardRouteParameters> }): Promise<Metadata> {
   const params = await props.params;
 
   try {
-    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-      param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-    );
-
-    let parsedParams: ParsedBoardRouteParameters;
-
-    if (hasNumericParams) {
-      parsedParams = parseBoardRouteParams(params);
-    } else {
-      parsedParams = await parseBoardRouteParamsWithSlugs(params);
-    }
-
-    const boardDetails = getBoardDetailsUniversal(parsedParams);
+    const { parsedParams } = await parseRouteParams(params);
+    const boardDetails = getBoardDetailsForBoard(parsedParams);
     const title = generateBoardTitle(boardDetails);
 
     return {
@@ -110,20 +48,11 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
   const { children } = props;
 
-  // Parse the route parameters
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
+  const { parsedParams, isNumericFormat } = await parseRouteParams(params);
 
-  let parsedParams: ParsedBoardRouteParameters;
-
-  if (hasNumericParams) {
-    // For old URLs, use the simple parsing function first
-    parsedParams = parseBoardRouteParams(params);
-
-    // Redirect old URLs to new slug format
-    const boardDetails = getBoardDetailsUniversal(parsedParams);
+  // Redirect old numeric URLs to new slug format
+  if (isNumericFormat) {
+    const boardDetails = getBoardDetailsForBoard(parsedParams);
 
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
@@ -137,16 +66,13 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
       permanentRedirect(newUrl);
     }
-  } else {
-    // For new URLs, use the slug parsing function
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
   }
 
   const { angle } = parsedParams;
 
   // Fetch the board details and board configs server-side
   const [boardDetails, boardConfigs] = await Promise.all([
-    Promise.resolve(getBoardDetailsUniversal(parsedParams)),
+    Promise.resolve(getBoardDetailsForBoard(parsedParams)),
     getAllBoardConfigs(),
   ]);
 

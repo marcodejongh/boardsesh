@@ -13,7 +13,7 @@ const bottomTabBar = '[data-testid="bottom-tab-bar"]';
 const queueControlBar = '[data-testid="queue-control-bar"]';
 
 async function waitForPageReady(page: Page) {
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await expect(page.locator(bottomTabBar)).toBeVisible({ timeout: 15000 });
 }
 
@@ -135,7 +135,7 @@ test.describe('Bottom Tab Bar - Queue Integration', () => {
     await page.goto(boardUrl);
     await page
       .waitForSelector('#onboarding-climb-card, [data-testid="climb-card"]', { timeout: 30000 })
-      .catch(() => page.waitForLoadState('networkidle'));
+      .catch(() => page.waitForLoadState('domcontentloaded'));
 
     // Add a climb to the queue
     const climbCard = page.locator('#onboarding-climb-card');
@@ -158,7 +158,7 @@ test.describe('Bottom Tab Bar - Queue Integration', () => {
     await page.goto(boardUrl);
     await page
       .waitForSelector('#onboarding-climb-card, [data-testid="climb-card"]', { timeout: 30000 })
-      .catch(() => page.waitForLoadState('networkidle'));
+      .catch(() => page.waitForLoadState('domcontentloaded'));
 
     // Add a climb to the queue and capture its name
     const climbCard = page.locator('#onboarding-climb-card');
