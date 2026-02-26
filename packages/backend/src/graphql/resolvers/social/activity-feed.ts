@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, lt, or } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
@@ -49,7 +49,7 @@ function mapFeedItemToGraphQL(row: typeof dbSchema.feedItems.$inferSelect) {
     quality: (meta.quality as number) ?? null,
     attemptCount: (meta.attemptCount as number) ?? null,
     comment: (meta.comment as string) ?? null,
-    createdAt: row.createdAt.toISOString(),
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
   };
 }
 
@@ -85,17 +85,16 @@ export const activityFeedQueries = {
 
     if (sortBy === 'new') {
       // Keyset pagination for chronological sort (stable — order doesn't change)
+      // Use raw SQL with the cursor string passed directly to PostgreSQL to avoid
+      // timezone issues from JavaScript's new Date() interpreting PG timestamps
+      // without timezone indicators as local time instead of UTC.
       if (validatedInput.cursor) {
         const cursor = decodeCursor(validatedInput.cursor);
         if (cursor) {
           conditions.push(
-            or(
-              lt(dbSchema.feedItems.createdAt, new Date(cursor.createdAt)),
-              and(
-                eq(dbSchema.feedItems.createdAt, new Date(cursor.createdAt)),
-                lt(dbSchema.feedItems.id, cursor.id)
-              )
-            )!
+            sql`(${dbSchema.feedItems.createdAt} < ${cursor.createdAt}::timestamp
+              OR (${dbSchema.feedItems.createdAt} = ${cursor.createdAt}::timestamp
+                  AND ${dbSchema.feedItems.id} < ${cursor.id}))`
           );
         }
       }

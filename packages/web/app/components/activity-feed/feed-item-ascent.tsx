@@ -36,5 +36,9 @@ export default function FeedItemAscent({ item }: FeedItemAscentProps) {
     frames: item.frames ?? undefined,
   };
 
-  return <SocialFeedItem item={ascentItem} showUserHeader />;
+  return (
+    <div data-testid="activity-feed-item">
+      <SocialFeedItem item={ascentItem} showUserHeader />
+    </div>
+  );
 }
