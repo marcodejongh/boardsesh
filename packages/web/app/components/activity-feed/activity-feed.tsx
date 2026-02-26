@@ -4,7 +4,6 @@ import React, { useMemo, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import MuiButton from '@mui/material/Button';
 import MuiAlert from '@mui/material/Alert';
-import CircularProgress from '@mui/material/CircularProgress';
 import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined';
 import PublicOutlined from '@mui/icons-material/PublicOutlined';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
@@ -23,6 +22,7 @@ import FeedItemAscent from './feed-item-ascent';
 import FeedItemNewClimb from './feed-item-new-climb';
 import FeedItemComment from './feed-item-comment';
 import SessionSummaryFeedItem from './session-summary-feed-item';
+import FeedItemSkeleton from './feed-item-skeleton';
 import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 /** Extends the base result with a tag indicating which data source produced it. */
@@ -34,8 +34,10 @@ interface ActivityFeedProps {
   sortBy?: SortMode;
   topPeriod?: TimePeriod;
   onFindClimbers?: () => void;
-  /** SSR-provided initial feed result for unauthenticated users. Renders immediately while client fetches fresh data. */
+  /** SSR-provided initial feed result. Renders immediately while client fetches fresh data. */
   initialFeedResult?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean };
+  /** SSR-determined data source tag, so page 2+ cache routing works correctly from the start. */
+  initialFeedSource?: 'personalized' | 'trending';
 }
 
 function renderFeedItem(item: ActivityFeedItem) {
@@ -60,6 +62,7 @@ export default function ActivityFeed({
   topPeriod = 'all',
   onFindClimbers,
   initialFeedResult,
+  initialFeedSource,
 }: ActivityFeedProps) {
   const { token, isLoading: authLoading } = useWsAuthToken();
   const queryClient = useQueryClient();
@@ -134,9 +137,12 @@ export default function ActivityFeed({
     ...(hasInitialData
       ? {
           initialData: {
-            pages: [{ ...initialFeedResult, _source: 'trending' as const }],
+            pages: [{ ...initialFeedResult, _source: (initialFeedSource ?? 'trending') as 'personalized' | 'trending' }],
             pageParams: [null],
           },
+          // Tell React Query the SSR data is fresh — prevents an immediate
+          // client-side refetch. Data won't be refetched until staleTime expires.
+          initialDataUpdatedAt: Date.now(),
         }
       : {}),
   });
@@ -173,8 +179,10 @@ export default function ActivityFeed({
 
   if ((authLoading || isLoading) && items.length === 0) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress />
+      <Box data-testid="activity-feed" sx={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <FeedItemSkeleton />
+        <FeedItemSkeleton />
+        <FeedItemSkeleton />
       </Box>
     );
   }
@@ -219,8 +227,13 @@ export default function ActivityFeed({
       ) : (
         <>
           {items.map(renderFeedItem)}
-          <Box ref={sentinelRef} data-testid="activity-feed-sentinel" sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
-            {isFetchingNextPage && <CircularProgress size={24} />}
+          <Box ref={sentinelRef} data-testid="activity-feed-sentinel" sx={{ display: 'flex', flexDirection: 'column', gap: '12px', py: 2, minHeight: 20 }}>
+            {isFetchingNextPage && (
+              <>
+                <FeedItemSkeleton />
+                <FeedItemSkeleton />
+              </>
+            )}
           </Box>
         </>
       )}

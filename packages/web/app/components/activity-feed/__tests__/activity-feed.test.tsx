@@ -36,6 +36,9 @@ vi.mock('../feed-item-comment', () => ({
 vi.mock('../session-summary-feed-item', () => ({
   default: ({ item }: { item: { id: string } }) => <div data-testid="activity-feed-item">{item.id}</div>,
 }));
+vi.mock('../feed-item-skeleton', () => ({
+  default: () => <div data-testid="feed-item-skeleton" />,
+}));
 
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import ActivityFeed, { type ActivityFeedPage } from '../activity-feed';
@@ -86,6 +89,21 @@ describe('ActivityFeed', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRequest.mockReset();
+  });
+
+  describe('Loading state', () => {
+    it('shows skeleton placeholders while loading', () => {
+      mockUseWsAuthToken.mockReturnValue({
+        token: null,
+        isAuthenticated: false,
+        isLoading: true,
+        error: null,
+      });
+
+      render(<ActivityFeed isAuthenticated={false} />, { wrapper: createWrapper() });
+
+      expect(screen.getAllByTestId('feed-item-skeleton')).toHaveLength(3);
+    });
   });
 
   describe('Unauthenticated', () => {
@@ -351,6 +369,38 @@ describe('ActivityFeed', () => {
       const queryKey = ['activityFeed', false, undefined, 'new', 'all'];
       const cached = queryClient.getQueryData<InfiniteData<ActivityFeedPage>>(queryKey);
       expect(cached?.pages[0]._source).toBe('trending');
+    });
+
+    it('tags initialData with _source personalized when initialFeedSource is provided', () => {
+      mockUseWsAuthToken.mockReturnValue({
+        token: 'test-token',
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+
+      const initialFeedResult = {
+        items: [makeFeedItem('ssr-1')],
+        cursor: 'ssr-cursor',
+        hasMore: true,
+      };
+
+      const queryClient = createTestQueryClient();
+
+      render(
+        <ActivityFeed
+          isAuthenticated={true}
+          initialFeedResult={initialFeedResult}
+          initialFeedSource="personalized"
+        />,
+        { wrapper: createWrapper(queryClient) },
+      );
+
+      expect(screen.getByText('ssr-1')).toBeTruthy();
+
+      const queryKey = ['activityFeed', true, undefined, 'new', 'all'];
+      const cached = queryClient.getQueryData<InfiniteData<ActivityFeedPage>>(queryKey);
+      expect(cached?.pages[0]._source).toBe('personalized');
     });
   });
 });

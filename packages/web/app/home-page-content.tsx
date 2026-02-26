@@ -41,6 +41,8 @@ interface HomePageContentProps {
   initialBoardUuid?: string;
   initialSortBy?: SortMode;
   initialTrendingFeed?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean } | null;
+  isAuthenticatedSSR?: boolean;
+  initialFeedSource?: 'personalized' | 'trending';
 }
 
 export default function HomePageContent({
@@ -49,8 +51,10 @@ export default function HomePageContent({
   initialBoardUuid,
   initialSortBy = 'new',
   initialTrendingFeed,
+  isAuthenticatedSSR,
+  initialFeedSource,
 }: HomePageContentProps) {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -58,7 +62,8 @@ export default function HomePageContent({
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
   const [subscriptions, setSubscriptions] = useState<NewClimbSubscription[]>([]);
 
-  const isAuthenticated = status === 'authenticated' && !!session?.user;
+  // Trust the SSR hint during the loading phase to prevent flash of unauthenticated content
+  const isAuthenticated = status === 'authenticated' ? true : (status === 'loading' ? (isAuthenticatedSSR ?? false) : false);
   const { token: wsAuthToken } = useWsAuthToken();
   const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(isAuthenticated);
 
@@ -203,6 +208,7 @@ export default function HomePageContent({
               sortBy={sortBy}
               onFindClimbers={() => setSearchOpen(true)}
               initialFeedResult={initialTrendingFeed ?? undefined}
+              initialFeedSource={initialFeedSource}
             />
           </>
         )}

@@ -1,8 +1,9 @@
 import React from 'react';
+import { cookies } from 'next/headers';
 import ConsolidatedBoardConfig from './components/setup-wizard/consolidated-board-config';
 import { getAllBoardConfigs } from './lib/server-board-configs';
 import HomePageContent from './home-page-content';
-import { cachedTrendingFeed } from './lib/graphql/server-cached-client';
+import { cachedTrendingFeed, serverActivityFeed } from './lib/graphql/server-cached-client';
 import type { SortMode } from '@boardsesh/shared-schema';
 
 type HomeProps = {
@@ -24,13 +25,28 @@ export default async function Home({ searchParams }: HomeProps) {
   const sortBy = (['new', 'top', 'controversial', 'hot'].includes(params.sort as string)
     ? params.sort : 'new') as SortMode;
 
-  // SSR: fetch initial trending feed (no auth needed)
-  let initialTrendingFeed = null;
+  // Read auth cookie to determine if user is authenticated at SSR time
+  const cookieStore = await cookies();
+  const authToken = cookieStore.get('next-auth.session-token')?.value
+    ?? cookieStore.get('__Secure-next-auth.session-token')?.value;
+  const isAuthenticatedSSR = !!authToken;
+
+  // SSR: fetch correct feed based on auth status
+  let initialFeedResult: { items: import('@boardsesh/shared-schema').ActivityFeedItem[]; cursor: string | null; hasMore: boolean } | null = null;
+  let initialFeedSource: 'personalized' | 'trending' = 'trending';
+
   if (tab === 'activity') {
     try {
-      initialTrendingFeed = await cachedTrendingFeed(sortBy, boardUuid);
+      if (authToken) {
+        const { result, source } = await serverActivityFeed(authToken, sortBy, boardUuid);
+        initialFeedResult = result;
+        initialFeedSource = source;
+      } else {
+        initialFeedResult = await cachedTrendingFeed(sortBy, boardUuid);
+        initialFeedSource = 'trending';
+      }
     } catch {
-      // Trending feed fetch failed, client will retry
+      // Feed fetch failed, client will retry
     }
   }
 
@@ -40,7 +56,9 @@ export default async function Home({ searchParams }: HomeProps) {
       initialTab={tab}
       initialBoardUuid={boardUuid}
       initialSortBy={sortBy}
-      initialTrendingFeed={initialTrendingFeed}
+      initialTrendingFeed={initialFeedResult}
+      isAuthenticatedSSR={isAuthenticatedSSR}
+      initialFeedSource={initialFeedSource}
     />
   );
 }

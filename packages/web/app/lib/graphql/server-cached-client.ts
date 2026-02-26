@@ -146,6 +146,27 @@ export async function cachedSearchClimbs<T = unknown>(
 }
 
 /**
+ * Execute a GraphQL query with an auth token (non-cached, per-user data)
+ */
+async function executeAuthenticatedGraphQL<T = unknown, V extends Variables = Variables>(
+  document: RequestDocument,
+  variables?: V,
+  authToken?: string,
+): Promise<T> {
+  const url = getGraphQLHttpUrl();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  const client = new GraphQLClient(url, { headers });
+  return client.request<T>(document, variables);
+}
+
+type ActivityFeedResult = { items: import('@boardsesh/shared-schema').ActivityFeedItem[]; cursor: string | null; hasMore: boolean };
+
+/**
  * Cached server-side trending feed query.
  * Used for SSR on the home page for unauthenticated users.
  */
@@ -155,7 +176,7 @@ export async function cachedTrendingFeed(
 ) {
   const { GET_TRENDING_FEED } = await import('@/app/lib/graphql/operations/activity-feed');
 
-  const query = createCachedGraphQLQuery<{ trendingFeed: { items: import('@boardsesh/shared-schema').ActivityFeedItem[]; cursor: string | null; hasMore: boolean } }>(
+  const query = createCachedGraphQLQuery<{ trendingFeed: ActivityFeedResult }>(
     GET_TRENDING_FEED,
     'trending-feed',
     300, // 5 min cache
@@ -163,4 +184,37 @@ export async function cachedTrendingFeed(
 
   const result = await query({ input: { sortBy, boardUuid, limit: 20 } });
   return result.trendingFeed;
+}
+
+/**
+ * Server-side activity feed for authenticated users.
+ * Probes personalized feed first; falls back to trending if empty.
+ * NOT cached — personalized data is per-user.
+ */
+export async function serverActivityFeed(
+  authToken: string,
+  sortBy: string = 'new',
+  boardUuid?: string,
+): Promise<{ result: ActivityFeedResult; source: 'personalized' | 'trending' }> {
+  const { GET_ACTIVITY_FEED } = await import('@/app/lib/graphql/operations/activity-feed');
+
+  const input = { sortBy, boardUuid, limit: 20 };
+
+  try {
+    const response = await executeAuthenticatedGraphQL<{ activityFeed: ActivityFeedResult }>(
+      GET_ACTIVITY_FEED,
+      { input },
+      authToken,
+    );
+
+    if (response.activityFeed.items.length > 0) {
+      return { result: response.activityFeed, source: 'personalized' };
+    }
+  } catch {
+    // Personalized feed failed, fall through to trending
+  }
+
+  // Fall back to trending
+  const trendingResult = await cachedTrendingFeed(sortBy, boardUuid);
+  return { result: trendingResult, source: 'trending' };
 }
