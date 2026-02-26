@@ -18,5 +18,6 @@ CREATE INDEX "inferred_sessions_user_idx" ON "inferred_sessions" USING btree ("u
 CREATE INDEX "inferred_sessions_user_last_tick_idx" ON "inferred_sessions" USING btree ("user_id","last_tick_at");--> statement-breakpoint
 CREATE INDEX "inferred_sessions_last_tick_idx" ON "inferred_sessions" USING btree ("last_tick_at");--> statement-breakpoint
 ALTER TABLE "boardsesh_ticks" ADD CONSTRAINT "boardsesh_ticks_inferred_session_id_inferred_sessions_id_fk" FOREIGN KEY ("inferred_session_id") REFERENCES "public"."inferred_sessions"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+DROP INDEX IF EXISTS "board_climbs_setter_username_idx";--> statement-breakpoint
 CREATE INDEX "board_climbs_setter_username_idx" ON "board_climbs" USING btree ("board_type","setter_username");--> statement-breakpoint
 CREATE INDEX "boardsesh_ticks_inferred_session_idx" ON "boardsesh_ticks" USING btree ("inferred_session_id");
