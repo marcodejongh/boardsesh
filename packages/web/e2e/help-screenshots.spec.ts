@@ -29,7 +29,7 @@ test.describe('Help Page Screenshots', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(boardUrl);
     await page.waitForSelector('#onboarding-climb-card, [data-testid="climb-card"]', { timeout: 30000 })
-      .catch(() => page.waitForLoadState('networkidle'));
+      .catch(() => page.waitForLoadState('domcontentloaded'));
   });
 
   test('main interface', async ({ page }) => {
@@ -128,7 +128,7 @@ test.describe('Help Page Screenshots - Authenticated', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(boardUrl);
     await page.waitForSelector('#onboarding-climb-card, [data-testid="climb-card"]', { timeout: 30000 })
-      .catch(() => page.waitForLoadState('networkidle'));
+      .catch(() => page.waitForLoadState('domcontentloaded'));
 
     // Login via user drawer
     await page.getByLabel('User menu').click();
