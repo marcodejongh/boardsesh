@@ -121,13 +121,16 @@ async function upsertTableData(
           edgeRight: Number(item.edge_right),
           edgeBottom: Number(item.edge_bottom),
           edgeTop: Number(item.edge_top),
-          angle: Number(item.angle),
+          angle: item.angle != null && !isNaN(Number(item.angle)) ? Number(item.angle) : null,
           framesCount: Number(item.frames_count || 1),
           framesPace: Number(item.frames_pace || 0),
           frames: item.frames || '',
           isDraft: true,
           isListed: false,
           createdAt: item.created_at || new Date().toISOString(),
+          synced: true,
+          syncError: null,
+          userId: null,
         }));
         await db
           .insert(climbsSchema)
@@ -589,8 +592,8 @@ export async function syncUserData(
           error instanceof Error
             ? error.message.includes('violates foreign key constraint')
               ? `FK constraint violation: ${error.message.split('violates foreign key constraint')[1]?.split('"')[1] || 'unknown'}`
-              : error.message.slice(0, 500)
-            : String(error).slice(0, 500);
+              : error.message.slice(0, 2000)
+            : String(error).slice(0, 2000);
         log(`Database error: ${errorMessage}`);
         throw new Error(`Database error: ${errorMessage}`);
       } finally {
@@ -613,7 +616,8 @@ export async function syncUserData(
 
     return totalResults;
   } catch (error) {
-    log(`Error syncing user data: ${error}`);
-    throw error;
+    const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+    log(`Error syncing user data: ${errorMsg}`);
+    throw error instanceof Error ? error : new Error(`Sync error: ${errorMsg}`);
   }
 }
