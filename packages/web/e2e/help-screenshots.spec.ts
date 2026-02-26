@@ -2,6 +2,7 @@
  * Help Page Screenshot Generation Tests
  *
  * These tests generate screenshots for the help page documentation.
+ * They use a mobile viewport since the help screenshots show the mobile UI.
  *
  * Run all tests (unauthenticated only):
  *   npx playwright test e2e/help-screenshots.spec.ts
@@ -21,6 +22,10 @@ const SCREENSHOT_DIR = 'public/help';
 const boardUrl = '/kilter/original/12x12-square/screw_bolt/40/list';
 
 test.describe('Help Page Screenshots', () => {
+  // Use mobile viewport - help screenshots show mobile UI, and many
+  // interactive elements (search pill, drawers) are mobile-only.
+  test.use({ viewport: { width: 390, height: 844 } });
+
   test.beforeEach(async ({ page }) => {
     await page.goto(boardUrl);
     await page.waitForSelector('#onboarding-climb-card, [data-testid="climb-card"]', { timeout: 30000 })
@@ -34,14 +39,15 @@ test.describe('Help Page Screenshots', () => {
   test('search filters', async ({ page }) => {
     // Open search drawer via the search pill in the header
     await page.locator('#onboarding-search-button').click();
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    // Wait for the search form content to appear
+    await page.getByText('Grade').first().waitFor({ state: 'visible' });
     await page.screenshot({ path: `${SCREENSHOT_DIR}/search-filters.png` });
   });
 
   test('search by hold', async ({ page }) => {
     // Open search drawer and expand the "Holds" section
     await page.locator('#onboarding-search-button').click();
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    await page.getByText('Grade').first().waitFor({ state: 'visible' });
     // Click the "Holds" collapsible section to expand it
     await page.getByText('Holds').click();
     await page.screenshot({ path: `${SCREENSHOT_DIR}/search-by-hold.png` });
@@ -50,7 +56,7 @@ test.describe('Help Page Screenshots', () => {
   test('heatmap', async ({ page }) => {
     // Open search drawer and expand the "Holds" section
     await page.locator('#onboarding-search-button').click();
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    await page.getByText('Grade').first().waitFor({ state: 'visible' });
     await page.getByText('Holds').click();
 
     // Click "Show Heatmap" button within the holds section
@@ -73,7 +79,8 @@ test.describe('Help Page Screenshots', () => {
     await expect(queueBar).toBeVisible({ timeout: 10000 });
     // Click the queue toggle text to open play drawer with climb details
     await page.locator('#onboarding-queue-toggle').click();
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    // Wait for play drawer to open
+    await page.locator('[data-swipeable-drawer="true"]:visible').first().waitFor({ timeout: 10000 });
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/climb-detail.png` });
   });
@@ -87,9 +94,9 @@ test.describe('Help Page Screenshots', () => {
     const queueBar = page.locator('[data-testid="queue-control-bar"]');
     await expect(queueBar).toBeVisible({ timeout: 10000 });
 
-    // Click party mode button in the queue bar
-    await page.getByLabel('Party Mode').click();
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    // Click party mode button scoped to the queue bar to avoid strict mode violation
+    await page.locator('[data-testid="queue-control-bar"]').getByLabel('Party Mode').click();
+    await page.locator('[data-swipeable-drawer="true"]:visible').first().waitFor({ timeout: 10000 });
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/party-mode.png` });
   });
@@ -97,7 +104,8 @@ test.describe('Help Page Screenshots', () => {
   test('login modal', async ({ page }) => {
     // Open user drawer
     await page.getByLabel('User menu').click();
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    // Wait for user drawer content to appear
+    await page.getByRole('button', { name: 'Sign in' }).waitFor({ state: 'visible' });
 
     // Click "Sign in" button in the user drawer
     await page.getByRole('button', { name: 'Sign in' }).click();
@@ -110,6 +118,8 @@ test.describe('Help Page Screenshots', () => {
 
 // Authenticated tests - requires TEST_USER_EMAIL and TEST_USER_PASSWORD env vars
 test.describe('Help Page Screenshots - Authenticated', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
   const testEmail = process.env.TEST_USER_EMAIL;
   const testPassword = process.env.TEST_USER_PASSWORD;
 
@@ -122,7 +132,7 @@ test.describe('Help Page Screenshots - Authenticated', () => {
 
     // Login via user drawer
     await page.getByLabel('User menu').click();
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    await page.getByRole('button', { name: 'Sign in' }).waitFor({ state: 'visible' });
     await page.getByRole('button', { name: 'Sign in' }).click();
     await page.waitForSelector('input#login_email', { state: 'visible' });
 
@@ -138,7 +148,7 @@ test.describe('Help Page Screenshots - Authenticated', () => {
   test('personal progress filters', async ({ page }) => {
     // Open search drawer to show filters including personal progress
     await page.locator('#onboarding-search-button').click();
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    await page.getByText('Grade').first().waitFor({ state: 'visible' });
 
     // Expand the Progress section
     await page.getByText('Progress').click();
@@ -156,8 +166,8 @@ test.describe('Help Page Screenshots - Authenticated', () => {
     await expect(queueBar).toBeVisible({ timeout: 10000 });
 
     // Open party mode drawer
-    await page.getByLabel('Party Mode').click();
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    await page.locator('[data-testid="queue-control-bar"]').getByLabel('Party Mode').click();
+    await page.locator('[data-swipeable-drawer="true"]:visible').first().waitFor({ timeout: 10000 });
 
     // Start a party session
     await page.getByRole('button', { name: 'Start Party Mode' }).click();
@@ -174,11 +184,10 @@ test.describe('Help Page Screenshots - Authenticated', () => {
   test('hold classification wizard', async ({ page }) => {
     // Open user drawer and click Classify Holds
     await page.getByLabel('User menu').click();
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    await page.getByText('Classify Holds').waitFor({ state: 'visible' });
     await page.getByText('Classify Holds').click();
 
-    // Wait for wizard drawer to open and content to load
-    await page.waitForSelector('.MuiDrawer-root .MuiPaper-root', { state: 'visible' });
+    // Wait for wizard content to load
     await page.waitForSelector('.MuiRating-root, .MuiLinearProgress-root', { state: 'visible', timeout: 10000 });
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/hold-classification.png` });
