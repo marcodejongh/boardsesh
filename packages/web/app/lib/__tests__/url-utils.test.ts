@@ -374,13 +374,13 @@ describe('URL construction functions', () => {
   describe('constructClimbInfoUrl', () => {
     it('should construct external info URL for kilter', () => {
       const boardDetails = { board_name: 'kilter' as const };
-      const result = constructClimbInfoUrl(boardDetails as any, 'abc123', 45);
+      const result = constructClimbInfoUrl(boardDetails as any, 'abc123');
       expect(result).toBe('https://kilterboardapp.com/climbs/abc123');
     });
 
     it('should construct external info URL for tension', () => {
       const boardDetails = { board_name: 'tension' as const };
-      const result = constructClimbInfoUrl(boardDetails as any, 'def456', 30);
+      const result = constructClimbInfoUrl(boardDetails as any, 'def456');
       expect(result).toBe('https://tensionboardapp2.com/climbs/def456');
     });
   });

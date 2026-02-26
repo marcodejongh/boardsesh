@@ -6,9 +6,6 @@ import { SUPPORTED_BOARDS } from '@/app/lib/board-data';
 import { KILTER_HOMEWALL_LAYOUT_ID, KILTER_HOMEWALL_PRODUCT_ID } from '@/app/lib/board-constants';
 import { boardseshTicks } from '@/app/lib/db/schema';
 
-// Type for unified tables used by filters
-type UnifiedTables = typeof UNIFIED_TABLES;
-
 /**
  * Creates a shared filtering object that can be used by both search climbs and heatmap queries
  * Uses unified tables (board_climbs, board_climb_stats, etc.) with board_type filtering

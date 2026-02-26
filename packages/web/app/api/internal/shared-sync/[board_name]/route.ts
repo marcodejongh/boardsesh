@@ -5,7 +5,7 @@ import { AuroraBoardName } from '@/app/lib/api-wrappers/aurora/types';
 import { AURORA_BOARD_NAMES } from '@/app/lib/board-constants';
 import { getDb } from '@/app/lib/db/db';
 import { setterFollows, notifications, userBoardMappings, userFollows } from '@boardsesh/db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';

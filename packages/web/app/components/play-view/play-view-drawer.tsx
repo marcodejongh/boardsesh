@@ -281,7 +281,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
                   showAngle
                   centered
                   titleFontSize={themeTokens.typography.fontSize.xl}
-                  rightAddon={currentClimb && <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />}
+                  rightAddon={currentClimb && <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />}
                 />
               </div>
 
@@ -319,10 +319,10 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             </IconButton>
 
             {/* Party */}
-            <ShareBoardButton buttonType="text" />
+            <ShareBoardButton />
 
             {/* LED */}
-            <SendClimbToBoardButton buttonType="text" />
+            <SendClimbToBoardButton />
 
             {/* More actions */}
             <IconButton

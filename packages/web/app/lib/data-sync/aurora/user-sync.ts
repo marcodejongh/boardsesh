@@ -425,24 +425,6 @@ export async function getLastSyncTimes(boardName: AuroraBoardName, userId: numbe
   }
 }
 
-export async function getLastSharedSyncTimes(boardName: AuroraBoardName, tableNames: string[]) {
-  const sharedSyncsSchema = UNIFIED_TABLES.sharedSyncs;
-  const pool = getPool();
-  const client = await pool.connect();
-
-  try {
-    const db = drizzle(client);
-    const result = await db
-      .select()
-      .from(sharedSyncsSchema)
-      .where(and(eq(sharedSyncsSchema.boardType, boardName), inArray(sharedSyncsSchema.tableName, tableNames)));
-
-    return result;
-  } finally {
-    client.release();
-  }
-}
-
 export async function syncUserData(
   board: AuroraBoardName,
   token: string,

@@ -88,7 +88,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
   const isPlayPage = pathname.includes('/play/');
-  const { currentClimb, currentClimbQueueItem, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
+  const { currentClimb, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
 
   const { mode } = useColorMode();
   const isDark = mode === 'dark';
@@ -378,9 +378,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                     </Stack>
                   </span>
                   {/* Party button */}
-                  <ShareBoardButton buttonType="text" />
+                  <ShareBoardButton />
                   {/* Tick button */}
-                  <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />
+                  <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
                 </Stack>
               </Box>
             </Box>

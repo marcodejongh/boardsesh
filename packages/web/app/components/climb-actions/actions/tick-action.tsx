@@ -96,7 +96,7 @@ export function TickAction({
     });
 
     if (!isAuthenticated && alwaysUseApp && loaded) {
-      const url = constructClimbInfoUrl(boardDetails, climb.uuid, angle);
+      const url = constructClimbInfoUrl(boardDetails, climb.uuid);
       window.open(url, '_blank', 'noopener');
       onComplete?.();
       return;
@@ -112,7 +112,7 @@ export function TickAction({
   }, []);
 
   const handleOpenInApp = useCallback(() => {
-    const url = constructClimbInfoUrl(boardDetails, climb.uuid, angle);
+    const url = constructClimbInfoUrl(boardDetails, climb.uuid);
     window.open(url, '_blank', 'noopener');
     closeDrawer();
   }, [boardDetails, climb.uuid, angle, closeDrawer]);

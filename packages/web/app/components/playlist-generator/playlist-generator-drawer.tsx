@@ -8,7 +8,6 @@ import Typography from '@mui/material/Typography';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import { ArrowBackOutlined, ElectricBoltOutlined } from '@mui/icons-material';
 import { BoardDetails, Climb } from '@/app/lib/types';
-import { TENSION_KILTER_GRADES } from '@/app/lib/board-data';
 import { executeGraphQL } from '@/app/lib/graphql/client';
 import { SEARCH_CLIMBS, ClimbSearchInputVariables, ClimbSearchResponse } from '@/app/lib/graphql/operations/climb-search';
 import {

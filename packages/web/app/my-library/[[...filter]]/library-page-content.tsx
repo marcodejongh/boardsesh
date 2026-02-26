@@ -23,10 +23,6 @@ import {
   Playlist,
   DiscoverablePlaylist,
 } from '@/app/lib/graphql/operations/playlists';
-import {
-  GET_USER_ACTIVE_BOARDS,
-  UserActiveBoardsQueryResponse,
-} from '@/app/lib/graphql/operations/favorites';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { getDefaultLayoutForBoard } from '@/app/lib/board-config-for-playlist';
 import AuthModal from '@/app/components/auth/auth-modal';
@@ -60,7 +56,6 @@ export default function LibraryPageContent({
 
   // Data states
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [activeBoards, setActiveBoards] = useState<string[]>([]);
   const [popularPlaylists, setPopularPlaylists] = useState<DiscoverablePlaylist[]>([]);
   const [recentPlaylists, setRecentPlaylists] = useState<DiscoverablePlaylist[]>([]);
 
@@ -83,21 +78,13 @@ export default function LibraryPageContent({
       const input: GetAllUserPlaylistsInput =
         selectedBoard !== 'all' ? { boardType: selectedBoard } : {};
 
-      const [playlistsRes, boardsRes] = await Promise.all([
-        executeGraphQL<GetAllUserPlaylistsQueryResponse, { input: GetAllUserPlaylistsInput }>(
-          GET_ALL_USER_PLAYLISTS,
-          { input },
-          token,
-        ),
-        executeGraphQL<UserActiveBoardsQueryResponse, Record<string, never>>(
-          GET_USER_ACTIVE_BOARDS,
-          {},
-          token,
-        ),
-      ]);
+      const playlistsRes = await executeGraphQL<GetAllUserPlaylistsQueryResponse, { input: GetAllUserPlaylistsInput }>(
+        GET_ALL_USER_PLAYLISTS,
+        { input },
+        token,
+      );
 
       setPlaylists(playlistsRes.allUserPlaylists);
-      setActiveBoards(boardsRes.userActiveBoards);
     } catch (err) {
       console.error('Error fetching user data:', err);
       setError('Failed to load your library');

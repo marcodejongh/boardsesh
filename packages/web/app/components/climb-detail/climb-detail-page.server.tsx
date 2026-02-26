@@ -30,7 +30,6 @@ export default function ClimbDetailPageServer({
   const auroraAppUrl = constructClimbInfoUrl(
     boardDetails,
     climb.uuid,
-    climb.angle || angle,
   );
 
   return (
