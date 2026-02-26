@@ -83,7 +83,7 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
     commentCount,
   } = session;
 
-  const primaryParticipant = participants[0];
+  const primaryParticipant = participants[0] ?? null;
   const isMultiUser = participants.length > 1;
 
   const displayName = sessionName || generateSessionName(firstTickAt, boardTypes);
@@ -122,10 +122,9 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
           ) : (
             <Avatar
               src={primaryParticipant?.avatarUrl ?? undefined}
-              component="a"
-              href={`/crusher/${primaryParticipant?.userId}`}
+              {...(primaryParticipant ? { component: 'a', href: `/crusher/${primaryParticipant.userId}` } : {})}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              sx={{ width: 32, height: 32, cursor: 'pointer' }}
+              sx={{ width: 32, height: 32, cursor: primaryParticipant ? 'pointer' : 'default' }}
             >
               {!primaryParticipant?.avatarUrl && <PersonOutlined sx={{ fontSize: 16 }} />}
             </Avatar>
@@ -136,10 +135,9 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
               variant="body2"
               fontWeight={600}
               noWrap
-              component="a"
-              href={`/crusher/${primaryParticipant?.userId}`}
+              {...(primaryParticipant ? { component: 'a', href: `/crusher/${primaryParticipant.userId}` } : {})}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              sx={{ textDecoration: 'none', color: 'text.primary', cursor: 'pointer' }}
+              sx={{ textDecoration: 'none', color: 'text.primary', cursor: primaryParticipant ? 'pointer' : 'default' }}
             >
               {isMultiUser
                 ? participants.map((p) => p.displayName || 'Climber').join(', ')

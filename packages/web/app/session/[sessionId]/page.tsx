@@ -9,7 +9,7 @@ type Props = {
   params: Promise<{ sessionId: string }>;
 };
 
-async function fetchSessionDetail(sessionId: string) {
+const fetchSessionDetail = React.cache(async (sessionId: string) => {
   const url = getGraphQLHttpUrl();
   const client = new GraphQLClient(url);
   try {
@@ -22,7 +22,7 @@ async function fetchSessionDetail(sessionId: string) {
     console.error('[SessionDetailPage] Failed to fetch session:', sessionId, err);
     return null;
   }
-}
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { sessionId: rawSessionId } = await params;

@@ -2,6 +2,7 @@ import { v5 as uuidv5 } from 'uuid';
 import { db } from '../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { sql, eq, and, isNull, desc, inArray } from 'drizzle-orm';
+import { recalculateSessionStats } from '../graphql/resolvers/social/session-mutations';
 
 // Namespace UUID for generating deterministic inferred session IDs
 const INFERRED_SESSION_NAMESPACE = '6ba7b812-9dad-11d1-80b4-00c04fd430c8';
@@ -204,32 +205,20 @@ export async function assignInferredSession(
     userId,
     firstTickAt: climbedAt,
     lastTickAt: climbedAt,
-    totalSends: status === 'flash' || status === 'send' ? 1 : 0,
-    totalFlashes: status === 'flash' ? 1 : 0,
-    totalAttempts: status === 'attempt' ? 1 : 0,
-    tickCount: 1,
-  }).onConflictDoUpdate({
-    target: dbSchema.inferredSessions.id,
-    set: {
-      lastTickAt: sql`GREATEST(${dbSchema.inferredSessions.lastTickAt}, EXCLUDED.last_tick_at)`,
-      tickCount: sql`${dbSchema.inferredSessions.tickCount} + 1`,
-      totalSends: status === 'flash' || status === 'send'
-        ? sql`${dbSchema.inferredSessions.totalSends} + 1`
-        : sql`${dbSchema.inferredSessions.totalSends}`,
-      totalFlashes: status === 'flash'
-        ? sql`${dbSchema.inferredSessions.totalFlashes} + 1`
-        : sql`${dbSchema.inferredSessions.totalFlashes}`,
-      totalAttempts: status === 'attempt'
-        ? sql`${dbSchema.inferredSessions.totalAttempts} + 1`
-        : sql`${dbSchema.inferredSessions.totalAttempts}`,
-    },
-  });
+    totalSends: 0,
+    totalFlashes: 0,
+    totalAttempts: 0,
+    tickCount: 0,
+  }).onConflictDoNothing();
 
   // Update the tick with the inferred session ID
   await db
     .update(dbSchema.boardseshTicks)
     .set({ inferredSessionId: sessionId })
     .where(eq(dbSchema.boardseshTicks.uuid, tickUuid));
+
+  // Recalculate stats from actual ticks (safe under concurrency)
+  await recalculateSessionStats(sessionId);
 
   // If there was a previous inferred session, mark it as ended
   if (prevTick?.inferredSessionId && prevTick.inferredSessionId !== sessionId) {

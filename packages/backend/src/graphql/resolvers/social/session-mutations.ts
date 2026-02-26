@@ -5,6 +5,7 @@ import { requireAuthenticated, validateInput } from '../shared/helpers';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
 import type { SessionDetail } from '@boardsesh/shared-schema';
 import { sessionFeedQueries } from './session-feed';
+import { assignInferredSession } from '../../../jobs/inferred-session-builder';
 import { z } from 'zod';
 
 const UpdateInferredSessionSchema = z.object({
@@ -262,19 +263,35 @@ export const sessionEditMutations = {
         );
 
       // For ticks without previousInferredSessionId (shouldn't happen, but handle gracefully),
-      // set inferredSessionId to NULL so the builder can reassign them
-      await db
-        .update(dbSchema.boardseshTicks)
-        .set({
-          inferredSessionId: null,
-        })
-        .where(
-          and(
-            inArray(dbSchema.boardseshTicks.uuid, tickUuids),
-            isNull(dbSchema.boardseshTicks.previousInferredSessionId),
-            eq(dbSchema.boardseshTicks.inferredSessionId, validated.sessionId),
-          ),
-        );
+      // reassign them immediately via the builder so they aren't left orphaned
+      const orphanedTicks = ticksToRestore.filter((t) => t.previousInferredSessionId === null);
+      if (orphanedTicks.length > 0) {
+        // Clear inferredSessionId first so assignInferredSession can pick them up
+        await db
+          .update(dbSchema.boardseshTicks)
+          .set({ inferredSessionId: null })
+          .where(
+            and(
+              inArray(dbSchema.boardseshTicks.uuid, orphanedTicks.map((t) => t.uuid)),
+              eq(dbSchema.boardseshTicks.inferredSessionId, validated.sessionId),
+            ),
+          );
+
+        // Fetch full tick data and reassign each via the builder
+        const orphanedTickData = await db
+          .select({
+            uuid: dbSchema.boardseshTicks.uuid,
+            userId: dbSchema.boardseshTicks.userId,
+            climbedAt: dbSchema.boardseshTicks.climbedAt,
+            status: dbSchema.boardseshTicks.status,
+          })
+          .from(dbSchema.boardseshTicks)
+          .where(inArray(dbSchema.boardseshTicks.uuid, orphanedTicks.map((t) => t.uuid)));
+
+        for (const tick of orphanedTickData) {
+          await assignInferredSession(tick.uuid, tick.userId, tick.climbedAt, tick.status);
+        }
+      }
     }
 
     // Delete the session_member_overrides record
@@ -302,7 +319,7 @@ export const sessionEditMutations = {
 /**
  * Recalculate aggregate stats for an inferred session from its current ticks.
  */
-async function recalculateSessionStats(sessionId: string): Promise<void> {
+export async function recalculateSessionStats(sessionId: string): Promise<void> {
   const result = await db.execute(sql`
     SELECT
       COUNT(*) AS tick_count,
