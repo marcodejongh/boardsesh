@@ -175,7 +175,51 @@ const createMockRedis = (): Redis => {
       };
       return chainable;
     }),
-    eval: vi.fn(async () => 1),
+    eval: vi.fn(async (_script: string, numkeys: number, ...args: unknown[]) => {
+      // JOIN_SESSION_SCRIPT (numkeys=2): Check if leader exists, become leader if not
+      if (numkeys === 2) {
+        const leaderKey = args[1] as string;
+        const connectionId = args[2] as string;
+        const sessionMembersKey = args[0] as string;
+        // Add to session members set
+        if (!sets.has(sessionMembersKey)) sets.set(sessionMembersKey, new Set());
+        sets.get(sessionMembersKey)!.add(connectionId);
+        // If no leader, become leader
+        if (!store.has(leaderKey)) {
+          store.set(leaderKey, connectionId);
+          return connectionId; // Became leader
+        }
+        return null; // Already has a leader
+      }
+      // LEAVE_SESSION_SCRIPT (numkeys=3): Remove from session, handle leader election
+      if (numkeys === 3) {
+        const connectionKey = args[0] as string;
+        const sessionMembersKey = args[1] as string;
+        const leaderKey = args[2] as string;
+        const connectionId = args[3] as string;
+        // Remove from members set
+        const memberSet = sets.get(sessionMembersKey);
+        if (memberSet) memberSet.delete(connectionId);
+        // Clean up connection key
+        store.delete(connectionKey);
+        hashes.delete(connectionKey);
+        // Check if was leader
+        const currentLeader = store.get(leaderKey);
+        if (currentLeader !== connectionId) {
+          return null; // Wasn't leader
+        }
+        // Was leader - elect new one
+        if (memberSet && memberSet.size > 0) {
+          const newLeader = Array.from(memberSet)[0];
+          store.set(leaderKey, newLeader);
+          return newLeader;
+        }
+        store.delete(leaderKey);
+        return ''; // Was leader but no candidates
+      }
+      // Default
+      return null;
+    }),
     // For distributed lock support
     _store: store,
     _hashes: hashes,

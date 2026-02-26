@@ -93,6 +93,53 @@ const createMockRedis = (): Redis & { _store: Map<string, string>; _hashes: Map<
       }
       return 0;
     }),
+    smembers: vi.fn(async (key: string) => {
+      const set = sets.get(key);
+      return set ? Array.from(set) : [];
+    }),
+    scard: vi.fn(async (key: string) => {
+      const set = sets.get(key);
+      return set ? set.size : 0;
+    }),
+    hset: vi.fn(async (key: string, field: string, value: string) => {
+      if (!hashes.has(key)) hashes.set(key, {});
+      const hash = hashes.get(key)!;
+      const isNew = !(field in hash);
+      hash[field] = value;
+      return isNew ? 1 : 0;
+    }),
+    setex: vi.fn(async (key: string, _seconds: number, value: string) => {
+      store.set(key, value);
+      return 'OK';
+    }),
+    watch: vi.fn(async () => 'OK'),
+    unwatch: vi.fn(async () => 'OK'),
+    pipeline: vi.fn(() => {
+      const commands: Array<() => Promise<unknown>> = [];
+      const chainable = {
+        hget: (key: string, field: string) => {
+          commands.push(async () => {
+            const hash = hashes.get(key);
+            return hash ? (hash[field] ?? null) : null;
+          });
+          return chainable;
+        },
+        hgetall: (key: string) => {
+          commands.push(async () => {
+            return hashes.get(key) || {};
+          });
+          return chainable;
+        },
+        exec: async () => {
+          const results = [];
+          for (const cmd of commands) {
+            results.push([null, await cmd()]);
+          }
+          return results;
+        },
+      };
+      return chainable;
+    }),
     multi: vi.fn(() => {
       const commands: Array<() => Promise<unknown>> = [];
       const chainable = {
@@ -110,6 +157,10 @@ const createMockRedis = (): Redis & { _store: Map<string, string>; _hashes: Map<
         },
         del: (...keys: string[]) => {
           commands.push(() => mockRedis.del(...keys));
+          return chainable;
+        },
+        sadd: (key: string, ...members: string[]) => {
+          commands.push(() => mockRedis.sadd(key, ...members));
           return chainable;
         },
         srem: (key: string, ...members: string[]) => {
@@ -130,7 +181,42 @@ const createMockRedis = (): Redis & { _store: Map<string, string>; _hashes: Map<
       };
       return chainable;
     }),
-    eval: vi.fn(async () => 1),
+    eval: vi.fn(async (_script: string, numkeys: number, ...args: unknown[]) => {
+      // JOIN_SESSION_SCRIPT (numkeys=2): Check if leader exists, become leader if not
+      if (numkeys === 2) {
+        const leaderKey = args[1] as string;
+        const connectionId = args[2] as string;
+        const sessionMembersKey = args[0] as string;
+        if (!sets.has(sessionMembersKey)) sets.set(sessionMembersKey, new Set());
+        sets.get(sessionMembersKey)!.add(connectionId);
+        if (!store.has(leaderKey)) {
+          store.set(leaderKey, connectionId);
+          return connectionId;
+        }
+        return null;
+      }
+      // LEAVE_SESSION_SCRIPT (numkeys=3)
+      if (numkeys === 3) {
+        const connectionKey = args[0] as string;
+        const sessionMembersKey = args[1] as string;
+        const leaderKey = args[2] as string;
+        const connectionId = args[3] as string;
+        const memberSet = sets.get(sessionMembersKey);
+        if (memberSet) memberSet.delete(connectionId);
+        store.delete(connectionKey);
+        hashes.delete(connectionKey);
+        const currentLeader = store.get(leaderKey);
+        if (currentLeader !== connectionId) return null;
+        if (memberSet && memberSet.size > 0) {
+          const newLeader = Array.from(memberSet)[0];
+          store.set(leaderKey, newLeader);
+          return newLeader;
+        }
+        store.delete(leaderKey);
+        return '';
+      }
+      return null;
+    }),
     // For test access
     _store: store,
     _hashes: hashes,

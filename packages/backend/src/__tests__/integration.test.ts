@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { createClient, Client } from 'graphql-ws';
 import WebSocket from 'ws';
+import { v4 as uuidv4 } from 'uuid';
 import { startServer } from '../server';
 import type { ClimbQueueItem } from '@boardsesh/shared-schema';
 
@@ -12,12 +13,21 @@ const TEST_PORT = 8082;
 let testCounter = 0;
 const createTestSessionId = () => `test-session-${Date.now()}-${testCounter++}`;
 
-const createTestClimb = (uuid: string): ClimbQueueItem => ({
-  uuid,
+// Pre-generate stable UUIDs for test climbs (keyed by label for test assertions)
+const testClimbUuids = new Map<string, string>();
+function getTestClimbUuid(label: string): string {
+  if (!testClimbUuids.has(label)) {
+    testClimbUuids.set(label, uuidv4());
+  }
+  return testClimbUuids.get(label)!;
+}
+
+const createTestClimb = (label: string): ClimbQueueItem => ({
+  uuid: getTestClimbUuid(label),
   climb: {
-    uuid: `climb-${uuid}`,
+    uuid: `climb-${label}`,
     setter_username: 'test-setter',
-    name: `Test Climb ${uuid}`,
+    name: `Test Climb ${label}`,
     description: 'A test climb',
     frames: 'test-frames',
     angle: 40,
@@ -164,6 +174,8 @@ describe('Daemon Integration Tests', () => {
     // Dispose all clients created during the test
     activeClients.forEach((client) => client.dispose());
     activeClients.length = 0;
+    // Clear per-test UUID cache
+    testClimbUuids.clear();
   });
 
   describe('Session Management', () => {
@@ -285,7 +297,7 @@ describe('Daemon Integration Tests', () => {
         variables: { item: testClimb },
       });
 
-      expect(result.addQueueItem.uuid).toBe('test-climb-1');
+      expect(result.addQueueItem.uuid).toBe(getTestClimbUuid('test-climb-1'));
       expect(result.addQueueItem.climb.name).toBe('Test Climb test-climb-1');
     });
 
@@ -309,7 +321,7 @@ describe('Daemon Integration Tests', () => {
         variables: { item: testClimb },
       });
 
-      expect(result.setCurrentClimb.uuid).toBe('current-test');
+      expect(result.setCurrentClimb.uuid).toBe(getTestClimbUuid('current-test'));
     });
 
     it('should mirror current climb successfully', async () => {
@@ -354,7 +366,7 @@ describe('Daemon Integration Tests', () => {
 
       // Remove the item
       const result = await execute<{ removeQueueItem: boolean }>(client, {
-        query: `mutation { removeQueueItem(uuid: "to-remove") }`,
+        query: `mutation { removeQueueItem(uuid: "${getTestClimbUuid('to-remove')}") }`,
       });
 
       expect(result.removeQueueItem).toBe(true);
@@ -385,7 +397,7 @@ describe('Daemon Integration Tests', () => {
 
       // Reorder: move item-2 from index 2 to index 0
       const result = await execute<{ reorderQueueItem: boolean }>(client, {
-        query: `mutation { reorderQueueItem(uuid: "item-2", oldIndex: 2, newIndex: 0) }`,
+        query: `mutation { reorderQueueItem(uuid: "${getTestClimbUuid('item-2')}", oldIndex: 2, newIndex: 0) }`,
       });
 
       expect(result.reorderQueueItem).toBe(true);
@@ -395,9 +407,9 @@ describe('Daemon Integration Tests', () => {
         query: `query { session(sessionId: "${sessionId}") { queueState { queue { uuid } } } }`,
       });
 
-      expect(sessionResult.session.queueState.queue[0].uuid).toBe('item-2');
-      expect(sessionResult.session.queueState.queue[1].uuid).toBe('item-0');
-      expect(sessionResult.session.queueState.queue[2].uuid).toBe('item-1');
+      expect(sessionResult.session.queueState.queue[0].uuid).toBe(getTestClimbUuid('item-2'));
+      expect(sessionResult.session.queueState.queue[1].uuid).toBe(getTestClimbUuid('item-0'));
+      expect(sessionResult.session.queueState.queue[2].uuid).toBe(getTestClimbUuid('item-1'));
     });
   });
 
@@ -436,7 +448,7 @@ describe('Daemon Integration Tests', () => {
       // First event should be FullSync, second should be QueueItemAdded
       expect(events[0].__typename).toBe('FullSync');
       expect(events[1].__typename).toBe('QueueItemAdded');
-      expect(events[1].item.uuid).toBe('sync-test');
+      expect(events[1].item.uuid).toBe(getTestClimbUuid('sync-test'));
     });
 
     it('should sync current climb changes across clients', async () => {
@@ -470,7 +482,7 @@ describe('Daemon Integration Tests', () => {
       const events = await eventPromise;
 
       expect(events[1].__typename).toBe('CurrentClimbChanged');
-      expect(events[1].item.uuid).toBe('current-sync');
+      expect(events[1].item.uuid).toBe(getTestClimbUuid('current-sync'));
     });
 
     it('should sync queue reordering across clients', async () => {
@@ -507,13 +519,13 @@ describe('Daemon Integration Tests', () => {
 
       // Client 1 reorders
       await execute(client1, {
-        query: `mutation { reorderQueueItem(uuid: "reorder-1", oldIndex: 1, newIndex: 0) }`,
+        query: `mutation { reorderQueueItem(uuid: "${getTestClimbUuid('reorder-1')}", oldIndex: 1, newIndex: 0) }`,
       });
 
       const event = await eventPromise;
 
       expect(event.__typename).toBe('QueueReordered');
-      expect(event.uuid).toBe('reorder-1');
+      expect(event.uuid).toBe(getTestClimbUuid('reorder-1'));
       expect(event.oldIndex).toBe(1);
       expect(event.newIndex).toBe(0);
     });
@@ -762,7 +774,7 @@ describe('Daemon Integration Tests', () => {
       });
 
       expect(result.session.queueState.queue).toHaveLength(1);
-      expect(result.session.queueState.queue[0].uuid).toBe('persist-test');
+      expect(result.session.queueState.queue[0].uuid).toBe(getTestClimbUuid('persist-test'));
       expect(result.session.users).toHaveLength(1); // Only client2 remains
     });
   });
