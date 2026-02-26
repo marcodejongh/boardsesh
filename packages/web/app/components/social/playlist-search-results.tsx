@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import QueueMusicOutlined from '@mui/icons-material/QueueMusicOutlined';
 import { useRouter } from 'next/navigation';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   SEARCH_PLAYLISTS,
@@ -16,82 +16,56 @@ import {
   type SearchPlaylistsQueryResponse,
   type DiscoverablePlaylist,
 } from '@/app/lib/graphql/operations';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 interface PlaylistSearchResultsProps {
   query: string;
   authToken: string | null;
 }
 
+type PlaylistPage = {
+  playlists: DiscoverablePlaylist[];
+  totalCount: number;
+  hasMore: boolean;
+};
+
 export default function PlaylistSearchResults({ query, authToken }: PlaylistSearchResultsProps) {
-  const [results, setResults] = useState<DiscoverablePlaylist[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
+  const debouncedQuery = useDebouncedValue(query, 300);
 
-  const fetchResults = useCallback(async (searchQuery: string, offset = 0) => {
-    if (searchQuery.length < 2) {
-      setResults([]);
-      setTotalCount(0);
-      setHasMore(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<
+    PlaylistPage,
+    Error
+  >({
+    queryKey: ['searchPlaylists', debouncedQuery, authToken],
+    queryFn: async ({ pageParam }) => {
       const client = createGraphQLHttpClient(authToken);
       const response = await client.request<SearchPlaylistsQueryResponse, SearchPlaylistsQueryVariables>(
         SEARCH_PLAYLISTS,
-        { input: { query: searchQuery, limit: 20, offset } }
+        { input: { query: debouncedQuery, limit: 20, offset: pageParam as number } }
       );
+      return response.searchPlaylists;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (!lastPage.hasMore) return undefined;
+      return (lastPageParam as number) + lastPage.playlists.length;
+    },
+    enabled: debouncedQuery.length >= 2,
+    staleTime: 30 * 1000,
+  });
 
-      if (offset === 0) {
-        setResults(response.searchPlaylists.playlists);
-      } else {
-        setResults((prev) => [...prev, ...response.searchPlaylists.playlists]);
-      }
-      setHasMore(response.searchPlaylists.hasMore);
-      setTotalCount(response.searchPlaylists.totalCount);
-    } catch (error) {
-      console.error('Playlist search failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [authToken]);
+  const results: DiscoverablePlaylist[] = useMemo(
+    () => data?.pages.flatMap((p) => p.playlists) ?? [],
+    [data],
+  );
 
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
-    if (query.length < 2) {
-      setResults([]);
-      setTotalCount(0);
-      setHasMore(false);
-      return () => {
-        if (debounceRef.current) {
-          clearTimeout(debounceRef.current);
-        }
-      };
-    }
-
-    debounceRef.current = setTimeout(() => {
-      fetchResults(query);
-    }, 300);
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [query, fetchResults]);
-
-  const handleLoadMore = () => {
-    if (!loading && hasMore) {
-      fetchResults(query, results.length);
-    }
-  };
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    hasMore: hasNextPage ?? false,
+    isFetching: isFetchingNextPage,
+  });
 
   if (query.length < 2) {
     return (
@@ -103,7 +77,7 @@ export default function PlaylistSearchResults({ query, authToken }: PlaylistSear
     );
   }
 
-  if (loading && results.length === 0) {
+  if (isLoading && results.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
         <CircularProgress />
@@ -111,11 +85,11 @@ export default function PlaylistSearchResults({ query, authToken }: PlaylistSear
     );
   }
 
-  if (!loading && results.length === 0 && query.length >= 2) {
+  if (!isLoading && results.length === 0 && debouncedQuery.length >= 2) {
     return (
       <Box sx={{ py: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          No playlists found for &quot;{query}&quot;
+          No playlists found for &quot;{debouncedQuery}&quot;
         </Typography>
       </Box>
     );
@@ -170,18 +144,9 @@ export default function PlaylistSearchResults({ query, authToken }: PlaylistSear
           </Box>
         ))}
       </Stack>
-      {hasMore && (
-        <Box sx={{ p: 2 }}>
-          <MuiButton
-            onClick={handleLoadMore}
-            disabled={loading}
-            variant="outlined"
-            fullWidth
-          >
-            {loading ? 'Loading...' : `Load more (${results.length} of ${totalCount})`}
-          </MuiButton>
-        </Box>
-      )}
+      <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+        {isFetchingNextPage && <CircularProgress size={24} />}
+      </Box>
     </>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import { FormatListBulletedOutlined, AppsOutlined } from '@mui/icons-material';
@@ -21,6 +21,7 @@ import ClimbListItem from '@/app/components/climb-card/climb-list-item';
 import { ClimbCardSkeleton } from '@/app/components/board-page/board-page-skeleton';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 import styles from '@/app/components/library/playlist-view.module.css';
 
 type ViewMode = 'grid' | 'list';
@@ -51,7 +52,6 @@ export default function LikedClimbsList({
   const { token, isLoading: tokenLoading } = useWsAuthToken();
   const { setCurrentClimb } = useQueueContext();
   const { showMessage } = useSnackbar();
-  const loadMoreRef = useRef<HTMLDivElement>(null);
   const [selectedClimbUuid, setSelectedClimbUuid] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
@@ -122,47 +122,19 @@ export default function LikedClimbsList({
     return allClimbs.map((climb) => ({ ...climb, angle }));
   }, [allClimbs, angle]);
 
-  // Refs for observer callback values — prevents observer recreation on every page load
-  const fetchNextPageRef = useRef(fetchNextPage);
-  const hasNextPageRef = useRef(hasNextPage);
-  const isFetchingNextPageRef = useRef(isFetchingNextPage);
-  const allClimbsLengthRef = useRef(allClimbs.length);
-  fetchNextPageRef.current = fetchNextPage;
-  hasNextPageRef.current = hasNextPage;
-  isFetchingNextPageRef.current = isFetchingNextPage;
-  allClimbsLengthRef.current = allClimbs.length;
-
-  // Intersection Observer callback for infinite scroll — stable ref, never recreated
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries;
-      if (target.isIntersecting && hasNextPageRef.current && !isFetchingNextPageRef.current) {
-        track('Liked Climbs Infinite Scroll Load More', {
-          currentCount: allClimbsLengthRef.current,
-          hasMore: hasNextPageRef.current,
-        });
-        fetchNextPageRef.current();
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const element = loadMoreRef.current;
-    if (!element) return;
-
-    const observer = new IntersectionObserver(handleObserver, {
-      root: null,
-      rootMargin: '100px',
-      threshold: 0,
+  const handleLoadMore = useCallback(() => {
+    track('Liked Climbs Infinite Scroll Load More', {
+      currentCount: allClimbs.length,
+      hasMore: hasNextPage,
     });
+    fetchNextPage();
+  }, [allClimbs.length, hasNextPage, fetchNextPage]);
 
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [handleObserver]);
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: handleLoadMore,
+    hasMore: hasNextPage ?? false,
+    isFetching: isFetchingNextPage,
+  });
 
   const handleClimbDoubleClick = useCallback((climb: Climb) => {
     setSelectedClimbUuid(climb.uuid);
@@ -278,7 +250,7 @@ export default function LikedClimbsList({
       )}
 
       {/* Sentinel element for Intersection Observer */}
-      <div ref={loadMoreRef} style={sentinelStyle}>
+      <div ref={sentinelRef} style={sentinelStyle}>
         {isFetchingNextPage && (
           <Box sx={gridContainerSx}>
             <ClimbsListSkeleton aspectRatio={aspectRatio} />

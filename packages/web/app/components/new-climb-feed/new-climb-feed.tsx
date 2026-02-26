@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import type { InfiniteData } from '@tanstack/react-query';
 import type { Client } from '../graphql-queue/graphql-client';
-import { createGraphQLClient, execute, subscribe } from '../graphql-queue/graphql-client';
+import { createGraphQLClient, subscribe } from '../graphql-queue/graphql-client';
+import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_NEW_CLIMB_FEED,
   NEW_CLIMB_CREATED_SUBSCRIPTION,
@@ -15,10 +17,11 @@ import {
   type GetNewClimbFeedVariables,
   type NewClimbCreatedSubscriptionPayload,
 } from '@/app/lib/graphql/operations/new-climb-feed';
-import type { NewClimbFeedItem as NewClimbFeedItemType } from '@boardsesh/shared-schema';
+import type { NewClimbFeedItem as NewClimbFeedItemType, NewClimbFeedResult } from '@boardsesh/shared-schema';
 import NewClimbFeedItem from './new-climb-feed-item';
 import SubscribeButton from './subscribe-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 interface NewClimbFeedProps {
   boardType: string;
@@ -33,15 +36,12 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
   const { token: wsAuthToken } = useWsAuthToken();
   const clientRef = useRef<Client | null>(null);
   const subscriptionRef = useRef<(() => void) | undefined>(undefined);
-  const [items, setItems] = useState<NewClimbFeedItemType[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
   const [subscribed, setSubscribed] = useState(isSubscribed);
-  const [nextOffset, setNextOffset] = useState(0);
+  const queryClient = useQueryClient();
 
-  const ensureClient = useCallback(() => {
+  const queryKey = ['newClimbFeed', boardType, layoutId] as const;
+
+  const ensureWsClient = useCallback(() => {
     if (!clientRef.current) {
       clientRef.current = createGraphQLClient({
         url: process.env.NEXT_PUBLIC_WS_URL!,
@@ -51,46 +51,44 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
     return clientRef.current;
   }, [wsAuthToken]);
 
-  const fetchPage = useCallback(
-    async (offset = 0, append = false) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const client = ensureClient();
-        const variables: GetNewClimbFeedVariables = {
-          input: { boardType, layoutId, limit: PAGE_SIZE, offset },
-        };
-        const res = await execute<GetNewClimbFeedResponse, GetNewClimbFeedVariables>(client, {
-          query: GET_NEW_CLIMB_FEED,
-          variables,
-        });
-
-        setItems((prev) => (append ? [...prev, ...res.newClimbFeed.items] : res.newClimbFeed.items));
-        setTotalCount(res.newClimbFeed.totalCount);
-        setHasMore(res.newClimbFeed.hasMore);
-        setNextOffset(offset + res.newClimbFeed.items.length);
-      } catch (err) {
-        console.error('Failed to fetch new climb feed', err);
-        setError('Failed to load climbs. Please try again.');
-      } finally {
-        setLoading(false);
-      }
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error } = useInfiniteQuery<
+    NewClimbFeedResult,
+    Error
+  >({
+    queryKey,
+    queryFn: async ({ pageParam }) => {
+      const client = createGraphQLHttpClient(wsAuthToken);
+      const variables: GetNewClimbFeedVariables = {
+        input: { boardType, layoutId, limit: PAGE_SIZE, offset: pageParam as number },
+      };
+      const response = await client.request<GetNewClimbFeedResponse>(
+        GET_NEW_CLIMB_FEED,
+        variables,
+      );
+      return response.newClimbFeed;
     },
-    [boardType, layoutId, ensureClient],
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (!lastPage.hasMore) return undefined;
+      return (lastPageParam as number) + lastPage.items.length;
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const items: NewClimbFeedItemType[] = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data],
   );
 
-  // Initial load and when board/layout changes
-  useEffect(() => {
-    setItems([]);
-    setTotalCount(0);
-    setHasMore(false);
-    setNextOffset(0);
-    fetchPage(0, false);
-  }, [boardType, layoutId, fetchPage]);
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    hasMore: hasNextPage ?? false,
+    isFetching: isFetchingNextPage,
+  });
 
-  // Re-run subscription when board/layout changes
+  // Real-time subscription for new climbs
   useEffect(() => {
-    const client = ensureClient();
+    const client = ensureWsClient();
     if (subscriptionRef.current) {
       subscriptionRef.current();
     }
@@ -98,14 +96,27 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
       client,
       { query: NEW_CLIMB_CREATED_SUBSCRIPTION, variables: { boardType, layoutId } },
       {
-        next: (data) => {
-          const newItem = data.newClimbCreated.climb;
-          setItems((prev) => {
-            const exists = prev.some((i) => i.uuid === newItem.uuid);
-            if (exists) return prev;
-            setTotalCount((count) => count + 1);
-            return [newItem, ...prev].slice(0, PAGE_SIZE);
-          });
+        next: (subData) => {
+          const newItem = subData.newClimbCreated.climb;
+          queryClient.setQueryData<InfiniteData<NewClimbFeedResult>>(
+            queryKey,
+            (old) => {
+              if (!old) return old;
+              const firstPage = old.pages[0];
+              if (firstPage.items.some((i) => i.uuid === newItem.uuid)) return old;
+              return {
+                ...old,
+                pages: [
+                  {
+                    ...firstPage,
+                    items: [newItem, ...firstPage.items].slice(0, PAGE_SIZE),
+                    totalCount: firstPage.totalCount + 1,
+                  },
+                  ...old.pages.slice(1),
+                ],
+              };
+            },
+          );
         },
         error: (err) => console.error('New climb subscription error', err),
         complete: () => {},
@@ -116,7 +127,7 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
       subscriptionRef.current?.();
       subscriptionRef.current = undefined;
     };
-  }, [boardType, layoutId, ensureClient]);
+  }, [boardType, layoutId, ensureWsClient, queryClient]); // queryKey uses boardType+layoutId which are already deps
 
   return (
     <Box>
@@ -133,27 +144,25 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
         />
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 1 }}>Failed to load climbs. Please try again.</Alert>}
 
       {items.map((item) => (
         <NewClimbFeedItem key={item.uuid} item={item} />
       ))}
 
-      {loading && (
+      {isLoading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
           <CircularProgress size={24} />
         </Box>
       )}
 
-      {!loading && hasMore && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
-          <Button variant="outlined" onClick={() => fetchPage(nextOffset, true)}>
-            Load more
-          </Button>
+      {!isLoading && items.length > 0 && (
+        <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+          {isFetchingNextPage && <CircularProgress size={24} />}
         </Box>
       )}
 
-      {!loading && items.length === 0 && !error && (
+      {!isLoading && items.length === 0 && !error && (
         <Typography variant="body2" color="text.secondary">
           No climbs yet for this layout. Be the first to set one!
         </Typography>

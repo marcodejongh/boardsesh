@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import ToggleButton from '@mui/material/ToggleButton';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_SETTER_CLIMBS_FULL,
@@ -52,68 +53,57 @@ function getUserBoardDetails(board: UserBoard): BoardDetails | null {
 }
 
 export default function SetterClimbList({ username, boardTypes, authToken }: SetterClimbListProps) {
-  const [climbs, setClimbs] = useState<Climb[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>('popular');
 
   const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(true);
 
-  const fetchClimbs = useCallback(async (
-    offset = 0,
-    board?: UserBoard | null,
-    sort: SortBy = 'popular',
-  ) => {
-    setLoading(true);
-    try {
+  const { data, fetchNextPage, hasNextPage, isFetching, isLoading } = useInfiniteQuery({
+    queryKey: ['setterClimbs', username, selectedBoard?.uuid ?? 'all', sortBy],
+    queryFn: async ({ pageParam }) => {
       const client = createGraphQLHttpClient(authToken ?? null);
       const variables: GetSetterClimbsFullQueryVariables = {
         input: {
           username,
-          sortBy: sort,
+          sortBy,
           limit: 20,
-          offset,
+          offset: pageParam as number,
         },
       };
 
-      if (board) {
-        variables.input.boardType = board.boardType;
-        variables.input.layoutId = board.layoutId;
-        variables.input.sizeId = board.sizeId;
-        variables.input.setIds = board.setIds;
-        variables.input.angle = board.angle ?? getDefaultAngleForBoard(board.boardType);
+      if (selectedBoard) {
+        variables.input.boardType = selectedBoard.boardType;
+        variables.input.layoutId = selectedBoard.layoutId;
+        variables.input.sizeId = selectedBoard.sizeId;
+        variables.input.setIds = selectedBoard.setIds;
+        variables.input.angle = selectedBoard.angle ?? getDefaultAngleForBoard(selectedBoard.boardType);
       }
 
       const response = await client.request<GetSetterClimbsFullQueryResponse, GetSetterClimbsFullQueryVariables>(
         GET_SETTER_CLIMBS_FULL,
         variables,
       );
+      return response.setterClimbsFull;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (!lastPage.hasMore) return undefined;
+      return (lastPageParam as number) + lastPage.climbs.length;
+    },
+    staleTime: 60 * 1000,
+  });
 
-      if (offset === 0) {
-        setClimbs(response.setterClimbsFull.climbs);
-      } else {
-        setClimbs((prev) => [...prev, ...response.setterClimbsFull.climbs]);
-      }
-      setHasMore(response.setterClimbsFull.hasMore);
-      setTotalCount(response.setterClimbsFull.totalCount);
-    } catch (error) {
-      console.error('Failed to fetch setter climbs:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [username, authToken]);
-
-  useEffect(() => {
-    fetchClimbs(0, selectedBoard, sortBy);
-  }, [fetchClimbs, selectedBoard, sortBy]);
+  const climbs: Climb[] = useMemo(
+    () => data?.pages.flatMap((p) => p.climbs) ?? [],
+    [data],
+  );
+  const totalCount = data?.pages[0]?.totalCount ?? 0;
 
   const handleLoadMore = useCallback(() => {
-    if (!loading && hasMore) {
-      fetchClimbs(climbs.length, selectedBoard, sortBy);
+    if (hasNextPage) {
+      fetchNextPage();
     }
-  }, [loading, hasMore, climbs.length, selectedBoard, sortBy, fetchClimbs]);
+  }, [hasNextPage, fetchNextPage]);
 
   const handleSortChange = (_: React.MouseEvent<HTMLElement>, value: SortBy | null) => {
     if (value) {
@@ -148,7 +138,6 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
     const map: Record<string, BoardDetails> = {};
     const unsupported = new Set<string>();
 
-    // Group user boards by boardType:layoutId
     const userBoardsByKey = new Map<string, UserBoard>();
     for (const board of myBoards) {
       const key = `${board.boardType}:${board.layoutId}`;
@@ -157,7 +146,6 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
       }
     }
 
-    // For each climb, resolve board details
     for (const climb of climbs) {
       const bt = climb.boardType;
       const layoutId = climb.layoutId;
@@ -181,7 +169,6 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
       }
     }
 
-    // Determine unsupported climbs
     const userBoardTypes = new Set(myBoards.map((b) => b.boardType));
     for (const climb of climbs) {
       if (climb.boardType && !userBoardTypes.has(climb.boardType)) {
@@ -189,7 +176,6 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
       }
     }
 
-    // Default board details for skeletons
     let defaultDetails: BoardDetails | null = null;
     if (selectedBoard) {
       defaultDetails = getUserBoardDetails(selectedBoard);
@@ -271,11 +257,11 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
         </BoardScrollSection>
       )}
 
-      {loading && climbs.length === 0 ? (
+      {isLoading && climbs.length === 0 ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress size={24} />
         </Box>
-      ) : climbs.length === 0 && !loading ? (
+      ) : climbs.length === 0 && !isLoading ? (
         <Box sx={{ py: 4, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">
             No climbs found
@@ -289,8 +275,8 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
               boardDetailsMap={boardDetailsMap}
               unsupportedClimbs={unsupportedClimbs}
               climbs={climbs}
-              isFetching={loading}
-              hasMore={hasMore}
+              isFetching={isFetching}
+              hasMore={hasNextPage ?? false}
               onClimbSelect={navigateToClimb}
               onLoadMore={handleLoadMore}
               headerInline={headerInline}

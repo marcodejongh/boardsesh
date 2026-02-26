@@ -1,21 +1,21 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import MuiCard from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import MuiTypography from '@mui/material/Typography';
-import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Rating from '@mui/material/Rating';
+import CircularProgress from '@mui/material/CircularProgress';
 import { EmptyState } from '@/app/components/ui/empty-state';
-import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
 import ElectricBoltOutlined from '@mui/icons-material/ElectricBoltOutlined';
 import CancelOutlined from '@mui/icons-material/CancelOutlined';
 import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_USER_GROUPED_ASCENTS_FEED,
@@ -26,6 +26,7 @@ import {
 import AscentThumbnail from './ascent-thumbnail';
 import { themeTokens } from '@/app/theme/theme-config';
 import styles from './ascents-feed.module.css';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 dayjs.extend(relativeTime);
 
@@ -59,7 +60,6 @@ const getLayoutDisplayName = (boardType: string, layoutId: number | null): strin
 const getGroupStatusSummary = (group: GroupedAscentFeedItem): { text: string; icon: React.ReactNode; color: string } => {
   const parts: string[] = [];
 
-  // Determine primary status (best result first)
   if (group.flashCount > 0) {
     parts.push(group.flashCount === 1 ? 'Flashed' : `${group.flashCount} flashes`);
   }
@@ -70,7 +70,6 @@ const getGroupStatusSummary = (group: GroupedAscentFeedItem): { text: string; ic
     parts.push(group.attemptCount === 1 ? '1 attempt' : `${group.attemptCount} attempts`);
   }
 
-  // Determine color and icon based on best result
   let icon: React.ReactNode;
   let color: string;
   if (group.flashCount > 0) {
@@ -88,7 +87,6 @@ const getGroupStatusSummary = (group: GroupedAscentFeedItem): { text: string; ic
 };
 
 const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) => {
-  // Get the latest item's climbedAt for time display
   const latestItem = group.items.reduce((latest, item) =>
     new Date(item.climbedAt) > new Date(latest.climbedAt) ? item : latest
   );
@@ -101,7 +99,6 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
     <MuiCard className={styles.feedItem}>
       <CardContent sx={{ p: 1.5 }}>
       <Box sx={{ display: 'flex', gap: '12px' }}>
-        {/* Thumbnail */}
         {group.frames && group.layoutId && (
           <AscentThumbnail
             boardType={group.boardType}
@@ -114,9 +111,7 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
           />
         )}
 
-        {/* Content */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }} className={styles.feedItemContent}>
-          {/* Header with status and time */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Chip
@@ -136,7 +131,6 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
             </MuiTypography>
           </Box>
 
-          {/* Climb details */}
           <Box sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             {group.difficultyName && (
               <Chip label={group.difficultyName} size="small" color="primary" />
@@ -149,19 +143,16 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
             {group.isBenchmark && <Chip label="Benchmark" size="small" />}
           </Box>
 
-          {/* Rating for successful sends */}
           {hasSuccess && group.bestQuality && (
             <Rating readOnly value={group.bestQuality} max={5} className={styles.rating} />
           )}
 
-          {/* Setter info */}
           {group.setterUsername && (
             <MuiTypography variant="body2" component="span" color="text.secondary" className={styles.setter}>
               Set by {group.setterUsername}
             </MuiTypography>
           )}
 
-          {/* Comment */}
           {group.latestComment && (
             <MuiTypography variant="body2" component="span" className={styles.comment}>{group.latestComment}</MuiTypography>
           )}
@@ -173,71 +164,43 @@ const GroupedFeedItem: React.FC<{ group: GroupedAscentFeedItem }> = ({ group }) 
 };
 
 export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 }) => {
-  const [groups, setGroups] = useState<GroupedAscentFeedItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-
-  const fetchFeed = useCallback(
-    async (offset: number, append: boolean = false) => {
-      try {
-        if (append) {
-          setLoadingMore(true);
-        } else {
-          setLoading(true);
-        }
-
-        const client = createGraphQLHttpClient(null);
-        const variables: GetUserGroupedAscentsFeedQueryVariables = {
-          userId,
-          input: { limit: pageSize, offset },
-        };
-
-        const response = await client.request<GetUserGroupedAscentsFeedQueryResponse>(
-          GET_USER_GROUPED_ASCENTS_FEED,
-          variables
-        );
-
-        const { groups: newGroups, hasMore: more, totalCount: total } = response.userGroupedAscentsFeed;
-
-        if (append) {
-          setGroups((prev) => [...prev, ...newGroups]);
-        } else {
-          setGroups(newGroups);
-        }
-        setHasMore(more);
-        setTotalCount(total);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching ascents feed:', err);
-        setError('Failed to load activity feed');
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error } = useInfiniteQuery({
+    queryKey: ['ascentsFeed', userId, pageSize],
+    queryFn: async ({ pageParam }) => {
+      const client = createGraphQLHttpClient(null);
+      const variables: GetUserGroupedAscentsFeedQueryVariables = {
+        userId,
+        input: { limit: pageSize, offset: pageParam },
+      };
+      const response = await client.request<GetUserGroupedAscentsFeedQueryResponse>(
+        GET_USER_GROUPED_ASCENTS_FEED,
+        variables
+      );
+      return response.userGroupedAscentsFeed;
     },
-    [userId, pageSize]
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (!lastPage.hasMore) return undefined;
+      return lastPageParam + lastPage.groups.length;
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const groups: GroupedAscentFeedItem[] = useMemo(
+    () => data?.pages.flatMap((p) => p.groups) ?? [],
+    [data],
   );
 
-  // Initial load
-  useEffect(() => {
-    fetchFeed(0);
-  }, [fetchFeed]);
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    hasMore: hasNextPage ?? false,
+    isFetching: isFetchingNextPage,
+  });
 
-  // Load more when button clicked
-  const handleLoadMore = () => {
-    if (!loadingMore && hasMore) {
-      fetchFeed(groups.length, true);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className={styles.loading}>
-        <LoadingSpinner />
+        <CircularProgress />
       </div>
     );
   }
@@ -245,7 +208,7 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
   if (error) {
     return (
       <EmptyState
-        description={error}
+        description="Failed to load activity feed"
       />
     );
   }
@@ -266,18 +229,9 @@ export const AscentsFeed: React.FC<AscentsFeedProps> = ({ userId, pageSize = 10 
         ))}
       </Box>
 
-      {hasMore && (
-        <div className={styles.loadMoreContainer} ref={loadMoreRef}>
-          <MuiButton
-            onClick={handleLoadMore}
-            disabled={loadingMore}
-            variant="outlined"
-            fullWidth
-          >
-            {loadingMore ? 'Loading...' : `Load more (${groups.length} of ${totalCount})`}
-          </MuiButton>
-        </div>
-      )}
+      <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+        {isFetchingNextPage && <CircularProgress size={24} />}
+      </Box>
     </div>
   );
 };

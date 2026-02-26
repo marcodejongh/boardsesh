@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useMemo } from 'react';
 import Box from '@mui/material/Box';
 import MuiButton from '@mui/material/Button';
 import MuiAlert from '@mui/material/Alert';
@@ -8,6 +8,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined';
 import PublicOutlined from '@mui/icons-material/PublicOutlined';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -17,11 +18,12 @@ import {
   type GetActivityFeedQueryResponse,
   type GetTrendingFeedQueryResponse,
 } from '@/app/lib/graphql/operations';
-import type { ActivityFeedItem, SortMode, TimePeriod } from '@boardsesh/shared-schema';
+import type { ActivityFeedItem, SortMode, TimePeriod, ActivityFeedResult } from '@boardsesh/shared-schema';
 import FeedItemAscent from './feed-item-ascent';
 import FeedItemNewClimb from './feed-item-new-climb';
 import FeedItemComment from './feed-item-comment';
 import SessionSummaryFeedItem from './session-summary-feed-item';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 interface ActivityFeedProps {
   isAuthenticated: boolean;
@@ -29,8 +31,8 @@ interface ActivityFeedProps {
   sortBy?: SortMode;
   topPeriod?: TimePeriod;
   onFindClimbers?: () => void;
-  /** SSR-provided initial items for unauthenticated users. Renders immediately while client fetches fresh data. */
-  initialItems?: ActivityFeedItem[];
+  /** SSR-provided initial feed result for unauthenticated users. Renders immediately while client fetches fresh data. */
+  initialFeedResult?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean };
 }
 
 function renderFeedItem(item: ActivityFeedItem) {
@@ -54,33 +56,22 @@ export default function ActivityFeed({
   sortBy = 'new',
   topPeriod = 'all',
   onFindClimbers,
-  initialItems,
+  initialFeedResult,
 }: ActivityFeedProps) {
-  const [items, setItems] = useState<ActivityFeedItem[]>(initialItems ?? []);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!initialItems || initialItems.length === 0);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { token, isLoading: authLoading } = useWsAuthToken();
 
-  // Track dependencies for reset
-  const prevDeps = useRef({ boardUuid, sortBy });
+  const queryKey = ['activityFeed', isAuthenticated, boardUuid, sortBy, topPeriod] as const;
 
-  const fetchFeed = useCallback(async (cursorValue: string | null = null) => {
-    if (cursorValue === null) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
-
-    try {
-      setError(null);
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error, refetch } = useInfiniteQuery<
+    ActivityFeedResult,
+    Error
+  >({
+    queryKey,
+    queryFn: async ({ pageParam }) => {
       const client = createGraphQLHttpClient(isAuthenticated ? token : null);
-
       const input = {
         limit: 20,
-        cursor: cursorValue,
+        cursor: pageParam as string | null,
         boardUuid: boardUuid || undefined,
         sortBy,
         topPeriod,
@@ -89,69 +80,46 @@ export default function ActivityFeed({
       if (isAuthenticated) {
         const response = await client.request<GetActivityFeedQueryResponse>(
           GET_ACTIVITY_FEED,
-          { input }
+          { input },
         );
-        const { items: newItems, cursor: nextCursor, hasMore: more } = response.activityFeed;
-
-        if (cursorValue === null) {
-          setItems(newItems);
-        } else {
-          setItems((prev) => [...prev, ...newItems]);
-        }
-        setCursor(nextCursor ?? null);
-        setHasMore(more);
+        return response.activityFeed;
       } else {
         const response = await client.request<GetTrendingFeedQueryResponse>(
           GET_TRENDING_FEED,
-          { input }
+          { input },
         );
-        const { items: newItems, cursor: nextCursor, hasMore: more } = response.trendingFeed;
-
-        if (cursorValue === null) {
-          setItems(newItems);
-        } else {
-          setItems((prev) => [...prev, ...newItems]);
+        return response.trendingFeed;
+      }
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.hasMore) return undefined;
+      return lastPage.cursor ?? undefined;
+    },
+    enabled: isAuthenticated ? !!token : true,
+    staleTime: 60 * 1000,
+    ...(initialFeedResult && initialFeedResult.items.length > 0
+      ? {
+          initialData: {
+            pages: [initialFeedResult],
+            pageParams: [null],
+          },
         }
-        setCursor(nextCursor ?? null);
-        setHasMore(more);
-      }
-    } catch (err) {
-      console.error('Error fetching activity feed:', err);
-      if (cursorValue === null) {
-        setError('Failed to load activity feed. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [isAuthenticated, token, boardUuid, sortBy, topPeriod]);
+      : {}),
+  });
 
-  // Initial load and reset on dependency changes
-  useEffect(() => {
-    const depsChanged =
-      prevDeps.current.boardUuid !== boardUuid ||
-      prevDeps.current.sortBy !== sortBy;
+  const items: ActivityFeedItem[] = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data],
+  );
 
-    prevDeps.current = { boardUuid, sortBy };
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    hasMore: hasNextPage ?? false,
+    isFetching: isFetchingNextPage,
+  });
 
-    if (isAuthenticated && !token && !authLoading) {
-      setLoading(false);
-      return;
-    }
-
-    if (isAuthenticated && !token) return;
-
-    if (depsChanged) {
-      setItems([]);
-      setCursor(null);
-      setHasMore(false);
-      setError(null);
-    }
-
-    fetchFeed(null);
-  }, [isAuthenticated, token, authLoading, boardUuid, sortBy, fetchFeed]);
-
-  if ((authLoading || loading) && items.length === 0) {
+  if ((authLoading || isLoading) && items.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
         <CircularProgress />
@@ -170,9 +138,9 @@ export default function ActivityFeed({
       {error && (
         <EmptyState
           icon={<ErrorOutline fontSize="inherit" />}
-          description={error}
+          description="Failed to load activity feed. Please try again."
         >
-          <MuiButton variant="contained" onClick={() => fetchFeed(null)}>
+          <MuiButton variant="contained" onClick={() => refetch()}>
             Retry
           </MuiButton>
         </EmptyState>
@@ -199,18 +167,9 @@ export default function ActivityFeed({
       ) : (
         <>
           {items.map(renderFeedItem)}
-          {hasMore && (
-            <Box sx={{ py: 2 }}>
-              <MuiButton
-                onClick={() => fetchFeed(cursor)}
-                disabled={loadingMore}
-                variant="outlined"
-                fullWidth
-              >
-                {loadingMore ? 'Loading...' : 'Load more'}
-              </MuiButton>
-            </Box>
-          )}
+          <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+            {isFetchingNextPage && <CircularProgress size={24} />}
+          </Box>
         </>
       )}
     </Box>

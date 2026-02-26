@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useMemo } from 'react';
 import Box from '@mui/material/Box';
 import MuiButton from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -15,7 +16,7 @@ import {
 } from '@/app/lib/graphql/operations';
 import type { FollowingAscentFeedItem } from '@boardsesh/shared-schema';
 import SocialFeedItem from '@/app/components/activity-feed/social-feed-item';
-import { usePaginatedFeed } from '@/app/hooks/use-paginated-feed';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 interface FollowingAscentsFeedProps {
   onFindClimbers?: () => void;
@@ -24,24 +25,37 @@ interface FollowingAscentsFeedProps {
 export default function FollowingAscentsFeed({ onFindClimbers }: FollowingAscentsFeedProps) {
   const { token, isAuthenticated, isLoading: authLoading } = useWsAuthToken();
 
-  const fetchFn = useCallback(async (offset: number) => {
-    if (!token) return { items: [] as FollowingAscentFeedItem[], hasMore: false, totalCount: 0 };
-
-    const client = createGraphQLHttpClient(token);
-    const response = await client.request<
-      GetFollowingAscentsFeedQueryResponse,
-      GetFollowingAscentsFeedQueryVariables
-    >(GET_FOLLOWING_ASCENTS_FEED, { input: { limit: 20, offset } });
-
-    return response.followingAscentsFeed;
-  }, [token]);
-
-  const { items, loading, loadingMore, hasMore, sentinelRef } = usePaginatedFeed<FollowingAscentFeedItem>({
-    fetchFn,
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
+    queryKey: ['followingAscentsFeed', token],
+    queryFn: async ({ pageParam }) => {
+      const client = createGraphQLHttpClient(token);
+      const response = await client.request<
+        GetFollowingAscentsFeedQueryResponse,
+        GetFollowingAscentsFeedQueryVariables
+      >(GET_FOLLOWING_ASCENTS_FEED, { input: { limit: 20, offset: pageParam } });
+      return response.followingAscentsFeed;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (!lastPage.hasMore) return undefined;
+      return lastPageParam + lastPage.items.length;
+    },
     enabled: isAuthenticated && !!token,
+    staleTime: 60 * 1000,
   });
 
-  if (authLoading || loading) {
+  const items: FollowingAscentFeedItem[] = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data],
+  );
+
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    hasMore: hasNextPage ?? false,
+    isFetching: isFetchingNextPage,
+  });
+
+  if (authLoading || isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
         <CircularProgress />
@@ -69,11 +83,9 @@ export default function FollowingAscentsFeed({ onFindClimbers }: FollowingAscent
       {items.map((item) => (
         <SocialFeedItem key={item.uuid} item={item} showUserHeader />
       ))}
-      {hasMore && (
-        <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
-          {loadingMore && <CircularProgress size={24} />}
-        </Box>
-      )}
+      <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+        {isFetchingNextPage && <CircularProgress size={24} />}
+      </Box>
     </Box>
   );
 }

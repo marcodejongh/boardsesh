@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import BoardCard from '@/app/components/board-entity/board-card';
 import BoardDetail from '@/app/components/board-entity/board-detail';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -14,7 +14,9 @@ import {
   type SearchBoardsQueryVariables,
   type SearchBoardsQueryResponse,
 } from '@/app/lib/graphql/operations';
-import type { UserBoard } from '@boardsesh/shared-schema';
+import type { UserBoard, UserBoardConnection } from '@boardsesh/shared-schema';
+import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 interface BoardSearchResultsProps {
   query: string;
@@ -22,75 +24,41 @@ interface BoardSearchResultsProps {
 }
 
 export default function BoardSearchResults({ query, authToken }: BoardSearchResultsProps) {
-  const [results, setResults] = useState<UserBoard[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
   const [selectedBoardUuid, setSelectedBoardUuid] = useState<string | null>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debouncedQuery = useDebouncedValue(query, 300);
 
-  const fetchResults = useCallback(async (searchQuery: string, offset = 0) => {
-    if (searchQuery.length < 2) {
-      setResults([]);
-      setTotalCount(0);
-      setHasMore(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<
+    UserBoardConnection,
+    Error
+  >({
+    queryKey: ['searchBoards', debouncedQuery, authToken],
+    queryFn: async ({ pageParam }) => {
       const client = createGraphQLHttpClient(authToken);
       const response = await client.request<SearchBoardsQueryResponse, SearchBoardsQueryVariables>(
         SEARCH_BOARDS,
-        { input: { query: searchQuery, limit: 20, offset } }
+        { input: { query: debouncedQuery, limit: 20, offset: pageParam as number } }
       );
+      return response.searchBoards;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (!lastPage.hasMore) return undefined;
+      return (lastPageParam as number) + lastPage.boards.length;
+    },
+    enabled: debouncedQuery.length >= 2,
+    staleTime: 30 * 1000,
+  });
 
-      if (offset === 0) {
-        setResults(response.searchBoards.boards);
-      } else {
-        setResults((prev) => [...prev, ...response.searchBoards.boards]);
-      }
-      setHasMore(response.searchBoards.hasMore);
-      setTotalCount(response.searchBoards.totalCount);
-    } catch (error) {
-      console.error('Board search failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [authToken]);
+  const results: UserBoard[] = useMemo(
+    () => data?.pages.flatMap((p) => p.boards) ?? [],
+    [data],
+  );
 
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
-    if (query.length < 2) {
-      setResults([]);
-      setTotalCount(0);
-      setHasMore(false);
-      return () => {
-        if (debounceRef.current) {
-          clearTimeout(debounceRef.current);
-        }
-      };
-    }
-
-    debounceRef.current = setTimeout(() => {
-      fetchResults(query);
-    }, 300);
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [query, fetchResults]);
-
-  const handleLoadMore = () => {
-    if (!loading && hasMore) {
-      fetchResults(query, results.length);
-    }
-  };
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    hasMore: hasNextPage ?? false,
+    isFetching: isFetchingNextPage,
+  });
 
   if (query.length < 2) {
     return (
@@ -102,7 +70,7 @@ export default function BoardSearchResults({ query, authToken }: BoardSearchResu
     );
   }
 
-  if (loading && results.length === 0) {
+  if (isLoading && results.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
         <CircularProgress />
@@ -110,11 +78,11 @@ export default function BoardSearchResults({ query, authToken }: BoardSearchResu
     );
   }
 
-  if (!loading && results.length === 0 && query.length >= 2) {
+  if (!isLoading && results.length === 0 && debouncedQuery.length >= 2) {
     return (
       <Box sx={{ py: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          No boards found for &quot;{query}&quot;
+          No boards found for &quot;{debouncedQuery}&quot;
         </Typography>
       </Box>
     );
@@ -127,18 +95,9 @@ export default function BoardSearchResults({ query, authToken }: BoardSearchResu
           <BoardCard key={board.uuid} board={board} onClick={(b) => setSelectedBoardUuid(b.uuid)} />
         ))}
       </Stack>
-      {hasMore && (
-        <Box sx={{ p: 2 }}>
-          <MuiButton
-            onClick={handleLoadMore}
-            disabled={loading}
-            variant="outlined"
-            fullWidth
-          >
-            {loading ? 'Loading...' : `Load more (${results.length} of ${totalCount})`}
-          </MuiButton>
-        </Box>
-      )}
+      <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+        {isFetchingNextPage && <CircularProgress size={24} />}
+      </Box>
       {selectedBoardUuid && (
         <BoardDetail
           boardUuid={selectedBoardUuid}

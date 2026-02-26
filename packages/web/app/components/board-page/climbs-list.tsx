@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
 import AppsOutlined from '@mui/icons-material/AppsOutlined';
@@ -11,6 +11,7 @@ import ClimbListItem from '../climb-card/climb-list-item';
 import { ClimbCardSkeleton, ClimbListItemSkeleton } from './board-page-skeleton';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 type ViewMode = 'grid' | 'list';
 
@@ -77,31 +78,19 @@ const ClimbsList = ({
     track('View Mode Changed', { mode });
   }, []);
 
-  // Ref for the intersection observer sentinel element
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const handleLoadMore = useCallback(() => {
+    track('Infinite Scroll Load More', {
+      currentCount: climbs.length,
+      hasMore,
+    });
+    onLoadMore();
+  }, [climbs.length, hasMore, onLoadMore]);
 
-  // Refs for observer callback values — prevents observer recreation on every page load
-  const fetchMoreClimbsRef = useRef(onLoadMore);
-  const hasMoreResultsRef = useRef(hasMore);
-  const climbsCountRef = useRef(climbs.length);
-  fetchMoreClimbsRef.current = onLoadMore;
-  hasMoreResultsRef.current = hasMore;
-  climbsCountRef.current = climbs.length;
-
-  // Intersection Observer callback for infinite scroll — stable ref, never recreated
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries;
-      if (target.isIntersecting && hasMoreResultsRef.current) {
-        track('Infinite Scroll Load More', {
-          currentCount: climbsCountRef.current,
-          hasMore: hasMoreResultsRef.current,
-        });
-        fetchMoreClimbsRef.current();
-      }
-    },
-    [],
-  );
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: handleLoadMore,
+    hasMore,
+    isFetching,
+  });
 
   // Memoized handler for climb card double-click
   const handleClimbDoubleClick = useCallback(
@@ -179,24 +168,6 @@ const ClimbsList = ({
     color: 'var(--neutral-400)',
   }), []);
 
-  // Set up Intersection Observer
-  useEffect(() => {
-    const element = loadMoreRef.current;
-    if (!element) return;
-
-    const observer = new IntersectionObserver(handleObserver, {
-      root: null,
-      rootMargin: '100px',
-      threshold: 0,
-    });
-
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [handleObserver]);
-
   return (
     <Box sx={{ pt: `${themeTokens.spacing[1]}px` }}>
       {/* Optional header content (e.g. BoardCreationBanner) */}
@@ -272,7 +243,7 @@ const ClimbsList = ({
       )}
 
       {/* Sentinel element for Intersection Observer - needs min-height to be observable */}
-      <Box ref={loadMoreRef} sx={sentinelBoxSx}>
+      <Box ref={sentinelRef} sx={sentinelBoxSx}>
         {isFetching && climbs.length > 0 && (
           viewMode === 'grid' ? (
             <Box sx={gridContainerSx}>
