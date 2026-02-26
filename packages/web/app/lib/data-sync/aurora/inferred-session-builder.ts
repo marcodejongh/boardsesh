@@ -1,4 +1,5 @@
 import { v5 as uuidv5 } from 'uuid';
+import { z } from 'zod';
 import { getDb } from '@/app/lib/db/db';
 import { boardseshTicks, inferredSessions } from '@/app/lib/db/schema';
 import { sql, eq, and, isNull, desc, inArray } from 'drizzle-orm';
@@ -85,94 +86,163 @@ function buildGroup(userId: string, ticks: TickForGrouping[]): SessionGroup {
   };
 }
 
+const SessionStatsRowSchema = z.object({
+  tick_count: z.coerce.number(),
+  total_sends: z.coerce.number(),
+  total_flashes: z.coerce.number(),
+  total_attempts: z.coerce.number(),
+  first_tick_at: z.string().nullable(),
+  last_tick_at: z.string().nullable(),
+});
+
+/**
+ * Recalculate aggregate stats for an inferred session from its current ticks.
+ * Mirrors packages/backend/src/graphql/resolvers/social/session-mutations.ts
+ */
+async function recalculateSessionStats(
+  sessionId: string,
+  conn: ReturnType<typeof getDb>,
+): Promise<void> {
+  const result = await conn.execute(sql`
+    SELECT
+      COUNT(*) AS tick_count,
+      COUNT(*) FILTER (WHERE status IN ('flash', 'send')) AS total_sends,
+      COUNT(*) FILTER (WHERE status = 'flash') AS total_flashes,
+      COUNT(*) FILTER (WHERE status = 'attempt') AS total_attempts,
+      MIN(climbed_at) AS first_tick_at,
+      MAX(climbed_at) AS last_tick_at
+    FROM boardsesh_ticks
+    WHERE inferred_session_id = ${sessionId}
+  `);
+
+  const rawRows = (result as unknown as { rows: unknown[] }).rows;
+  const parsed = rawRows.length > 0 ? SessionStatsRowSchema.safeParse(rawRows[0]) : null;
+
+  if (!parsed || !parsed.success || parsed.data.first_tick_at === null) {
+    await conn
+      .update(inferredSessions)
+      .set({
+        tickCount: 0,
+        totalSends: 0,
+        totalFlashes: 0,
+        totalAttempts: 0,
+      })
+      .where(eq(inferredSessions.id, sessionId));
+    return;
+  }
+
+  const stats = parsed.data;
+  await conn
+    .update(inferredSessions)
+    .set({
+      tickCount: stats.tick_count,
+      totalSends: stats.total_sends,
+      totalFlashes: stats.total_flashes,
+      totalAttempts: stats.total_attempts,
+      firstTickAt: stats.first_tick_at!,
+      lastTickAt: stats.last_tick_at!,
+    })
+    .where(eq(inferredSessions.id, sessionId));
+}
+
 /**
  * Build inferred sessions for a specific user's unassigned ticks.
  * Called after Aurora sync completion in the web package.
+ * Processes in batches to avoid memory issues with large tick counts.
  */
-export async function buildInferredSessionsForUser(userId: string): Promise<number> {
+export async function buildInferredSessionsForUser(
+  userId: string,
+  options?: { batchSize?: number },
+): Promise<number> {
   const db = getDb();
-
-  // Fetch all unassigned ticks for this user
-  const unassignedTicks = await db
-    .select({
-      uuid: boardseshTicks.uuid,
-      climbedAt: boardseshTicks.climbedAt,
-      status: boardseshTicks.status,
-    })
-    .from(boardseshTicks)
-    .where(
-      and(
-        eq(boardseshTicks.userId, userId),
-        isNull(boardseshTicks.sessionId),
-        isNull(boardseshTicks.inferredSessionId),
-      ),
-    )
-    .orderBy(boardseshTicks.climbedAt);
-
-  if (unassignedTicks.length === 0) return 0;
-
-  // Check user's latest open inferred session
-  const [latestSession] = await db
-    .select({
-      id: inferredSessions.id,
-      lastTickAt: inferredSessions.lastTickAt,
-    })
-    .from(inferredSessions)
-    .where(
-      and(
-        eq(inferredSessions.userId, userId),
-        isNull(inferredSessions.endedAt),
-      ),
-    )
-    .orderBy(desc(inferredSessions.lastTickAt))
-    .limit(1);
-
-  const groups = groupTicks(userId, unassignedTicks);
-
-  // Check if the first group should merge into the latest open session
-  if (latestSession && groups.length > 0) {
-    const latestSessionTime = new Date(latestSession.lastTickAt).getTime();
-    const firstTickTime = new Date(groups[0].firstTickAt).getTime();
-
-    if (firstTickTime - latestSessionTime <= SESSION_GAP_MS && firstTickTime >= latestSessionTime) {
-      groups[0] = { ...groups[0], sessionId: latestSession.id };
-    }
-  }
-
+  const batchSize = options?.batchSize ?? 5000;
   let assigned = 0;
-  for (const group of groups) {
-    // Upsert session
-    await db
-      .insert(inferredSessions)
-      .values({
-        id: group.sessionId,
-        userId,
-        firstTickAt: group.firstTickAt,
-        lastTickAt: group.lastTickAt,
-        totalSends: group.totalSends,
-        totalFlashes: group.totalFlashes,
-        totalAttempts: group.totalAttempts,
-        tickCount: group.tickCount,
+
+  while (true) {
+    // Fetch a batch of unassigned ticks for this user
+    const unassignedTicks = await db
+      .select({
+        uuid: boardseshTicks.uuid,
+        climbedAt: boardseshTicks.climbedAt,
+        status: boardseshTicks.status,
       })
-      .onConflictDoUpdate({
-        target: inferredSessions.id,
-        set: {
-          firstTickAt: sql`LEAST(${inferredSessions.firstTickAt}, EXCLUDED.first_tick_at)`,
-          lastTickAt: sql`GREATEST(${inferredSessions.lastTickAt}, EXCLUDED.last_tick_at)`,
-          tickCount: sql`${inferredSessions.tickCount} + EXCLUDED.tick_count`,
-          totalSends: sql`${inferredSessions.totalSends} + EXCLUDED.total_sends`,
-          totalFlashes: sql`${inferredSessions.totalFlashes} + EXCLUDED.total_flashes`,
-          totalAttempts: sql`${inferredSessions.totalAttempts} + EXCLUDED.total_attempts`,
-        },
-      });
+      .from(boardseshTicks)
+      .where(
+        and(
+          eq(boardseshTicks.userId, userId),
+          isNull(boardseshTicks.sessionId),
+          isNull(boardseshTicks.inferredSessionId),
+        ),
+      )
+      .orderBy(boardseshTicks.climbedAt)
+      .limit(batchSize);
 
-    // Bulk-update ticks
-    await db
-      .update(boardseshTicks)
-      .set({ inferredSessionId: group.sessionId })
-      .where(inArray(boardseshTicks.uuid, group.tickUuids));
+    if (unassignedTicks.length === 0) break;
 
-    assigned += group.tickUuids.length;
+    // Re-fetch latest session each iteration (previous batches may have created sessions)
+    const [latestSession] = await db
+      .select({
+        id: inferredSessions.id,
+        lastTickAt: inferredSessions.lastTickAt,
+      })
+      .from(inferredSessions)
+      .where(
+        and(
+          eq(inferredSessions.userId, userId),
+          isNull(inferredSessions.endedAt),
+        ),
+      )
+      .orderBy(desc(inferredSessions.lastTickAt))
+      .limit(1);
+
+    const groups = groupTicks(userId, unassignedTicks);
+
+    // Check if the first group should merge into the latest open session
+    if (latestSession && groups.length > 0) {
+      const latestSessionTime = new Date(latestSession.lastTickAt).getTime();
+      const firstTickTime = new Date(groups[0].firstTickAt).getTime();
+
+      if (firstTickTime - latestSessionTime <= SESSION_GAP_MS && firstTickTime >= latestSessionTime) {
+        groups[0] = { ...groups[0], sessionId: latestSession.id };
+      }
+    }
+
+    for (const group of groups) {
+      // Upsert session (time bounds only — stats recalculated below)
+      await db
+        .insert(inferredSessions)
+        .values({
+          id: group.sessionId,
+          userId,
+          firstTickAt: group.firstTickAt,
+          lastTickAt: group.lastTickAt,
+          totalSends: group.totalSends,
+          totalFlashes: group.totalFlashes,
+          totalAttempts: group.totalAttempts,
+          tickCount: group.tickCount,
+        })
+        .onConflictDoUpdate({
+          target: inferredSessions.id,
+          set: {
+            firstTickAt: sql`LEAST(${inferredSessions.firstTickAt}, EXCLUDED.first_tick_at)`,
+            lastTickAt: sql`GREATEST(${inferredSessions.lastTickAt}, EXCLUDED.last_tick_at)`,
+          },
+        });
+
+      // Bulk-update ticks
+      await db
+        .update(boardseshTicks)
+        .set({ inferredSessionId: group.sessionId })
+        .where(inArray(boardseshTicks.uuid, group.tickUuids));
+
+      // Recalculate stats from actual ticks (avoids double-counting on races)
+      await recalculateSessionStats(group.sessionId, db);
+
+      assigned += group.tickUuids.length;
+    }
+
+    // If we got fewer ticks than the batch size, we're done
+    if (unassignedTicks.length < batchSize) break;
   }
 
   return assigned;

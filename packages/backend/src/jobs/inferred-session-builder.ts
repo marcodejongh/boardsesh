@@ -250,7 +250,7 @@ export async function assignInferredSession(
  * Shared by the batched builder and the web-side post-sync builder.
  */
 async function upsertSessionAndAssignTicks(group: InferredSessionGroup): Promise<void> {
-  // Upsert the inferred session
+  // Upsert the inferred session (time bounds only — stats recalculated below)
   await db
     .insert(dbSchema.inferredSessions)
     .values({
@@ -268,10 +268,6 @@ async function upsertSessionAndAssignTicks(group: InferredSessionGroup): Promise
       set: {
         firstTickAt: sql`LEAST(${dbSchema.inferredSessions.firstTickAt}, EXCLUDED.first_tick_at)`,
         lastTickAt: sql`GREATEST(${dbSchema.inferredSessions.lastTickAt}, EXCLUDED.last_tick_at)`,
-        tickCount: sql`${dbSchema.inferredSessions.tickCount} + EXCLUDED.tick_count`,
-        totalSends: sql`${dbSchema.inferredSessions.totalSends} + EXCLUDED.total_sends`,
-        totalFlashes: sql`${dbSchema.inferredSessions.totalFlashes} + EXCLUDED.total_flashes`,
-        totalAttempts: sql`${dbSchema.inferredSessions.totalAttempts} + EXCLUDED.total_attempts`,
       },
     });
 
@@ -280,6 +276,9 @@ async function upsertSessionAndAssignTicks(group: InferredSessionGroup): Promise
     .update(dbSchema.boardseshTicks)
     .set({ inferredSessionId: group.sessionId })
     .where(inArray(dbSchema.boardseshTicks.uuid, group.tickUuids));
+
+  // Recalculate stats from actual ticks (avoids double-counting on races)
+  await recalculateSessionStats(group.sessionId);
 }
 
 /**

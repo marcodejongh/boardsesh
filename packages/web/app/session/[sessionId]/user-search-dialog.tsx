@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -45,49 +45,44 @@ export default function UserSearchDialog({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const handleSearch = useCallback(
-    (searchQuery: string) => {
-      setQuery(searchQuery);
+  // Debounced user search
+  useEffect(() => {
+    if (!authToken || query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
 
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const client = createGraphQLHttpClient(authToken);
+        const response = await client.request<SearchUsersQueryResponse, SearchUsersQueryVariables>(
+          SEARCH_USERS,
+          { input: { query: query.trim(), limit: 10 } },
+        );
 
-      if (searchQuery.trim().length < 2) {
+        const filtered = response.searchUsers.results
+          .map((r) => ({
+            id: r.user.id,
+            displayName: r.user.displayName ?? null,
+            avatarUrl: r.user.avatarUrl ?? null,
+          }))
+          .filter((u) => !excludeUserIds.includes(u.id));
+
+        setResults(filtered);
+      } catch (err) {
+        console.error('User search failed:', err);
         setResults([]);
-        return;
+      } finally {
+        setLoading(false);
       }
+    }, 300);
 
-      debounceRef.current = setTimeout(async () => {
-        setLoading(true);
-        try {
-          const client = createGraphQLHttpClient(authToken);
-          const response = await client.request<SearchUsersQueryResponse, SearchUsersQueryVariables>(
-            SEARCH_USERS,
-            { input: { query: searchQuery.trim(), limit: 10 } },
-          );
-
-          const filtered = response.searchUsers.results
-            .map((r) => ({
-              id: r.user.id,
-              displayName: r.user.displayName ?? null,
-              avatarUrl: r.user.avatarUrl ?? null,
-            }))
-            .filter((u) => !excludeUserIds.includes(u.id));
-
-          setResults(filtered);
-        } catch (err) {
-          console.error('User search failed:', err);
-          setResults([]);
-        } finally {
-          setLoading(false);
-        }
-      }, 300);
-    },
-    [authToken, excludeUserIds],
-  );
+    return () => clearTimeout(searchTimeout.current);
+  }, [authToken, query, excludeUserIds]);
 
   const handleSelect = useCallback(
     (userId: string) => {
@@ -110,7 +105,7 @@ export default function UserSearchDialog({
       <DialogContent>
         <TextField
           value={query}
-          onChange={(e) => handleSearch(e.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name..."
           size="small"
           fullWidth
