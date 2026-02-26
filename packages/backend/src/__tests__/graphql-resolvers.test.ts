@@ -290,7 +290,7 @@ describe('GraphQL Resolver Input Validation', () => {
           input: {
             boardName: 'kilter',
             layoutId: 1,
-            sizeId: 1,
+            sizeId: 7,
             setIds: '1',
             angle: 40,
             page: 0,

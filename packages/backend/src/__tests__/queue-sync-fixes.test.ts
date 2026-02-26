@@ -22,7 +22,12 @@ const createMockRedis = (): Redis & { _store: Map<string, string>; _hashes: Map<
   const sortedSets = new Map<string, Array<{ score: number; member: string }>>();
 
   const mockRedis = {
-    set: vi.fn(async (key: string, value: string) => {
+    set: vi.fn(async (key: string, value: string, ...opts: unknown[]) => {
+      // Support NX flag (only set if key doesn't exist) used by acquireLock
+      const hasNX = opts.some(o => typeof o === 'string' && o.toUpperCase() === 'NX');
+      if (hasNX && store.has(key)) {
+        return null; // Key exists, NX prevents overwrite
+      }
       store.set(key, value);
       return 'OK';
     }),
@@ -130,6 +135,12 @@ const createMockRedis = (): Redis & { _store: Map<string, string>; _hashes: Map<
           });
           return chainable;
         },
+        exists: (key: string) => {
+          commands.push(async () => {
+            return store.has(key) || hashes.has(key) ? 1 : 0;
+          });
+          return chainable;
+        },
         exec: async () => {
           const results = [];
           for (const cmd of commands) {
@@ -182,38 +193,62 @@ const createMockRedis = (): Redis & { _store: Map<string, string>; _hashes: Map<
       return chainable;
     }),
     eval: vi.fn(async (_script: string, numkeys: number, ...args: unknown[]) => {
-      // JOIN_SESSION_SCRIPT (numkeys=2): Check if leader exists, become leader if not
-      if (numkeys === 2) {
-        const leaderKey = args[1] as string;
-        const connectionId = args[2] as string;
-        const sessionMembersKey = args[0] as string;
-        if (!sets.has(sessionMembersKey)) sets.set(sessionMembersKey, new Set());
-        sets.get(sessionMembersKey)!.add(connectionId);
-        if (!store.has(leaderKey)) {
-          store.set(leaderKey, connectionId);
-          return connectionId;
+      // RELEASE_LOCK_SCRIPT (numkeys=1): Delete key if value matches
+      if (numkeys === 1) {
+        const key = args[0] as string;
+        const value = args[1] as string;
+        if (store.get(key) === value) {
+          store.delete(key);
+          return 1;
         }
-        return null;
+        return 0;
       }
-      // LEAVE_SESSION_SCRIPT (numkeys=3)
+      // numkeys=3: Both JOIN and LEAVE use 3 keys
+      // Distinguish by argument count: JOIN has 9+ args, LEAVE has 6
       if (numkeys === 3) {
         const connectionKey = args[0] as string;
         const sessionMembersKey = args[1] as string;
         const leaderKey = args[2] as string;
         const connectionId = args[3] as string;
-        const memberSet = sets.get(sessionMembersKey);
-        if (memberSet) memberSet.delete(connectionId);
-        store.delete(connectionKey);
-        hashes.delete(connectionKey);
-        const currentLeader = store.get(leaderKey);
-        if (currentLeader !== connectionId) return null;
-        if (memberSet && memberSet.size > 0) {
-          const newLeader = Array.from(memberSet)[0];
-          store.set(leaderKey, newLeader);
-          return newLeader;
+
+        if (args.length > 6) {
+          // JOIN_SESSION_SCRIPT
+          const username = args[7] as string;
+          const avatarUrl = args[8] as string;
+
+          if (!hashes.has(connectionKey)) hashes.set(connectionKey, {});
+          const connData = hashes.get(connectionKey)!;
+          connData.connectionId = connectionId;
+          connData.sessionId = args[4] as string;
+          if (username && username !== '__BOARDSESH_UNSET__') connData.username = username;
+          if (avatarUrl !== undefined && avatarUrl !== '__BOARDSESH_UNSET__') connData.avatarUrl = avatarUrl;
+          connData.isLeader = 'false';
+
+          if (!sets.has(sessionMembersKey)) sets.set(sessionMembersKey, new Set());
+          sets.get(sessionMembersKey)!.add(connectionId);
+
+          if (!store.has(leaderKey)) {
+            store.set(leaderKey, connectionId);
+            connData.isLeader = 'true';
+            return 1;
+          }
+          return 0;
+        } else {
+          // LEAVE_SESSION_SCRIPT
+          const memberSet = sets.get(sessionMembersKey);
+          if (memberSet) memberSet.delete(connectionId);
+          store.delete(connectionKey);
+          hashes.delete(connectionKey);
+          const currentLeader = store.get(leaderKey);
+          if (currentLeader !== connectionId) return null;
+          if (memberSet && memberSet.size > 0) {
+            const newLeader = Array.from(memberSet)[0];
+            store.set(leaderKey, newLeader);
+            return newLeader;
+          }
+          store.delete(leaderKey);
+          return null;
         }
-        store.delete(leaderKey);
-        return '';
       }
       return null;
     }),
