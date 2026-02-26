@@ -9,7 +9,6 @@ import React from 'react';
 
 // Mock dependencies
 vi.mock('@/app/lib/url-utils', () => ({
-  constructClimbSearchUrl: vi.fn(() => 'http://test.com/search'),
   searchParamsToUrlParams: vi.fn(() => new URLSearchParams('page=1'))
 }));
 

@@ -1,7 +1,7 @@
 // app/api/cron/sync-shared-data/route.ts
 import { NextResponse } from 'next/server';
 import { syncSharedData as syncSharedDataFunction, type NewClimbInfo } from '@/lib/data-sync/aurora/shared-sync';
-import { BoardName as AuroraBoardName } from '@/app/lib/api-wrappers/aurora-rest-client/types';
+import { AuroraBoardName } from '@/app/lib/api-wrappers/aurora/types';
 import { AURORA_BOARD_NAMES } from '@/app/lib/board-constants';
 import { getDb } from '@/app/lib/db/db';
 import { setterFollows, notifications, userBoardMappings, userFollows } from '@boardsesh/db/schema';

@@ -7,8 +7,6 @@ import {
   parseBoardRouteParams,
   constructClimbViewUrl,
   constructClimbInfoUrl,
-  constructClimbList,
-  constructClimbSearchUrl,
   generateClimbSlug,
   generateLayoutSlug,
   generateSizeSlug,
@@ -372,20 +370,6 @@ describe('URL construction functions', () => {
     it('should handle empty climb name', () => {
       const result = constructClimbViewUrl(mockRouteParams, 'abc123', '');
       expect(result).toBe('/kilter/1/2/3,4/45/view/abc123');
-    });
-  });
-
-  describe('constructClimbList', () => {
-    it('should construct climb list URL', () => {
-      const result = constructClimbList(mockRouteParams);
-      expect(result).toBe('/kilter/1/2/3,4/45/list');
-    });
-  });
-
-  describe('constructClimbSearchUrl', () => {
-    it('should construct search URL with query string', () => {
-      const result = constructClimbSearchUrl(mockRouteParams, 'minGrade=5&name=test');
-      expect(result).toBe('/api/v1/kilter/1/2/3,4/45/search?minGrade=5&name=test');
     });
   });
 

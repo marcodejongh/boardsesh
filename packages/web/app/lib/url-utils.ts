@@ -260,14 +260,6 @@ export const constructClimbInfoUrl = (
 
 //`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
 
-export const constructClimbList = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters) =>
-  `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
-
-export const constructClimbSearchUrl = (
-  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
-  queryString: string,
-) => `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;
-
 export const constructSetterStatsUrl = (
   { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
   searchQuery?: string,
