@@ -195,6 +195,8 @@ export const sessionEditMutations = {
 
   /**
    * Remove a user from an inferred session, restoring their ticks to original sessions.
+   * Wrapped in a transaction to prevent concurrent modifications from leaving
+   * ticks in an inconsistent state.
    */
   removeUserFromSession: async (
     _: unknown,
@@ -222,99 +224,110 @@ export const sessionEditMutations = {
       throw new Error('Cannot remove the session owner');
     }
 
-    // Find all ticks belonging to the removed user in this session
-    // that have previousInferredSessionId set (were reassigned)
-    const ticksToRestore = await db
-      .select({
-        uuid: dbSchema.boardseshTicks.uuid,
-        previousInferredSessionId: dbSchema.boardseshTicks.previousInferredSessionId,
-      })
-      .from(dbSchema.boardseshTicks)
-      .where(
-        and(
-          eq(dbSchema.boardseshTicks.userId, validated.userId),
-          eq(dbSchema.boardseshTicks.inferredSessionId, validated.sessionId),
-        ),
-      );
-
-    // Collect session IDs that will receive restored ticks
-    const restoredSessionIds = new Set(
-      ticksToRestore
-        .map((t) => t.previousInferredSessionId)
-        .filter((id): id is string => id !== null),
-    );
-
-    // Restore ticks: set inferredSessionId back to previousInferredSessionId, clear previous
-    if (ticksToRestore.length > 0) {
-      const tickUuids = ticksToRestore.map((t) => t.uuid);
-
-      // For ticks with previousInferredSessionId, restore them
-      await db
-        .update(dbSchema.boardseshTicks)
-        .set({
-          inferredSessionId: dbSchema.boardseshTicks.previousInferredSessionId,
-          previousInferredSessionId: null,
+    // Wrap tick restoration + override deletion + stats recalculation in a transaction
+    await db.transaction(async (tx) => {
+      // Find all ticks belonging to the removed user in this session
+      const ticksToRestore = await tx
+        .select({
+          uuid: dbSchema.boardseshTicks.uuid,
+          previousInferredSessionId: dbSchema.boardseshTicks.previousInferredSessionId,
         })
+        .from(dbSchema.boardseshTicks)
         .where(
           and(
-            inArray(dbSchema.boardseshTicks.uuid, tickUuids),
-            sql`${dbSchema.boardseshTicks.previousInferredSessionId} IS NOT NULL`,
+            eq(dbSchema.boardseshTicks.userId, validated.userId),
+            eq(dbSchema.boardseshTicks.inferredSessionId, validated.sessionId),
           ),
         );
 
-      // For ticks without previousInferredSessionId (shouldn't happen, but handle gracefully),
-      // reassign them immediately via the builder so they aren't left orphaned
-      const orphanedTicks = ticksToRestore.filter((t) => t.previousInferredSessionId === null);
-      if (orphanedTicks.length > 0) {
-        // Clear inferredSessionId first so assignInferredSession can pick them up
-        await db
+      // Collect session IDs that will receive restored ticks
+      const restoredSessionIds = new Set(
+        ticksToRestore
+          .map((t) => t.previousInferredSessionId)
+          .filter((id): id is string => id !== null),
+      );
+
+      // Restore ticks: set inferredSessionId back to previousInferredSessionId, clear previous
+      if (ticksToRestore.length > 0) {
+        const tickUuids = ticksToRestore.map((t) => t.uuid);
+
+        // For ticks with previousInferredSessionId, restore them
+        await tx
           .update(dbSchema.boardseshTicks)
-          .set({ inferredSessionId: null })
+          .set({
+            inferredSessionId: dbSchema.boardseshTicks.previousInferredSessionId,
+            previousInferredSessionId: null,
+          })
           .where(
             and(
-              inArray(dbSchema.boardseshTicks.uuid, orphanedTicks.map((t) => t.uuid)),
-              eq(dbSchema.boardseshTicks.inferredSessionId, validated.sessionId),
+              inArray(dbSchema.boardseshTicks.uuid, tickUuids),
+              sql`${dbSchema.boardseshTicks.previousInferredSessionId} IS NOT NULL`,
             ),
           );
 
-        // Fetch full tick data and reassign each via the builder
-        const orphanedTickData = await db
-          .select({
-            uuid: dbSchema.boardseshTicks.uuid,
-            userId: dbSchema.boardseshTicks.userId,
-            climbedAt: dbSchema.boardseshTicks.climbedAt,
-            status: dbSchema.boardseshTicks.status,
-          })
-          .from(dbSchema.boardseshTicks)
-          .where(inArray(dbSchema.boardseshTicks.uuid, orphanedTicks.map((t) => t.uuid)));
+        // For ticks without previousInferredSessionId (shouldn't happen, but handle gracefully),
+        // reassign them immediately via the builder so they aren't left orphaned
+        const orphanedTicks = ticksToRestore.filter((t) => t.previousInferredSessionId === null);
+        if (orphanedTicks.length > 0) {
+          // Clear inferredSessionId first so assignInferredSession can pick them up
+          await tx
+            .update(dbSchema.boardseshTicks)
+            .set({ inferredSessionId: null })
+            .where(
+              and(
+                inArray(dbSchema.boardseshTicks.uuid, orphanedTicks.map((t) => t.uuid)),
+                eq(dbSchema.boardseshTicks.inferredSessionId, validated.sessionId),
+              ),
+            );
 
-        for (const tick of orphanedTickData) {
-          await assignInferredSession(tick.uuid, tick.userId, tick.climbedAt, tick.status);
+          // Fetch full tick data and reassign each via the builder
+          const orphanedTickData = await tx
+            .select({
+              uuid: dbSchema.boardseshTicks.uuid,
+              userId: dbSchema.boardseshTicks.userId,
+              climbedAt: dbSchema.boardseshTicks.climbedAt,
+              status: dbSchema.boardseshTicks.status,
+            })
+            .from(dbSchema.boardseshTicks)
+            .where(inArray(dbSchema.boardseshTicks.uuid, orphanedTicks.map((t) => t.uuid)));
+
+          for (const tick of orphanedTickData) {
+            await assignInferredSession(tick.uuid, tick.userId, tick.climbedAt, tick.status);
+          }
         }
       }
-    }
 
-    // Delete the session_member_overrides record
-    await db
-      .delete(dbSchema.sessionMemberOverrides)
-      .where(
-        and(
-          eq(dbSchema.sessionMemberOverrides.sessionId, validated.sessionId),
-          eq(dbSchema.sessionMemberOverrides.userId, validated.userId),
-        ),
-      );
+      // Delete the session_member_overrides record
+      await tx
+        .delete(dbSchema.sessionMemberOverrides)
+        .where(
+          and(
+            eq(dbSchema.sessionMemberOverrides.sessionId, validated.sessionId),
+            eq(dbSchema.sessionMemberOverrides.userId, validated.userId),
+          ),
+        );
 
-    // Recalculate stats for this session
-    await recalculateSessionStats(validated.sessionId);
+      // Recalculate stats within the transaction for consistent reads
+      await recalculateSessionStats(validated.sessionId, tx);
 
-    // Recalculate stats for restored sessions
-    for (const restoredId of restoredSessionIds) {
-      await recalculateSessionStats(restoredId);
-    }
+      // Recalculate stats for restored sessions
+      for (const restoredId of restoredSessionIds) {
+        await recalculateSessionStats(restoredId, tx);
+      }
+    });
 
     return sessionFeedQueries.sessionDetail(null, { sessionId: validated.sessionId });
   },
 };
+
+const SessionStatsRowSchema = z.object({
+  tick_count: z.coerce.number(),
+  total_sends: z.coerce.number(),
+  total_flashes: z.coerce.number(),
+  total_attempts: z.coerce.number(),
+  first_tick_at: z.string().nullable(),
+  last_tick_at: z.string().nullable(),
+});
 
 /**
  * Recalculate aggregate stats for an inferred session from its current ticks.
@@ -337,16 +350,10 @@ export async function recalculateSessionStats(
     WHERE inferred_session_id = ${sessionId}
   `);
 
-  const rows = (result as unknown as { rows: Array<{
-    tick_count: number;
-    total_sends: number;
-    total_flashes: number;
-    total_attempts: number;
-    first_tick_at: string | null;
-    last_tick_at: string | null;
-  }> }).rows;
+  const rawRows = (result as unknown as { rows: unknown[] }).rows;
+  const parsed = rawRows.length > 0 ? SessionStatsRowSchema.safeParse(rawRows[0]) : null;
 
-  if (rows.length === 0 || rows[0].first_tick_at === null) {
+  if (!parsed || !parsed.success || parsed.data.first_tick_at === null) {
     // No ticks remain — session is empty but keep it for reference
     await conn
       .update(dbSchema.inferredSessions)
@@ -360,16 +367,16 @@ export async function recalculateSessionStats(
     return;
   }
 
-  const stats = rows[0];
+  const stats = parsed.data;
   await conn
     .update(dbSchema.inferredSessions)
     .set({
-      tickCount: Number(stats.tick_count),
-      totalSends: Number(stats.total_sends),
-      totalFlashes: Number(stats.total_flashes),
-      totalAttempts: Number(stats.total_attempts),
-      firstTickAt: String(stats.first_tick_at),
-      lastTickAt: String(stats.last_tick_at),
+      tickCount: stats.tick_count,
+      totalSends: stats.total_sends,
+      totalFlashes: stats.total_flashes,
+      totalAttempts: stats.total_attempts,
+      firstTickAt: stats.first_tick_at!,
+      lastTickAt: stats.last_tick_at!,
     })
     .where(eq(dbSchema.inferredSessions.id, sessionId));
 }

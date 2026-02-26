@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, count as drizzleCount, isNull } from 'drizzle-orm';
+import { eq, and, desc, sql, count as drizzleCount, isNull, inArray } from 'drizzle-orm';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { validateInput } from '../shared/helpers';
@@ -182,47 +182,52 @@ export const sessionFeedQueries = {
     const hasMore = rows.length > limit;
     const resultRows = hasMore ? rows.slice(0, limit) : rows;
 
-    // Enrich with participant info and grade distribution
-    const sessions: SessionFeedItem[] = await Promise.all(
-      resultRows.map(async (row) => {
-        const [participants, gradeDistribution, sessionMeta] = await Promise.all([
-          fetchParticipants(row.session_id, row.session_type, row.user_ids),
-          fetchGradeDistribution(row.session_id, row.session_type),
-          fetchSessionMeta(row.session_id, row.session_type),
-        ]);
+    // Batch enrichment: 3 queries total instead of 3 per session
+    const sessionIds = resultRows.map((r) => r.session_id);
+    const sessionTypes = new Map(resultRows.map((r) => [r.session_id, r.session_type]));
 
-        const firstTime = new Date(row.session_first_tick).getTime();
-        const lastTime = new Date(row.session_last_tick).getTime();
-        const durationMinutes = Math.round((lastTime - firstTime) / 60000) || null;
+    const [participantMap, gradeDistMap, metaMap] = await Promise.all([
+      fetchParticipantsBatch(sessionIds, sessionTypes),
+      fetchGradeDistributionBatch(sessionIds, sessionTypes),
+      fetchSessionMetaBatch(sessionIds, sessionTypes),
+    ]);
 
-        return {
-          sessionId: row.session_id,
-          sessionType: row.session_type as 'party' | 'inferred',
-          sessionName: sessionMeta?.name || null,
-          ownerUserId: sessionMeta?.ownerUserId || null,
-          participants,
-          totalSends: Number(row.total_sends),
-          totalFlashes: Number(row.total_flashes),
-          totalAttempts: Number(row.total_attempts),
-          tickCount: Number(row.tick_count),
-          gradeDistribution,
-          boardTypes: row.board_types,
-          hardestGrade: gradeDistribution.length > 0 ? gradeDistribution[0].grade : null,
-          firstTickAt: typeof row.session_first_tick === 'object'
-            ? (row.session_first_tick as unknown as Date).toISOString()
-            : String(row.session_first_tick),
-          lastTickAt: typeof row.session_last_tick === 'object'
-            ? (row.session_last_tick as unknown as Date).toISOString()
-            : String(row.session_last_tick),
-          durationMinutes,
-          goal: sessionMeta?.goal || null,
-          upvotes: Number(row.vote_up),
-          downvotes: Number(row.vote_down),
-          voteScore: Number(row.vote_score),
-          commentCount: Number(row.comment_count),
-        };
-      }),
-    );
+    const sessions: SessionFeedItem[] = resultRows.map((row) => {
+      const participants = participantMap.get(row.session_id) ?? [];
+      const gradeDistribution = gradeDistMap.get(row.session_id) ?? [];
+      const sessionMeta = metaMap.get(row.session_id) ?? null;
+
+      const firstTime = new Date(row.session_first_tick).getTime();
+      const lastTime = new Date(row.session_last_tick).getTime();
+      const durationMinutes = Math.round((lastTime - firstTime) / 60000) || null;
+
+      return {
+        sessionId: row.session_id,
+        sessionType: row.session_type as 'party' | 'inferred',
+        sessionName: sessionMeta?.name || null,
+        ownerUserId: sessionMeta?.ownerUserId || null,
+        participants,
+        totalSends: Number(row.total_sends),
+        totalFlashes: Number(row.total_flashes),
+        totalAttempts: Number(row.total_attempts),
+        tickCount: Number(row.tick_count),
+        gradeDistribution,
+        boardTypes: row.board_types,
+        hardestGrade: gradeDistribution.length > 0 ? gradeDistribution[0].grade : null,
+        firstTickAt: typeof row.session_first_tick === 'object'
+          ? (row.session_first_tick as unknown as Date).toISOString()
+          : String(row.session_first_tick),
+        lastTickAt: typeof row.session_last_tick === 'object'
+          ? (row.session_last_tick as unknown as Date).toISOString()
+          : String(row.session_last_tick),
+        durationMinutes,
+        goal: sessionMeta?.goal || null,
+        upvotes: Number(row.vote_up),
+        downvotes: Number(row.vote_down),
+        voteScore: Number(row.vote_score),
+        commentCount: Number(row.comment_count),
+      };
+    });
 
     const nextCursor = hasMore ? encodeOffsetCursor(offset + limit) : null;
 
@@ -579,4 +584,159 @@ async function fetchSessionMeta(
     goal: session.description || null,
     ownerUserId: session.userId,
   };
+}
+
+// ============================================
+// Batched enrichment functions for feed (3 queries instead of 3×N)
+// ============================================
+
+/**
+ * Fetch participants for multiple sessions in a single query.
+ * Returns a Map from sessionId to participants array.
+ */
+async function fetchParticipantsBatch(
+  sessionIds: string[],
+  sessionTypes: Map<string, string>,
+): Promise<Map<string, SessionFeedParticipant[]>> {
+  if (sessionIds.length === 0) return new Map();
+
+  const result = await db.execute(sql`
+    SELECT
+      COALESCE(t.session_id, t.inferred_session_id) AS effective_session_id,
+      t.user_id AS "userId",
+      COALESCE(up.display_name, u.name) AS "displayName",
+      COALESCE(up.avatar_url, u.image) AS "avatarUrl",
+      COUNT(*) FILTER (WHERE t.status IN ('flash', 'send'))::int AS sends,
+      COUNT(*) FILTER (WHERE t.status = 'flash')::int AS flashes,
+      COUNT(*) FILTER (WHERE t.status = 'attempt')::int AS attempts
+    FROM boardsesh_ticks t
+    LEFT JOIN users u ON u.id = t.user_id
+    LEFT JOIN user_profiles up ON up.user_id = t.user_id
+    WHERE COALESCE(t.session_id, t.inferred_session_id) IN ${sql`(${sql.join(sessionIds.map(id => sql`${id}`), sql`, `)})`}
+    GROUP BY effective_session_id, t.user_id, up.display_name, u.name, up.avatar_url, u.image
+    ORDER BY sends DESC
+  `);
+
+  const rows = (result as unknown as { rows: Array<{
+    effective_session_id: string;
+    userId: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    sends: number;
+    flashes: number;
+    attempts: number;
+  }> }).rows;
+
+  const map = new Map<string, SessionFeedParticipant[]>();
+  for (const r of rows) {
+    const participants = map.get(r.effective_session_id) ?? [];
+    participants.push({
+      userId: r.userId,
+      displayName: r.displayName,
+      avatarUrl: r.avatarUrl,
+      sends: r.sends,
+      flashes: r.flashes,
+      attempts: r.attempts,
+    });
+    map.set(r.effective_session_id, participants);
+  }
+  return map;
+}
+
+/**
+ * Fetch grade distributions for multiple sessions in a single query.
+ * Returns a Map from sessionId to grade distribution array.
+ */
+async function fetchGradeDistributionBatch(
+  sessionIds: string[],
+  sessionTypes: Map<string, string>,
+): Promise<Map<string, SessionGradeDistributionItem[]>> {
+  if (sessionIds.length === 0) return new Map();
+
+  const result = await db.execute(sql`
+    SELECT
+      COALESCE(t.session_id, t.inferred_session_id) AS effective_session_id,
+      dg.boulder_name AS grade,
+      dg.difficulty AS diff_num,
+      COUNT(*) FILTER (WHERE t.status = 'flash')::int AS flash,
+      COUNT(*) FILTER (WHERE t.status = 'send')::int AS send,
+      COUNT(*) FILTER (WHERE t.status = 'attempt')::int AS attempt
+    FROM boardsesh_ticks t
+    LEFT JOIN board_difficulty_grades dg
+      ON dg.difficulty = t.difficulty AND dg.board_type = t.board_type
+    WHERE COALESCE(t.session_id, t.inferred_session_id) IN ${sql`(${sql.join(sessionIds.map(id => sql`${id}`), sql`, `)})`}
+      AND t.difficulty IS NOT NULL
+    GROUP BY effective_session_id, dg.boulder_name, dg.difficulty
+    ORDER BY dg.difficulty DESC
+  `);
+
+  const rows = (result as unknown as { rows: Array<{
+    effective_session_id: string;
+    grade: string | null;
+    diff_num: number;
+    flash: number;
+    send: number;
+    attempt: number;
+  }> }).rows;
+
+  const map = new Map<string, SessionGradeDistributionItem[]>();
+  for (const r of rows) {
+    if (r.grade == null) continue;
+    const distribution = map.get(r.effective_session_id) ?? [];
+    distribution.push({ grade: r.grade, flash: r.flash, send: r.send, attempt: r.attempt });
+    map.set(r.effective_session_id, distribution);
+  }
+  return map;
+}
+
+/**
+ * Fetch session metadata (name, goal, ownerUserId) for multiple sessions in 2 queries.
+ * Returns a Map from sessionId to metadata.
+ */
+async function fetchSessionMetaBatch(
+  sessionIds: string[],
+  sessionTypes: Map<string, string>,
+): Promise<Map<string, { name: string | null; goal: string | null; ownerUserId: string | null }>> {
+  if (sessionIds.length === 0) return new Map();
+
+  const partyIds = sessionIds.filter((id) => sessionTypes.get(id) === 'party');
+  const inferredIds = sessionIds.filter((id) => sessionTypes.get(id) === 'inferred');
+
+  const map = new Map<string, { name: string | null; goal: string | null; ownerUserId: string | null }>();
+
+  // Batch fetch party sessions
+  if (partyIds.length > 0) {
+    const partyRows = await db
+      .select({
+        id: dbSchema.boardSessions.id,
+        name: dbSchema.boardSessions.name,
+        goal: dbSchema.boardSessions.goal,
+        createdByUserId: dbSchema.boardSessions.createdByUserId,
+      })
+      .from(dbSchema.boardSessions)
+      .where(inArray(dbSchema.boardSessions.id, partyIds));
+
+    for (const r of partyRows) {
+      map.set(r.id, { name: r.name, goal: r.goal, ownerUserId: r.createdByUserId });
+    }
+  }
+
+  // Batch fetch inferred sessions
+  if (inferredIds.length > 0) {
+    const inferredRows = await db
+      .select({
+        id: dbSchema.inferredSessions.id,
+        name: dbSchema.inferredSessions.name,
+        description: dbSchema.inferredSessions.description,
+        userId: dbSchema.inferredSessions.userId,
+      })
+      .from(dbSchema.inferredSessions)
+      .where(inArray(dbSchema.inferredSessions.id, inferredIds));
+
+    for (const r of inferredRows) {
+      map.set(r.id, { name: r.name || null, goal: r.description || null, ownerUserId: r.userId });
+    }
+  }
+
+  return map;
 }

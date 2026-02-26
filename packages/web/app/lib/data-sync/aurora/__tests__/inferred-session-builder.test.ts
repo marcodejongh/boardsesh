@@ -5,6 +5,10 @@ vi.mock('server-only', () => ({}));
 vi.mock('@/app/lib/db/db', () => ({
   getDb: vi.fn(),
 }));
+vi.mock('@/app/lib/db/schema', () => ({
+  boardseshTicks: {},
+  inferredSessions: {},
+}));
 
 import {
   generateInferredSessionId,
