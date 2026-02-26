@@ -31,8 +31,8 @@ interface ActivityFeedProps {
   sortBy?: SortMode;
   topPeriod?: TimePeriod;
   onFindClimbers?: () => void;
-  /** SSR-provided initial items for unauthenticated users. Renders immediately while client fetches fresh data. */
-  initialItems?: ActivityFeedItem[];
+  /** SSR-provided initial feed result for unauthenticated users. Renders immediately while client fetches fresh data. */
+  initialFeedResult?: { items: ActivityFeedItem[]; cursor: string | null; hasMore: boolean };
 }
 
 function renderFeedItem(item: ActivityFeedItem) {
@@ -56,7 +56,7 @@ export default function ActivityFeed({
   sortBy = 'new',
   topPeriod = 'all',
   onFindClimbers,
-  initialItems,
+  initialFeedResult,
 }: ActivityFeedProps) {
   const { token, isLoading: authLoading } = useWsAuthToken();
 
@@ -98,10 +98,10 @@ export default function ActivityFeed({
     },
     enabled: isAuthenticated ? !!token : true,
     staleTime: 60 * 1000,
-    ...(initialItems && initialItems.length > 0
+    ...(initialFeedResult && initialFeedResult.items.length > 0
       ? {
           initialData: {
-            pages: [{ items: initialItems, cursor: null, hasMore: initialItems.length >= 20 }],
+            pages: [initialFeedResult],
             pageParams: [null],
           },
         }

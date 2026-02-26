@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
@@ -41,7 +41,7 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
 
   const queryKey = ['newClimbFeed', boardType, layoutId] as const;
 
-  const ensureWsClient = () => {
+  const ensureWsClient = useCallback(() => {
     if (!clientRef.current) {
       clientRef.current = createGraphQLClient({
         url: process.env.NEXT_PUBLIC_WS_URL!,
@@ -49,7 +49,7 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
       });
     }
     return clientRef.current;
-  };
+  }, [wsAuthToken]);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error } = useInfiniteQuery<
     NewClimbFeedResult,
@@ -127,8 +127,7 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
       subscriptionRef.current?.();
       subscriptionRef.current = undefined;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-subscribe when board/layout changes. ensureWsClient, queryClient, and queryKey are stable refs/constants.
-  }, [boardType, layoutId]);
+  }, [boardType, layoutId, ensureWsClient, queryClient]); // queryKey uses boardType+layoutId which are already deps
 
   return (
     <Box>

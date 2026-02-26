@@ -202,7 +202,7 @@ export default function HomePageContent({
               boardUuid={selectedBoardUuid}
               sortBy={sortBy}
               onFindClimbers={() => setSearchOpen(true)}
-              initialItems={initialTrendingFeed?.items}
+              initialFeedResult={initialTrendingFeed ?? undefined}
             />
           </>
         )}
