@@ -10,7 +10,7 @@ import MuiButton from '@mui/material/Button';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
-import { themeTokens } from '@/app/theme/theme-config';
+
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -178,8 +178,9 @@ function CommentFeedCard({ comment }: { comment: CommentType }) {
         {comment.body && (
           <Box
             sx={{
-              bgcolor: themeTokens.neutral[50],
-              borderLeft: `3px solid ${themeTokens.neutral[300]}`,
+              bgcolor: 'action.hover',
+              borderLeft: '3px solid',
+              borderColor: 'divider',
               borderRadius: 1,
               px: 1.5,
               py: 1,

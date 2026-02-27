@@ -65,7 +65,7 @@ The `session` entity type has been implemented — see [`docs/inferred-sessions.
 
 Four Reddit-style sort modes are available wherever sortable content is displayed (comments, playlist climb lists). The `sortBy` field in GraphQL inputs accepts these values:
 
-> **Note**: The activity feed no longer uses sort modes. The home page now has three dedicated tabs — **Sessions** (chronological), **Proposals** (open first), and **Comments** (global feed) — each with board filtering. The `sortBy`/`topPeriod` fields remain in the `ActivityFeedInput` GraphQL type for backward compatibility with deprecated resolvers (`activityFeed`, `trendingFeed`) but are ignored by the active `sessionGroupedFeed` resolver.
+> **Note**: The activity feed no longer uses sort modes. The home page now has three dedicated tabs — **Sessions** (chronological), **Proposals** (open first), and **Comments** (global feed) — each with board filtering. The `sortBy`/`topPeriod` fields have been removed from `ActivityFeedInput` — all activity feed queries now use chronological ordering.
 
 #### `new` (Chronological)
 ```sql
@@ -1081,10 +1081,7 @@ input CommentsInput {
 input ActivityFeedInput {
   cursor: String
   limit: Int         # default 20, max 50
-  boardType: String  # optional filter by board type
-  boardUuid: ID      # optional filter: only show activity on a specific board entity
-  sortBy: SortMode   # deprecated - kept for backward compat, ignored by sessionGroupedFeed
-  topPeriod: TimePeriod  # deprecated - kept for backward compat, ignored by sessionGroupedFeed
+  boardUuid: String  # optional filter: only show activity on a specific board entity
 }
 
 input FollowInput {
@@ -1538,7 +1535,7 @@ New file: `packages/backend/src/graphql/resolvers/social/feed.ts`
 - **Primary query**: `SELECT * FROM feed_items WHERE recipient_id = $me ORDER BY created_at DESC LIMIT $limit`
 - **Board scoping**: When `boardUuid` is provided, filter to `WHERE recipient_id = $me AND board_uuid = $boardUuid ORDER BY created_at DESC`. On the home page, this defaults to the user's `defaultBoard`.
 - The `metadata` JSONB column contains denormalized rendering data (climb name, grade, user avatar URL, etc.) so the feed renders without JOINing back to source tables.
-- **Sort**: Always chronological (`ORDER BY session_last_tick DESC`). Sort modes (`sortBy`, `topPeriod`) are accepted but ignored for backward compatibility with deprecated resolvers.
+- **Sort**: Always chronological (`ORDER BY session_last_tick DESC`).
 - **Cursor**: Offset-based cursor encoded as base64.
 - **Default limit**: 20 items per page, max 50
 

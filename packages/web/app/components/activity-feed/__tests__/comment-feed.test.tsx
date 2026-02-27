@@ -44,7 +44,7 @@ function makeComment(uuid: string, entityType = 'session'): CommentType {
     uuid,
     userId: 'user-1',
     userDisplayName: 'Test User',
-    userAvatarUrl: null,
+    userAvatarUrl: undefined,
     entityType: entityType as CommentType['entityType'],
     entityId: 'entity-1',
     parentCommentUuid: null,

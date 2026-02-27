@@ -2537,10 +2537,6 @@ export const typeDefs = /* GraphQL */ `
     limit: Int
     "Filter by board UUID"
     boardUuid: String
-    "Sort mode (used by deprecated activityFeed/trendingFeed queries)"
-    sortBy: SortMode
-    "Time period for top/controversial sorts (used by deprecated queries)"
-    topPeriod: TimePeriod
   }
 
   """
