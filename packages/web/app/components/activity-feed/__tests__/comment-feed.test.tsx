@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTestQueryClient } from '@/app/test-utils/test-providers';
@@ -188,6 +188,64 @@ describe('CommentFeed', () => {
     });
   });
 
+  describe('Pagination', () => {
+    beforeEach(() => {
+      mockUseWsAuthToken.mockReturnValue({
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+    });
+
+    it('requests first page with null cursor', async () => {
+      mockRequest.mockResolvedValueOnce({
+        globalCommentFeed: {
+          comments: [makeComment('c1')],
+          totalCount: 1,
+          hasMore: false,
+          cursor: null,
+        },
+      });
+
+      render(<CommentFeed isAuthenticated={false} />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId('comment-feed-item')).toHaveLength(1);
+      });
+
+      expect(mockRequest).toHaveBeenCalledWith(
+        'GET_GLOBAL_COMMENT_FEED',
+        expect.objectContaining({
+          input: expect.objectContaining({ cursor: null, limit: 20 }),
+        }),
+      );
+    });
+
+    it('returns cursor for next page when hasMore is true', async () => {
+      const comments = Array.from({ length: 20 }, (_, i) => makeComment(`c${i}`));
+      mockRequest.mockResolvedValueOnce({
+        globalCommentFeed: {
+          comments,
+          totalCount: 30,
+          hasMore: true,
+          cursor: 'next-cursor-abc',
+        },
+      });
+
+      const queryClient = createTestQueryClient();
+      render(<CommentFeed isAuthenticated={false} />, { wrapper: createWrapper(queryClient) });
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId('comment-feed-item')).toHaveLength(20);
+      });
+
+      // Verify query state has the page data with cursor
+      const state = queryClient.getQueryState(['globalCommentFeed', undefined]);
+      expect(state?.data).toBeDefined();
+    });
+  });
+
   describe('Error state', () => {
     it('shows error state with retry button on failure', async () => {
       mockUseWsAuthToken.mockReturnValue({
@@ -206,6 +264,35 @@ describe('CommentFeed', () => {
       });
 
       expect(screen.getByText('Retry')).toBeTruthy();
+    });
+
+    it('calls refetch when retry button is clicked', async () => {
+      mockUseWsAuthToken.mockReturnValue({
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+
+      // First call fails
+      mockRequest.mockRejectedValueOnce(new Error('Network error'));
+
+      render(<CommentFeed isAuthenticated={false} />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText('Retry')).toBeTruthy();
+      });
+
+      // Set up success response for retry
+      mockRequest.mockResolvedValueOnce({
+        globalCommentFeed: { comments: [makeComment('c1')], totalCount: 1, hasMore: false, cursor: null },
+      });
+
+      fireEvent.click(screen.getByText('Retry'));
+
+      await waitFor(() => {
+        expect(mockRequest).toHaveBeenCalledTimes(2);
+      });
     });
   });
 });

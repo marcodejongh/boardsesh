@@ -556,13 +556,14 @@ export const socialProposalQueries = {
     ctx: ConnectionContext,
   ) => {
     const validated = validateInput(BrowseProposalsInputSchema, input, 'input');
-    let { boardType, type, status, limit: rawLimit, offset: rawOffset } = validated;
+    const { type, status, limit: rawLimit, offset: rawOffset } = validated;
     const limitVal = rawLimit ?? 20;
     const offsetVal = rawOffset ?? 0;
     const authenticatedUserId = ctx.isAuthenticated ? ctx.userId : null;
 
     // Resolve boardUuid to boardType if provided
-    if (!boardType && validated.boardUuid) {
+    let boardTypeFilter: string | null = validated.boardType ?? null;
+    if (!boardTypeFilter && validated.boardUuid) {
       const board = await db
         .select({ boardType: dbSchema.userBoards.boardType })
         .from(dbSchema.userBoards)
@@ -571,12 +572,12 @@ export const socialProposalQueries = {
         .then(rows => rows[0]);
 
       if (board) {
-        boardType = board.boardType;
+        boardTypeFilter = board.boardType;
       }
     }
 
     const conditions: ReturnType<typeof eq>[] = [];
-    if (boardType) conditions.push(eq(dbSchema.climbProposals.boardType, boardType));
+    if (boardTypeFilter) conditions.push(eq(dbSchema.climbProposals.boardType, boardTypeFilter));
     if (type) conditions.push(eq(dbSchema.climbProposals.type, type));
     if (status) conditions.push(eq(dbSchema.climbProposals.status, status));
 

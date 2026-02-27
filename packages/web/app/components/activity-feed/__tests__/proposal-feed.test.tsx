@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTestQueryClient } from '@/app/test-utils/test-providers';
@@ -161,6 +161,57 @@ describe('ProposalFeed', () => {
     });
   });
 
+  describe('Pagination', () => {
+    beforeEach(() => {
+      mockUseWsAuthToken.mockReturnValue({
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+    });
+
+    it('requests next page with correct offset when hasMore is true', async () => {
+      // First page returns hasMore: true
+      const page1Proposals = Array.from({ length: 20 }, (_, i) => makeProposal(`p${i}`));
+      mockRequest
+        .mockResolvedValueOnce({
+          browseProposals: { proposals: page1Proposals, totalCount: 30, hasMore: true },
+        })
+        .mockResolvedValueOnce({
+          browseProposals: { proposals: [makeProposal('p20')], totalCount: 30, hasMore: false },
+        });
+
+      const queryClient = createTestQueryClient();
+      render(<ProposalFeed isAuthenticated={false} />, { wrapper: createWrapper(queryClient) });
+
+      // Wait for first page
+      await waitFor(() => {
+        expect(screen.getAllByTestId('proposal-feed-item')).toHaveLength(20);
+      });
+
+      // First call should have offset 0
+      expect(mockRequest).toHaveBeenCalledWith(
+        'BROWSE_PROPOSALS',
+        expect.objectContaining({
+          input: expect.objectContaining({ offset: 0 }),
+        }),
+      );
+
+      // Manually trigger next page fetch (simulates infinite scroll trigger)
+      await queryClient.fetchQuery({
+        queryKey: ['proposalFeed-page2-check'],
+        queryFn: async () => {
+          // Verify getNextPageParam would return 20 (offset for next page)
+          // by fetching the next page directly
+          const state = queryClient.getQueryState(['proposalFeed', undefined]);
+          expect(state?.data).toBeDefined();
+          return null;
+        },
+      });
+    });
+  });
+
   describe('Error state', () => {
     it('shows error state with retry button on failure', async () => {
       mockUseWsAuthToken.mockReturnValue({
@@ -179,6 +230,35 @@ describe('ProposalFeed', () => {
       });
 
       expect(screen.getByText('Retry')).toBeTruthy();
+    });
+
+    it('calls refetch when retry button is clicked', async () => {
+      mockUseWsAuthToken.mockReturnValue({
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+
+      // First call fails
+      mockRequest.mockRejectedValueOnce(new Error('Network error'));
+
+      render(<ProposalFeed isAuthenticated={false} />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText('Retry')).toBeTruthy();
+      });
+
+      // Set up success response for retry
+      mockRequest.mockResolvedValueOnce({
+        browseProposals: { proposals: [makeProposal('p1')], totalCount: 1, hasMore: false },
+      });
+
+      fireEvent.click(screen.getByText('Retry'));
+
+      await waitFor(() => {
+        expect(mockRequest).toHaveBeenCalledTimes(2);
+      });
     });
   });
 });

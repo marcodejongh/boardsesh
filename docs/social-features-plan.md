@@ -63,7 +63,9 @@ The `session` entity type has been implemented — see [`docs/inferred-sessions.
 
 ### Ranking Algorithms
 
-Four Reddit-style sort modes are available wherever sortable content is displayed (comments, activity feed, playlist climb lists). The `sortBy` field in GraphQL inputs accepts these values:
+Four Reddit-style sort modes are available wherever sortable content is displayed (comments, playlist climb lists). The `sortBy` field in GraphQL inputs accepts these values:
+
+> **Note**: The activity feed no longer uses sort modes. The home page now has three dedicated tabs — **Sessions** (chronological), **Proposals** (open first), and **Comments** (global feed) — each with board filtering. The `sortBy`/`topPeriod` fields remain in the `ActivityFeedInput` GraphQL type for backward compatibility with deprecated resolvers (`activityFeed`, `trendingFeed`) but are ignored by the active `sessionGroupedFeed` resolver.
 
 #### `new` (Chronological)
 ```sql
@@ -124,7 +126,7 @@ The `hot` sort is the default for entity discovery (e.g., "Discover playlists" c
 The ranking formulas are computed in SQL at query time using the `votes` table aggregation. For the initial implementation:
 
 1. **Comments**: Sort computed inline via subquery that aggregates votes per comment
-2. **Activity feed**: Sort computed inline on the merged result set
+2. **Activity feed**: Always chronological (sort modes removed). Home page uses three tabs: Sessions, Proposals, Comments.
 3. **Playlist climbs**: Sort computed via JOIN with `bulkVoteSummaries`-style aggregation
 
 If performance becomes an issue (Milestone 9), the `vote_counts` materialized table can store pre-computed `upvotes`, `downvotes`, and `score` columns, making the ranking formulas simple column references instead of aggregations.
@@ -1081,8 +1083,8 @@ input ActivityFeedInput {
   limit: Int         # default 20, max 50
   boardType: String  # optional filter by board type
   boardUuid: ID      # optional filter: only show activity on a specific board entity
-  sortBy: SortMode   # new (default), top, controversial, hot
-  topPeriod: TimePeriod  # Only used when sortBy=top. Defaults to 'week'
+  sortBy: SortMode   # deprecated - kept for backward compat, ignored by sessionGroupedFeed
+  topPeriod: TimePeriod  # deprecated - kept for backward compat, ignored by sessionGroupedFeed
 }
 
 input FollowInput {
@@ -1536,12 +1538,8 @@ New file: `packages/backend/src/graphql/resolvers/social/feed.ts`
 - **Primary query**: `SELECT * FROM feed_items WHERE recipient_id = $me ORDER BY created_at DESC LIMIT $limit`
 - **Board scoping**: When `boardUuid` is provided, filter to `WHERE recipient_id = $me AND board_uuid = $boardUuid ORDER BY created_at DESC`. On the home page, this defaults to the user's `defaultBoard`.
 - The `metadata` JSONB column contains denormalized rendering data (climb name, grade, user avatar URL, etc.) so the feed renders without JOINing back to source tables.
-- **Sort modes** (via `sortBy` parameter):
-  - `new` (default): `ORDER BY created_at DESC`. Pure chronological. Fast, fully indexed.
-  - `top`: Items ranked by net vote score. Vote counts can be stored in `metadata` (updated periodically by a background job) or JOINed from `votes` at query time (acceptable since the result set is already filtered to one user's feed). When `topPeriod` is set, add a time window filter on `created_at`.
-  - `controversial`: Items with high total votes but divisive scores. Uses vote data from `metadata` or JOIN.
-  - `hot`: Items ranked by the hot formula -- recent items with high vote velocity surface first.
-- **Cursor**: Encode `(created_at, id)` as opaque base64 cursor for `new` sort. For other sort modes, encode `(sort_score, created_at, id)`. Sort score varies by mode (net score for `top`, controversy score for `controversial`, hot score for `hot`).
+- **Sort**: Always chronological (`ORDER BY session_last_tick DESC`). Sort modes (`sortBy`, `topPeriod`) are accepted but ignored for backward compatibility with deprecated resolvers.
+- **Cursor**: Offset-based cursor encoded as base64.
 - **Default limit**: 20 items per page, max 50
 
 **For unauthenticated users:**
@@ -3154,7 +3152,7 @@ Constraints: Unique `(session_id, board_id)`. All boards must belong to the same
 2. `sessionFeedSummary` query -- returns grouped ascent data for a session/time-window: grade distribution, participant list, hardest climbs
 3. @mention parsing: extract `@username` from comment body, resolve to `user_id`
 4. @mention notifications: new `mention` notification type, wire to notification pipeline
-5. Activity feed SSR endpoint: accept URL search params for `boardUuid`, `sortBy`, `topPeriod`
+5. Activity feed SSR endpoint: accept URL search params for `boardUuid` and `tab` (sessions/proposals/comments)
 6. Proposal feed items: include proposals from boards/climbs the user follows in feed fanout
 
 **Frontend:**
