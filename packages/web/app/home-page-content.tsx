@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
 import Button from '@mui/material/Button';
 import ActivityFeed from '@/app/components/activity-feed/activity-feed';
-import FeedSortSelector from '@/app/components/activity-feed/feed-sort-selector';
+import ProposalFeed from '@/app/components/activity-feed/proposal-feed';
+import CommentFeed from '@/app/components/activity-feed/comment-feed';
 import searchPillStyles from '@/app/components/search-drawer/search-pill.module.css';
 import UnifiedSearchDrawer from '@/app/components/search-drawer/unified-search-drawer';
 import UserDrawer from '@/app/components/user-drawer/user-drawer';
@@ -20,26 +20,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import BoardScrollSection from '@/app/components/board-scroll/board-scroll-section';
 import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
-import type { SortMode, SessionFeedResult } from '@boardsesh/shared-schema';
-import { NewClimbFeed } from '@/app/components/new-climb-feed';
-import type { UserBoard, NewClimbSubscription } from '@boardsesh/shared-schema';
-import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
-import {
-  GET_MY_NEW_CLIMB_SUBSCRIPTIONS,
-  type GetMyNewClimbSubscriptionsResponse,
-} from '@/app/lib/graphql/operations/new-climb-feed';
+import type { SessionFeedResult } from '@boardsesh/shared-schema';
+import type { UserBoard } from '@boardsesh/shared-schema';
 import { useMyBoards } from '@/app/hooks/use-my-boards';
 import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module.css';
 
-const SORT_MODES: SortMode[] = ['new', 'top', 'controversial', 'hot'];
-const TAB_DEFAULTS: Record<string, string> = { tab: 'activity', sort: 'new' };
+type FeedTab = 'sessions' | 'proposals' | 'comments';
+const VALID_TABS: FeedTab[] = ['sessions', 'proposals', 'comments'];
 
 interface HomePageContentProps {
   boardConfigs: BoardConfigData;
-  initialTab?: 'activity' | 'newClimbs';
+  initialTab?: FeedTab;
   initialBoardUuid?: string;
-  initialSortBy?: SortMode;
   initialFeedResult?: SessionFeedResult | null;
   isAuthenticatedSSR?: boolean;
   initialMyBoards?: UserBoard[] | null;
@@ -47,9 +39,8 @@ interface HomePageContentProps {
 
 export default function HomePageContent({
   boardConfigs,
-  initialTab = 'activity',
+  initialTab = 'sessions',
   initialBoardUuid,
-  initialSortBy = 'new',
   initialFeedResult,
   isAuthenticatedSSR,
   initialMyBoards,
@@ -60,23 +51,25 @@ export default function HomePageContent({
   const [searchOpen, setSearchOpen] = useState(false);
   const [startSeshOpen, setStartSeshOpen] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
-  const [subscriptions, setSubscriptions] = useState<NewClimbSubscription[]>([]);
 
   // Trust the SSR hint during the loading phase to prevent flash of unauthenticated content
   const isAuthenticated = status === 'authenticated' ? true : (status === 'loading' ? (isAuthenticatedSSR ?? false) : false);
-  const { token: wsAuthToken } = useWsAuthToken();
   const { boards: myBoards, isLoading: isLoadingBoards } = useMyBoards(isAuthenticated, 50, initialMyBoards);
 
   // Read state from URL params (with fallbacks to server-provided initial values)
-  const activeTab = (searchParams.get('tab') === 'newClimbs' ? 'newClimbs' : (searchParams.get('tab') || initialTab)) as 'activity' | 'newClimbs';
+  const tabParam = searchParams.get('tab');
+  const activeTab: FeedTab = VALID_TABS.includes(tabParam as FeedTab)
+    ? (tabParam as FeedTab)
+    : initialTab;
   const selectedBoardUuid = searchParams.get('board') || initialBoardUuid || null;
-  const sortBy = (SORT_MODES.includes(searchParams.get('sort') as SortMode)
-    ? searchParams.get('sort') : (searchParams.has('sort') ? initialSortBy : initialSortBy)) as SortMode;
 
   // Helper: update a URL param via shallow navigation
   const updateParam = useCallback((key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (value && value !== TAB_DEFAULTS[key]) {
+    // Default tab is 'sessions', don't put in URL
+    if (key === 'tab' && value === 'sessions') {
+      params.delete(key);
+    } else if (value) {
       params.set(key, value);
     } else {
       params.delete(key);
@@ -85,11 +78,7 @@ export default function HomePageContent({
     router.push(qs ? `/?${qs}` : '/', { scroll: false });
   }, [router, searchParams]);
 
-  const handleSortChange = useCallback((newSort: SortMode) => {
-    updateParam('sort', newSort);
-  }, [updateParam]);
-
-  const handleTabChange = (_: React.SyntheticEvent, value: string) => {
+  const handleTabChange = (_: React.SyntheticEvent, value: FeedTab) => {
     updateParam('tab', value);
   };
 
@@ -104,20 +93,6 @@ export default function HomePageContent({
     setSelectedBoard(board);
     updateParam('board', board.uuid);
   }, [updateParam]);
-
-  useEffect(() => {
-    async function fetchSubscriptions() {
-      if (!isAuthenticated || !wsAuthToken) return;
-      try {
-        const client = createGraphQLHttpClient(wsAuthToken);
-        const res = await client.request<GetMyNewClimbSubscriptionsResponse>(GET_MY_NEW_CLIMB_SUBSCRIPTIONS);
-        setSubscriptions(res.myNewClimbSubscriptions);
-      } catch (error) {
-        console.error('Failed to fetch new climb subscriptions', error);
-      }
-    }
-    fetchSubscriptions();
-  }, [isAuthenticated, wsAuthToken]);
 
   return (
     <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', pb: '60px' }}>
@@ -190,47 +165,32 @@ export default function HomePageContent({
           sx={{ mb: 2 }}
           aria-label="Home feed tabs"
         >
-          <Tab label="Activity" value="activity" />
-          <Tab label="New Climbs" value="newClimbs" />
+          <Tab label="Sessions" value="sessions" />
+          <Tab label="Proposals" value="proposals" />
+          <Tab label="Comments" value="comments" />
         </Tabs>
 
-        {activeTab === 'activity' && (
-          <>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" component="h1">
-                Activity
-              </Typography>
-              <FeedSortSelector sortBy={sortBy} onChange={handleSortChange} />
-            </Box>
-            <ActivityFeed
-              isAuthenticated={isAuthenticated}
-              boardUuid={selectedBoardUuid}
-              sortBy={sortBy}
-              onFindClimbers={() => setSearchOpen(true)}
-              initialFeedResult={initialFeedResult}
-            />
-          </>
+        {activeTab === 'sessions' && (
+          <ActivityFeed
+            isAuthenticated={isAuthenticated}
+            boardUuid={selectedBoardUuid}
+            onFindClimbers={() => setSearchOpen(true)}
+            initialFeedResult={initialFeedResult}
+          />
         )}
 
-        {activeTab === 'newClimbs' && (
-          <Box sx={{ mt: 1 }}>
-            {selectedBoard ? (
-              <NewClimbFeed
-                boardType={selectedBoard.boardType}
-                layoutId={selectedBoard.layoutId}
-                isAuthenticated={isAuthenticated}
-                isSubscribed={subscriptions.some(
-                  (sub) =>
-                    sub.boardType === selectedBoard.boardType &&
-                    sub.layoutId === selectedBoard.layoutId,
-                )}
-              />
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                Select a board to see new climbs for its layout.
-              </Typography>
-            )}
-          </Box>
+        {activeTab === 'proposals' && (
+          <ProposalFeed
+            isAuthenticated={isAuthenticated}
+            boardUuid={selectedBoardUuid}
+          />
+        )}
+
+        {activeTab === 'comments' && (
+          <CommentFeed
+            isAuthenticated={isAuthenticated}
+            boardUuid={selectedBoardUuid}
+          />
         )}
       </Box>
 

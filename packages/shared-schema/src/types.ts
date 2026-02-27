@@ -732,8 +732,12 @@ export type ActivityFeedInput = {
   cursor?: string | null;
   limit?: number;
   boardUuid?: string | null;
-  sortBy?: SortMode;
-  topPeriod?: TimePeriod;
+};
+
+export type GlobalCommentFeedInput = {
+  cursor?: string | null;
+  limit?: number;
+  boardUuid?: string | null;
 };
 
 // ============================================
@@ -1069,6 +1073,7 @@ export type CommentConnection = {
   comments: Comment[];
   totalCount: number;
   hasMore: boolean;
+  cursor?: string | null;
 };
 
 export type VoteSummary = {

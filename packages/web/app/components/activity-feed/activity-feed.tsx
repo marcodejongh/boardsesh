@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo } from 'react';
 import Box from '@mui/material/Box';
 import MuiButton from '@mui/material/Button';
 import MuiAlert from '@mui/material/Alert';
 import PersonSearchOutlined from '@mui/icons-material/PersonSearchOutlined';
 import PublicOutlined from '@mui/icons-material/PublicOutlined';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
-import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -15,7 +15,7 @@ import {
   GET_SESSION_GROUPED_FEED,
   type GetSessionGroupedFeedQueryResponse,
 } from '@/app/lib/graphql/operations';
-import type { SessionFeedItem, SessionFeedResult, SortMode, TimePeriod } from '@boardsesh/shared-schema';
+import type { SessionFeedItem, SessionFeedResult } from '@boardsesh/shared-schema';
 import SessionFeedCard from './session-feed-card';
 import FeedItemSkeleton from './feed-item-skeleton';
 import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
@@ -26,8 +26,6 @@ export type SessionFeedPage = SessionFeedResult;
 interface ActivityFeedProps {
   isAuthenticated: boolean;
   boardUuid?: string | null;
-  sortBy?: SortMode;
-  topPeriod?: TimePeriod;
   onFindClimbers?: () => void;
   /** SSR-provided initial session feed result */
   initialFeedResult?: SessionFeedResult | null;
@@ -36,17 +34,14 @@ interface ActivityFeedProps {
 export default function ActivityFeed({
   isAuthenticated,
   boardUuid,
-  sortBy = 'new',
-  topPeriod = 'all',
   onFindClimbers,
   initialFeedResult,
 }: ActivityFeedProps) {
   const { token, isLoading: authLoading } = useWsAuthToken();
-  const queryClient = useQueryClient();
 
   const hasInitialData = !!initialFeedResult && initialFeedResult.sessions.length > 0;
 
-  const queryKey = ['sessionFeed', boardUuid, sortBy, topPeriod] as const;
+  const queryKey = ['sessionFeed', boardUuid] as const;
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error, refetch } = useInfiniteQuery<
     SessionFeedPage,
@@ -59,8 +54,6 @@ export default function ActivityFeed({
         limit: 20,
         cursor: pageParam as string | null,
         boardUuid: boardUuid || undefined,
-        sortBy,
-        topPeriod,
       };
 
       const response = await client.request<GetSessionGroupedFeedQueryResponse>(

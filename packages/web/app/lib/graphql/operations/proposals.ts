@@ -353,6 +353,7 @@ export interface GetBulkClimbCommunityStatusResponse {
 export interface BrowseProposalsVariables {
   input: {
     boardType?: string | null;
+    boardUuid?: string | null;
     type?: ProposalType | null;
     status?: ProposalStatus | null;
     limit?: number;

@@ -7,7 +7,9 @@ import {
   AddCommentInputSchema,
   UpdateCommentInputSchema,
   CommentsInputSchema,
+  GlobalCommentFeedInputSchema,
 } from '../../../validation/schemas';
+import { encodeOffsetCursor, decodeOffsetCursor } from '../../../utils/feed-cursor';
 import { validateEntityExists } from './entity-validation';
 import { publishSocialEvent } from '../../../events/index';
 import { pubsub } from '../../../pubsub/index';
@@ -205,6 +207,129 @@ export const socialCommentQueries = {
       comments,
       totalCount,
       hasMore: offset + comments.length < totalCount,
+    };
+  },
+
+  /**
+   * Global comment feed: recent comments across all entities.
+   * Supports board filtering via boardUuid. Always chronological.
+   */
+  globalCommentFeed: async (
+    _: unknown,
+    { input }: { input?: Record<string, unknown> },
+    ctx: ConnectionContext,
+  ) => {
+    const validatedInput = validateInput(GlobalCommentFeedInputSchema, input || {}, 'input');
+    const limit = validatedInput.limit ?? 20;
+    const authenticatedUserId = ctx.isAuthenticated ? ctx.userId : null;
+
+    const offset = validatedInput.cursor
+      ? (decodeOffsetCursor(validatedInput.cursor) ?? 0)
+      : 0;
+
+    // Board filter: resolve boardUuid to boardType
+    let boardTypeFilter: string | null = null;
+    if (validatedInput.boardUuid) {
+      const board = await db
+        .select({ boardType: dbSchema.userBoards.boardType })
+        .from(dbSchema.userBoards)
+        .where(eq(dbSchema.userBoards.uuid, validatedInput.boardUuid))
+        .limit(1)
+        .then(rows => rows[0]);
+
+      if (board) {
+        boardTypeFilter = board.boardType;
+      }
+    }
+
+    // Board filter: join through entity relationships to filter by board type
+    // Comments on sessions -> boardsesh_ticks.board_type
+    // Comments on climbs -> board_climbs.board_type
+    // Comments on proposals -> climb_proposals.board_type
+    const boardFilterJoin = boardTypeFilter
+      ? sql`
+        LEFT JOIN boardsesh_ticks bt_filter
+          ON c."entity_type" = 'session'
+          AND (bt_filter.session_id = c."entity_id" OR bt_filter.inferred_session_id = c."entity_id")
+        LEFT JOIN board_climbs bc_filter
+          ON c."entity_type" = 'climb'
+          AND bc_filter.uuid = c."entity_id"
+        LEFT JOIN climb_proposals cp_filter
+          ON c."entity_type" = 'proposal'
+          AND cp_filter.uuid = c."entity_id"
+      `
+      : sql``;
+
+    const boardFilterWhere = boardTypeFilter
+      ? sql`AND (
+          (c."entity_type" = 'session' AND bt_filter.board_type = ${boardTypeFilter})
+          OR (c."entity_type" = 'climb' AND bc_filter.board_type = ${boardTypeFilter})
+          OR (c."entity_type" = 'proposal' AND cp_filter.board_type = ${boardTypeFilter})
+          OR (c."entity_type" NOT IN ('session', 'climb', 'proposal'))
+        )`
+      : sql``;
+
+    const distinctClause = boardTypeFilter
+      ? sql`DISTINCT ON (c."id")`
+      : sql``;
+
+    const rawResult = await db.execute(sql`
+      SELECT ${distinctClause}
+        c."id",
+        c."uuid",
+        c."user_id" as "userId",
+        c."entity_type" as "entityType",
+        c."entity_id" as "entityId",
+        c."parent_comment_id" as "parentCommentId",
+        c."body",
+        c."created_at" as "createdAt",
+        c."updated_at" as "updatedAt",
+        c."deleted_at" as "deletedAt",
+        u."name" as "userName",
+        u."image" as "userImage",
+        up."display_name" as "displayName",
+        up."avatar_url" as "avatarUrl",
+        parent_c."uuid" as "parentUuid",
+        COALESCE(reply_cnt.cnt, 0) as "replyCount",
+        COALESCE(vc."upvotes", 0) as "upvotes",
+        COALESCE(vc."downvotes", 0) as "downvotes",
+        ${authenticatedUserId
+          ? sql`COALESCE(my_vote."value", 0)`
+          : sql`0`
+        } as "userVote"
+      FROM "comments" c
+      INNER JOIN "users" u ON c."user_id" = u."id"
+      LEFT JOIN "user_profiles" up ON c."user_id" = up."user_id"
+      LEFT JOIN "comments" parent_c ON c."parent_comment_id" = parent_c."id"
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) as cnt FROM "comments" r
+        WHERE r."parent_comment_id" = c."id" AND r."deleted_at" IS NULL
+      ) reply_cnt ON true
+      LEFT JOIN "vote_counts" vc ON vc."entity_type" = 'comment' AND vc."entity_id" = c."uuid"
+      ${authenticatedUserId
+        ? sql`LEFT JOIN "votes" my_vote ON my_vote."entity_type" = 'comment' AND my_vote."entity_id" = c."uuid" AND my_vote."user_id" = ${authenticatedUserId}`
+        : sql``
+      }
+      ${boardFilterJoin}
+      WHERE c."deleted_at" IS NULL
+        ${boardFilterWhere}
+      ORDER BY ${boardTypeFilter ? sql`c."id",` : sql``} c."created_at" DESC
+      LIMIT ${limit + 1}
+      OFFSET ${offset}
+    `);
+
+    const rawRows = (rawResult as unknown as { rows: CommentRow[] }).rows;
+    const hasMore = rawRows.length > limit;
+    const resultRows = hasMore ? rawRows.slice(0, limit) : rawRows;
+    const comments = resultRows.map(mapCommentRow);
+
+    const nextCursor = hasMore ? encodeOffsetCursor(offset + limit) : null;
+
+    return {
+      comments,
+      totalCount: 0, // Not computing totalCount for performance (infinite scroll doesn't need it)
+      hasMore,
+      cursor: nextCursor,
     };
   },
 };
