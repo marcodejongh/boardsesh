@@ -1945,6 +1945,8 @@ export const typeDefs = /* GraphQL */ `
 
   input BrowseProposalsInput {
     boardType: String
+    "Filter by board UUID (resolves to boardType internally)"
+    boardUuid: String
     type: ProposalType
     status: ProposalStatus
     limit: Int
@@ -2253,6 +2255,8 @@ export const typeDefs = /* GraphQL */ `
     totalCount: Int!
     "Whether more comments are available"
     hasMore: Boolean!
+    "Cursor for next page (used by globalCommentFeed)"
+    cursor: String
   }
 
   """
@@ -2533,10 +2537,22 @@ export const typeDefs = /* GraphQL */ `
     limit: Int
     "Filter by board UUID"
     boardUuid: String
-    "Sort mode"
+    "Sort mode (used by deprecated activityFeed/trendingFeed queries)"
     sortBy: SortMode
-    "Time period for top/controversial sorts"
+    "Time period for top/controversial sorts (used by deprecated queries)"
     topPeriod: TimePeriod
+  }
+
+  """
+  Input for the global comment feed query.
+  """
+  input GlobalCommentFeedInput {
+    "Cursor from previous page"
+    cursor: String
+    "Maximum number of comments to return"
+    limit: Int
+    "Filter by board UUID"
+    boardUuid: String
   }
 
   # ============================================
@@ -3208,6 +3224,12 @@ export const typeDefs = /* GraphQL */ `
     Get comments for an entity.
     """
     comments(input: CommentsInput!): CommentConnection!
+
+    """
+    Get a global feed of recent comments across all entities.
+    Supports board filtering. Always chronological (newest first).
+    """
+    globalCommentFeed(input: GlobalCommentFeedInput): CommentConnection!
 
     """
     Get vote summary for a single entity.

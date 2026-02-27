@@ -6,26 +6,12 @@ import { ActivityFeedInputSchema } from '../../../validation/schemas';
 import { encodeOffsetCursor, decodeOffsetCursor } from '../../../utils/feed-cursor';
 import type { SessionFeedItem, SessionDetail, SessionGradeDistributionItem, SessionFeedParticipant, SessionDetailTick } from '@boardsesh/shared-schema';
 
-/**
- * Map validated time period to a parameterized SQL interval condition.
- */
-function timePeriodIntervalSql(column: unknown, period: string) {
-  switch (period) {
-    case 'hour':  return sql`${column} > NOW() - INTERVAL '1 hour'`;
-    case 'day':   return sql`${column} > NOW() - INTERVAL '1 day'`;
-    case 'week':  return sql`${column} > NOW() - INTERVAL '7 days'`;
-    case 'month': return sql`${column} > NOW() - INTERVAL '30 days'`;
-    case 'year':  return sql`${column} > NOW() - INTERVAL '365 days'`;
-    default:      return null;
-  }
-}
-
 export const sessionFeedQueries = {
   /**
    * Session-grouped activity feed (public, no auth required).
    * Groups ticks into sessions based on party mode sessionId or inferred sessions.
    * Every tick now has either session_id or inferred_session_id set.
-   * Uses offset pagination since session groups are computed at read time.
+   * Always chronological (newest first). Uses offset pagination.
    */
   sessionGroupedFeed: async (
     _: unknown,
@@ -33,7 +19,6 @@ export const sessionFeedQueries = {
   ) => {
     const validatedInput = validateInput(ActivityFeedInputSchema, input || {}, 'input');
     const limit = validatedInput.limit ?? 20;
-    const sortBy = validatedInput.sortBy ?? 'new';
 
     const offset = validatedInput.cursor
       ? (decodeOffsetCursor(validatedInput.cursor) ?? 0)
@@ -56,12 +41,6 @@ export const sessionFeedQueries = {
       }
     }
 
-    // Time period filter for vote-based sorts
-    let timePeriodCond: ReturnType<typeof sql> | null = null;
-    if (sortBy !== 'new' && validatedInput.topPeriod && validatedInput.topPeriod !== 'all') {
-      timePeriodCond = timePeriodIntervalSql(sql`session_last_tick`, validatedInput.topPeriod);
-    }
-
     const boardFilterSql = boardTypeFilter
       ? sql`AND t.board_type = ${boardTypeFilter}`
       : sql``;
@@ -70,33 +49,8 @@ export const sessionFeedQueries = {
       ? sql`AND c.layout_id = ${layoutIdFilter}`
       : sql``;
 
-    const timePeriodSql = timePeriodCond
-      ? sql`WHERE ${timePeriodCond}`
-      : sql``;
-
-    // Build sort expression
-    let sortExpression: ReturnType<typeof sql>;
-    if (sortBy === 'new') {
-      sortExpression = sql`session_last_tick DESC`;
-    } else if (sortBy === 'top') {
-      sortExpression = sql`vote_score DESC, session_last_tick DESC`;
-    } else if (sortBy === 'controversial') {
-      sortExpression = sql`
-        CASE WHEN vote_up + vote_down = 0 THEN 0
-        ELSE LEAST(vote_up, vote_down)::float
-             / (vote_up + vote_down)
-             * LN(vote_up + vote_down + 1)
-        END DESC, session_last_tick DESC`;
-    } else {
-      // hot
-      sortExpression = sql`
-        SIGN(vote_score)
-        * LN(GREATEST(ABS(vote_score), 1))
-        + EXTRACT(EPOCH FROM session_last_tick) / 45000.0 DESC, session_last_tick DESC`;
-    }
-
     // Simplified CTE: every tick now has either session_id or inferred_session_id.
-    // No more ungrouped handling needed.
+    // Always sorted chronologically (newest first).
     let sessionRows;
     try {
       sessionRows = await db.execute(sql`
@@ -148,11 +102,10 @@ export const sessionFeedQueries = {
             WHERE entity_type = 'session' AND deleted_at IS NULL
             GROUP BY entity_id
           ) cc ON cc.entity_id = sa.session_id
-          ${timePeriodSql}
         )
         SELECT *
         FROM scored
-        ORDER BY ${sortExpression}
+        ORDER BY session_last_tick DESC
         OFFSET ${offset}
         LIMIT ${limit + 1}
       `);

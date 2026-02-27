@@ -556,10 +556,24 @@ export const socialProposalQueries = {
     ctx: ConnectionContext,
   ) => {
     const validated = validateInput(BrowseProposalsInputSchema, input, 'input');
-    const { boardType, type, status, limit: rawLimit, offset: rawOffset } = validated;
+    let { boardType, type, status, limit: rawLimit, offset: rawOffset } = validated;
     const limitVal = rawLimit ?? 20;
     const offsetVal = rawOffset ?? 0;
     const authenticatedUserId = ctx.isAuthenticated ? ctx.userId : null;
+
+    // Resolve boardUuid to boardType if provided
+    if (!boardType && validated.boardUuid) {
+      const board = await db
+        .select({ boardType: dbSchema.userBoards.boardType })
+        .from(dbSchema.userBoards)
+        .where(eq(dbSchema.userBoards.uuid, validated.boardUuid))
+        .limit(1)
+        .then(rows => rows[0]);
+
+      if (board) {
+        boardType = board.boardType;
+      }
+    }
 
     const conditions: ReturnType<typeof eq>[] = [];
     if (boardType) conditions.push(eq(dbSchema.climbProposals.boardType, boardType));
@@ -568,11 +582,15 @@ export const socialProposalQueries = {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
+    // Sort with open proposals first, then by creation date
     const proposals = await db
       .select()
       .from(dbSchema.climbProposals)
       .where(whereClause)
-      .orderBy(desc(dbSchema.climbProposals.createdAt))
+      .orderBy(
+        sql`CASE WHEN ${dbSchema.climbProposals.status} = 'open' THEN 0 ELSE 1 END`,
+        desc(dbSchema.climbProposals.createdAt),
+      )
       .limit(limitVal)
       .offset(offsetVal);
 

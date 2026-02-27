@@ -1,20 +1,24 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * E2E tests for activity feed infinite scroll.
+ * E2E tests for the home page feed tabs (Sessions, Proposals, Comments).
  *
- * These tests verify that the activity feed renders items and
- * that infinite scroll pagination works correctly.
+ * These tests verify that each feed tab renders correctly,
+ * infinite scroll works, and the board filter applies across tabs.
  */
 
-test.describe('Activity Feed - Unauthenticated', () => {
-  test('renders initial feed items', async ({ page }) => {
+test.describe('Sessions Feed - Unauthenticated', () => {
+  test('renders Sessions tab as default', async ({ page }) => {
     await page.goto('/');
 
-    // The Activity tab should be active by default
-    const activityTab = page.getByRole('tab', { name: 'Activity' });
-    await expect(activityTab).toBeVisible({ timeout: 15000 });
-    await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+    // The Sessions tab should be active by default
+    const sessionsTab = page.getByRole('tab', { name: 'Sessions' });
+    await expect(sessionsTab).toBeVisible({ timeout: 15000 });
+    await expect(sessionsTab).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('renders initial feed items', async ({ page }) => {
+    await page.goto('/');
 
     // Wait for feed items to render
     const feedItems = page.locator('[data-testid="activity-feed-item"]');
@@ -45,29 +49,110 @@ test.describe('Activity Feed - Unauthenticated', () => {
       expect(newCount).toBeGreaterThan(initialCount);
     }).toPass({ timeout: 15000 });
   });
+});
 
-  test('sort mode change reloads feed', async ({ page }) => {
+test.describe('Proposals Feed', () => {
+  test('renders proposals when tab is clicked', async ({ page }) => {
     await page.goto('/');
 
-    // Wait for initial items
-    const feedItems = page.locator('[data-testid="activity-feed-item"]');
-    await expect(feedItems.first()).toBeVisible({ timeout: 30000 });
+    // Click the Proposals tab
+    const proposalsTab = page.getByRole('tab', { name: 'Proposals' });
+    await expect(proposalsTab).toBeVisible({ timeout: 15000 });
+    await proposalsTab.click();
 
-    // Click the "Top" sort button — this triggers router.push which
-    // updates the URL and causes ActivityFeed to refetch with new sortBy
-    const topButton = page.getByRole('button', { name: 'Top' });
-    await expect(topButton).toBeVisible({ timeout: 5000 });
-    await topButton.click();
+    // Verify the URL updated with the tab parameter
+    await expect(page).toHaveURL(/tab=proposals/, { timeout: 10000 });
 
-    // Verify the URL updated with the sort parameter
-    await expect(page).toHaveURL(/sort=top/, { timeout: 10000 });
+    // Wait for either proposals or empty state to render
+    const proposalFeed = page.locator('[data-testid="proposal-feed"]');
+    await expect(proposalFeed).toBeVisible({ timeout: 15000 });
+  });
 
-    // Feed items should still render after the sort change
-    await expect(feedItems.first()).toBeVisible({ timeout: 15000 });
+  test('can navigate directly to proposals tab', async ({ page }) => {
+    await page.goto('/?tab=proposals');
+
+    const proposalsTab = page.getByRole('tab', { name: 'Proposals' });
+    await expect(proposalsTab).toHaveAttribute('aria-selected', 'true', { timeout: 15000 });
+
+    const proposalFeed = page.locator('[data-testid="proposal-feed"]');
+    await expect(proposalFeed).toBeVisible({ timeout: 15000 });
   });
 });
 
-test.describe('Activity Feed - Authenticated', () => {
+test.describe('Comments Feed', () => {
+  test('renders comments when tab is clicked', async ({ page }) => {
+    await page.goto('/');
+
+    // Click the Comments tab
+    const commentsTab = page.getByRole('tab', { name: 'Comments' });
+    await expect(commentsTab).toBeVisible({ timeout: 15000 });
+    await commentsTab.click();
+
+    // Verify the URL updated with the tab parameter
+    await expect(page).toHaveURL(/tab=comments/, { timeout: 10000 });
+
+    // Wait for either comments or empty state to render
+    const commentFeed = page.locator('[data-testid="comment-feed"]');
+    await expect(commentFeed).toBeVisible({ timeout: 15000 });
+  });
+
+  test('can navigate directly to comments tab', async ({ page }) => {
+    await page.goto('/?tab=comments');
+
+    const commentsTab = page.getByRole('tab', { name: 'Comments' });
+    await expect(commentsTab).toHaveAttribute('aria-selected', 'true', { timeout: 15000 });
+
+    const commentFeed = page.locator('[data-testid="comment-feed"]');
+    await expect(commentFeed).toBeVisible({ timeout: 15000 });
+  });
+});
+
+test.describe('Tab Navigation', () => {
+  test('all three tabs are visible', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(page.getByRole('tab', { name: 'Sessions' })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('tab', { name: 'Proposals' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Comments' })).toBeVisible();
+  });
+
+  test('tab switching preserves board filter in URL', async ({ page }) => {
+    // Start with a board filter
+    await page.goto('/?board=test-board-uuid');
+
+    // Switch to Proposals tab
+    const proposalsTab = page.getByRole('tab', { name: 'Proposals' });
+    await expect(proposalsTab).toBeVisible({ timeout: 15000 });
+    await proposalsTab.click();
+
+    // Board filter should be preserved in the URL
+    await expect(page).toHaveURL(/board=test-board-uuid/, { timeout: 10000 });
+    await expect(page).toHaveURL(/tab=proposals/, { timeout: 10000 });
+
+    // Switch to Comments tab
+    const commentsTab = page.getByRole('tab', { name: 'Comments' });
+    await commentsTab.click();
+
+    // Board filter should still be preserved
+    await expect(page).toHaveURL(/board=test-board-uuid/, { timeout: 10000 });
+    await expect(page).toHaveURL(/tab=comments/, { timeout: 10000 });
+  });
+
+  test('sessions tab does not have sort buttons', async ({ page }) => {
+    await page.goto('/');
+
+    // Wait for the page to load
+    const sessionsTab = page.getByRole('tab', { name: 'Sessions' });
+    await expect(sessionsTab).toBeVisible({ timeout: 15000 });
+
+    // Sort buttons (Top, Hot, Controversial) should NOT exist
+    await expect(page.getByRole('button', { name: 'Top' })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Hot' })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Controversial' })).not.toBeVisible();
+  });
+});
+
+test.describe('Sessions Feed - Authenticated', () => {
   test.beforeEach(async ({ page }) => {
     // Log in via the auth login form
     await page.goto('/auth/login');
@@ -80,10 +165,10 @@ test.describe('Activity Feed - Authenticated', () => {
   });
 
   test('renders personalized feed without sign-in alert', async ({ page }) => {
-    // The Activity tab should be active by default
-    const activityTab = page.getByRole('tab', { name: 'Activity' });
-    await expect(activityTab).toBeVisible({ timeout: 15000 });
-    await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+    // The Sessions tab should be active by default
+    const sessionsTab = page.getByRole('tab', { name: 'Sessions' });
+    await expect(sessionsTab).toBeVisible({ timeout: 15000 });
+    await expect(sessionsTab).toHaveAttribute('aria-selected', 'true');
 
     // Wait for feed items to render
     const feedItems = page.locator('[data-testid="activity-feed-item"]');

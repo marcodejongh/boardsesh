@@ -125,6 +125,26 @@ describe('ActivityFeed', () => {
       expect(mockRequest).toHaveBeenCalledWith('GET_SESSION_GROUPED_FEED', expect.any(Object));
     });
 
+    it('does not send sortBy or topPeriod in query', async () => {
+      mockRequest.mockResolvedValueOnce({
+        sessionGroupedFeed: { sessions: [], cursor: null, hasMore: false },
+      });
+
+      render(<ActivityFeed isAuthenticated={false} />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(mockRequest).toHaveBeenCalledWith(
+          'GET_SESSION_GROUPED_FEED',
+          expect.objectContaining({
+            input: expect.not.objectContaining({
+              sortBy: expect.anything(),
+              topPeriod: expect.anything(),
+            }),
+          }),
+        );
+      });
+    });
+
     it('shows sign-in alert for unauthenticated users', async () => {
       mockRequest.mockResolvedValueOnce({
         sessionGroupedFeed: { sessions: [makeSessionFeedItem('s1')], cursor: null, hasMore: false },

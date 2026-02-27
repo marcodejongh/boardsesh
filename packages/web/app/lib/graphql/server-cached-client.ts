@@ -192,7 +192,6 @@ export async function serverMyBoards(
  * Used for SSR on the home page for both authenticated and unauthenticated users.
  */
 export async function cachedSessionGroupedFeed(
-  sortBy: string = 'new',
   boardUuid?: string,
 ) {
   const { GET_SESSION_GROUPED_FEED } = await import('@/app/lib/graphql/operations/activity-feed');
@@ -205,7 +204,7 @@ export async function cachedSessionGroupedFeed(
     300, // 5 min cache
   );
 
-  const result = await query({ input: { sortBy, boardUuid, limit: 20 } });
+  const result = await query({ input: { boardUuid, limit: 20 } });
   return result.sessionGroupedFeed;
 }
 

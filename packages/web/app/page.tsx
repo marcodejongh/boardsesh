@@ -4,7 +4,10 @@ import ConsolidatedBoardConfig from './components/setup-wizard/consolidated-boar
 import { getAllBoardConfigs } from './lib/server-board-configs';
 import HomePageContent from './home-page-content';
 import { cachedSessionGroupedFeed, serverMyBoards } from './lib/graphql/server-cached-client';
-import type { SortMode, SessionFeedResult } from '@boardsesh/shared-schema';
+import type { SessionFeedResult } from '@boardsesh/shared-schema';
+
+type FeedTab = 'sessions' | 'proposals' | 'comments';
+const VALID_TABS: FeedTab[] = ['sessions', 'proposals', 'comments'];
 
 type HomeProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -20,10 +23,8 @@ export default async function Home({ searchParams }: HomeProps) {
   }
 
   // Parse URL state
-  const tab = (params.tab === 'newClimbs' ? 'newClimbs' : 'activity') as 'activity' | 'newClimbs';
+  const tab = (VALID_TABS.includes(params.tab as FeedTab) ? params.tab : 'sessions') as FeedTab;
   const boardUuid = typeof params.board === 'string' ? params.board : undefined;
-  const sortBy = (['new', 'top', 'controversial', 'hot'].includes(params.sort as string)
-    ? params.sort : 'new') as SortMode;
 
   // Read auth cookie to determine if user is authenticated at SSR time
   const authToken = await getServerAuthToken();
@@ -34,17 +35,17 @@ export default async function Home({ searchParams }: HomeProps) {
   let initialMyBoards: import('@boardsesh/shared-schema').UserBoard[] | null = null;
 
   if (authToken) {
-    const feedPromise = tab === 'activity'
-      ? cachedSessionGroupedFeed(sortBy, boardUuid).catch(() => null)
+    const feedPromise = tab === 'sessions'
+      ? cachedSessionGroupedFeed(boardUuid).catch(() => null)
       : Promise.resolve(null);
     const boardsPromise = serverMyBoards(authToken);
 
     const [feedResult, boardsResult] = await Promise.all([feedPromise, boardsPromise]);
     initialFeedResult = feedResult;
     initialMyBoards = boardsResult;
-  } else if (tab === 'activity') {
+  } else if (tab === 'sessions') {
     try {
-      initialFeedResult = await cachedSessionGroupedFeed(sortBy, boardUuid);
+      initialFeedResult = await cachedSessionGroupedFeed(boardUuid);
     } catch {
       // Feed fetch failed, client will retry
     }
@@ -55,7 +56,6 @@ export default async function Home({ searchParams }: HomeProps) {
       boardConfigs={boardConfigs}
       initialTab={tab}
       initialBoardUuid={boardUuid}
-      initialSortBy={sortBy}
       initialFeedResult={initialFeedResult}
       isAuthenticatedSSR={isAuthenticatedSSR}
       initialMyBoards={initialMyBoards}
