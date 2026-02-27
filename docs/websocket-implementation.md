@@ -1183,6 +1183,33 @@ Requires user authentication and controller ownership.
 | Session auto-end | 30 min | Auto-end inactive non-permanent sessions |
 | Auto-end check interval | 5 min | How often the auto-end job runs |
 
+### Error Handling and Filtering
+
+The WebSocket client includes error handling for common connection issues:
+
+**Origin/CORS Errors**
+
+Some browsers (especially Safari/WebKit on iOS) throw cryptic "invalid origin" errors during WebSocket handshake. These can be caused by:
+- Browser privacy/tracking protection blocking WebSocket connections
+- Network issues during the handshake phase
+- Server CORS configuration mismatches
+
+The client:
+1. Wraps WebSocket with early error handlers (`graphql-client.ts`)
+2. Detects origin-related errors using patterns in `websocket-errors.ts`
+3. Skips retry attempts for origin errors (they won't resolve without configuration changes)
+4. Filters these errors from Sentry to reduce noise (`instrumentation-client.ts`)
+
+**Filtered Error Patterns**
+
+The following patterns are filtered from Sentry (defined in `packages/web/app/lib/websocket-errors.ts`):
+- `invalid origin` - Browser origin validation error
+- `origin not allowed` - Server CORS rejection
+- `websocket is already in closing` - Normal lifecycle state
+- `graphql subscription` - Expected subscription lifecycle events
+
+Generic errors like "failed to fetch" or "connection closed" are NOT filtered, as they may indicate legitimate issues that need investigation.
+
 ---
 
 ## Related Files
@@ -1201,10 +1228,12 @@ Requires user authentication and controller ownership.
 
 ### Frontend
 
-- `packages/web/app/components/graphql-queue/graphql-client.ts` - WebSocket client
+- `packages/web/app/components/graphql-queue/graphql-client.ts` - WebSocket client with error handling
 - `packages/web/app/components/graphql-queue/use-queue-session.ts` - Session hook
 - `packages/web/app/components/persistent-session/persistent-session-context.tsx` - Root-level session management
 - `packages/web/app/components/graphql-queue/QueueContext.tsx` - Queue state context
+- `packages/web/app/lib/websocket-errors.ts` - WebSocket error detection utilities
+- `packages/web/instrumentation-client.ts` - Sentry error filtering
 
 ### Shared
 
