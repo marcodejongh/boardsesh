@@ -1,6 +1,6 @@
 {
   "installCommand": "npm ci --legacy-peer-deps --omit=optional",
-  "buildCommand": "if [ \"$VERCEL_ENV\" != \"preview\" ]; then npm run db:migrate; fi && npm run build --workspace=@boardsesh/web",
+  "buildCommand": "npm run db:migrate && npm run build --workspace=@boardsesh/web",
   "outputDirectory": "packages/web/.next",
   "framework": "nextjs",
   "crons": [
