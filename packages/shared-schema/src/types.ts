@@ -1162,6 +1162,9 @@ export type Proposal = {
   weightedDownvotes: number;
   requiredUpvotes: number;
   userVote: number;
+  climbName?: string | null;
+  frames?: string | null;
+  layoutId?: number | null;
 };
 
 export type ProposalConnection = {

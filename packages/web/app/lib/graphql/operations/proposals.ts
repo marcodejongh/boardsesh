@@ -37,6 +37,9 @@ export const GET_CLIMB_PROPOSALS = gql`
         weightedDownvotes
         requiredUpvotes
         userVote
+        climbName
+        frames
+        layoutId
       }
       totalCount
       hasMore
@@ -108,6 +111,9 @@ export const BROWSE_PROPOSALS = gql`
         weightedDownvotes
         requiredUpvotes
         userVote
+        climbName
+        frames
+        layoutId
       }
       totalCount
       hasMore
@@ -150,6 +156,9 @@ export const CREATE_PROPOSAL = gql`
       weightedDownvotes
       requiredUpvotes
       userVote
+      climbName
+      frames
+      layoutId
     }
   }
 `;
@@ -176,6 +185,9 @@ export const VOTE_ON_PROPOSAL = gql`
       weightedDownvotes
       requiredUpvotes
       userVote
+      climbName
+      frames
+      layoutId
     }
   }
 `;

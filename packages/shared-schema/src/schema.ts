@@ -1787,6 +1787,9 @@ export const typeDefs = /* GraphQL */ `
     weightedDownvotes: Int!
     requiredUpvotes: Int!
     userVote: Int!
+    climbName: String
+    frames: String
+    layoutId: Int
   }
 
   """

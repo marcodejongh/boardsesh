@@ -33,6 +33,7 @@ import { VOTE_ON_PROPOSAL, RESOLVE_PROPOSAL, DELETE_PROPOSAL } from '@/app/lib/g
 import type { Proposal } from '@boardsesh/shared-schema';
 import ProposalVoteBar from './proposal-vote-bar';
 import CommentSection from './comment-section';
+import ProposalClimbPreview from './proposal-climb-preview';
 
 const TYPE_LABELS: Record<string, string> = {
   grade: 'Grade',
@@ -130,6 +131,7 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDe
       <Card
         ref={cardRef}
         variant="outlined"
+        data-testid="proposal-card"
         sx={{
           mb: 1.5,
           borderColor: highlight ? themeTokens.colors.primary : themeTokens.neutral[200],
@@ -138,6 +140,9 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDe
         }}
       >
         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+          {/* Climb preview */}
+          <ProposalClimbPreview proposal={localProposal} />
+
           {/* Header */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
             <Avatar
