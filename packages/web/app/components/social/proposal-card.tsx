@@ -195,7 +195,6 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDe
             <ClimbListItem
               climb={climbAndBoardDetails.climb}
               boardDetails={climbAndBoardDetails.boardDetails}
-              disableSwipe
             />
           )}
 
