@@ -21,11 +21,9 @@ import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { FavoritesProvider } from '@/app/components/climb-actions/favorites-batch-context';
 import { PlaylistsProvider } from '@/app/components/climb-actions/playlists-batch-context';
-import { getBoardDetailsForPlaylist, getDefaultAngleForBoard } from '@/app/lib/board-config-for-playlist';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
+import { getBoardDetailsForPlaylist, getDefaultAngleForBoard, getUserBoardDetails } from '@/app/lib/board-config-for-playlist';
 import type { UserBoard } from '@boardsesh/shared-schema';
-import type { Climb, BoardDetails, BoardName } from '@/app/lib/types';
+import type { Climb, BoardDetails } from '@/app/lib/types';
 
 type SortBy = 'popular' | 'new';
 
@@ -33,23 +31,6 @@ interface SetterClimbListProps {
   username: string;
   boardTypes?: string[];
   authToken?: string | null;
-}
-
-function getUserBoardDetails(board: UserBoard): BoardDetails | null {
-  try {
-    const setIds = board.setIds.split(',').map(Number);
-    if (board.boardType === 'moonboard') {
-      return getMoonBoardDetails({ layout_id: board.layoutId, set_ids: setIds }) as BoardDetails;
-    }
-    return getBoardDetails({
-      board_name: board.boardType as BoardName,
-      layout_id: board.layoutId,
-      size_id: board.sizeId,
-      set_ids: setIds,
-    });
-  } catch {
-    return null;
-  }
 }
 
 export default function SetterClimbList({ username, boardTypes, authToken }: SetterClimbListProps) {
@@ -281,6 +262,7 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
               onLoadMore={handleLoadMore}
               headerInline={headerInline}
               hideEndMessage
+              showBottomSpacer
             />
           </PlaylistsProvider>
         </FavoritesProvider>

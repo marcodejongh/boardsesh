@@ -76,6 +76,7 @@ const BoardPageClimbsList = ({
       onLoadMore={fetchMoreClimbs}
       header={header}
       headerInline={headerInline}
+      showBottomSpacer
     />
   );
 };

@@ -11,11 +11,6 @@ import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined';
 import TimerOutlined from '@mui/icons-material/TimerOutlined';
@@ -30,13 +25,19 @@ import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import RemoveCircleOutlineOutlined from '@mui/icons-material/RemoveCircleOutlineOutlined';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import type { SessionDetail, SessionDetailTick, SessionFeedParticipant } from '@boardsesh/shared-schema';
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
 import VoteButton from '@/app/components/social/vote-button';
-import { VoteSummaryProvider } from '@/app/components/social/vote-summary-context';
 import CommentSection from '@/app/components/social/comment-section';
-import AscentThumbnail from '@/app/components/activity-feed/ascent-thumbnail';
+import ClimbsList from '@/app/components/board-page/climbs-list';
+import { FavoritesProvider } from '@/app/components/climb-actions/favorites-batch-context';
+import { PlaylistsProvider } from '@/app/components/climb-actions/playlists-batch-context';
+import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
+import { useMyBoards } from '@/app/hooks/use-my-boards';
+import { getBoardDetailsForPlaylist, getDefaultAngleForBoard, getUserBoardDetails } from '@/app/lib/board-config-for-playlist';
+import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
@@ -46,6 +47,8 @@ import {
 } from '@/app/lib/graphql/operations/activity-feed';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { themeTokens } from '@/app/theme/theme-config';
+import type { UserBoard } from '@boardsesh/shared-schema';
+import type { Climb, BoardDetails, BoardName } from '@/app/lib/types';
 import UserSearchDialog from './user-search-dialog';
 
 interface SessionDetailContentProps {
@@ -78,61 +81,81 @@ function formatDate(isoString: string): string {
   });
 }
 
-/** Group of ticks for the same climb (climbUuid) */
-interface ClimbGroup {
-  climbUuid: string;
-  climbName: string | null;
-  boardType: string;
-  layoutId: number | null;
-  angle: number;
-  frames: string | null;
-  isMirror: boolean;
-  difficultyName: string | null;
-  ticks: SessionDetailTick[];
-}
-
-/**
- * Group ticks by climbUuid, preserving the order of first appearance.
- * Each group contains all ticks for that climb (potentially from multiple users).
- */
-function groupTicksByClimb(ticks: SessionDetailTick[]): ClimbGroup[] {
-  const groupMap = new Map<string, ClimbGroup>();
-  const order: string[] = [];
-
-  for (const tick of ticks) {
-    const key = tick.climbUuid;
-    const existing = groupMap.get(key);
-    if (existing) {
-      existing.ticks.push(tick);
-    } else {
-      order.push(key);
-      groupMap.set(key, {
-        climbUuid: tick.climbUuid,
-        climbName: tick.climbName ?? null,
-        boardType: tick.boardType,
-        layoutId: tick.layoutId ?? null,
-        angle: tick.angle,
-        frames: tick.frames ?? null,
-        isMirror: tick.isMirror,
-        difficultyName: tick.difficultyName ?? null,
-        ticks: [tick],
-      });
-    }
-  }
-
-  return order.map((key) => groupMap.get(key)!);
-}
-
 function getStatusColor(status: string): 'success' | 'primary' | 'default' {
   if (status === 'flash') return 'success';
   if (status === 'send') return 'primary';
   return 'default';
 }
 
+/**
+ * Convert session ticks to deduplicated Climb objects for use with ClimbsList.
+ * Keeps the first occurrence of each climbUuid and computes litUpHoldsMap from frames.
+ */
+function convertSessionTicksToClimbs(ticks: SessionDetailTick[]): Climb[] {
+  const seen = new Map<string, Climb>();
+  const order: string[] = [];
+
+  for (const tick of ticks) {
+    if (seen.has(tick.climbUuid)) continue;
+
+    order.push(tick.climbUuid);
+
+    let litUpHoldsMap = {};
+    if (tick.frames && tick.boardType) {
+      try {
+        litUpHoldsMap = convertLitUpHoldsStringToMap(
+          tick.frames,
+          tick.boardType as BoardName,
+        )[0] || {};
+      } catch (err) {
+        console.warn(`Failed to parse litUpHoldsMap for climb ${tick.climbUuid} (boardType: ${tick.boardType}):`, err);
+      }
+    }
+
+    seen.set(tick.climbUuid, {
+      uuid: tick.climbUuid,
+      name: tick.climbName || 'Unknown Climb',
+      frames: tick.frames || '',
+      angle: tick.angle,
+      difficulty: tick.difficultyName || '',
+      quality_average: tick.quality != null ? String(tick.quality) : '0',
+      setter_username: tick.setterUsername || '',
+      litUpHoldsMap,
+      description: '',
+      ascensionist_count: 0,
+      stars: 0,
+      difficulty_error: '0',
+      benchmark_difficulty: tick.isBenchmark ? tick.difficultyName || null : null,
+      mirrored: tick.isMirror,
+      boardType: tick.boardType,
+      layoutId: tick.layoutId ?? null,
+    });
+  }
+
+  return order.map((uuid) => seen.get(uuid)!);
+}
+
+/**
+ * Build a map of climbUuid -> ticks for that climb, preserving order.
+ */
+function groupTicksByClimbUuid(ticks: SessionDetailTick[]): Map<string, SessionDetailTick[]> {
+  const map = new Map<string, SessionDetailTick[]>();
+  for (const tick of ticks) {
+    const existing = map.get(tick.climbUuid);
+    if (existing) {
+      existing.push(tick);
+    } else {
+      map.set(tick.climbUuid, [tick]);
+    }
+  }
+  return map;
+}
+
 export default function SessionDetailContent({ session: initialSession }: SessionDetailContentProps) {
   const { data: authSession } = useSession();
   const { token: authToken } = useWsAuthToken();
   const { showMessage } = useSnackbar();
+  const router = useRouter();
 
   const [session, setSession] = useState(initialSession);
   const [isEditing, setIsEditing] = useState(false);
@@ -141,6 +164,8 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   const [saving, setSaving] = useState(false);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+
+  const { boards: myBoards } = useMyBoards(true);
 
   if (!session) {
     return (
@@ -171,13 +196,11 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
     boardTypes,
     hardestGrade,
     firstTickAt,
-    lastTickAt,
     durationMinutes,
     goal,
     ticks,
     upvotes,
     downvotes,
-    commentCount,
   } = session;
 
   const currentUserId = authSession?.user?.id;
@@ -190,20 +213,171 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   const isMultiUser = participants.length > 1;
   const displayName = sessionName || generateSessionName(firstTickAt, boardTypes);
 
-  // Build a lookup from userId to participant info
-  const participantMap = new Map<string, SessionFeedParticipant>();
-  for (const p of participants) {
-    participantMap.set(p.userId, p);
-  }
+  // Build a lookup from userId to participant info (memoized to avoid recreating on every render)
+  const participantMap = useMemo(() => {
+    const map = new Map<string, SessionFeedParticipant>();
+    for (const p of participants) {
+      map.set(p.userId, p);
+    }
+    return map;
+  }, [participants]);
 
-  // For multi-user sessions, group ticks by climb to show per-user results
-  const climbGroups = isMultiUser ? groupTicksByClimb(ticks) : null;
-
-  // Collect all tick UUIDs for batch vote summary fetching
-  const tickUuids = useMemo(() => ticks.map((t) => t.uuid), [ticks]);
-
-  // Use the actual owner from the backend (inferred_sessions.userId or board_sessions.created_by_user_id)
+  // Use the actual owner from the backend
   const ownerUserId = session.ownerUserId ?? null;
+
+  // Convert ticks to Climb objects for ClimbsList
+  const sessionClimbs = useMemo(() => convertSessionTicksToClimbs(ticks), [ticks]);
+
+  // Group ticks by climb for rendering tick details below each climb
+  const ticksByClimb = useMemo(() => groupTicksByClimbUuid(ticks), [ticks]);
+
+  // Build boardDetailsMap for multi-board support
+  const { boardDetailsMap, defaultBoardDetails, unsupportedClimbs } = useMemo(() => {
+    const map: Record<string, BoardDetails> = {};
+    const unsupported = new Set<string>();
+
+    const userBoardsByKey = new Map<string, UserBoard>();
+    for (const board of myBoards) {
+      const key = `${board.boardType}:${board.layoutId}`;
+      if (!userBoardsByKey.has(key)) {
+        userBoardsByKey.set(key, board);
+      }
+    }
+
+    for (const climb of sessionClimbs) {
+      const bt = climb.boardType;
+      const layoutId = climb.layoutId;
+      if (!bt || layoutId == null) continue;
+
+      const key = `${bt}:${layoutId}`;
+      if (map[key]) continue;
+
+      const userBoard = userBoardsByKey.get(key);
+      if (userBoard) {
+        const details = getUserBoardDetails(userBoard);
+        if (details) {
+          map[key] = details;
+          continue;
+        }
+      }
+
+      const genericDetails = getBoardDetailsForPlaylist(bt, layoutId);
+      if (genericDetails) {
+        map[key] = genericDetails;
+      }
+    }
+
+    const userBoardTypes = new Set(myBoards.map((b) => b.boardType));
+    for (const climb of sessionClimbs) {
+      if (climb.boardType && !userBoardTypes.has(climb.boardType)) {
+        unsupported.add(climb.uuid);
+      }
+    }
+
+    let defaultDetails: BoardDetails | null = null;
+    if (myBoards.length > 0) {
+      defaultDetails = getUserBoardDetails(myBoards[0]);
+    }
+    if (!defaultDetails && boardTypes[0]) {
+      defaultDetails = getBoardDetailsForPlaylist(boardTypes[0], null);
+    }
+
+    return { boardDetailsMap: map, defaultBoardDetails: defaultDetails, unsupportedClimbs: unsupported };
+  }, [sessionClimbs, myBoards, boardTypes]);
+
+  // Climb actions data for favorites/playlists — derive from actual climb data, fall back to session metadata
+  const climbUuids = useMemo(() => sessionClimbs.map((c) => c.uuid), [sessionClimbs]);
+  const firstClimb = sessionClimbs[0];
+  const actionsBoardName = firstClimb?.boardType || boardTypes[0] || '';
+  const actionsLayoutId = firstClimb?.layoutId ?? 1;
+  const actionsAngle = firstClimb?.angle ?? getDefaultAngleForBoard(actionsBoardName);
+
+  const { favoritesProviderProps, playlistsProviderProps } = useClimbActionsData({
+    boardName: actionsBoardName,
+    layoutId: actionsLayoutId,
+    angle: actionsAngle,
+    climbUuids,
+  });
+
+  // Navigate to climb detail page using client-side routing
+  const navigateToClimb = useCallback(async (climb: Climb) => {
+    try {
+      const bt = climb.boardType;
+      if (!bt) return;
+      const params = new URLSearchParams({ boardType: bt, climbUuid: climb.uuid });
+      const res = await fetch(`/api/internal/climb-redirect?${params}`);
+      if (!res.ok) return;
+      const { url } = await res.json();
+      if (url) router.push(url);
+    } catch (error) {
+      console.error('Failed to navigate to climb:', error);
+    }
+  }, [router]);
+
+  // Render tick details below each climb item (per-user rows for multi-user, status/attempts for single-user)
+  const renderTickDetails = useCallback((climb: Climb) => {
+    const climbTicks = ticksByClimb.get(climb.uuid);
+    if (!climbTicks || climbTicks.length === 0) return null;
+
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, px: 2, pb: 1 }}>
+        {climbTicks.map((tick) => {
+          const participant = isMultiUser ? participantMap.get(tick.userId) : null;
+          return (
+            <Box
+              key={tick.uuid}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.75,
+                py: 0.25,
+                borderTop: `1px solid ${themeTokens.neutral[100]}`,
+              }}
+            >
+              {isMultiUser && (
+                <>
+                  <Avatar
+                    src={participant?.avatarUrl ?? undefined}
+                    sx={{ width: 18, height: 18 }}
+                  >
+                    {!participant?.avatarUrl && <PersonOutlined sx={{ fontSize: 10 }} />}
+                  </Avatar>
+                  <Typography variant="caption" sx={{ flex: 1, minWidth: 0 }} noWrap>
+                    {participant?.displayName || 'Climber'}
+                  </Typography>
+                </>
+              )}
+              <Chip
+                label={tick.status}
+                size="small"
+                color={getStatusColor(tick.status)}
+                variant={tick.status === 'attempt' ? 'outlined' : 'filled'}
+                sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontSize: themeTokens.typography.fontSize.xs - 1 } }}
+              />
+              {tick.attemptCount > 1 && (
+                <Typography variant="caption" color="text.secondary">
+                  {tick.attemptCount}x
+                </Typography>
+              )}
+              {tick.comment && (
+                <Typography variant="caption" color="text.secondary" sx={{ flex: isMultiUser ? undefined : 1, minWidth: 0 }} noWrap>
+                  {tick.comment}
+                </Typography>
+              )}
+              <VoteButton
+                entityType="tick"
+                entityId={tick.uuid}
+                initialUpvotes={0}
+                initialDownvotes={0}
+                initialUserVote={0}
+                likeOnly
+              />
+            </Box>
+          );
+        })}
+      </Box>
+    );
+  }, [ticksByClimb, participantMap, isMultiUser]);
 
   const handleStartEdit = useCallback(() => {
     setEditName(sessionName || '');
@@ -282,6 +456,8 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
       setRemovingUserId(null);
     }
   }, [authToken, sessionId, showMessage]);
+
+  const noopLoadMore = useCallback(() => {}, []);
 
   return (
     <Box sx={{ minHeight: '100dvh', pb: '60px' }}>
@@ -506,164 +682,31 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
 
         <Divider />
 
-        {/* Tick list */}
+        {/* Climbs list */}
         <Typography variant="subtitle1" fontWeight={600}>
-          Climbs ({isMultiUser ? climbGroups!.length : ticks.length})
+          Climbs ({sessionClimbs.length})
         </Typography>
-
-        <VoteSummaryProvider entityType="tick" entityIds={tickUuids}>
-        {isMultiUser && climbGroups ? (
-          /* Multi-user: group by climb, show per-user results */
-          climbGroups.map((group) => (
-            <Card key={group.climbUuid}>
-              <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                <Box sx={{ display: 'flex', gap: 1.5 }}>
-                  {/* Thumbnail */}
-                  {group.frames && group.layoutId && (
-                    <Box sx={{ width: 60, flexShrink: 0 }}>
-                      <AscentThumbnail
-                        boardType={group.boardType}
-                        layoutId={group.layoutId}
-                        angle={group.angle}
-                        climbUuid={group.climbUuid}
-                        climbName={group.climbName || 'Unknown'}
-                        frames={group.frames}
-                        isMirror={group.isMirror}
-                      />
-                    </Box>
-                  )}
-
-                  {/* Climb info + per-user results */}
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="body2" fontWeight={600} noWrap>
-                      {group.climbName || 'Unknown Climb'}
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', mt: 0.5 }}>
-                      {group.difficultyName && (
-                        <Chip label={group.difficultyName} size="small" />
-                      )}
-                      <Typography variant="caption" color="text.secondary">
-                        {group.angle}&deg;
-                      </Typography>
-                    </Box>
-
-                    {/* Per-user tick rows */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
-                      {group.ticks.map((tick) => {
-                        const participant = participantMap.get(tick.userId);
-                        return (
-                          <Box
-                            key={tick.uuid}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 0.75,
-                              py: 0.25,
-                              borderTop: `1px solid ${themeTokens.neutral[100]}`,
-                            }}
-                          >
-                            <Avatar
-                              src={participant?.avatarUrl ?? undefined}
-                              sx={{ width: 18, height: 18 }}
-                            >
-                              {!participant?.avatarUrl && <PersonOutlined sx={{ fontSize: 10 }} />}
-                            </Avatar>
-                            <Typography variant="caption" sx={{ flex: 1, minWidth: 0 }} noWrap>
-                              {participant?.displayName || 'Climber'}
-                            </Typography>
-                            <Chip
-                              label={tick.status}
-                              size="small"
-                              color={getStatusColor(tick.status)}
-                              variant={tick.status === 'attempt' ? 'outlined' : 'filled'}
-                              sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontSize: themeTokens.typography.fontSize.xs - 1 } }}
-                            />
-                            {tick.attemptCount > 1 && (
-                              <Typography variant="caption" color="text.secondary">
-                                {tick.attemptCount}x
-                              </Typography>
-                            )}
-                            <VoteButton
-                              entityType="tick"
-                              entityId={tick.uuid}
-                              likeOnly
-                            />
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          /* Single-user: show flat tick list */
-          ticks.map((tick) => (
-            <Card key={tick.uuid}>
-              <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                <Box sx={{ display: 'flex', gap: 1.5 }}>
-                  {/* Thumbnail */}
-                  {tick.frames && tick.layoutId && (
-                    <Box sx={{ width: 60, flexShrink: 0 }}>
-                      <AscentThumbnail
-                        boardType={tick.boardType}
-                        layoutId={tick.layoutId}
-                        angle={tick.angle}
-                        climbUuid={tick.climbUuid}
-                        climbName={tick.climbName || 'Unknown'}
-                        frames={tick.frames}
-                        isMirror={tick.isMirror}
-                      />
-                    </Box>
-                  )}
-
-                  {/* Tick info */}
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="body2" fontWeight={600} noWrap>
-                      {tick.climbName || 'Unknown Climb'}
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
-                      {tick.difficultyName && (
-                        <Chip label={tick.difficultyName} size="small" />
-                      )}
-                      <Chip
-                        label={tick.status}
-                        size="small"
-                        color={getStatusColor(tick.status)}
-                        variant={tick.status === 'attempt' ? 'outlined' : 'filled'}
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        {tick.angle}&deg;
-                      </Typography>
-                      {tick.attemptCount > 1 && (
-                        <Typography variant="caption" color="text.secondary">
-                          {tick.attemptCount} attempts
-                        </Typography>
-                      )}
-                    </Box>
-                    {tick.comment && (
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                        {tick.comment}
-                      </Typography>
-                    )}
-                  </Box>
-
-                  {/* Per-tick vote */}
-                  <Box sx={{ flexShrink: 0 }}>
-                    <VoteButton
-                      entityType="tick"
-                      entityId={tick.uuid}
-                      likeOnly
-                    />
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          ))
-        )}
-        </VoteSummaryProvider>
       </Box>
+
+      {defaultBoardDetails && sessionClimbs.length > 0 && (
+        <FavoritesProvider {...favoritesProviderProps}>
+          <PlaylistsProvider {...playlistsProviderProps}>
+            <ClimbsList
+              boardDetails={defaultBoardDetails}
+              boardDetailsMap={boardDetailsMap}
+              unsupportedClimbs={unsupportedClimbs}
+              climbs={sessionClimbs}
+              isFetching={false}
+              hasMore={false}
+              onClimbSelect={navigateToClimb}
+              onLoadMore={noopLoadMore}
+              hideEndMessage
+              showBottomSpacer
+              renderItemExtra={renderTickDetails}
+            />
+          </PlaylistsProvider>
+        </FavoritesProvider>
+      )}
 
       {/* Add User Dialog */}
       <UserSearchDialog
