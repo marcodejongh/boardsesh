@@ -80,6 +80,22 @@ async function enrichProposal(
     userVote = myVote?.value || 0;
   }
 
+  // Fetch climb data (name, frames, layoutId)
+  const [climb] = await db
+    .select({
+      name: dbSchema.boardClimbs.name,
+      frames: dbSchema.boardClimbs.frames,
+      layoutId: dbSchema.boardClimbs.layoutId,
+    })
+    .from(dbSchema.boardClimbs)
+    .where(
+      and(
+        eq(dbSchema.boardClimbs.uuid, proposal.climbUuid),
+        eq(dbSchema.boardClimbs.boardType, proposal.boardType),
+      ),
+    )
+    .limit(1);
+
   return {
     uuid: proposal.uuid,
     climbUuid: proposal.climbUuid,
@@ -100,6 +116,9 @@ async function enrichProposal(
     weightedDownvotes,
     requiredUpvotes,
     userVote,
+    climbName: climb?.name || undefined,
+    frames: climb?.frames || undefined,
+    layoutId: climb?.layoutId || undefined,
   };
 }
 
@@ -151,8 +170,21 @@ async function batchEnrichProposals(
     else entry.weightedDownvotes += Math.abs(v.value) * v.weight;
   }
 
-  // Query 3: Batch approval thresholds
+  // Query 3: Batch climb data (name, frames, layoutId)
   const uniqueClimbUuids = [...new Set(proposals.map((p) => p.climbUuid))];
+  const climbRows = await db
+    .select({
+      uuid: dbSchema.boardClimbs.uuid,
+      boardType: dbSchema.boardClimbs.boardType,
+      name: dbSchema.boardClimbs.name,
+      frames: dbSchema.boardClimbs.frames,
+      layoutId: dbSchema.boardClimbs.layoutId,
+    })
+    .from(dbSchema.boardClimbs)
+    .where(inArray(dbSchema.boardClimbs.uuid, uniqueClimbUuids));
+
+  const climbMap = new Map(climbRows.map((c) => [`${c.uuid}:${c.boardType}`, c]));
+
   const uniqueBoardTypes = [...new Set(proposals.map((p) => p.boardType))];
 
   const thresholdRows = await db
@@ -185,7 +217,7 @@ async function batchEnrichProposals(
     return parseInt(DEFAULTS['approval_threshold'], 10) || 5;
   }
 
-  // Query 4 (conditional): Batch user votes
+  // Query 5 (conditional): Batch user votes
   const userVoteMap = new Map<number, number>();
   if (authenticatedUserId) {
     const userVoteRows = await db
@@ -212,6 +244,7 @@ async function batchEnrichProposals(
     const votes = voteMap.get(proposal.id) || { weightedUpvotes: 0, weightedDownvotes: 0 };
     const requiredUpvotes = resolveThreshold(proposal.climbUuid, proposal.boardType);
     const userVote = userVoteMap.get(proposal.id) || 0;
+    const climb = climbMap.get(`${proposal.climbUuid}:${proposal.boardType}`);
 
     return {
       uuid: proposal.uuid,
@@ -233,6 +266,9 @@ async function batchEnrichProposals(
       weightedDownvotes: votes.weightedDownvotes,
       requiredUpvotes,
       userVote,
+      climbName: climb?.name || undefined,
+      frames: climb?.frames || undefined,
+      layoutId: climb?.layoutId || undefined,
     };
   });
 }

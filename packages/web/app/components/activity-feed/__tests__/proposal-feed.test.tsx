@@ -62,6 +62,9 @@ function makeProposal(uuid: string): Proposal {
     weightedDownvotes: 0,
     requiredUpvotes: 5,
     userVote: 0,
+    climbName: 'Test Climb',
+    frames: 'p123r14',
+    layoutId: 1,
   };
 }
 
