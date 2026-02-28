@@ -57,6 +57,11 @@ vi.mock('@/app/components/social/vote-button', () => ({
   ),
 }));
 
+vi.mock('@/app/components/social/vote-summary-context', () => ({
+  VoteSummaryProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useVoteSummaryContext: () => null,
+}));
+
 vi.mock('@/app/components/social/comment-section', () => ({
   default: ({ entityType, entityId }: { entityType: string; entityId: string }) => (
     <div data-testid="comment-section" data-entity-type={entityType} data-entity-id={entityId} />

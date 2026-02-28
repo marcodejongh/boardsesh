@@ -16,6 +16,7 @@ import {
   type GetSessionGroupedFeedQueryResponse,
 } from '@/app/lib/graphql/operations';
 import type { SessionFeedItem, SessionFeedResult } from '@boardsesh/shared-schema';
+import { VoteSummaryProvider } from '@/app/components/social/vote-summary-context';
 import SessionFeedCard from './session-feed-card';
 import FeedItemSkeleton from './feed-item-skeleton';
 import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
@@ -85,6 +86,11 @@ export default function ActivityFeed({
     [data],
   );
 
+  const sessionIds = useMemo(
+    () => sessions.map((s) => s.sessionId),
+    [sessions],
+  );
+
   const { sentinelRef } = useInfiniteScroll({
     onLoadMore: fetchNextPage,
     hasMore: hasNextPage ?? false,
@@ -139,7 +145,7 @@ export default function ActivityFeed({
           />
         )
       ) : (
-        <>
+        <VoteSummaryProvider entityType="session" entityIds={sessionIds}>
           {sessions.map((session) => (
             <SessionFeedCard key={session.sessionId} session={session} />
           ))}
@@ -151,7 +157,7 @@ export default function ActivityFeed({
               </>
             )}
           </Box>
-        </>
+        </VoteSummaryProvider>
       )}
     </Box>
   );

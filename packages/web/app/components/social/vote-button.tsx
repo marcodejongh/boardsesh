@@ -21,6 +21,7 @@ import {
 } from '@/app/lib/graphql/operations';
 import { themeTokens } from '@/app/theme/theme-config';
 import type { SocialEntityType } from '@boardsesh/shared-schema';
+import { useVoteSummaryContext } from './vote-summary-context';
 
 interface VoteButtonProps {
   entityType: SocialEntityType;
@@ -43,6 +44,10 @@ export default function VoteButton({
   likeOnly = false,
   onVoteChange,
 }: VoteButtonProps) {
+  // Check for batch-fetched vote data from a parent VoteSummaryProvider
+  const voteSummaryCtx = useVoteSummaryContext();
+  const batchSummary = voteSummaryCtx?.getVoteSummary(entityId);
+
   const [upvotes, setUpvotes] = useState(initialUpvotes);
   const [downvotes, setDownvotes] = useState(initialDownvotes);
   const [userVote, setUserVote] = useState(initialUserVote ?? 0);
@@ -50,14 +55,30 @@ export default function VoteButton({
   const { token, isAuthenticated } = useWsAuthToken();
   const { showMessage } = useSnackbar();
 
-  // Fetch the current user's vote state on mount so liked/upvoted items show as filled.
-  // Skip when initialUserVote was explicitly provided by the parent (avoids redundant API calls).
-  const fetchedEntityRef = useRef<string | null>(null);
   const hasVotedRef = useRef(false);
+
+  // Sync state when batch context data arrives asynchronously
+  const appliedBatchRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!batchSummary || initialUserVote !== undefined) return;
+    const key = `${batchSummary.entityId}:${batchSummary.userVote}:${batchSummary.upvotes}:${batchSummary.downvotes}`;
+    if (appliedBatchRef.current === key) return;
+    appliedBatchRef.current = key;
+    if (!hasVotedRef.current) {
+      setUpvotes(batchSummary.upvotes);
+      setDownvotes(batchSummary.downvotes);
+      setUserVote(batchSummary.userVote);
+    }
+  }, [batchSummary, initialUserVote]);
+
+  // Fallback: fetch individually only when no data is provided by props or batch context,
+  // and no VoteSummaryProvider is present (which handles the fetch in bulk).
+  const fetchedEntityRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
     if (initialUserVote !== undefined) return;
+    if (voteSummaryCtx) return;
 
     const key = `${entityType}:${entityId}`;
     if (fetchedEntityRef.current === key) return;
@@ -88,7 +109,7 @@ export default function VoteButton({
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, token, entityType, entityId, initialUserVote]);
+  }, [isAuthenticated, token, entityType, entityId, initialUserVote, voteSummaryCtx]);
 
   const handleVote = useCallback(
     async (value: 1 | -1) => {
