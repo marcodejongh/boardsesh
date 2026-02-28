@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback } from 'react';
-import { usePlaylistsContext, type Playlist } from './playlists-batch-context';
+import { useCallback, useContext } from 'react';
+import { PlaylistsContext, type Playlist } from './playlists-batch-context';
 
 type UsePlaylistsOptions = {
   climbUuid: string;
@@ -24,45 +24,67 @@ type UsePlaylistsReturn = {
   refreshPlaylists: () => Promise<void>;
 };
 
+const emptySet = new Set<string>();
+const noopAsync = async () => {};
+const noopCreatePlaylist = async (): Promise<Playlist> => {
+  return {
+    id: '',
+    uuid: '',
+    boardType: '',
+    name: '',
+    isPublic: false,
+    createdAt: '',
+    updatedAt: '',
+    climbCount: 0,
+  };
+};
+
 /**
  * Hook to manage playlist operations for a specific climb.
+ *
+ * When rendered outside a PlaylistsProvider (e.g. on the home page proposals feed),
+ * returns safe defaults — playlist actions will be unavailable but won't crash.
  */
 export function usePlaylists({ climbUuid, angle }: UsePlaylistsOptions): UsePlaylistsReturn {
-  const {
-    playlists,
-    getPlaylistsForClimb,
-    addToPlaylist: addToPlaylistContext,
-    removeFromPlaylist: removeFromPlaylistContext,
-    createPlaylist: createPlaylistContext,
-    isLoading,
-    isAuthenticated,
-    refreshPlaylists,
-  } = usePlaylistsContext();
-
-  const playlistsContainingClimb = getPlaylistsForClimb(climbUuid);
+  const context = useContext(PlaylistsContext);
 
   const addToPlaylist = useCallback(
     async (playlistId: string): Promise<void> => {
-      return addToPlaylistContext(playlistId, climbUuid, angle);
+      if (!context) return;
+      return context.addToPlaylist(playlistId, climbUuid, angle);
     },
-    [addToPlaylistContext, climbUuid, angle]
+    [context, climbUuid, angle]
   );
 
   const removeFromPlaylist = useCallback(
     async (playlistId: string): Promise<void> => {
-      return removeFromPlaylistContext(playlistId, climbUuid);
+      if (!context) return;
+      return context.removeFromPlaylist(playlistId, climbUuid);
     },
-    [removeFromPlaylistContext, climbUuid]
+    [context, climbUuid]
   );
 
+  if (!context) {
+    return {
+      playlists: [],
+      playlistsContainingClimb: emptySet,
+      addToPlaylist: noopAsync,
+      removeFromPlaylist: noopAsync,
+      createPlaylist: noopCreatePlaylist,
+      isLoading: false,
+      isAuthenticated: false,
+      refreshPlaylists: noopAsync,
+    };
+  }
+
   return {
-    playlists,
-    playlistsContainingClimb,
+    playlists: context.playlists,
+    playlistsContainingClimb: context.getPlaylistsForClimb(climbUuid),
     addToPlaylist,
     removeFromPlaylist,
-    createPlaylist: createPlaylistContext,
-    isLoading,
-    isAuthenticated,
-    refreshPlaylists,
+    createPlaylist: context.createPlaylist,
+    isLoading: context.isLoading,
+    isAuthenticated: context.isAuthenticated,
+    refreshPlaylists: context.refreshPlaylists,
   };
 }

@@ -1165,6 +1165,12 @@ export type Proposal = {
   climbName?: string | null;
   frames?: string | null;
   layoutId?: number | null;
+  climbSetterUsername?: string | null;
+  climbDifficulty?: string | null;
+  climbQualityAverage?: string | null;
+  climbAscensionistCount?: number | null;
+  climbDifficultyError?: string | null;
+  climbBenchmarkDifficulty?: string | null;
 };
 
 export type ProposalConnection = {

@@ -80,12 +80,13 @@ async function enrichProposal(
     userVote = myVote?.value || 0;
   }
 
-  // Fetch climb data (name, frames, layoutId)
+  // Fetch climb data (name, frames, layoutId, setterUsername)
   const [climb] = await db
     .select({
       name: dbSchema.boardClimbs.name,
       frames: dbSchema.boardClimbs.frames,
       layoutId: dbSchema.boardClimbs.layoutId,
+      setterUsername: dbSchema.boardClimbs.setterUsername,
     })
     .from(dbSchema.boardClimbs)
     .where(
@@ -95,6 +96,53 @@ async function enrichProposal(
       ),
     )
     .limit(1);
+
+  // Fetch climb stats and difficulty grade name (if proposal has an angle)
+  let climbDifficulty: string | undefined;
+  let climbQualityAverage: string | undefined;
+  let climbAscensionistCount: number | undefined;
+  let climbDifficultyError: string | undefined;
+  let climbBenchmarkDifficulty: string | undefined;
+
+  if (proposal.angle != null) {
+    const [stats] = await db
+      .select({
+        displayDifficulty: dbSchema.boardClimbStats.displayDifficulty,
+        difficultyAverage: dbSchema.boardClimbStats.difficultyAverage,
+        qualityAverage: dbSchema.boardClimbStats.qualityAverage,
+        ascensionistCount: dbSchema.boardClimbStats.ascensionistCount,
+        benchmarkDifficulty: dbSchema.boardClimbStats.benchmarkDifficulty,
+        boulderName: dbSchema.boardDifficultyGrades.boulderName,
+      })
+      .from(dbSchema.boardClimbStats)
+      .leftJoin(
+        dbSchema.boardDifficultyGrades,
+        and(
+          eq(dbSchema.boardDifficultyGrades.boardType, dbSchema.boardClimbStats.boardType),
+          sql`${dbSchema.boardDifficultyGrades.difficulty} = ROUND(${dbSchema.boardClimbStats.displayDifficulty}::numeric)`,
+        ),
+      )
+      .where(
+        and(
+          eq(dbSchema.boardClimbStats.climbUuid, proposal.climbUuid),
+          eq(dbSchema.boardClimbStats.boardType, proposal.boardType),
+          eq(dbSchema.boardClimbStats.angle, proposal.angle),
+        ),
+      )
+      .limit(1);
+
+    if (stats) {
+      climbDifficulty = stats.boulderName || undefined;
+      climbQualityAverage = stats.qualityAverage != null ? String(Math.round(stats.qualityAverage * 100) / 100) : undefined;
+      climbAscensionistCount = stats.ascensionistCount ?? undefined;
+      climbDifficultyError = (stats.difficultyAverage != null && stats.displayDifficulty != null)
+        ? String(Math.round((stats.difficultyAverage - stats.displayDifficulty) * 100) / 100)
+        : undefined;
+      climbBenchmarkDifficulty = (stats.benchmarkDifficulty != null && stats.benchmarkDifficulty > 0)
+        ? String(stats.benchmarkDifficulty)
+        : undefined;
+    }
+  }
 
   return {
     uuid: proposal.uuid,
@@ -119,6 +167,12 @@ async function enrichProposal(
     climbName: climb?.name || undefined,
     frames: climb?.frames || undefined,
     layoutId: climb?.layoutId || undefined,
+    climbSetterUsername: climb?.setterUsername || undefined,
+    climbDifficulty,
+    climbQualityAverage,
+    climbAscensionistCount,
+    climbDifficultyError,
+    climbBenchmarkDifficulty,
   };
 }
 
@@ -170,7 +224,7 @@ async function batchEnrichProposals(
     else entry.weightedDownvotes += Math.abs(v.value) * v.weight;
   }
 
-  // Query 3: Batch climb data (name, frames, layoutId)
+  // Query 3: Batch climb data (name, frames, layoutId, setterUsername)
   const uniqueClimbUuids = [...new Set(proposals.map((p) => p.climbUuid))];
   const climbRows = await db
     .select({
@@ -179,11 +233,66 @@ async function batchEnrichProposals(
       name: dbSchema.boardClimbs.name,
       frames: dbSchema.boardClimbs.frames,
       layoutId: dbSchema.boardClimbs.layoutId,
+      setterUsername: dbSchema.boardClimbs.setterUsername,
     })
     .from(dbSchema.boardClimbs)
     .where(inArray(dbSchema.boardClimbs.uuid, uniqueClimbUuids));
 
   const climbMap = new Map(climbRows.map((c) => [`${c.uuid}:${c.boardType}`, c]));
+
+  // Query 3b: Batch climb stats with difficulty grade names
+  // Build unique (climbUuid, boardType, angle) tuples from proposals that have an angle
+  const proposalsWithAngle = proposals.filter((p) => p.angle != null);
+  type StatsEntry = {
+    boulderName: string | null;
+    qualityAverage: number | null;
+    ascensionistCount: number | null;
+    difficultyAverage: number | null;
+    displayDifficulty: number | null;
+    benchmarkDifficulty: number | null;
+  };
+  const statsMap = new Map<string, StatsEntry>();
+
+  if (proposalsWithAngle.length > 0) {
+    const uniqueStatsKeys = [...new Set(proposalsWithAngle.map((p) => `${p.climbUuid}:${p.boardType}:${p.angle}`))];
+    const statsConditions = uniqueStatsKeys.map((key) => {
+      const [climbUuid, boardType, angle] = key.split(':');
+      return sql`(${dbSchema.boardClimbStats.climbUuid} = ${climbUuid} AND ${dbSchema.boardClimbStats.boardType} = ${boardType} AND ${dbSchema.boardClimbStats.angle} = ${parseInt(angle, 10)})`;
+    });
+
+    const statsRows = await db
+      .select({
+        climbUuid: dbSchema.boardClimbStats.climbUuid,
+        boardType: dbSchema.boardClimbStats.boardType,
+        angle: dbSchema.boardClimbStats.angle,
+        displayDifficulty: dbSchema.boardClimbStats.displayDifficulty,
+        difficultyAverage: dbSchema.boardClimbStats.difficultyAverage,
+        qualityAverage: dbSchema.boardClimbStats.qualityAverage,
+        ascensionistCount: dbSchema.boardClimbStats.ascensionistCount,
+        benchmarkDifficulty: dbSchema.boardClimbStats.benchmarkDifficulty,
+        boulderName: dbSchema.boardDifficultyGrades.boulderName,
+      })
+      .from(dbSchema.boardClimbStats)
+      .leftJoin(
+        dbSchema.boardDifficultyGrades,
+        and(
+          eq(dbSchema.boardDifficultyGrades.boardType, dbSchema.boardClimbStats.boardType),
+          sql`${dbSchema.boardDifficultyGrades.difficulty} = ROUND(${dbSchema.boardClimbStats.displayDifficulty}::numeric)`,
+        ),
+      )
+      .where(sql`(${sql.join(statsConditions, sql` OR `)})`);
+
+    for (const row of statsRows) {
+      statsMap.set(`${row.climbUuid}:${row.boardType}:${row.angle}`, {
+        boulderName: row.boulderName,
+        qualityAverage: row.qualityAverage,
+        ascensionistCount: row.ascensionistCount,
+        difficultyAverage: row.difficultyAverage,
+        displayDifficulty: row.displayDifficulty,
+        benchmarkDifficulty: row.benchmarkDifficulty,
+      });
+    }
+  }
 
   const uniqueBoardTypes = [...new Set(proposals.map((p) => p.boardType))];
 
@@ -246,6 +355,10 @@ async function batchEnrichProposals(
     const userVote = userVoteMap.get(proposal.id) || 0;
     const climb = climbMap.get(`${proposal.climbUuid}:${proposal.boardType}`);
 
+    const stats = proposal.angle != null
+      ? statsMap.get(`${proposal.climbUuid}:${proposal.boardType}:${proposal.angle}`)
+      : undefined;
+
     return {
       uuid: proposal.uuid,
       climbUuid: proposal.climbUuid,
@@ -269,6 +382,16 @@ async function batchEnrichProposals(
       climbName: climb?.name || undefined,
       frames: climb?.frames || undefined,
       layoutId: climb?.layoutId || undefined,
+      climbSetterUsername: climb?.setterUsername || undefined,
+      climbDifficulty: stats?.boulderName || undefined,
+      climbQualityAverage: stats?.qualityAverage != null ? String(Math.round(stats.qualityAverage * 100) / 100) : undefined,
+      climbAscensionistCount: stats?.ascensionistCount ?? undefined,
+      climbDifficultyError: (stats?.difficultyAverage != null && stats?.displayDifficulty != null)
+        ? String(Math.round((stats.difficultyAverage - stats.displayDifficulty) * 100) / 100)
+        : undefined,
+      climbBenchmarkDifficulty: (stats?.benchmarkDifficulty != null && stats.benchmarkDifficulty > 0)
+        ? String(stats.benchmarkDifficulty)
+        : undefined,
     };
   });
 }

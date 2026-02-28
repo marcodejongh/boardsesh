@@ -20,18 +20,46 @@ vi.mock('@/app/lib/graphql/operations/proposals', () => ({
   DELETE_PROPOSAL: 'DELETE_PROPOSAL',
 }));
 
-// Mock ProposalClimbPreview to verify it receives the correct props
-const mockClimbPreview = vi.fn();
-vi.mock('../proposal-climb-preview', () => ({
-  default: (props: { proposal: Proposal }) => {
-    mockClimbPreview(props);
+// Mock ClimbListItem to verify it receives the correct props
+const mockClimbListItem = vi.fn();
+vi.mock('@/app/components/climb-card/climb-list-item', () => ({
+  default: (props: { climb: { uuid: string; name: string; difficulty: string; setter_username: string }; disableSwipe?: boolean }) => {
+    mockClimbListItem(props);
     return (
-      <div data-testid="proposal-climb-preview-mock">
-        {props.proposal.climbName && <span data-testid="preview-climb-name">{props.proposal.climbName}</span>}
-        {props.proposal.angle != null && <span data-testid="preview-angle">{props.proposal.angle}</span>}
+      <div data-testid="climb-list-item-mock">
+        {props.climb.name && <span data-testid="climb-name">{props.climb.name}</span>}
+        {props.climb.difficulty && <span data-testid="climb-difficulty">{props.climb.difficulty}</span>}
+        {props.climb.setter_username && <span data-testid="climb-setter">{props.climb.setter_username}</span>}
+        {props.disableSwipe && <span data-testid="disable-swipe">true</span>}
       </div>
     );
   },
+}));
+
+// Mock board utilities
+vi.mock('@/app/components/board-renderer/util', () => ({
+  convertLitUpHoldsStringToMap: () => [{ 123: { state: 1 } }],
+}));
+
+vi.mock('@/app/lib/board-utils', () => ({
+  getBoardDetailsForBoard: (params: { board_name: string }) => ({
+    board_name: params.board_name,
+    layout_id: 1,
+    size_id: 1,
+    set_ids: '1',
+    images_to_holds: {},
+    holdsData: {},
+    edge_left: 0,
+    edge_right: 0,
+    edge_bottom: 0,
+    edge_top: 0,
+    boardHeight: 100,
+    boardWidth: 100,
+  }),
+}));
+
+vi.mock('@/app/lib/default-board-configs', () => ({
+  getDefaultBoardConfig: () => ({ sizeId: 1, setIds: '1' }),
 }));
 
 vi.mock('../proposal-vote-bar', () => ({
@@ -92,6 +120,12 @@ function makeProposal(overrides: Partial<Proposal> = {}): Proposal {
     climbName: 'Test Boulder',
     frames: 'p123r14p456r15',
     layoutId: 1,
+    climbSetterUsername: 'setter_joe',
+    climbDifficulty: 'V4',
+    climbQualityAverage: '3.5',
+    climbAscensionistCount: 42,
+    climbDifficultyError: '0.5',
+    climbBenchmarkDifficulty: null,
     ...overrides,
   };
 }
@@ -102,49 +136,120 @@ describe('ProposalCard', () => {
     mockRequest.mockReset();
   });
 
-  describe('Climb preview integration', () => {
-    it('renders ProposalClimbPreview component', () => {
+  describe('ClimbListItem integration', () => {
+    it('renders ClimbListItem component', () => {
       render(<ProposalCard proposal={makeProposal()} />);
-      expect(screen.getByTestId('proposal-climb-preview-mock')).toBeTruthy();
+      expect(screen.getByTestId('climb-list-item-mock')).toBeTruthy();
     });
 
-    it('passes the full proposal to ProposalClimbPreview', () => {
-      const proposal = makeProposal({ climbName: 'My Boulder', angle: 45 });
-      render(<ProposalCard proposal={proposal} />);
-      expect(mockClimbPreview).toHaveBeenCalledWith(
-        expect.objectContaining({
-          proposal: expect.objectContaining({
+    it('passes disableSwipe prop to ClimbListItem', () => {
+      render(<ProposalCard proposal={makeProposal()} />);
+      expect(screen.getByTestId('disable-swipe')).toBeTruthy();
+      expect(mockClimbListItem).toHaveBeenCalledWith(
+        expect.objectContaining({ disableSwipe: true }),
+      );
+    });
+
+    it('constructs climb data from proposal fields', () => {
+      render(
+        <ProposalCard
+          proposal={makeProposal({
             climbName: 'My Boulder',
-            angle: 45,
-            climbUuid: 'climb-abc123',
-            boardType: 'kilter',
-            frames: 'p123r14p456r15',
-            layoutId: 1,
+            climbSetterUsername: 'alice',
+            climbDifficulty: 'V6',
+          })}
+        />,
+      );
+
+      expect(mockClimbListItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          climb: expect.objectContaining({
+            uuid: 'climb-abc123',
+            name: 'My Boulder',
+            setter_username: 'alice',
+            difficulty: 'V6',
           }),
         }),
       );
     });
 
-    it('shows preview with climb name when available', () => {
-      render(<ProposalCard proposal={makeProposal({ climbName: 'Moonlight Sonata' })} />);
-      expect(screen.getByTestId('preview-climb-name').textContent).toBe('Moonlight Sonata');
+    it('passes climb quality and stats from proposal', () => {
+      render(
+        <ProposalCard
+          proposal={makeProposal({
+            climbQualityAverage: '4.2',
+            climbAscensionistCount: 100,
+            climbDifficultyError: '0.3',
+          })}
+        />,
+      );
+
+      expect(mockClimbListItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          climb: expect.objectContaining({
+            quality_average: '4.2',
+            ascensionist_count: 100,
+            difficulty_error: '0.3',
+          }),
+        }),
+      );
     });
 
-    it('shows preview with angle when available', () => {
-      render(<ProposalCard proposal={makeProposal({ angle: 45 })} />);
-      expect(screen.getByTestId('preview-angle').textContent).toBe('45');
+    it('passes boardDetails with correct board_name', () => {
+      render(<ProposalCard proposal={makeProposal({ boardType: 'kilter' })} />);
+
+      expect(mockClimbListItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          boardDetails: expect.objectContaining({
+            board_name: 'kilter',
+          }),
+        }),
+      );
     });
 
-    it('renders preview without climb name when not available', () => {
-      render(<ProposalCard proposal={makeProposal({ climbName: null })} />);
-      expect(screen.getByTestId('proposal-climb-preview-mock')).toBeTruthy();
-      expect(screen.queryByTestId('preview-climb-name')).toBeNull();
+    it('does not render ClimbListItem when climbName and frames are null', () => {
+      render(
+        <ProposalCard proposal={makeProposal({ climbName: null, frames: null })} />,
+      );
+      expect(screen.queryByTestId('climb-list-item-mock')).toBeNull();
     });
 
-    it('renders preview without angle when not available', () => {
+    it('does not render ClimbListItem when layoutId is null', () => {
+      render(<ProposalCard proposal={makeProposal({ layoutId: null })} />);
+      expect(screen.queryByTestId('climb-list-item-mock')).toBeNull();
+    });
+
+    it('does not render ClimbListItem when angle is null', () => {
       render(<ProposalCard proposal={makeProposal({ angle: null })} />);
-      expect(screen.getByTestId('proposal-climb-preview-mock')).toBeTruthy();
-      expect(screen.queryByTestId('preview-angle')).toBeNull();
+      expect(screen.queryByTestId('climb-list-item-mock')).toBeNull();
+    });
+
+    it('handles missing optional climb fields gracefully', () => {
+      render(
+        <ProposalCard
+          proposal={makeProposal({
+            climbSetterUsername: null,
+            climbDifficulty: null,
+            climbQualityAverage: null,
+            climbAscensionistCount: null,
+            climbDifficultyError: null,
+            climbBenchmarkDifficulty: null,
+          })}
+        />,
+      );
+
+      expect(mockClimbListItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          climb: expect.objectContaining({
+            setter_username: '',
+            difficulty: '',
+            quality_average: '0',
+            ascensionist_count: 0,
+            difficulty_error: '0',
+            benchmark_difficulty: null,
+          }),
+        }),
+      );
     });
   });
 
@@ -270,8 +375,8 @@ describe('ProposalCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /support/i }));
 
       await waitFor(() => {
-        // The climb preview should still show the climb name after the vote update
-        expect(screen.getByTestId('preview-climb-name').textContent).toBe('Original Climb');
+        // The climb list item should still show the climb name after the vote update
+        expect(screen.getByTestId('climb-name').textContent).toBe('Original Climb');
       });
     });
   });

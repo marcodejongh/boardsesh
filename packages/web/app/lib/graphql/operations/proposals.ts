@@ -40,6 +40,12 @@ export const GET_CLIMB_PROPOSALS = gql`
         climbName
         frames
         layoutId
+        climbSetterUsername
+        climbDifficulty
+        climbQualityAverage
+        climbAscensionistCount
+        climbDifficultyError
+        climbBenchmarkDifficulty
       }
       totalCount
       hasMore
@@ -114,6 +120,12 @@ export const BROWSE_PROPOSALS = gql`
         climbName
         frames
         layoutId
+        climbSetterUsername
+        climbDifficulty
+        climbQualityAverage
+        climbAscensionistCount
+        climbDifficultyError
+        climbBenchmarkDifficulty
       }
       totalCount
       hasMore
@@ -159,6 +171,12 @@ export const CREATE_PROPOSAL = gql`
       climbName
       frames
       layoutId
+      climbSetterUsername
+      climbDifficulty
+      climbQualityAverage
+      climbAscensionistCount
+      climbDifficultyError
+      climbBenchmarkDifficulty
     }
   }
 `;
@@ -188,6 +206,12 @@ export const VOTE_ON_PROPOSAL = gql`
       climbName
       frames
       layoutId
+      climbSetterUsername
+      climbDifficulty
+      climbQualityAverage
+      climbAscensionistCount
+      climbDifficultyError
+      climbBenchmarkDifficulty
     }
   }
 `;
@@ -206,6 +230,12 @@ export const RESOLVE_PROPOSAL = gql`
       climbName
       frames
       layoutId
+      climbSetterUsername
+      climbDifficulty
+      climbQualityAverage
+      climbAscensionistCount
+      climbDifficultyError
+      climbBenchmarkDifficulty
     }
   }
 `;
