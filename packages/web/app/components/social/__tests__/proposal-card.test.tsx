@@ -219,9 +219,15 @@ describe('ProposalCard', () => {
       expect(screen.queryByTestId('climb-list-item-mock')).toBeNull();
     });
 
-    it('does not render ClimbListItem when angle is null', () => {
+    it('renders ClimbListItem when angle is null (classic proposals)', () => {
       render(<ProposalCard proposal={makeProposal({ angle: null })} />);
-      expect(screen.queryByTestId('climb-list-item-mock')).toBeNull();
+      expect(screen.getByTestId('climb-list-item-mock')).toBeTruthy();
+      // Should use 0 as fallback angle
+      expect(mockClimbListItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          climb: expect.objectContaining({ angle: 0 }),
+        }),
+      );
     });
 
     it('handles missing optional climb fields gracefully', () => {
