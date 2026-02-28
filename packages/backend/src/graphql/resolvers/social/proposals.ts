@@ -80,13 +80,14 @@ async function enrichProposal(
     userVote = myVote?.value || 0;
   }
 
-  // Fetch climb data (name, frames, layoutId, setterUsername)
+  // Fetch climb data (name, frames, layoutId, setterUsername, angle)
   const [climb] = await db
     .select({
       name: dbSchema.boardClimbs.name,
       frames: dbSchema.boardClimbs.frames,
       layoutId: dbSchema.boardClimbs.layoutId,
       setterUsername: dbSchema.boardClimbs.setterUsername,
+      angle: dbSchema.boardClimbs.angle,
     })
     .from(dbSchema.boardClimbs)
     .where(
@@ -97,14 +98,16 @@ async function enrichProposal(
     )
     .limit(1);
 
-  // Fetch climb stats and difficulty grade name (if proposal has an angle)
+  // Fetch climb stats and difficulty grade name
+  // For classic proposals (angle null), fall back to the climb's default angle
   let climbDifficulty: string | undefined;
   let climbQualityAverage: string | undefined;
   let climbAscensionistCount: number | undefined;
   let climbDifficultyError: string | undefined;
   let climbBenchmarkDifficulty: string | undefined;
 
-  if (proposal.angle != null) {
+  const effectiveAngle = proposal.angle ?? climb?.angle;
+  if (effectiveAngle != null) {
     const [stats] = await db
       .select({
         displayDifficulty: dbSchema.boardClimbStats.displayDifficulty,
@@ -126,7 +129,7 @@ async function enrichProposal(
         and(
           eq(dbSchema.boardClimbStats.climbUuid, proposal.climbUuid),
           eq(dbSchema.boardClimbStats.boardType, proposal.boardType),
-          eq(dbSchema.boardClimbStats.angle, proposal.angle),
+          eq(dbSchema.boardClimbStats.angle, effectiveAngle),
         ),
       )
       .limit(1);
@@ -224,7 +227,7 @@ async function batchEnrichProposals(
     else entry.weightedDownvotes += Math.abs(v.value) * v.weight;
   }
 
-  // Query 3: Batch climb data (name, frames, layoutId, setterUsername)
+  // Query 3: Batch climb data (name, frames, layoutId, setterUsername, angle)
   const uniqueClimbUuids = [...new Set(proposals.map((p) => p.climbUuid))];
   const climbRows = await db
     .select({
@@ -234,6 +237,7 @@ async function batchEnrichProposals(
       frames: dbSchema.boardClimbs.frames,
       layoutId: dbSchema.boardClimbs.layoutId,
       setterUsername: dbSchema.boardClimbs.setterUsername,
+      angle: dbSchema.boardClimbs.angle,
     })
     .from(dbSchema.boardClimbs)
     .where(inArray(dbSchema.boardClimbs.uuid, uniqueClimbUuids));
@@ -242,7 +246,13 @@ async function batchEnrichProposals(
 
   // Query 3b: Batch climb stats with difficulty grade names
   // Build unique (climbUuid, boardType, angle) tuples from proposals that have an angle
-  const proposalsWithAngle = proposals.filter((p) => p.angle != null);
+  // For classic proposals (angle null), fall back to the climb's default angle
+  const proposalsWithEffectiveAngle = proposals
+    .map((p) => ({
+      ...p,
+      effectiveAngle: p.angle ?? climbMap.get(`${p.climbUuid}:${p.boardType}`)?.angle ?? null,
+    }))
+    .filter((p): p is typeof p & { effectiveAngle: number } => p.effectiveAngle != null);
   type StatsEntry = {
     boulderName: string | null;
     qualityAverage: number | null;
@@ -253,8 +263,8 @@ async function batchEnrichProposals(
   };
   const statsMap = new Map<string, StatsEntry>();
 
-  if (proposalsWithAngle.length > 0) {
-    const uniqueStatsKeys = [...new Set(proposalsWithAngle.map((p) => `${p.climbUuid}:${p.boardType}:${p.angle}`))];
+  if (proposalsWithEffectiveAngle.length > 0) {
+    const uniqueStatsKeys = [...new Set(proposalsWithEffectiveAngle.map((p) => `${p.climbUuid}:${p.boardType}:${p.effectiveAngle}`))];
     const statsConditions = uniqueStatsKeys.map((key) => {
       const [climbUuid, boardType, angle] = key.split(':');
       return sql`(${dbSchema.boardClimbStats.climbUuid} = ${climbUuid} AND ${dbSchema.boardClimbStats.boardType} = ${boardType} AND ${dbSchema.boardClimbStats.angle} = ${parseInt(angle, 10)})`;
@@ -355,8 +365,10 @@ async function batchEnrichProposals(
     const userVote = userVoteMap.get(proposal.id) || 0;
     const climb = climbMap.get(`${proposal.climbUuid}:${proposal.boardType}`);
 
-    const stats = proposal.angle != null
-      ? statsMap.get(`${proposal.climbUuid}:${proposal.boardType}:${proposal.angle}`)
+    // Use proposal angle for stats, falling back to climb's default angle for classic proposals
+    const effectiveAngle = proposal.angle ?? climb?.angle;
+    const stats = effectiveAngle != null
+      ? statsMap.get(`${proposal.climbUuid}:${proposal.boardType}:${effectiveAngle}`)
       : undefined;
 
     return {
