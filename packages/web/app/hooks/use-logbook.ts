@@ -102,13 +102,16 @@ export function useLogbook(boardName: BoardName, climbUuids: ClimbUuid[]) {
   const { status: sessionStatus } = useSession();
   const queryClient = useQueryClient();
   const fetchedUuidsRef = useRef<Set<string>>(new Set());
+  const [invalidationCount, setInvalidationCount] = useState(0);
 
   const isEnabled = sessionStatus === 'authenticated' && !!token;
 
-  // Determine which UUIDs haven't been fetched yet
+  // Determine which UUIDs haven't been fetched yet.
+  // invalidationCount forces recomputation after cache invalidation clears
+  // fetchedUuidsRef, since climbUuids/isEnabled may not have changed.
   const newUuids = useMemo(
     () => (isEnabled ? climbUuids.filter((uuid) => !fetchedUuidsRef.current.has(uuid)) : []),
-    [climbUuids, isEnabled],
+    [climbUuids, isEnabled, invalidationCount],
   );
 
   // Fetch only the new UUIDs
@@ -144,6 +147,10 @@ export function useLogbook(boardName: BoardName, climbUuids: ClimbUuid[]) {
   // remains stable until the data is consumed. If we mutated the ref inside
   // queryFn, useMemo would recompute newUuids on the re-render triggered by
   // the resolved query, changing the query key before the data could be read.
+  //
+  // NOTE: We compute the merge using `logbook` from the closure rather than
+  // a functional updater, because React 18 defers updater execution to the
+  // render phase — so capturing results from within the updater is unreliable.
   const lastMergedRef = useRef<LogbookEntry[] | undefined>(undefined);
   useEffect(() => {
     if (!fetchQuery.data || fetchQuery.data === lastMergedRef.current) return;
@@ -153,29 +160,38 @@ export function useLogbook(boardName: BoardName, climbUuids: ClimbUuid[]) {
     newUuids.forEach((uuid) => fetchedUuidsRef.current.add(uuid));
 
     const newEntries = fetchQuery.data;
+    const existingUuids = new Set(logbook.map((e: LogbookEntry) => e.uuid));
+    const uniqueNew = newEntries.filter((e: LogbookEntry) => !existingUuids.has(e.uuid));
 
-    setLogbook((existing) => {
-      const existingUuids = new Set(existing.map((e: LogbookEntry) => e.uuid));
-      const uniqueNew = newEntries.filter((e: LogbookEntry) => !existingUuids.has(e.uuid));
-      if (uniqueNew.length === 0) return existing;
-      const merged = [...existing, ...uniqueNew];
-      // Also update the query cache so useSaveTick's partial key match works
+    if (uniqueNew.length > 0) {
+      const merged = [...logbook, ...uniqueNew];
+      setLogbook(merged);
       queryClient.setQueryData(accumulatedLogbookQueryKey(boardName), merged);
-      return merged;
-    });
-  }, [fetchQuery.data, newUuids, boardName, queryClient]);
+    }
+  }, [fetchQuery.data, newUuids, logbook, boardName, queryClient]);
 
-  // Subscribe to cache changes from useSaveTick's optimistic updates.
-  // useSaveTick uses setQueriesData({ queryKey: ['logbook', boardName] })
-  // which modifies the accumulated cache entry externally.
+  // Subscribe to cache changes for the accumulated key only.
+  // Handles two scenarios:
+  // 1. useSaveTick optimistic updates (setQueriesData modifies the cache externally)
+  // 2. Cache invalidation (useInvalidateLogbook removes queries) — resets
+  //    fetchedUuidsRef so all UUIDs are re-fetched on the next render.
   useEffect(() => {
     const key = accumulatedLogbookQueryKey(boardName);
-    let lastSeen = queryClient.getQueryData<LogbookEntry[]>(key);
 
-    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
-      const cached = queryClient.getQueryData<LogbookEntry[]>(key);
-      if (cached !== lastSeen) {
-        lastSeen = cached;
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      // Only react to events for our accumulated key
+      const qk = event.query.queryKey;
+      if (qk[0] !== key[0] || qk[1] !== key[1] || qk[2] !== key[2]) return;
+
+      if (event.type === 'removed') {
+        // Cache was cleared (e.g., useInvalidateLogbook) — reset tracking
+        // so all current climbUuids are re-fetched on the next render.
+        fetchedUuidsRef.current = new Set();
+        lastMergedRef.current = undefined;
+        setLogbook([]);
+        setInvalidationCount((c) => c + 1);
+      } else if (event.type === 'updated') {
+        const cached = queryClient.getQueryData<LogbookEntry[]>(key);
         if (cached !== undefined) {
           setLogbook(cached);
         }
@@ -185,12 +201,15 @@ export function useLogbook(boardName: BoardName, climbUuids: ClimbUuid[]) {
   }, [queryClient, boardName]);
 
   // Reset when auth is lost (e.g., user logs out) so that a different
-  // user logging in doesn't see stale data.
+  // user logging in doesn't see stale data. Uses removeQueries to also
+  // clear fetch cache entries, ensuring re-auth triggers actual re-fetches
+  // instead of returning stale cached data.
   useEffect(() => {
     if (!isEnabled) {
       fetchedUuidsRef.current = new Set();
+      lastMergedRef.current = undefined;
       setLogbook([]);
-      queryClient.setQueryData(accumulatedLogbookQueryKey(boardName), undefined);
+      queryClient.removeQueries({ queryKey: ['logbook', boardName] });
     }
   }, [isEnabled, boardName, queryClient]);
 
@@ -203,8 +222,8 @@ export function useLogbook(boardName: BoardName, climbUuids: ClimbUuid[]) {
 
 /**
  * Returns a function to invalidate logbook queries for a given board.
- * Clears accumulated data and resets fetch tracking so all UUIDs
- * are re-fetched on the next render.
+ * Removes all logbook queries from the cache, which triggers the cache
+ * subscription in useLogbook to reset fetchedUuidsRef and re-fetch.
  */
 export function useInvalidateLogbook(boardName: BoardName) {
   const queryClient = useQueryClient();
