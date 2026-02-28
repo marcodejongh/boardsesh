@@ -38,23 +38,26 @@ export default function VoteButton({
   entityId,
   initialUpvotes = 0,
   initialDownvotes = 0,
-  initialUserVote = 0,
+  initialUserVote,
   layout = 'horizontal',
   likeOnly = false,
   onVoteChange,
 }: VoteButtonProps) {
   const [upvotes, setUpvotes] = useState(initialUpvotes);
   const [downvotes, setDownvotes] = useState(initialDownvotes);
-  const [userVote, setUserVote] = useState(initialUserVote);
+  const [userVote, setUserVote] = useState(initialUserVote ?? 0);
   const [isLoading, setIsLoading] = useState(false);
   const { token, isAuthenticated } = useWsAuthToken();
   const { showMessage } = useSnackbar();
 
-  // Fetch the current user's vote state on mount so liked/upvoted items show as filled
+  // Fetch the current user's vote state on mount so liked/upvoted items show as filled.
+  // Skip when initialUserVote was explicitly provided by the parent (avoids redundant API calls).
   const fetchedEntityRef = useRef<string | null>(null);
+  const hasVotedRef = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
+    if (initialUserVote !== undefined) return;
 
     const key = `${entityType}:${entityId}`;
     if (fetchedEntityRef.current === key) return;
@@ -69,7 +72,7 @@ export default function VoteButton({
           GET_VOTE_SUMMARY,
           { entityType, entityId },
         );
-        if (!cancelled) {
+        if (!cancelled && !hasVotedRef.current) {
           const summary = response.voteSummary;
           setUpvotes(summary.upvotes);
           setDownvotes(summary.downvotes);
@@ -85,7 +88,7 @@ export default function VoteButton({
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, token, entityType, entityId]);
+  }, [isAuthenticated, token, entityType, entityId, initialUserVote]);
 
   const handleVote = useCallback(
     async (value: 1 | -1) => {
@@ -118,6 +121,7 @@ export default function VoteButton({
         else newDownvotes++;
       }
 
+      hasVotedRef.current = true;
       setUpvotes(newUpvotes);
       setDownvotes(newDownvotes);
       setUserVote(newUserVote);

@@ -494,7 +494,6 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
             entityId={sessionId}
             initialUpvotes={upvotes}
             initialDownvotes={downvotes}
-            initialUserVote={0}
             likeOnly
           />
         </Box>
@@ -582,9 +581,6 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
                             <VoteButton
                               entityType="tick"
                               entityId={tick.uuid}
-                              initialUpvotes={0}
-                              initialDownvotes={0}
-                              initialUserVote={0}
                               likeOnly
                             />
                           </Box>
@@ -653,9 +649,6 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
                     <VoteButton
                       entityType="tick"
                       entityId={tick.uuid}
-                      initialUpvotes={0}
-                      initialDownvotes={0}
-                      initialUserVote={0}
                       likeOnly
                     />
                   </Box>
