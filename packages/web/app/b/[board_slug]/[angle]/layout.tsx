@@ -15,7 +15,7 @@ import { UISearchParamsProvider } from '@/app/components/queue-control/ui-search
 import { BoardProvider } from '@/app/components/board-provider/board-provider-context';
 import { QueueBridgeInjector } from '@/app/components/queue-control/queue-bridge-context';
 import LastUsedBoardTracker from '@/app/components/board-page/last-used-board-tracker';
-import { getAllBoardConfigs } from '@/app/lib/server-board-configs';
+
 import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 
@@ -53,10 +53,7 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
   const angle = Number(params.angle);
   const parsedParams = boardToRouteParams(board, angle);
 
-  const [boardDetails, boardConfigs] = await Promise.all([
-    Promise.resolve(getBoardDetailsForBoard(parsedParams)),
-    getAllBoardConfigs(),
-  ]);
+  const boardDetails = getBoardDetailsForBoard(parsedParams);
 
   const listUrl = constructBoardSlugListUrl(board.slug, angle);
 
@@ -79,7 +76,7 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
                 <BluetoothProvider boardDetails={boardDetails}>
                   <UISearchParamsProvider>
                     <QueueBridgeInjector boardDetails={boardDetails} angle={angle} />
-                    <BoardSeshHeader boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} isAngleAdjustable={board.isAngleAdjustable} />
+                    <BoardSeshHeader boardDetails={boardDetails} angle={angle} isAngleAdjustable={board.isAngleAdjustable} />
 
                     <main
                       id="content-for-scrollable"

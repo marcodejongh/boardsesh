@@ -2,6 +2,7 @@
 
 .pageLayout {
   min-height: 100vh;
+  padding-top: calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px));
   background: var(--semantic-background);
 }
 

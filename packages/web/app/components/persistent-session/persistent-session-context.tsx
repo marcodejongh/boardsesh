@@ -29,6 +29,12 @@ import { usePartyProfile } from '../party-manager/party-profile-context';
 import { computeQueueStateHash } from '@/app/utils/hash';
 import { getStoredQueue, saveQueueState, cleanupOldQueues, getMostRecentQueue, StoredQueueState } from '@/app/lib/queue-storage-db';
 import { getPreference, setPreference, removePreference } from '@/app/lib/user-preferences-db';
+import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import {
+  END_SESSION as END_SESSION_GQL,
+  type EndSessionResponse,
+} from '@/app/lib/graphql/operations/sessions';
+import type { SessionSummary } from '@boardsesh/shared-schema';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 
@@ -193,6 +199,11 @@ export interface PersistentSessionContextType {
 
   // Trigger a resync with the server (useful when corrupted data is detected)
   triggerResync: () => void;
+
+  // Session ending with summary (elevated from GraphQLQueueProvider)
+  endSessionWithSummary: () => void;
+  sessionSummary: SessionSummary | null;
+  dismissSessionSummary: () => void;
 }
 
 const PersistentSessionContext = createContext<PersistentSessionContextType | undefined>(undefined);
@@ -1104,6 +1115,36 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     }
   }, []);
 
+  // Session summary state (elevated from GraphQLQueueProvider for root-level access)
+  const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
+
+  const dismissSessionSummary = useCallback(() => {
+    setSessionSummary(null);
+  }, []);
+
+  const endSessionWithSummary = useCallback(() => {
+    // Capture session ID before deactivating
+    const endingSessionId = activeSession?.sessionId;
+    const token = wsAuthTokenRef.current;
+
+    // Deactivate persistent session
+    deactivateSession();
+
+    // Call END_SESSION mutation to get summary (non-blocking)
+    if (endingSessionId && token) {
+      const client = createGraphQLHttpClient(token);
+      client.request<EndSessionResponse>(END_SESSION_GQL, { sessionId: endingSessionId })
+        .then((response) => {
+          if (response.endSession) {
+            setSessionSummary(response.endSession);
+          }
+        })
+        .catch((err) => {
+          console.error('[PersistentSession] Failed to get session summary:', err);
+        });
+    }
+  }, [activeSession, deactivateSession]);
+
   const value = useMemo<PersistentSessionContextType>(
     () => ({
       activeSession,
@@ -1135,6 +1176,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       subscribeToQueueEvents,
       subscribeToSessionEvents,
       triggerResync,
+      endSessionWithSummary,
+      sessionSummary,
+      dismissSessionSummary,
     }),
     [
       activeSession,
@@ -1163,6 +1207,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       subscribeToQueueEvents,
       subscribeToSessionEvents,
       triggerResync,
+      endSessionWithSummary,
+      sessionSummary,
+      dismissSessionSummary,
     ],
   );
 
