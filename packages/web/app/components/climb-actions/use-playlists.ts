@@ -27,7 +27,16 @@ type UsePlaylistsReturn = {
 const emptySet = new Set<string>();
 const noopAsync = async () => {};
 const noopCreatePlaylist = async (): Promise<Playlist> => {
-  throw new Error('PlaylistsProvider not available');
+  return {
+    id: '',
+    uuid: '',
+    boardType: '',
+    name: '',
+    isPublic: false,
+    createdAt: '',
+    updatedAt: '',
+    climbCount: 0,
+  };
 };
 
 /**

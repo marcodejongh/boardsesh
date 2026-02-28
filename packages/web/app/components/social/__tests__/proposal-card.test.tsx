@@ -219,6 +219,11 @@ describe('ProposalCard', () => {
       expect(screen.queryByTestId('climb-list-item-mock')).toBeNull();
     });
 
+    it('does not render ClimbListItem when angle is null', () => {
+      render(<ProposalCard proposal={makeProposal({ angle: null })} />);
+      expect(screen.queryByTestId('climb-list-item-mock')).toBeNull();
+    });
+
     it('handles missing optional climb fields gracefully', () => {
       render(
         <ProposalCard

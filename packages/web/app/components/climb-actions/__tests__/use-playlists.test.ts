@@ -20,8 +20,19 @@ describe('usePlaylists', () => {
   const mockCreatePlaylist = vi.fn();
   const mockRefreshPlaylists = vi.fn();
 
+  const testPlaylist = {
+    id: '1',
+    uuid: 'pl-1',
+    boardType: 'kilter',
+    name: 'Test Playlist',
+    isPublic: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    climbCount: 5,
+  };
+
   const defaultContext = {
-    playlists: [{ uuid: 'pl-1', name: 'Test Playlist', climbCount: 5 }],
+    playlists: [testPlaylist],
     getPlaylistsForClimb: mockGetPlaylistsForClimb,
     addToPlaylist: mockAddToPlaylist,
     removeFromPlaylist: mockRemoveFromPlaylist,
@@ -42,9 +53,7 @@ describe('usePlaylists', () => {
         wrapper: createWrapper(defaultContext),
       });
 
-      expect(result.current.playlists).toEqual([
-        { uuid: 'pl-1', name: 'Test Playlist', climbCount: 5 },
-      ]);
+      expect(result.current.playlists).toEqual([testPlaylist]);
     });
 
     it('calls getPlaylistsForClimb with climbUuid', () => {
@@ -80,7 +89,16 @@ describe('usePlaylists', () => {
     });
 
     it('createPlaylist delegates to context', async () => {
-      const mockPlaylist = { uuid: 'pl-new', name: 'New Playlist', climbCount: 0 };
+      const mockPlaylist = {
+        id: '2',
+        uuid: 'pl-new',
+        boardType: 'kilter',
+        name: 'New Playlist',
+        isPublic: false,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        climbCount: 0,
+      };
       mockCreatePlaylist.mockResolvedValue(mockPlaylist);
 
       const { result } = renderHook(() => usePlaylists(defaultOptions), {
@@ -146,12 +164,24 @@ describe('usePlaylists', () => {
       });
     });
 
-    it('createPlaylist throws when no provider', async () => {
+    it('createPlaylist returns empty playlist when no provider', async () => {
       const { result } = renderHook(() => usePlaylists(defaultOptions));
 
-      await expect(result.current.createPlaylist('Test')).rejects.toThrow(
-        'PlaylistsProvider not available',
-      );
+      let created;
+      await act(async () => {
+        created = await result.current.createPlaylist('Test');
+      });
+
+      expect(created).toEqual({
+        id: '',
+        uuid: '',
+        boardType: '',
+        name: '',
+        isPublic: false,
+        createdAt: '',
+        updatedAt: '',
+        climbCount: 0,
+      });
     });
 
     it('refreshPlaylists is a no-op when no provider', async () => {

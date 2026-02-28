@@ -131,7 +131,7 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDe
   const climbAndBoardDetails = useMemo(() => {
     const { climbUuid, climbName, frames, layoutId, boardType, angle } = localProposal;
     if (!climbName && !frames) return null;
-    if (!layoutId || !boardType) return null;
+    if (!layoutId || !boardType || angle == null) return null;
 
     const boardName = boardType as BoardName;
     const config = getDefaultBoardConfig(boardName, layoutId);
@@ -159,7 +159,7 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDe
       setter_username: localProposal.climbSetterUsername || '',
       description: '',
       frames: frames || '',
-      angle: angle ?? 0,
+      angle,
       ascensionist_count: localProposal.climbAscensionistCount ?? 0,
       difficulty: localProposal.climbDifficulty || '',
       quality_average: localProposal.climbQualityAverage || '0',
