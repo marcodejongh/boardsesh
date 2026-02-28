@@ -14,8 +14,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
-  /* Use more workers in CI - 4 matches our test file count for max parallelism */
-  workers: process.env.CI ? 4 : undefined,
+  /* CI workers: 2 keeps server load manageable (board pages are heavy queries) */
+  workers: process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? 'github' : 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
