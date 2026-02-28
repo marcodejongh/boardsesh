@@ -25,6 +25,7 @@ import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import RemoveCircleOutlineOutlined from '@mui/icons-material/RemoveCircleOutlineOutlined';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import type { SessionDetail, SessionDetailTick, SessionFeedParticipant } from '@boardsesh/shared-schema';
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
@@ -154,6 +155,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   const { data: authSession } = useSession();
   const { token: authToken } = useWsAuthToken();
   const { showMessage } = useSnackbar();
+  const router = useRouter();
 
   const [session, setSession] = useState(initialSession);
   const [isEditing, setIsEditing] = useState(false);
@@ -283,11 +285,12 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
     return { boardDetailsMap: map, defaultBoardDetails: defaultDetails, unsupportedClimbs: unsupported };
   }, [sessionClimbs, myBoards, boardTypes]);
 
-  // Climb actions data for favorites/playlists
+  // Climb actions data for favorites/playlists — derive from actual climb data, fall back to session metadata
   const climbUuids = useMemo(() => sessionClimbs.map((c) => c.uuid), [sessionClimbs]);
-  const actionsBoardName = sessionClimbs[0]?.boardType || boardTypes[0] || 'kilter';
-  const actionsLayoutId = sessionClimbs[0]?.layoutId ?? 1;
-  const actionsAngle = sessionClimbs[0]?.angle ?? getDefaultAngleForBoard(actionsBoardName);
+  const firstClimb = sessionClimbs[0];
+  const actionsBoardName = firstClimb?.boardType || boardTypes[0] || '';
+  const actionsLayoutId = firstClimb?.layoutId ?? 1;
+  const actionsAngle = firstClimb?.angle ?? getDefaultAngleForBoard(actionsBoardName);
 
   const { favoritesProviderProps, playlistsProviderProps } = useClimbActionsData({
     boardName: actionsBoardName,
@@ -296,7 +299,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
     climbUuids,
   });
 
-  // Navigate to climb detail page
+  // Navigate to climb detail page using client-side routing
   const navigateToClimb = useCallback(async (climb: Climb) => {
     try {
       const bt = climb.boardType;
@@ -305,11 +308,11 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
       const res = await fetch(`/api/internal/climb-redirect?${params}`);
       if (!res.ok) return;
       const { url } = await res.json();
-      if (url) window.location.href = url;
+      if (url) router.push(url);
     } catch (error) {
       console.error('Failed to navigate to climb:', error);
     }
-  }, []);
+  }, [router]);
 
   // Render tick details below each climb item (per-user rows for multi-user, status/attempts for single-user)
   const renderTickDetails = useCallback((climb: Climb) => {
