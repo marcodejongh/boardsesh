@@ -30,27 +30,23 @@ export default function FeedCommentButton({
 
   return (
     <Box>
-      <Box
-        sx={{ display: 'flex', alignItems: 'center', gap: 0.25, cursor: 'pointer' }}
+      <IconButton
+        size="small"
+        aria-label={open ? 'Hide comments' : 'Show comments'}
+        sx={{ p: 0.5, color: open ? 'text.primary' : 'text.secondary' }}
         onClick={handleToggle}
-        role="button"
-        tabIndex={0}
       >
-        <IconButton
-          size="small"
-          aria-label={open ? 'Hide comments' : 'Show comments'}
-          sx={{ p: 0.5, color: open ? 'text.primary' : 'text.secondary' }}
-          onClick={handleToggle}
-        >
-          <ChatBubbleOutlineOutlined sx={{ fontSize: 18 }} />
-        </IconButton>
-        <Typography
-          variant="caption"
-          sx={{ color: open ? 'text.primary' : 'text.secondary', userSelect: 'none' }}
-        >
-          {commentCount > 0 ? commentCount : ''}
-        </Typography>
-      </Box>
+        <ChatBubbleOutlineOutlined sx={{ fontSize: 18 }} />
+        {commentCount > 0 && (
+          <Typography
+            variant="caption"
+            component="span"
+            sx={{ ml: 0.5, color: 'inherit', userSelect: 'none', fontSize: 12 }}
+          >
+            {commentCount}
+          </Typography>
+        )}
+      </IconButton>
 
       <Collapse in={open} unmountOnExit>
         <Box sx={{ mt: 1 }}>
