@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -31,9 +31,13 @@ import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { VOTE_ON_PROPOSAL, RESOLVE_PROPOSAL, DELETE_PROPOSAL } from '@/app/lib/graphql/operations/proposals';
 import type { Proposal } from '@boardsesh/shared-schema';
+import type { Climb, BoardDetails, BoardName } from '@/app/lib/types';
+import ClimbListItem from '@/app/components/climb-card/climb-list-item';
+import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
+import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
+import { getDefaultBoardConfig } from '@/app/lib/default-board-configs';
 import ProposalVoteBar from './proposal-vote-bar';
 import CommentSection from './comment-section';
-import ProposalClimbPreview from './proposal-climb-preview';
 
 const TYPE_LABELS: Record<string, string> = {
   grade: 'Grade',
@@ -124,6 +128,52 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDe
     }
   }, [token, localProposal.uuid, onDelete]);
 
+  const climbAndBoardDetails = useMemo(() => {
+    const { climbUuid, climbName, frames, layoutId, boardType, angle } = localProposal;
+    if (!climbName && !frames) return null;
+    if (!layoutId || !boardType) return null;
+
+    const boardName = boardType as BoardName;
+    const config = getDefaultBoardConfig(boardName, layoutId);
+    if (!config) return null;
+
+    let boardDetails: BoardDetails;
+    try {
+      boardDetails = getBoardDetailsForBoard({
+        board_name: boardName,
+        layout_id: layoutId,
+        size_id: config.sizeId,
+        set_ids: config.setIds,
+      });
+    } catch {
+      return null;
+    }
+
+    const litUpHoldsMap = frames
+      ? convertLitUpHoldsStringToMap(frames, boardName)[0]
+      : {};
+
+    const climb: Climb = {
+      uuid: climbUuid,
+      name: climbName || '',
+      setter_username: localProposal.climbSetterUsername || '',
+      description: '',
+      frames: frames || '',
+      angle: angle ?? 0,
+      ascensionist_count: localProposal.climbAscensionistCount ?? 0,
+      difficulty: localProposal.climbDifficulty || '',
+      quality_average: localProposal.climbQualityAverage || '0',
+      stars: 0,
+      difficulty_error: localProposal.climbDifficultyError || '0',
+      litUpHoldsMap,
+      benchmark_difficulty: localProposal.climbBenchmarkDifficulty || null,
+      layoutId,
+      boardType,
+    };
+
+    return { climb, boardDetails };
+  }, [localProposal]);
+
   const typeColor = TYPE_COLORS[localProposal.type] || themeTokens.neutral[500];
 
   return (
@@ -141,7 +191,13 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDe
       >
         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           {/* Climb preview */}
-          <ProposalClimbPreview proposal={localProposal} />
+          {climbAndBoardDetails && (
+            <ClimbListItem
+              climb={climbAndBoardDetails.climb}
+              boardDetails={climbAndBoardDetails.boardDetails}
+              disableSwipe
+            />
+          )}
 
           {/* Header */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>

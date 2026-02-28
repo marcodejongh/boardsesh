@@ -1790,6 +1790,12 @@ export const typeDefs = /* GraphQL */ `
     climbName: String
     frames: String
     layoutId: Int
+    climbSetterUsername: String
+    climbDifficulty: String
+    climbQualityAverage: String
+    climbAscensionistCount: Int
+    climbDifficultyError: String
+    climbBenchmarkDifficulty: String
   }
 
   """

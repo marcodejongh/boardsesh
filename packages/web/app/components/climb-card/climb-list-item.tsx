@@ -31,10 +31,12 @@ type ClimbListItemProps = {
   selected?: boolean;
   /** When true, the item is visually dimmed (greyed out) but still interactive */
   unsupported?: boolean;
+  /** When true, swipe gestures (favorite/queue) are disabled */
+  disableSwipe?: boolean;
   onSelect?: () => void;
 };
 
-const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDetails, selected, unsupported, onSelect }) => {
+const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDetails, selected, unsupported, disableSwipe, onSelect }) => {
   const isDark = useIsDarkMode();
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const queueContext = useOptionalQueueContext();
@@ -55,6 +57,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   const { swipeHandlers, contentRef, leftActionRef, rightActionRef } = useSwipeActions({
     onSwipeLeft: handleSwipeLeft,
     onSwipeRight: handleSwipeRight,
+    disabled: disableSwipe,
   });
 
   const vGrade = extractVGrade(climb.difficulty);
@@ -207,33 +210,39 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   return (
     <>
       <div style={containerStyle}>
-        {/* Left action background (favorite - revealed on swipe right) */}
-        <div
-          ref={leftActionRef}
-          style={leftActionStyle}
-        >
-          {isFavorited ? (
-            <Favorite style={iconStyle} />
-          ) : (
-            <FavoriteBorderOutlined style={iconStyle} />
-          )}
-        </div>
+        {!disableSwipe && (
+          <>
+            {/* Left action background (favorite - revealed on swipe right) */}
+            <div
+              ref={leftActionRef}
+              style={leftActionStyle}
+            >
+              {isFavorited ? (
+                <Favorite style={iconStyle} />
+              ) : (
+                <FavoriteBorderOutlined style={iconStyle} />
+              )}
+            </div>
 
-        {/* Right action background (add to queue - revealed on swipe left) */}
-        <div
-          ref={rightActionRef}
-          style={rightActionStyle}
-        >
-          <AddOutlined style={iconStyle} />
-        </div>
+            {/* Right action background (add to queue - revealed on swipe left) */}
+            <div
+              ref={rightActionRef}
+              style={rightActionStyle}
+            >
+              <AddOutlined style={iconStyle} />
+            </div>
+          </>
+        )}
 
-        {/* Swipeable content */}
+        {/* Content (swipeable when swipe is enabled) */}
         <div
-          {...swipeHandlers}
+          {...(disableSwipe ? {} : swipeHandlers)}
           ref={(node: HTMLDivElement | null) => {
             doubleTapRef(node);
-            swipeHandlers.ref(node);
-            contentRef(node);
+            if (!disableSwipe) {
+              swipeHandlers.ref(node);
+              contentRef(node);
+            }
           }}
           onDoubleClick={handleDoubleClick}
           style={swipeableContentStyle}
@@ -330,6 +339,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   return prev.climb.uuid === next.climb.uuid
     && prev.selected === next.selected
     && prev.unsupported === next.unsupported
+    && prev.disableSwipe === next.disableSwipe
     && prev.boardDetails === next.boardDetails;
 });
 
