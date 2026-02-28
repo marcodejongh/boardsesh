@@ -300,7 +300,6 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
           entityId={sessionId}
           initialUpvotes={upvotes}
           initialDownvotes={downvotes}
-          initialUserVote={0}
           likeOnly
         />
         <FeedCommentButton

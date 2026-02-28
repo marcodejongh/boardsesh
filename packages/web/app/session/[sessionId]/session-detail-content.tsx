@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
@@ -34,6 +34,7 @@ import { useSession } from 'next-auth/react';
 import type { SessionDetail, SessionDetailTick, SessionFeedParticipant } from '@boardsesh/shared-schema';
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
 import VoteButton from '@/app/components/social/vote-button';
+import { VoteSummaryProvider } from '@/app/components/social/vote-summary-context';
 import CommentSection from '@/app/components/social/comment-section';
 import AscentThumbnail from '@/app/components/activity-feed/ascent-thumbnail';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
@@ -197,6 +198,9 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
 
   // For multi-user sessions, group ticks by climb to show per-user results
   const climbGroups = isMultiUser ? groupTicksByClimb(ticks) : null;
+
+  // Collect all tick UUIDs for batch vote summary fetching
+  const tickUuids = useMemo(() => ticks.map((t) => t.uuid), [ticks]);
 
   // Use the actual owner from the backend (inferred_sessions.userId or board_sessions.created_by_user_id)
   const ownerUserId = session.ownerUserId ?? null;
@@ -494,7 +498,6 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
             entityId={sessionId}
             initialUpvotes={upvotes}
             initialDownvotes={downvotes}
-            initialUserVote={0}
             likeOnly
           />
         </Box>
@@ -508,6 +511,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
           Climbs ({isMultiUser ? climbGroups!.length : ticks.length})
         </Typography>
 
+        <VoteSummaryProvider entityType="tick" entityIds={tickUuids}>
         {isMultiUser && climbGroups ? (
           /* Multi-user: group by climb, show per-user results */
           climbGroups.map((group) => (
@@ -582,9 +586,6 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
                             <VoteButton
                               entityType="tick"
                               entityId={tick.uuid}
-                              initialUpvotes={0}
-                              initialDownvotes={0}
-                              initialUserVote={0}
                               likeOnly
                             />
                           </Box>
@@ -653,9 +654,6 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
                     <VoteButton
                       entityType="tick"
                       entityId={tick.uuid}
-                      initialUpvotes={0}
-                      initialDownvotes={0}
-                      initialUserVote={0}
                       likeOnly
                     />
                   </Box>
@@ -664,6 +662,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
             </Card>
           ))
         )}
+        </VoteSummaryProvider>
       </Box>
 
       {/* Add User Dialog */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import MuiTypography from '@mui/material/Typography';
@@ -13,11 +13,15 @@ import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   VOTE,
+  GET_VOTE_SUMMARY,
   type VoteMutationVariables,
   type VoteMutationResponse,
+  type GetVoteSummaryQueryVariables,
+  type GetVoteSummaryQueryResponse,
 } from '@/app/lib/graphql/operations';
 import { themeTokens } from '@/app/theme/theme-config';
 import type { SocialEntityType } from '@boardsesh/shared-schema';
+import { useVoteSummaryContext } from './vote-summary-context';
 
 interface VoteButtonProps {
   entityType: SocialEntityType;
@@ -35,17 +39,77 @@ export default function VoteButton({
   entityId,
   initialUpvotes = 0,
   initialDownvotes = 0,
-  initialUserVote = 0,
+  initialUserVote,
   layout = 'horizontal',
   likeOnly = false,
   onVoteChange,
 }: VoteButtonProps) {
+  // Check for batch-fetched vote data from a parent VoteSummaryProvider
+  const voteSummaryCtx = useVoteSummaryContext();
+  const batchSummary = voteSummaryCtx?.getVoteSummary(entityId);
+
   const [upvotes, setUpvotes] = useState(initialUpvotes);
   const [downvotes, setDownvotes] = useState(initialDownvotes);
-  const [userVote, setUserVote] = useState(initialUserVote);
+  const [userVote, setUserVote] = useState(initialUserVote ?? 0);
   const [isLoading, setIsLoading] = useState(false);
   const { token, isAuthenticated } = useWsAuthToken();
   const { showMessage } = useSnackbar();
+
+  const hasVotedRef = useRef(false);
+
+  // Sync state when batch context data arrives asynchronously
+  const appliedBatchRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!batchSummary || initialUserVote !== undefined) return;
+    const key = `${batchSummary.entityId}:${batchSummary.userVote}:${batchSummary.upvotes}:${batchSummary.downvotes}`;
+    if (appliedBatchRef.current === key) return;
+    appliedBatchRef.current = key;
+    if (!hasVotedRef.current) {
+      setUpvotes(batchSummary.upvotes);
+      setDownvotes(batchSummary.downvotes);
+      setUserVote(batchSummary.userVote);
+    }
+  }, [batchSummary, initialUserVote]);
+
+  // Fallback: fetch individually only when no data is provided by props or batch context,
+  // and no VoteSummaryProvider is present (which handles the fetch in bulk).
+  const fetchedEntityRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+    if (initialUserVote !== undefined) return;
+    if (voteSummaryCtx) return;
+
+    const key = `${entityType}:${entityId}`;
+    if (fetchedEntityRef.current === key) return;
+    fetchedEntityRef.current = key;
+
+    let cancelled = false;
+
+    const fetchVoteSummary = async () => {
+      try {
+        const client = createGraphQLHttpClient(token);
+        const response = await client.request<GetVoteSummaryQueryResponse, GetVoteSummaryQueryVariables>(
+          GET_VOTE_SUMMARY,
+          { entityType, entityId },
+        );
+        if (!cancelled && !hasVotedRef.current) {
+          const summary = response.voteSummary;
+          setUpvotes(summary.upvotes);
+          setDownvotes(summary.downvotes);
+          setUserVote(summary.userVote);
+        }
+      } catch {
+        // Silently fail — fall back to initial props
+      }
+    };
+
+    fetchVoteSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, token, entityType, entityId, initialUserVote, voteSummaryCtx]);
 
   const handleVote = useCallback(
     async (value: 1 | -1) => {
@@ -78,6 +142,7 @@ export default function VoteButton({
         else newDownvotes++;
       }
 
+      hasVotedRef.current = true;
       setUpvotes(newUpvotes);
       setDownvotes(newDownvotes);
       setUserVote(newUserVote);

@@ -13,6 +13,7 @@ import {
   type GetGlobalAscentsFeedQueryResponse,
 } from '@/app/lib/graphql/operations';
 import type { FollowingAscentFeedItem } from '@boardsesh/shared-schema';
+import { VoteSummaryProvider } from '@/app/components/social/vote-summary-context';
 import SocialFeedItem from '@/app/components/activity-feed/social-feed-item';
 import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
@@ -40,6 +41,11 @@ export default function GlobalAscentsFeed() {
     [data],
   );
 
+  const tickUuids = useMemo(
+    () => items.map((item) => item.uuid),
+    [items],
+  );
+
   const { sentinelRef } = useInfiniteScroll({
     onLoadMore: fetchNextPage,
     hasMore: hasNextPage ?? false,
@@ -64,13 +70,15 @@ export default function GlobalAscentsFeed() {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {items.map((item) => (
-        <SocialFeedItem key={item.uuid} item={item} showUserHeader />
-      ))}
-      <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
-        {isFetchingNextPage && <CircularProgress size={24} />}
+    <VoteSummaryProvider entityType="tick" entityIds={tickUuids}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {items.map((item) => (
+          <SocialFeedItem key={item.uuid} item={item} showUserHeader />
+        ))}
+        <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
+          {isFetchingNextPage && <CircularProgress size={24} />}
+        </Box>
       </Box>
-    </Box>
+    </VoteSummaryProvider>
   );
 }
