@@ -330,7 +330,8 @@ describe('SessionDetailContent', () => {
     );
     // Two ticks for two users on the same climb
     expect(tickVotes).toHaveLength(2);
-    expect(screen.getByText('Alice')).toBeTruthy();
-    expect(screen.getByText('Bob')).toBeTruthy();
+    // Participant names appear in multiple places (header, stats, tick details)
+    expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Bob').length).toBeGreaterThanOrEqual(1);
   });
 });

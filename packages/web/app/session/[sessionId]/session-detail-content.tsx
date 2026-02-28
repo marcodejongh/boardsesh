@@ -211,11 +211,14 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   const isMultiUser = participants.length > 1;
   const displayName = sessionName || generateSessionName(firstTickAt, boardTypes);
 
-  // Build a lookup from userId to participant info
-  const participantMap = new Map<string, SessionFeedParticipant>();
-  for (const p of participants) {
-    participantMap.set(p.userId, p);
-  }
+  // Build a lookup from userId to participant info (memoized to avoid recreating on every render)
+  const participantMap = useMemo(() => {
+    const map = new Map<string, SessionFeedParticipant>();
+    for (const p of participants) {
+      map.set(p.userId, p);
+    }
+    return map;
+  }, [participants]);
 
   // Use the actual owner from the backend
   const ownerUserId = session.ownerUserId ?? null;
