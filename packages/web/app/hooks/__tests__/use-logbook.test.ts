@@ -1,6 +1,8 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
-import { createQueryWrapper } from '@/app/test-utils/test-providers';
+import { renderHook, waitFor, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createQueryWrapper, createTestQueryClient } from '@/app/test-utils/test-providers';
 
 vi.mock('../use-ws-auth-token', () => ({
   useWsAuthToken: vi.fn(),
@@ -21,7 +23,7 @@ vi.mock('@/app/lib/graphql/operations', () => ({
 
 import { useWsAuthToken } from '../use-ws-auth-token';
 import { useSession } from 'next-auth/react';
-import { useLogbook, useInvalidateLogbook, logbookQueryKey } from '../use-logbook';
+import { useLogbook, useInvalidateLogbook, logbookQueryKey, accumulatedLogbookQueryKey, type LogbookEntry } from '../use-logbook';
 
 const mockUseWsAuthToken = vi.mocked(useWsAuthToken);
 const mockUseSession = vi.mocked(useSession);
@@ -275,11 +277,312 @@ describe('useLogbook', () => {
     expect(result.current.logbook[1].is_ascent).toBe(true); // send
     expect(result.current.logbook[2].is_ascent).toBe(false); // attempt
   });
+
+  it('accumulates entries across multiple fetches', async () => {
+    // First fetch returns tick for climb-1
+    mockRequest.mockResolvedValueOnce({
+      ticks: [
+        {
+          uuid: 'tick-1',
+          climbUuid: 'climb-1',
+          angle: 40,
+          isMirror: false,
+          attemptCount: 1,
+          quality: null,
+          difficulty: null,
+          isBenchmark: false,
+          comment: '',
+          climbedAt: '2024-01-01',
+          createdAt: '2024-01-01T10:00:00Z',
+          updatedAt: '2024-01-01T10:00:00Z',
+          status: 'send',
+          auroraId: null,
+        },
+      ],
+    });
+
+    const { result, rerender } = renderHook(
+      ({ uuids }: { uuids: string[] }) => useLogbook('kilter', uuids),
+      { wrapper: createQueryWrapper(), initialProps: { uuids: ['climb-1'] } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.logbook.length).toBe(1);
+    });
+    expect(result.current.logbook[0].uuid).toBe('tick-1');
+
+    // Second fetch returns tick for climb-2
+    mockRequest.mockResolvedValueOnce({
+      ticks: [
+        {
+          uuid: 'tick-2',
+          climbUuid: 'climb-2',
+          angle: 30,
+          isMirror: false,
+          attemptCount: 2,
+          quality: null,
+          difficulty: null,
+          isBenchmark: false,
+          comment: '',
+          climbedAt: '2024-01-02',
+          createdAt: '2024-01-02T10:00:00Z',
+          updatedAt: '2024-01-02T10:00:00Z',
+          status: 'flash',
+          auroraId: null,
+        },
+      ],
+    });
+
+    // Expand the UUID list (simulates loading a new page)
+    rerender({ uuids: ['climb-1', 'climb-2'] });
+
+    await waitFor(() => {
+      expect(result.current.logbook.length).toBe(2);
+    });
+
+    // Both entries should be present (accumulated)
+    expect(result.current.logbook.find((e) => e.uuid === 'tick-1')).toBeDefined();
+    expect(result.current.logbook.find((e) => e.uuid === 'tick-2')).toBeDefined();
+    // climb-1 should NOT have been re-fetched
+    expect(mockRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not re-fetch already-fetched UUIDs', async () => {
+    mockRequest.mockResolvedValueOnce({
+      ticks: [
+        {
+          uuid: 'tick-1',
+          climbUuid: 'climb-1',
+          angle: 40,
+          isMirror: false,
+          attemptCount: 1,
+          quality: null,
+          difficulty: null,
+          isBenchmark: false,
+          comment: '',
+          climbedAt: '2024-01-01',
+          createdAt: '2024-01-01T10:00:00Z',
+          updatedAt: '2024-01-01T10:00:00Z',
+          status: 'send',
+          auroraId: null,
+        },
+      ],
+    });
+
+    const { result, rerender } = renderHook(
+      ({ uuids }: { uuids: string[] }) => useLogbook('kilter', uuids),
+      { wrapper: createQueryWrapper(), initialProps: { uuids: ['climb-1'] } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.logbook.length).toBe(1);
+    });
+
+    // Re-render with the same UUIDs — should not trigger another fetch
+    rerender({ uuids: ['climb-1'] });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+    expect(result.current.logbook.length).toBe(1);
+  });
+
+  it('syncs external cache updates from useSaveTick', async () => {
+    const queryClient = createTestQueryClient();
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    mockRequest.mockResolvedValueOnce({
+      ticks: [
+        {
+          uuid: 'tick-1',
+          climbUuid: 'climb-1',
+          angle: 40,
+          isMirror: false,
+          attemptCount: 1,
+          quality: null,
+          difficulty: null,
+          isBenchmark: false,
+          comment: '',
+          climbedAt: '2024-01-01',
+          createdAt: '2024-01-01T10:00:00Z',
+          updatedAt: '2024-01-01T10:00:00Z',
+          status: 'send',
+          auroraId: null,
+        },
+      ],
+    });
+
+    const { result } = renderHook(
+      () => useLogbook('kilter', ['climb-1']),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.logbook.length).toBe(1);
+    });
+
+    // Simulate useSaveTick's optimistic update via setQueriesData
+    const optimisticEntry: LogbookEntry = {
+      uuid: 'temp-123',
+      climb_uuid: 'climb-1',
+      angle: 40,
+      is_mirror: false,
+      user_id: 0,
+      attempt_id: 0,
+      tries: 1,
+      quality: null,
+      difficulty: null,
+      is_benchmark: false,
+      is_listed: true,
+      comment: 'optimistic',
+      climbed_at: '2024-02-01',
+      created_at: '2024-02-01T10:00:00Z',
+      updated_at: '2024-02-01T10:00:00Z',
+      wall_uuid: null,
+      is_ascent: true,
+      status: 'flash',
+      aurora_synced: false,
+    };
+
+    act(() => {
+      queryClient.setQueriesData<LogbookEntry[]>(
+        { queryKey: ['logbook', 'kilter'] },
+        (old) => (old ? [optimisticEntry, ...old] : [optimisticEntry]),
+      );
+    });
+
+    await waitFor(() => {
+      expect(result.current.logbook.length).toBe(2);
+    });
+
+    expect(result.current.logbook.find((e) => e.uuid === 'temp-123')).toBeDefined();
+  });
+
+  it('clears logbook when auth is lost', async () => {
+    mockRequest.mockResolvedValueOnce({
+      ticks: [
+        {
+          uuid: 'tick-1',
+          climbUuid: 'climb-1',
+          angle: 40,
+          isMirror: false,
+          attemptCount: 1,
+          quality: null,
+          difficulty: null,
+          isBenchmark: false,
+          comment: '',
+          climbedAt: '2024-01-01',
+          createdAt: '2024-01-01T10:00:00Z',
+          updatedAt: '2024-01-01T10:00:00Z',
+          status: 'send',
+          auroraId: null,
+        },
+      ],
+    });
+
+    const { result, rerender } = renderHook(
+      () => useLogbook('kilter', ['climb-1']),
+      { wrapper: createQueryWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.logbook.length).toBe(1);
+    });
+
+    // Simulate logout
+    mockUseSession.mockReturnValue({
+      status: 'unauthenticated',
+      data: null,
+      update: vi.fn(),
+    });
+
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.logbook).toEqual([]);
+    });
+  });
+
+  it('re-fetches after auth is restored', async () => {
+    mockRequest.mockResolvedValue({
+      ticks: [
+        {
+          uuid: 'tick-1',
+          climbUuid: 'climb-1',
+          angle: 40,
+          isMirror: false,
+          attemptCount: 1,
+          quality: null,
+          difficulty: null,
+          isBenchmark: false,
+          comment: '',
+          climbedAt: '2024-01-01',
+          createdAt: '2024-01-01T10:00:00Z',
+          updatedAt: '2024-01-01T10:00:00Z',
+          status: 'send',
+          auroraId: null,
+        },
+      ],
+    });
+
+    const { result, rerender } = renderHook(
+      () => useLogbook('kilter', ['climb-1']),
+      { wrapper: createQueryWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.logbook.length).toBe(1);
+    });
+
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+
+    // Simulate logout
+    mockUseSession.mockReturnValue({
+      status: 'unauthenticated',
+      data: null,
+      update: vi.fn(),
+    });
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.logbook).toEqual([]);
+    });
+
+    // Simulate re-login
+    mockUseSession.mockReturnValue({
+      status: 'authenticated',
+      data: { user: { id: '1' }, expires: '' },
+      update: vi.fn(),
+    });
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.logbook.length).toBe(1);
+    });
+
+    // Should have fetched again after re-auth
+    expect(mockRequest).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('useInvalidateLogbook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseWsAuthToken.mockReturnValue({
+      token: 'test-token',
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+    });
+    mockUseSession.mockReturnValue({
+      status: 'authenticated',
+      data: { user: { id: '1' }, expires: '' },
+      update: vi.fn(),
+    });
+    mockRequest.mockReset();
   });
 
   it('returns a function', () => {
@@ -289,5 +592,61 @@ describe('useInvalidateLogbook', () => {
     );
 
     expect(typeof result.current).toBe('function');
+  });
+
+  it('resets tracking and triggers re-fetch', async () => {
+    mockRequest.mockResolvedValue({
+      ticks: [
+        {
+          uuid: 'tick-1',
+          climbUuid: 'climb-1',
+          angle: 40,
+          isMirror: false,
+          attemptCount: 1,
+          quality: null,
+          difficulty: null,
+          isBenchmark: false,
+          comment: '',
+          climbedAt: '2024-01-01',
+          createdAt: '2024-01-01T10:00:00Z',
+          updatedAt: '2024-01-01T10:00:00Z',
+          status: 'send',
+          auroraId: null,
+        },
+      ],
+    });
+
+    const queryClient = createTestQueryClient();
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(
+      () => {
+        const logbook = useLogbook('kilter', ['climb-1']);
+        const invalidate = useInvalidateLogbook('kilter');
+        return { ...logbook, invalidate };
+      },
+      { wrapper },
+    );
+
+    // Wait for initial fetch
+    await waitFor(() => {
+      expect(result.current.logbook.length).toBe(1);
+    });
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+
+    // Invalidate — should clear state and trigger re-fetch
+    act(() => {
+      result.current.invalidate();
+    });
+
+    await waitFor(() => {
+      // Should have fetched again after invalidation
+      expect(mockRequest).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(() => {
+      expect(result.current.logbook.length).toBe(1);
+    });
   });
 });
