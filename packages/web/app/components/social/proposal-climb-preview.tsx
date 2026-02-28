@@ -47,47 +47,33 @@ export default function ProposalClimbPreview({ proposal }: ProposalClimbPreviewP
   }, [frames, boardType]);
 
   const climbViewPath = useMemo(() => {
-    if (!layoutId || !angle) return null;
+    if (!boardDetails || !angle) return null;
 
-    const boardName = boardType as BoardName;
-    const config = getDefaultBoardConfig(boardName, layoutId);
-    if (!config) return null;
-
-    try {
-      const details = getBoardDetailsForBoard({
-        board_name: boardName,
-        layout_id: layoutId,
-        size_id: config.sizeId,
-        set_ids: config.setIds,
-      });
-      if (details?.layout_name && details.size_name && details.set_names) {
-        return constructClimbViewUrlWithSlugs(
-          details.board_name,
-          details.layout_name,
-          details.size_name,
-          details.size_description,
-          details.set_names,
-          angle,
-          climbUuid,
-          climbName || undefined,
-        );
-      }
-
-      return constructClimbViewUrl(
-        {
-          board_name: boardName,
-          layout_id: layoutId,
-          size_id: config.sizeId,
-          set_ids: config.setIds,
-          angle,
-        },
+    if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
+      return constructClimbViewUrlWithSlugs(
+        boardDetails.board_name,
+        boardDetails.layout_name,
+        boardDetails.size_name,
+        boardDetails.size_description,
+        boardDetails.set_names,
+        angle,
         climbUuid,
         climbName || undefined,
       );
-    } catch {
-      return null;
     }
-  }, [boardType, layoutId, angle, climbUuid, climbName]);
+
+    return constructClimbViewUrl(
+      {
+        board_name: boardDetails.board_name,
+        layout_id: boardDetails.layout_id,
+        size_id: boardDetails.size_id,
+        set_ids: boardDetails.set_ids,
+        angle,
+      },
+      climbUuid,
+      climbName || undefined,
+    );
+  }, [boardDetails, angle, climbUuid, climbName]);
 
   // Don't render if we have no climb data
   if (!climbName && !frames) return null;
