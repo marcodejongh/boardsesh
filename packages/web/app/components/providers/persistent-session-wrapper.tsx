@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { PartyProfileProvider } from '../party-manager/party-profile-context';
-import { PersistentSessionProvider } from '../persistent-session';
+import { PersistentSessionProvider, usePersistentSession } from '../persistent-session';
 import { QueueBridgeProvider, useQueueBridgeBoardInfo } from '../queue-control/queue-bridge-context';
 import { useQueueContext } from '../graphql-queue';
 import QueueControlBar from '../queue-control/queue-control-bar';
@@ -16,6 +16,8 @@ import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
 import ErrorBoundary from '../error-boundary';
 import bottomBarStyles from '../bottom-tab-bar/bottom-bar-wrapper.module.css';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
+import GlobalHeader from '../global-header/global-header';
+import SessionSummaryDialog from '../session-summary/session-summary-dialog';
 
 interface PersistentSessionWrapperProps {
   children: React.ReactNode;
@@ -34,12 +36,24 @@ export default function PersistentSessionWrapper({ children, boardConfigs }: Per
     <PartyProfileProvider>
       <PersistentSessionProvider>
         <QueueBridgeProvider>
+          <GlobalHeader boardConfigs={boardConfigs} />
           {children}
           <RootBottomBar boardConfigs={boardConfigs} />
+          <RootSessionSummaryDialog />
         </QueueBridgeProvider>
       </PersistentSessionProvider>
     </PartyProfileProvider>
   );
+}
+
+/**
+ * Root-level session summary dialog.
+ * Consumes sessionSummary/dismissSessionSummary from PersistentSessionContext
+ * so session ending works from any page (not just board routes).
+ */
+function RootSessionSummaryDialog() {
+  const { sessionSummary, dismissSessionSummary } = usePersistentSession();
+  return <SessionSummaryDialog summary={sessionSummary} onDismiss={dismissSessionSummary} />;
 }
 
 /**

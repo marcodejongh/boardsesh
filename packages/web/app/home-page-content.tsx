@@ -4,20 +4,12 @@ import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import SearchOutlined from '@mui/icons-material/SearchOutlined';
-import PlayCircleOutlineOutlined from '@mui/icons-material/PlayCircleOutlineOutlined';
-import Button from '@mui/material/Button';
 import ActivityFeed from '@/app/components/activity-feed/activity-feed';
 import ProposalFeed from '@/app/components/activity-feed/proposal-feed';
 import CommentFeed from '@/app/components/activity-feed/comment-feed';
-import searchPillStyles from '@/app/components/search-drawer/search-pill.module.css';
-import UnifiedSearchDrawer from '@/app/components/search-drawer/unified-search-drawer';
-import UserDrawer from '@/app/components/user-drawer/user-drawer';
-import StartSeshDrawer from '@/app/components/session-creation/start-sesh-drawer';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { BoardConfigData } from '@/app/lib/server-board-configs';
 import BoardScrollSection from '@/app/components/board-scroll/board-scroll-section';
 import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
 import type { SessionFeedResult } from '@boardsesh/shared-schema';
@@ -29,7 +21,6 @@ type FeedTab = 'sessions' | 'proposals' | 'comments';
 const VALID_TABS: FeedTab[] = ['sessions', 'proposals', 'comments'];
 
 interface HomePageContentProps {
-  boardConfigs: BoardConfigData;
   initialTab?: FeedTab;
   initialBoardUuid?: string;
   initialFeedResult?: SessionFeedResult | null;
@@ -38,7 +29,6 @@ interface HomePageContentProps {
 }
 
 export default function HomePageContent({
-  boardConfigs,
   initialTab = 'sessions',
   initialBoardUuid,
   initialFeedResult,
@@ -48,9 +38,7 @@ export default function HomePageContent({
   const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [startSeshOpen, setStartSeshOpen] = useState(false);
-  const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
+  const [_selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
 
   // Trust the SSR hint during the loading phase to prevent flash of unauthenticated content
   const isAuthenticated = status === 'authenticated' ? true : (status === 'loading' ? (isAuthenticatedSSR ?? false) : false);
@@ -96,41 +84,8 @@ export default function HomePageContent({
 
   return (
     <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', pb: '60px' }}>
-      {/* Header */}
-      <Box
-        component="header"
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-          px: 2,
-          py: 1.5,
-          borderBottom: '1px solid var(--neutral-200)',
-        }}
-      >
-        <UserDrawer boardConfigs={boardConfigs} />
-        <button
-          className={searchPillStyles.pill}
-          onClick={() => setSearchOpen(true)}
-          type="button"
-        >
-          <SearchOutlined className={searchPillStyles.icon} />
-          <span className={searchPillStyles.text}>Search</span>
-        </button>
-        <Box sx={{ ml: 'auto' }}>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<PlayCircleOutlineOutlined />}
-            onClick={() => setStartSeshOpen(true)}
-          >
-            Sesh
-          </Button>
-        </Box>
-      </Box>
-
       {/* Feed */}
-      <Box component="main" sx={{ flex: 1, px: 2, py: 2 }}>
+      <Box component="main" sx={{ flex: 1, px: 2, py: 2, pt: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px) + 16px)' }}>
         {isAuthenticated && (myBoards.length > 0 || isLoadingBoards) && (
           <BoardScrollSection loading={isLoadingBoards} size="small">
             <div
@@ -174,7 +129,6 @@ export default function HomePageContent({
           <ActivityFeed
             isAuthenticated={isAuthenticated}
             boardUuid={selectedBoardUuid}
-            onFindClimbers={() => setSearchOpen(true)}
             initialFeedResult={initialFeedResult}
           />
         )}
@@ -193,18 +147,6 @@ export default function HomePageContent({
           />
         )}
       </Box>
-
-      <UnifiedSearchDrawer
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        defaultCategory="boards"
-      />
-
-      <StartSeshDrawer
-        open={startSeshOpen}
-        onClose={() => setStartSeshOpen(false)}
-        boardConfigs={boardConfigs}
-      />
     </Box>
   );
 }

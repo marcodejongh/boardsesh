@@ -53,7 +53,6 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <HomePageContent
-      boardConfigs={boardConfigs}
       initialTab={tab}
       initialBoardUuid={boardUuid}
       initialFeedResult={initialFeedResult}

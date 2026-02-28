@@ -6,7 +6,7 @@ export default function MyLibraryLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ minHeight: '100dvh', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div style={{ minHeight: '100dvh', paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {children}
     </div>
   );

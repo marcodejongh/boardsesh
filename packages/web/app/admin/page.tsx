@@ -45,7 +45,7 @@ export default function AdminPage() {
 
   if (!token) {
     return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
+      <Container maxWidth="md" sx={{ py: 4, pt: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px) + 32px)' }}>
         <Alert severity="warning">Please sign in to access the admin panel.</Alert>
       </Container>
     );
@@ -53,14 +53,14 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
+      <Container maxWidth="md" sx={{ py: 4, pt: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px) + 32px)' }}>
         <Alert severity="error">You do not have admin access.</Alert>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="md" sx={{ py: 4, pt: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px) + 32px)' }}>
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: themeTokens.neutral[800] }}>
         Admin Panel
       </Typography>
