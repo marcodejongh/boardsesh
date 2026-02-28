@@ -19,7 +19,7 @@ on:
 
 jobs:
   e2e:
-    timeout-minutes: 30
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.57.0-noble
@@ -59,23 +59,35 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
+        cache: 'npm'
+
+    - name: Restore Next.js build cache
+      uses: actions/cache@v4
+      with:
+        path: packages/web/.next/cache
+        key: nextjs-${{ runner.os }}-${{ hashFiles('packages/web/**/*.ts', 'packages/web/**/*.tsx', 'packages/web/**/*.css') }}
+        restore-keys: |
+          nextjs-${{ runner.os }}-
 
     - name: Install dependencies
       run: npm ci --legacy-peer-deps
 
-    - name: Build shared-schema
-      run: npm run build --workspace=@boardsesh/shared-schema
+    - name: Build shared-schema and crypto
+      run: |
+        npm run build --workspace=@boardsesh/shared-schema &
+        npm run build --workspace=@boardsesh/crypto &
+        wait
 
     - name: Build db package
       run: npm run build --workspace=@boardsesh/db
 
-    - name: Build backend
-      run: npm run build --workspace=boardsesh-backend
-
-    - name: Build web application
-      run: npm run build --workspace=@boardsesh/web
+    - name: Build backend and web application
+      run: |
+        npm run build --workspace=boardsesh-backend &
+        BACKEND_PID=$!
+        npm run build --workspace=@boardsesh/web
+        wait $BACKEND_PID
       env:
-        # Provide minimal env vars needed for build
         NEXTAUTH_SECRET: test-secret-for-ci
         NEXTAUTH_URL: http://localhost:3000
         DATABASE_URL: postgresql://postgres:password@db.localtest.me:5432/main
@@ -90,9 +102,8 @@ jobs:
     - name: Start backend and web server, then run E2E tests
       run: |
         npm run start --workspace=boardsesh-backend &
-        npx wait-on http-get://localhost:8080/health --timeout 30000
         npm run start --workspace=@boardsesh/web &
-        npx wait-on http://localhost:3000 --timeout 60000
+        npx wait-on http-get://localhost:8080/health http://localhost:3000 --timeout 60000
         npm run test:e2e --workspace=@boardsesh/web
       env:
         PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
