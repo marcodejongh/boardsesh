@@ -203,6 +203,9 @@ export const RESOLVE_PROPOSAL = gql`
       weightedDownvotes
       requiredUpvotes
       userVote
+      climbName
+      frames
+      layoutId
     }
   }
 `;
