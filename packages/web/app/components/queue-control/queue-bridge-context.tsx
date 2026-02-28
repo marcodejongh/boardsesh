@@ -114,7 +114,7 @@ function usePersistentSessionQueueAdapter(): {
     (climb: Climb) => {
       if (!boardDetails) return;
       const newItem: ClimbQueueItem = {
-        climb,
+        climb: { ...climb, angle },
         addedBy: null,
         uuid: uuidv4(),
         suggested: false,
@@ -123,7 +123,7 @@ function usePersistentSessionQueueAdapter(): {
       const current = currentClimbQueueItem ?? newItem;
       ps.setLocalQueueState(newQueue, current, baseBoardPath, boardDetails);
     },
-    [queue, currentClimbQueueItem, boardDetails, baseBoardPath, ps],
+    [queue, currentClimbQueueItem, boardDetails, baseBoardPath, ps, angle],
   );
 
   const removeFromQueue = useCallback(
@@ -166,7 +166,7 @@ function usePersistentSessionQueueAdapter(): {
     (climb: Climb) => {
       if (!boardDetails) return;
       const newItem: ClimbQueueItem = {
-        climb,
+        climb: { ...climb, angle },
         addedBy: null,
         uuid: uuidv4(),
         suggested: false,
@@ -183,7 +183,7 @@ function usePersistentSessionQueueAdapter(): {
       }
       ps.setLocalQueueState(newQueue, newItem, baseBoardPath, boardDetails);
     },
-    [queue, currentClimbQueueItem, boardDetails, baseBoardPath, ps],
+    [queue, currentClimbQueueItem, boardDetails, baseBoardPath, ps, angle],
   );
 
   // No-op functions for fields not used by the bottom bar — each matches its exact type signature

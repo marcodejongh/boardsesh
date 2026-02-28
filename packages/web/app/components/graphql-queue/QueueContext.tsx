@@ -654,7 +654,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
       // Actions
       addToQueue: (climb: Climb) => {
-        const newItem = createClimbQueueItem(climb, clientId, currentUserInfo);
+        const newItem = createClimbQueueItem({ ...climb, angle: parsedParams.angle }, clientId, currentUserInfo);
 
         // Optimistic update
         dispatch({ type: 'DELTA_ADD_QUEUE_ITEM', payload: { item: newItem } });
@@ -680,7 +680,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       setCurrentClimb: async (climb: Climb) => {
-        const newItem = createClimbQueueItem(climb, clientId, currentUserInfo);
+        const newItem = createClimbQueueItem({ ...climb, angle: parsedParams.angle }, clientId, currentUserInfo);
 
         // Optimistic update
         dispatch({ type: 'SET_CURRENT_CLIMB', payload: newItem });
