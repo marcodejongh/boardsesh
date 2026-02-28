@@ -66,8 +66,19 @@ vi.mock('../proposal-vote-bar', () => ({
   default: () => <div data-testid="proposal-vote-bar" />,
 }));
 
-vi.mock('../comment-section', () => ({
-  default: () => <div data-testid="comment-section" />,
+const mockFeedCommentButton = vi.fn();
+vi.mock('../feed-comment-button', () => ({
+  default: (props: { entityType: string; entityId: string; commentCount?: number }) => {
+    mockFeedCommentButton(props);
+    return (
+      <div
+        data-testid="feed-comment-button"
+        data-entity-type={props.entityType}
+        data-entity-id={props.entityId}
+        data-comment-count={props.commentCount ?? 0}
+      />
+    );
+  },
 }));
 
 vi.mock('@/app/theme/theme-config', () => ({
@@ -347,17 +358,19 @@ describe('ProposalCard', () => {
   });
 
   describe('Comments', () => {
-    it('toggles comment section on button click', () => {
+    it('renders FeedCommentButton with proposal entity type', () => {
       render(<ProposalCard proposal={makeProposal()} />);
 
-      // Comment section should not be visible initially
-      expect(screen.queryByTestId('comment-section')).toBeNull();
+      const commentButton = screen.getByTestId('feed-comment-button');
+      expect(commentButton.getAttribute('data-entity-type')).toBe('proposal');
+      expect(commentButton.getAttribute('data-entity-id')).toBe('proposal-1');
+    });
 
-      // Click comments button
-      fireEvent.click(screen.getByText('Comments'));
+    it('passes correct entity id from local proposal state', () => {
+      render(<ProposalCard proposal={makeProposal({ uuid: 'custom-uuid' })} />);
 
-      // Comment section should now be visible
-      expect(screen.getByTestId('comment-section')).toBeTruthy();
+      const commentButton = screen.getByTestId('feed-comment-button');
+      expect(commentButton.getAttribute('data-entity-id')).toBe('custom-uuid');
     });
   });
 

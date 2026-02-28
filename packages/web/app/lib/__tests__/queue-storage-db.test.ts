@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { openDB } from 'idb';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getMostRecentQueue,
   saveQueueState,
@@ -83,25 +83,32 @@ describe('getMostRecentQueue', () => {
   it('returns the queue with the highest updatedAt', async () => {
     const boardDetails = createTestBoardDetails();
 
+    // saveQueueState overwrites updatedAt with Date.now(), so we mock it
+    // to ensure deterministic timestamps across the two saves
+    const dateNowSpy = vi.spyOn(Date, 'now');
+
+    dateNowSpy.mockReturnValueOnce(1000);
     await saveQueueState({
       boardPath: '/kilter/1/10/1,2/40',
       queue: [createTestClimbQueueItem('a')],
       currentClimbQueueItem: null,
       boardDetails,
-      updatedAt: 1000,
+      updatedAt: 0,
     });
+
+    dateNowSpy.mockReturnValueOnce(2000);
     await saveQueueState({
       boardPath: '/tension/1/10/1,2/45',
       queue: [createTestClimbQueueItem('b')],
       currentClimbQueueItem: null,
       boardDetails: createTestBoardDetails({ board_name: 'tension' }),
-      updatedAt: 2000,
+      updatedAt: 0,
     });
+
+    dateNowSpy.mockRestore();
 
     const result = await getMostRecentQueue();
     expect(result).not.toBeNull();
-    // saveQueueState overwrites updatedAt with Date.now(), but the second call
-    // has a later Date.now() so it will have the higher timestamp
     expect(result!.boardPath).toBe('/tension/1/10/1,2/45');
     expect(result!.queue).toHaveLength(1);
     expect(result!.queue[0].uuid).toBe('b');

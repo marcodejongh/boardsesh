@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import type { SessionFeedItem } from '@boardsesh/shared-schema';
 
@@ -22,6 +22,21 @@ vi.mock('@/app/components/social/vote-button', () => ({
   default: ({ entityType, entityId }: { entityType: string; entityId: string }) => (
     <div data-testid="vote-button" data-entity-type={entityType} data-entity-id={entityId} />
   ),
+}));
+
+const mockFeedCommentButton = vi.fn();
+vi.mock('@/app/components/social/feed-comment-button', () => ({
+  default: (props: { entityType: string; entityId: string; commentCount?: number }) => {
+    mockFeedCommentButton(props);
+    return (
+      <div
+        data-testid="feed-comment-button"
+        data-entity-type={props.entityType}
+        data-entity-id={props.entityId}
+        data-comment-count={props.commentCount ?? 0}
+      />
+    );
+  },
 }));
 
 vi.mock('@/app/theme/theme-config', () => ({
@@ -133,9 +148,26 @@ describe('SessionFeedCard', () => {
     expect(voteButton.getAttribute('data-entity-id')).toBe('session-1');
   });
 
-  it('shows comment count', () => {
+  it('renders FeedCommentButton with session entity type and id', () => {
+    render(<SessionFeedCard session={makeSession()} />);
+
+    const commentButton = screen.getByTestId('feed-comment-button');
+    expect(commentButton.getAttribute('data-entity-type')).toBe('session');
+    expect(commentButton.getAttribute('data-entity-id')).toBe('session-1');
+  });
+
+  it('passes comment count to FeedCommentButton', () => {
     render(<SessionFeedCard session={makeSession({ commentCount: 5 })} />);
-    expect(screen.getByText('5 comments')).toBeTruthy();
+
+    const commentButton = screen.getByTestId('feed-comment-button');
+    expect(commentButton.getAttribute('data-comment-count')).toBe('5');
+  });
+
+  it('passes zero comment count to FeedCommentButton when no comments', () => {
+    render(<SessionFeedCard session={makeSession({ commentCount: 0 })} />);
+
+    const commentButton = screen.getByTestId('feed-comment-button');
+    expect(commentButton.getAttribute('data-comment-count')).toBe('0');
   });
 
   it('handles empty grade distribution gracefully', () => {
