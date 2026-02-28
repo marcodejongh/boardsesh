@@ -83,25 +83,35 @@ describe('getMostRecentQueue', () => {
   it('returns the queue with the highest updatedAt', async () => {
     const boardDetails = createTestBoardDetails();
 
-    await saveQueueState({
-      boardPath: '/kilter/1/10/1,2/40',
-      queue: [createTestClimbQueueItem('a')],
-      currentClimbQueueItem: null,
-      boardDetails,
-      updatedAt: 1000,
-    });
-    await saveQueueState({
-      boardPath: '/tension/1/10/1,2/45',
-      queue: [createTestClimbQueueItem('b')],
-      currentClimbQueueItem: null,
-      boardDetails: createTestBoardDetails({ board_name: 'tension' }),
-      updatedAt: 2000,
-    });
+    // Write directly to IndexedDB with controlled timestamps to avoid
+    // Date.now() non-determinism in saveQueueState (which overwrites updatedAt).
+    const db = await openDB(DB_NAME, 1);
+    await db.put(
+      STORE_NAME,
+      {
+        boardPath: '/kilter/1/10/1,2/40',
+        queue: [createTestClimbQueueItem('a')],
+        currentClimbQueueItem: null,
+        boardDetails,
+        updatedAt: 1000,
+      },
+      'queue:/kilter/1/10/1,2/40',
+    );
+    await db.put(
+      STORE_NAME,
+      {
+        boardPath: '/tension/1/10/1,2/45',
+        queue: [createTestClimbQueueItem('b')],
+        currentClimbQueueItem: null,
+        boardDetails: createTestBoardDetails({ board_name: 'tension' }),
+        updatedAt: 2000,
+      },
+      'queue:/tension/1/10/1,2/45',
+    );
+    db.close();
 
     const result = await getMostRecentQueue();
     expect(result).not.toBeNull();
-    // saveQueueState overwrites updatedAt with Date.now(), but the second call
-    // has a later Date.now() so it will have the higher timestamp
     expect(result!.boardPath).toBe('/tension/1/10/1,2/45');
     expect(result!.queue).toHaveLength(1);
     expect(result!.queue[0].uuid).toBe('b');
