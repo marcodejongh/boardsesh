@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import MuiTypography from '@mui/material/Typography';
@@ -13,8 +13,11 @@ import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   VOTE,
+  GET_VOTE_SUMMARY,
   type VoteMutationVariables,
   type VoteMutationResponse,
+  type GetVoteSummaryQueryVariables,
+  type GetVoteSummaryQueryResponse,
 } from '@/app/lib/graphql/operations';
 import { themeTokens } from '@/app/theme/theme-config';
 import type { SocialEntityType } from '@boardsesh/shared-schema';
@@ -46,6 +49,43 @@ export default function VoteButton({
   const [isLoading, setIsLoading] = useState(false);
   const { token, isAuthenticated } = useWsAuthToken();
   const { showMessage } = useSnackbar();
+
+  // Fetch the current user's vote state on mount so liked/upvoted items show as filled
+  const fetchedEntityRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+
+    const key = `${entityType}:${entityId}`;
+    if (fetchedEntityRef.current === key) return;
+    fetchedEntityRef.current = key;
+
+    let cancelled = false;
+
+    const fetchVoteSummary = async () => {
+      try {
+        const client = createGraphQLHttpClient(token);
+        const response = await client.request<GetVoteSummaryQueryResponse, GetVoteSummaryQueryVariables>(
+          GET_VOTE_SUMMARY,
+          { entityType, entityId },
+        );
+        if (!cancelled) {
+          const summary = response.voteSummary;
+          setUpvotes(summary.upvotes);
+          setDownvotes(summary.downvotes);
+          setUserVote(summary.userVote);
+        }
+      } catch {
+        // Silently fail — fall back to initial props
+      }
+    };
+
+    fetchVoteSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, token, entityType, entityId]);
 
   const handleVote = useCallback(
     async (value: 1 | -1) => {

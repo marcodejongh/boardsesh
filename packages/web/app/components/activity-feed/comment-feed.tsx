@@ -195,7 +195,13 @@ function CommentFeedCard({ comment }: { comment: CommentType }) {
 
         {/* Vote + reply count */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-          <VoteButton entityType="comment" entityId={comment.uuid} />
+          <VoteButton
+            entityType="comment"
+            entityId={comment.uuid}
+            initialUpvotes={comment.upvotes}
+            initialDownvotes={comment.downvotes}
+            initialUserVote={comment.userVote}
+          />
           {comment.replyCount > 0 && (
             <Typography variant="caption" color="text.secondary">
               {comment.replyCount} {comment.replyCount === 1 ? 'reply' : 'replies'}
