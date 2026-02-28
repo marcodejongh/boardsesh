@@ -413,6 +413,72 @@ describe('queue-bridge-context', () => {
         // New item becomes current
         expect(newCurrent.climb.uuid).toBe('c2');
       });
+
+      // ---------------------------------------------------------------
+      // Angle override behavior
+      // ---------------------------------------------------------------
+      describe('angle override', () => {
+        it('addToQueue overrides climb angle with current queue angle', () => {
+          // Current climb is at angle 40, new climb has angle 25
+          const currentClimb = createTestClimb({ uuid: 'c1', angle: 40 });
+          const item = createTestQueueItem(currentClimb, 'u1');
+          const climbWithDifferentAngle = createTestClimb({ uuid: 'c-new', angle: 25 });
+
+          const { result } = renderWithLocalQueue([item], item);
+          act(() => {
+            result.current!.addToQueue(climbWithDifferentAngle);
+          });
+
+          const [newQueue] = mockSetLocalQueueState.mock.calls[0];
+          // The added climb should have the queue's angle (40), not its own (25)
+          expect(newQueue[1].climb.angle).toBe(40);
+          expect(newQueue[1].climb.uuid).toBe('c-new');
+        });
+
+        it('setCurrentClimb overrides climb angle with current queue angle', () => {
+          // Current climb is at angle 40, proposal climb has angle 0
+          const currentClimb = createTestClimb({ uuid: 'c1', angle: 40 });
+          const item = createTestQueueItem(currentClimb, 'u1');
+          const proposalClimb = createTestClimb({ uuid: 'c-proposal', angle: 0 });
+
+          const { result } = renderWithLocalQueue([item], item);
+          act(() => {
+            result.current!.setCurrentClimb(proposalClimb);
+          });
+
+          const [, newCurrent] = mockSetLocalQueueState.mock.calls[0];
+          // The proposal climb should have the queue's angle (40), not 0
+          expect(newCurrent.climb.angle).toBe(40);
+          expect(newCurrent.climb.uuid).toBe('c-proposal');
+        });
+
+        it('preserves climb original angle when local queue is empty (no angle source)', () => {
+          // Empty queue — no current climb to derive angle from
+          const climbWithAngle = createTestClimb({ uuid: 'c-new', angle: 35 });
+
+          const { result } = renderWithLocalQueue([], null);
+          act(() => {
+            result.current!.addToQueue(climbWithAngle);
+          });
+
+          const [newQueue] = mockSetLocalQueueState.mock.calls[0];
+          // With no existing angle source, the climb keeps its original angle
+          expect(newQueue[0].climb.angle).toBe(35);
+        });
+
+        it('preserves climb original angle when setCurrentClimb on empty queue', () => {
+          const proposalClimb = createTestClimb({ uuid: 'c-proposal', angle: 25 });
+
+          const { result } = renderWithLocalQueue([], null);
+          act(() => {
+            result.current!.setCurrentClimb(proposalClimb);
+          });
+
+          const [, newCurrent] = mockSetLocalQueueState.mock.calls[0];
+          // With no existing angle source, the climb keeps its original angle
+          expect(newCurrent.climb.angle).toBe(25);
+        });
+      });
     });
   });
 

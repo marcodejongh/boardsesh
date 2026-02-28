@@ -64,6 +64,9 @@ function usePersistentSessionQueueAdapter(): {
   const angle: Angle = isParty
     ? ps.activeSession!.parsedParams.angle
     : (ps.localCurrentClimbQueueItem?.climb?.angle ?? 0);
+  // Whether the angle comes from a real source (party session or existing queue item)
+  // vs the fallback 0 when the local queue is empty.
+  const hasAngleSource = isParty || !!ps.localCurrentClimbQueueItem;
 
   const baseBoardPath = useMemo(() => {
     if (isParty && ps.activeSession?.boardPath) {
@@ -114,7 +117,7 @@ function usePersistentSessionQueueAdapter(): {
     (climb: Climb) => {
       if (!boardDetails) return;
       const newItem: ClimbQueueItem = {
-        climb: { ...climb, angle },
+        climb: hasAngleSource ? { ...climb, angle } : climb,
         addedBy: null,
         uuid: uuidv4(),
         suggested: false,
@@ -123,7 +126,7 @@ function usePersistentSessionQueueAdapter(): {
       const current = currentClimbQueueItem ?? newItem;
       ps.setLocalQueueState(newQueue, current, baseBoardPath, boardDetails);
     },
-    [queue, currentClimbQueueItem, boardDetails, baseBoardPath, ps, angle],
+    [queue, currentClimbQueueItem, boardDetails, baseBoardPath, ps, angle, hasAngleSource],
   );
 
   const removeFromQueue = useCallback(
@@ -166,7 +169,7 @@ function usePersistentSessionQueueAdapter(): {
     (climb: Climb) => {
       if (!boardDetails) return;
       const newItem: ClimbQueueItem = {
-        climb: { ...climb, angle },
+        climb: hasAngleSource ? { ...climb, angle } : climb,
         addedBy: null,
         uuid: uuidv4(),
         suggested: false,
@@ -183,7 +186,7 @@ function usePersistentSessionQueueAdapter(): {
       }
       ps.setLocalQueueState(newQueue, newItem, baseBoardPath, boardDetails);
     },
-    [queue, currentClimbQueueItem, boardDetails, baseBoardPath, ps, angle],
+    [queue, currentClimbQueueItem, boardDetails, baseBoardPath, ps, angle, hasAngleSource],
   );
 
   // No-op functions for fields not used by the bottom bar — each matches its exact type signature
