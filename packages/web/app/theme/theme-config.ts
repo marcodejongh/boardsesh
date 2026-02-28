@@ -138,6 +138,13 @@ export const themeTokens = {
     popover: 1050,
     tooltip: 1060,
   },
+
+  // Layout constants
+  layout: {
+    /** CSS height value for a spacer that prevents the bottom nav bar from covering content on mobile Safari.
+     *  Accounts for nav height (~72px), iOS Safari 2dvh offset, and safe area inset. */
+    bottomNavSpacer: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+  },
 } as const;
 
 // Dark mode overrides — only backgrounds, surfaces, text, neutrals, and status tints change.

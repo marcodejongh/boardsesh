@@ -270,7 +270,7 @@ const ClimbsList = ({
 
       {/* Bottom spacer to prevent bottom nav bar from covering last item on mobile Safari */}
       {showBottomSpacer && (
-        <Box sx={{ height: 'calc(80px + env(safe-area-inset-bottom, 0px))' }} aria-hidden />
+        <Box sx={{ height: themeTokens.layout.bottomNavSpacer }} aria-hidden />
       )}
     </Box>
   );

@@ -107,8 +107,8 @@ function convertSessionTicksToClimbs(ticks: SessionDetailTick[]): Climb[] {
           tick.frames,
           tick.boardType as BoardName,
         )[0] || {};
-      } catch {
-        // Gracefully handle unknown board types
+      } catch (err) {
+        console.warn(`Failed to parse litUpHoldsMap for climb ${tick.climbUuid} (boardType: ${tick.boardType}):`, err);
       }
     }
 
@@ -278,8 +278,8 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
     if (myBoards.length > 0) {
       defaultDetails = getUserBoardDetails(myBoards[0]);
     }
-    if (!defaultDetails) {
-      defaultDetails = getBoardDetailsForPlaylist(boardTypes[0] || 'kilter', null);
+    if (!defaultDetails && boardTypes[0]) {
+      defaultDetails = getBoardDetailsForPlaylist(boardTypes[0], null);
     }
 
     return { boardDetailsMap: map, defaultBoardDetails: defaultDetails, unsupportedClimbs: unsupported };
