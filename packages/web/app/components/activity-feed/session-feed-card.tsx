@@ -14,12 +14,12 @@ import FlashOnOutlined from '@mui/icons-material/FlashOnOutlined';
 import CheckCircleOutlineOutlined from '@mui/icons-material/CheckCircleOutlineOutlined';
 import ErrorOutlineOutlined from '@mui/icons-material/ErrorOutlineOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
-import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import Link from 'next/link';
 import type { SessionFeedItem } from '@boardsesh/shared-schema';
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
 import OutcomeDoughnut from '@/app/components/charts/outcome-doughnut';
 import VoteButton from '@/app/components/social/vote-button';
+import FeedCommentButton from '@/app/components/social/feed-comment-button';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeColor, getGradeTextColor } from '@/app/lib/grade-colors';
 
@@ -303,14 +303,11 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
           initialUserVote={0}
           likeOnly
         />
-        {commentCount > 0 && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-            <ChatBubbleOutlineOutlined sx={{ fontSize: 14, color: 'text.secondary' }} />
-            <Typography variant="caption" color="text.secondary">
-              {commentCount} comment{commentCount !== 1 ? 's' : ''}
-            </Typography>
-          </Box>
-        )}
+        <FeedCommentButton
+          entityType="session"
+          entityId={sessionId}
+          commentCount={commentCount}
+        />
       </Box>
     </Card>
   );
