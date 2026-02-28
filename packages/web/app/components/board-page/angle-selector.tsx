@@ -24,9 +24,10 @@ type AngleSelectorProps = {
   currentAngle: number;
   currentClimb: Climb | null;
   isAngleAdjustable?: boolean;
+  onAngleChange?: (angle: number) => void;
 };
 
-export default function AngleSelector({ boardName, boardDetails, currentAngle, currentClimb, isAngleAdjustable = true }: AngleSelectorProps) {
+export default function AngleSelector({ boardName, boardDetails, currentAngle, currentClimb, isAngleAdjustable = true, onAngleChange: onAngleChangeProp }: AngleSelectorProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -67,14 +68,18 @@ export default function AngleSelector({ boardName, boardDetails, currentAngle, c
       angle: newAngle,
     });
 
-    // Replace the current angle in the URL with the new one
-    const pathSegments = pathname.split('/');
-    const angleIndex = pathSegments.findIndex((segment) => segment === currentAngle.toString());
+    if (onAngleChangeProp) {
+      onAngleChangeProp(newAngle);
+    } else {
+      // Replace the current angle in the URL with the new one
+      const pathSegments = pathname.split('/');
+      const angleIndex = pathSegments.findIndex((segment) => segment === currentAngle.toString());
 
-    if (angleIndex !== -1) {
-      pathSegments[angleIndex] = newAngle.toString();
-      const newPath = pathSegments.join('/');
-      router.push(newPath);
+      if (angleIndex !== -1) {
+        pathSegments[angleIndex] = newAngle.toString();
+        const newPath = pathSegments.join('/');
+        router.push(newPath);
+      }
     }
 
     setIsDrawerOpen(false);

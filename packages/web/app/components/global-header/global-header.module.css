@@ -1,0 +1,61 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 8dvh;
+  min-height: 48px;
+  padding: 0 16px;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--semantic-surface);
+  border-bottom: 1px solid var(--neutral-200);
+  touch-action: manipulation;
+}
+
+.header button,
+.header a,
+.header input {
+  touch-action: manipulation;
+}
+
+.searchPillButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
+  cursor: pointer;
+  transition: box-shadow 200ms ease;
+  font-size: 14px;
+  color: var(--neutral-500);
+  line-height: 1.4;
+}
+
+.searchPillButton:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.searchPillButton:active {
+  background: var(--neutral-100);
+}
+
+.searchPillIcon {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+
+.searchPillText {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}

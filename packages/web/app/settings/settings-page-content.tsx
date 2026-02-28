@@ -249,7 +249,7 @@ export default function SettingsPageContent() {
 
   if (status === 'loading' || loading) {
     return (
-      <Box sx={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
+      <Box sx={{ minHeight: '100vh', paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))', background: 'var(--semantic-background)' }}>
         <Box component="main" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
           <CircularProgress size={48} />
         </Box>
@@ -262,7 +262,7 @@ export default function SettingsPageContent() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'var(--semantic-background)' }}>
+    <Box sx={{ minHeight: '100vh', paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))', background: 'var(--semantic-background)' }}>
       <Box
         component="header"
         sx={{

@@ -2,6 +2,7 @@
 
 .docsContainer {
   padding: 24px;
+  padding-top: calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px) + 24px);
   max-width: 1400px;
   margin: 0 auto;
 }
