@@ -46,6 +46,7 @@ import {
 } from '@/app/lib/graphql/operations/activity-feed';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { themeTokens } from '@/app/theme/theme-config';
+import type { UserBoard } from '@boardsesh/shared-schema';
 import type { Climb, BoardDetails, BoardName } from '@/app/lib/types';
 import UserSearchDialog from './user-search-dialog';
 
@@ -222,18 +223,15 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   // Convert ticks to Climb objects for ClimbsList
   const sessionClimbs = useMemo(() => convertSessionTicksToClimbs(ticks), [ticks]);
 
-  // Group ticks by climb for per-user rendering in multi-user sessions
-  const ticksByClimb = useMemo(() => {
-    if (!isMultiUser) return null;
-    return groupTicksByClimbUuid(ticks);
-  }, [ticks, isMultiUser]);
+  // Group ticks by climb for rendering tick details below each climb
+  const ticksByClimb = useMemo(() => groupTicksByClimbUuid(ticks), [ticks]);
 
   // Build boardDetailsMap for multi-board support
   const { boardDetailsMap, defaultBoardDetails, unsupportedClimbs } = useMemo(() => {
     const map: Record<string, BoardDetails> = {};
     const unsupported = new Set<string>();
 
-    const userBoardsByKey = new Map<string, ReturnType<typeof myBoards>[number]>();
+    const userBoardsByKey = new Map<string, UserBoard>();
     for (const board of myBoards) {
       const key = `${board.boardType}:${board.layoutId}`;
       if (!userBoardsByKey.has(key)) {
@@ -279,7 +277,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
       defaultDetails = getBoardDetailsForPlaylist(boardTypes[0] || 'kilter', null);
     }
 
-    return { boardDetailsMap: map, defaultBoardDetails: defaultDetails!, unsupportedClimbs: unsupported };
+    return { boardDetailsMap: map, defaultBoardDetails: defaultDetails, unsupportedClimbs: unsupported };
   }, [sessionClimbs, myBoards, boardTypes]);
 
   // Climb actions data for favorites/playlists
@@ -310,16 +308,15 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
     }
   }, []);
 
-  // Render per-user tick details below each climb item (for multi-user sessions)
+  // Render tick details below each climb item (per-user rows for multi-user, status/attempts for single-user)
   const renderTickDetails = useCallback((climb: Climb) => {
-    if (!ticksByClimb) return null;
     const climbTicks = ticksByClimb.get(climb.uuid);
     if (!climbTicks || climbTicks.length === 0) return null;
 
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, px: 2, pb: 1 }}>
         {climbTicks.map((tick) => {
-          const participant = participantMap.get(tick.userId);
+          const participant = isMultiUser ? participantMap.get(tick.userId) : null;
           return (
             <Box
               key={tick.uuid}
@@ -331,15 +328,19 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
                 borderTop: `1px solid ${themeTokens.neutral[100]}`,
               }}
             >
-              <Avatar
-                src={participant?.avatarUrl ?? undefined}
-                sx={{ width: 18, height: 18 }}
-              >
-                {!participant?.avatarUrl && <PersonOutlined sx={{ fontSize: 10 }} />}
-              </Avatar>
-              <Typography variant="caption" sx={{ flex: 1, minWidth: 0 }} noWrap>
-                {participant?.displayName || 'Climber'}
-              </Typography>
+              {isMultiUser && (
+                <>
+                  <Avatar
+                    src={participant?.avatarUrl ?? undefined}
+                    sx={{ width: 18, height: 18 }}
+                  >
+                    {!participant?.avatarUrl && <PersonOutlined sx={{ fontSize: 10 }} />}
+                  </Avatar>
+                  <Typography variant="caption" sx={{ flex: 1, minWidth: 0 }} noWrap>
+                    {participant?.displayName || 'Climber'}
+                  </Typography>
+                </>
+              )}
               <Chip
                 label={tick.status}
                 size="small"
@@ -350,6 +351,11 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
               {tick.attemptCount > 1 && (
                 <Typography variant="caption" color="text.secondary">
                   {tick.attemptCount}x
+                </Typography>
+              )}
+              {tick.comment && (
+                <Typography variant="caption" color="text.secondary" sx={{ flex: isMultiUser ? undefined : 1, minWidth: 0 }} noWrap>
+                  {tick.comment}
                 </Typography>
               )}
               <VoteButton
@@ -365,7 +371,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
         })}
       </Box>
     );
-  }, [ticksByClimb, participantMap]);
+  }, [ticksByClimb, participantMap, isMultiUser]);
 
   const handleStartEdit = useCallback(() => {
     setEditName(sessionName || '');
@@ -689,7 +695,8 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
               onClimbSelect={navigateToClimb}
               onLoadMore={noopLoadMore}
               hideEndMessage
-              renderItemExtra={isMultiUser ? renderTickDetails : undefined}
+              showBottomSpacer
+              renderItemExtra={renderTickDetails}
             />
           </PlaylistsProvider>
         </FavoritesProvider>

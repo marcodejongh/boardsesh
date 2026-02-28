@@ -262,6 +262,7 @@ export default function SetterClimbList({ username, boardTypes, authToken }: Set
               onLoadMore={handleLoadMore}
               headerInline={headerInline}
               hideEndMessage
+              showBottomSpacer
             />
           </PlaylistsProvider>
         </FavoritesProvider>

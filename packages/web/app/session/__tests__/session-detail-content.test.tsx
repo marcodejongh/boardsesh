@@ -263,6 +263,22 @@ describe('SessionDetailContent', () => {
     expect(screen.getByText('Hardest: V8')).toBeTruthy();
   });
 
+  it('renders per-tick VoteButton with tick entity type for single-user sessions', () => {
+    render(<SessionDetailContent session={makeSession()} />);
+    const voteButtons = screen.getAllByTestId('vote-button');
+    const tickVote = voteButtons.find(
+      (el) => el.getAttribute('data-entity-type') === 'tick',
+    );
+    expect(tickVote).toBeTruthy();
+    expect(tickVote!.getAttribute('data-entity-id')).toBe('tick-1');
+  });
+
+  it('renders tick status details for single-user sessions', () => {
+    render(<SessionDetailContent session={makeSession()} />);
+    // The status chip should be rendered via renderItemExtra
+    expect(screen.getByText('send')).toBeTruthy();
+  });
+
   it('deduplicates climbs with same climbUuid', () => {
     const sessionWithDuplicates = makeSession({
       ticks: [

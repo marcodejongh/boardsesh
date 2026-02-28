@@ -381,6 +381,7 @@ export default function PlaylistDetailContent({
               onLoadMore={handleLoadMore}
               header={climbsHeader}
               hideEndMessage
+              showBottomSpacer
             />
           </PlaylistsProvider>
         </FavoritesProvider>

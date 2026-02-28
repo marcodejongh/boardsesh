@@ -34,6 +34,8 @@ export type ClimbsListProps = {
   hideEndMessage?: boolean;
   /** Optional extra content to render below each climb item (e.g., per-user tick details in sessions) */
   renderItemExtra?: (climb: Climb) => React.ReactNode;
+  /** When true, adds a bottom spacer to prevent the mobile Safari bottom nav bar from covering the last item */
+  showBottomSpacer?: boolean;
 };
 
 const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; viewMode: ViewMode }) => {
@@ -63,6 +65,7 @@ const ClimbsList = ({
   headerInline,
   hideEndMessage,
   renderItemExtra,
+  showBottomSpacer,
 }: ClimbsListProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
@@ -266,7 +269,9 @@ const ClimbsList = ({
       </Box>
 
       {/* Bottom spacer to prevent bottom nav bar from covering last item on mobile Safari */}
-      <Box sx={{ height: 'calc(80px + env(safe-area-inset-bottom, 0px))' }} aria-hidden />
+      {showBottomSpacer && (
+        <Box sx={{ height: 'calc(80px + env(safe-area-inset-bottom, 0px))' }} aria-hidden />
+      )}
     </Box>
   );
 };
