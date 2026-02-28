@@ -1,3 +1,4 @@
+import type { UserBoard } from '@boardsesh/shared-schema';
 import { BoardName, BoardDetails } from './types';
 import {
   getSizesForLayoutId,
@@ -98,4 +99,24 @@ const DEFAULT_ANGLE = 40;
  */
 export function getDefaultAngleForBoard(_boardType: string): number {
   return DEFAULT_ANGLE;
+}
+
+/**
+ * Get BoardDetails for a UserBoard by resolving its board type, layout, size, and sets.
+ */
+export function getUserBoardDetails(board: UserBoard): BoardDetails | null {
+  try {
+    const setIds = board.setIds.split(',').map(Number);
+    if (board.boardType === 'moonboard') {
+      return getMoonBoardDetails({ layout_id: board.layoutId, set_ids: setIds }) as BoardDetails;
+    }
+    return getBoardDetails({
+      board_name: board.boardType as BoardName,
+      layout_id: board.layoutId,
+      size_id: board.sizeId,
+      set_ids: setIds,
+    });
+  } catch {
+    return null;
+  }
 }
