@@ -27,9 +27,13 @@ import { BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '../party-manager/party-profile-context';
 import { computeQueueStateHash } from '@/app/utils/hash';
-import { getStoredQueue, saveQueueState, cleanupOldQueues, StoredQueueState } from '@/app/lib/queue-storage-db';
+import { getStoredQueue, saveQueueState, cleanupOldQueues, getMostRecentQueue, StoredQueueState } from '@/app/lib/queue-storage-db';
+import { getPreference, setPreference, removePreference } from '@/app/lib/user-preferences-db';
 
 const DEBUG = process.env.NODE_ENV === 'development';
+
+// Key for persisting ActiveSessionInfo in user-preferences IndexedDB
+const ACTIVE_SESSION_KEY = 'activeSession';
 
 /**
  * Transform QueueEvent (from eventsReplay) to SubscriptionQueueEvent format.
@@ -297,6 +301,45 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     };
   }, []);
 
+  // Auto-restore session state on mount (party session OR local queue)
+  // Runs once on app startup so the queue control bar appears on any route.
+  // Party session takes priority — local queue is only loaded if no party session exists.
+  useEffect(() => {
+    async function restoreState() {
+      // 1. Try to restore party session first (takes priority)
+      try {
+        const persisted = await getPreference<ActiveSessionInfo>(ACTIVE_SESSION_KEY);
+        if (persisted && persisted.sessionId && persisted.boardPath && persisted.boardDetails) {
+          if (DEBUG) console.log('[PersistentSession] Restoring persisted session:', persisted.sessionId);
+          setActiveSession(persisted);
+          setIsLocalQueueLoaded(true);
+          return; // Party session found — skip local queue
+        }
+      } catch (error) {
+        console.error('[PersistentSession] Failed to restore persisted session:', error);
+      }
+
+      // 2. No party session — restore most recent local queue
+      try {
+        const stored = await getMostRecentQueue();
+        if (stored && (stored.queue.length > 0 || stored.currentClimbQueueItem)) {
+          if (DEBUG) console.log('[PersistentSession] Auto-restored most recent queue:', stored.queue.length, 'items for', stored.boardPath);
+          setLocalQueue(stored.queue);
+          setLocalCurrentClimbQueueItem(stored.currentClimbQueueItem);
+          setLocalBoardPath(stored.boardPath);
+          setLocalBoardDetails(stored.boardDetails);
+        }
+      } catch (error) {
+        console.error('[PersistentSession] Failed to auto-restore queue:', error);
+      }
+
+      setIsLocalQueueLoaded(true);
+    }
+
+    restoreState();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount
+
   // Notify queue event subscribers
   const notifyQueueSubscribers = useCallback((event: SubscriptionQueueEvent) => {
     queueEventSubscribersRef.current.forEach((callback) => callback(event));
@@ -461,6 +504,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           };
         case 'SessionEnded':
           if (DEBUG) console.log('[PersistentSession] Session ended:', event.reason);
+          // Clear persisted session so it's not auto-restored on next page load
+          removePreference(ACTIVE_SESSION_KEY).catch(() => {});
           return prev;
         default:
           return prev;
@@ -671,6 +716,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         }
 
         if (!sessionData) {
+          // Clear persisted session since the server rejected the join
+          removePreference(ACTIVE_SESSION_KEY).catch(() => {});
+          setActiveSession(null);
           throw new Error('Failed to join session');
         }
 
@@ -745,6 +793,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         if (mountedRef.current) {
           setError(err instanceof Error ? err : new Error(String(err)));
           setIsConnecting(false);
+          // Clear persisted session if connection fails (session may have expired)
+          removePreference(ACTIVE_SESSION_KEY).catch(() => {});
+          // Clear active session so UI falls back to local queue
+          setActiveSession(null);
         }
         if (graphqlClient) {
           graphqlClient.dispose();
@@ -849,6 +901,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         return prev;
       }
       if (DEBUG) console.log('[PersistentSession] Activating session:', info.sessionId);
+      // Persist to IndexedDB for cross-page-load restoration
+      setPreference(ACTIVE_SESSION_KEY, info).catch((err) =>
+        console.error('[PersistentSession] Failed to persist session:', err),
+      );
       return info;
     });
   }, []);
@@ -858,6 +914,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     setActiveSession(null);
     setQueueState([]);
     setCurrentClimbQueueItem(null);
+    // Clear persisted session from IndexedDB
+    removePreference(ACTIVE_SESSION_KEY).catch((err) =>
+      console.error('[PersistentSession] Failed to clear persisted session:', err),
+    );
   }, []);
 
   const setInitialQueueForSession = useCallback(
