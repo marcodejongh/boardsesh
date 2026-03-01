@@ -18,6 +18,7 @@ import bottomBarStyles from '../bottom-tab-bar/bottom-bar-wrapper.module.css';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import GlobalHeader from '../global-header/global-header';
 import SessionSummaryDialog from '../session-summary/session-summary-dialog';
+import { SearchDrawerBridgeProvider } from '../search-drawer/search-drawer-bridge-context';
 
 interface PersistentSessionWrapperProps {
   children: React.ReactNode;
@@ -36,10 +37,12 @@ export default function PersistentSessionWrapper({ children, boardConfigs }: Per
     <PartyProfileProvider>
       <PersistentSessionProvider>
         <QueueBridgeProvider>
-          <GlobalHeader boardConfigs={boardConfigs} />
-          {children}
-          <RootBottomBar boardConfigs={boardConfigs} />
-          <RootSessionSummaryDialog />
+          <SearchDrawerBridgeProvider>
+            <GlobalHeader boardConfigs={boardConfigs} />
+            {children}
+            <RootBottomBar boardConfigs={boardConfigs} />
+            <RootSessionSummaryDialog />
+          </SearchDrawerBridgeProvider>
         </QueueBridgeProvider>
       </PersistentSessionProvider>
     </PartyProfileProvider>
