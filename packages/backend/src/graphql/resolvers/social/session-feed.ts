@@ -5,6 +5,7 @@ import { validateInput } from '../shared/helpers';
 import { ActivityFeedInputSchema } from '../../../validation/schemas';
 import { encodeOffsetCursor, decodeOffsetCursor } from '../../../utils/feed-cursor';
 import type { SessionFeedItem, SessionDetail, SessionGradeDistributionItem, SessionFeedParticipant, SessionDetailTick } from '@boardsesh/shared-schema';
+import { buildGradeDistributionFromTicks, computeSessionAggregates } from './session-feed-utils';
 
 export const sessionFeedQueries = {
   /**
@@ -396,17 +397,7 @@ export const sessionFeedQueries = {
     const userIds = [...new Set(tickRows.map((r) => r.tick.userId))];
     const boardTypes = [...new Set(tickRows.map((r) => r.tick.boardType))];
 
-    let totalSends = 0;
-    let totalFlashes = 0;
-    let totalAttempts = 0;
-    for (const row of tickRows) {
-      if (row.tick.status === 'flash') { totalFlashes++; totalSends++; }
-      else if (row.tick.status === 'send') {
-        totalSends++;
-        totalAttempts += Math.max(row.tick.attemptCount - 1, 0);
-      }
-      else if (row.tick.status === 'attempt') { totalAttempts += row.tick.attemptCount; }
-    }
+    const { totalSends, totalFlashes, totalAttempts } = computeSessionAggregates(tickRows);
 
     const participants = await fetchParticipants(sessionId, isParty ? 'party' : 'inferred', userIds);
     const gradeDistribution = buildGradeDistributionFromTicks(tickRows);
@@ -551,36 +542,7 @@ async function fetchParticipants(
   }));
 }
 
-/**
- * Build grade distribution from pre-fetched tick rows (for session detail)
- */
-function buildGradeDistributionFromTicks(
-  tickRows: Array<{
-    tick: { status: string; difficulty: number | null; boardType: string; attemptCount: number };
-    difficultyName: string | null;
-  }>,
-): SessionGradeDistributionItem[] {
-  const gradeMap = new Map<string, { grade: string; difficulty: number; flash: number; send: number; attempt: number }>();
-
-  for (const row of tickRows) {
-    if (row.tick.difficulty == null || !row.difficultyName) continue;
-    const key = `${row.difficultyName}:${row.tick.difficulty}`;
-    const existing = gradeMap.get(key) ?? { grade: row.difficultyName, difficulty: row.tick.difficulty, flash: 0, send: 0, attempt: 0 };
-
-    if (row.tick.status === 'flash') existing.flash++;
-    else if (row.tick.status === 'send') {
-      existing.send++;
-      existing.attempt += Math.max(row.tick.attemptCount - 1, 0);
-    }
-    else if (row.tick.status === 'attempt') existing.attempt += row.tick.attemptCount;
-
-    gradeMap.set(key, existing);
-  }
-
-  return [...gradeMap.values()]
-    .sort((a, b) => b.difficulty - a.difficulty)
-    .map(({ grade, flash, send, attempt }) => ({ grade, flash, send, attempt }));
-}
+// buildGradeDistributionFromTicks and computeSessionAggregates are imported from ./session-feed-utils
 
 // ============================================
 // Batched enrichment functions for feed (3 queries instead of 3×N)
