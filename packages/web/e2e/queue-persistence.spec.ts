@@ -101,7 +101,7 @@ test.describe('Queue Persistence - Local Mode', () => {
 
     // 3. Navigate to Your Library via bottom tab bar
     await bottomTabButton(page, 'Your Library').click();
-    await expect(page).toHaveURL(/\/my-library/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/playlists/, { timeout: 15000 });
     await verifyQueueShowsClimb(page, climbName);
 
     // 4. Navigate to Notifications via bottom tab bar

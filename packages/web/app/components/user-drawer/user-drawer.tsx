@@ -84,7 +84,7 @@ export default function UserDrawer({ boardDetails, boardConfigs }: UserDrawerPro
     handleClose();
   };
 
-  const playlistsUrl = '/my-library';
+  const playlistsUrl = '/playlists';
 
   const userAvatar = session?.user?.image ?? undefined;
   const userName = session?.user?.name;

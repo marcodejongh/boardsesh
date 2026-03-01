@@ -47,8 +47,8 @@ test.describe('Bottom Tab Bar - Visibility', () => {
     await expect(page.locator(bottomTabBar)).toBeVisible();
   });
 
-  test('should be visible on the my-library page', async ({ page }) => {
-    await page.goto('/my-library');
+  test('should be visible on the playlists page', async ({ page }) => {
+    await page.goto('/playlists');
     await waitForPageReady(page);
     await expect(page.locator(bottomTabBar)).toBeVisible();
   });
@@ -79,12 +79,12 @@ test.describe('Bottom Tab Bar - Navigation', () => {
     await expect(page.locator(bottomTabBar)).toBeVisible();
   });
 
-  test('Your Library tab should navigate to my-library page', async ({ page }) => {
+  test('Your Library tab should navigate to playlists page', async ({ page }) => {
     await page.goto('/');
     await waitForPageReady(page);
 
     await bottomTabButton(page, 'Your Library').click();
-    await expect(page).toHaveURL(/\/my-library/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/playlists/, { timeout: 15000 });
     await expect(page.locator(bottomTabBar)).toBeVisible();
   });
 
@@ -115,8 +115,8 @@ test.describe('Bottom Tab Bar - Active State', () => {
     await expect(bottomTabButton(page, 'Climb', true)).toHaveClass(/Mui-selected/);
   });
 
-  test('Your Library tab should be active on my-library page', async ({ page }) => {
-    await page.goto('/my-library');
+  test('Your Library tab should be active on playlists page', async ({ page }) => {
+    await page.goto('/playlists');
     await waitForPageReady(page);
 
     await expect(bottomTabButton(page, 'Your Library')).toHaveClass(/Mui-selected/);
@@ -185,7 +185,7 @@ test.describe('Bottom Tab Bar - Queue Integration', () => {
 
     // Navigate to Your Library
     await bottomTabButton(page, 'Your Library').click();
-    await expect(page).toHaveURL(/\/my-library/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/playlists/, { timeout: 15000 });
     await verifyBarsShowClimb();
 
     // Navigate to Notifications

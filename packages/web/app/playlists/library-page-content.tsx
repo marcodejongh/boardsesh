@@ -26,6 +26,7 @@ import {
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useMyBoards } from '@/app/hooks/use-my-boards';
 import { useQueueBridgeBoardInfo } from '@/app/components/queue-control/queue-bridge-context';
+import { constructBoardSlugUrl } from '@/app/lib/url-utils';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import AuthModal from '@/app/components/auth/auth-modal';
 import PlaylistCardGrid from '@/app/components/library/playlist-card-grid';
@@ -37,8 +38,7 @@ import styles from '@/app/components/library/library.module.css';
 import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module.css';
 
 /**
- * Find the UserBoard that best matches the current session/queue board.
- * Matches on boardType + layoutId + sizeId.
+ * Find the UserBoard that best matches a board identified by type + layout + size.
  */
 function findMatchingBoard(
   boards: UserBoard[],
@@ -54,7 +54,13 @@ function findMatchingBoard(
   ) ?? null;
 }
 
-export default function LibraryPageContent() {
+type LibraryPageContentProps = {
+  /** When set, the page was rendered from a board route and this board is pre-selected. */
+  boardSlug?: string;
+  boardAngle?: number;
+};
+
+export default function LibraryPageContent({ boardSlug, boardAngle: _boardAngle }: LibraryPageContentProps) {
   const { data: session, status: sessionStatus } = useSession();
   const { token, isLoading: tokenLoading } = useWsAuthToken();
   const router = useRouter();
@@ -68,29 +74,41 @@ export default function LibraryPageContent() {
   // Fetch user's boards for the board selector
   const { boards: myBoards, isLoading: boardsLoading } = useMyBoards(hasMounted);
 
-  // Get current session/queue board info to use as default selection
-  const { boardDetails: currentBoardDetails } = useQueueBridgeBoardInfo();
+  // Get current session/queue board info to use as default selection (global route only)
+  const { boardDetails: currentBoardDetails, hasActiveQueue } = useQueueBridgeBoardInfo();
 
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  // Auto-select the board matching the current session/queue (once boards load)
+  // Auto-select the matching board once boards finish loading
   useEffect(() => {
     if (defaultBoardAppliedRef.current || boardsLoading || myBoards.length === 0) return;
 
-    const match = findMatchingBoard(
-      myBoards,
-      currentBoardDetails?.board_name,
-      currentBoardDetails?.layout_id,
-      currentBoardDetails?.size_id,
-    );
+    if (boardSlug) {
+      // Board route: match by slug
+      const match = myBoards.find((b) => b.slug === boardSlug);
+      if (match) {
+        setSelectedBoard(match);
+      }
+      defaultBoardAppliedRef.current = true;
+    } else {
+      // Global route: match from current session/queue board
+      // Wait if there's an active queue but board details haven't loaded yet
+      if (!currentBoardDetails && hasActiveQueue) return;
 
-    if (match) {
-      setSelectedBoard(match);
+      const match = findMatchingBoard(
+        myBoards,
+        currentBoardDetails?.board_name,
+        currentBoardDetails?.layout_id,
+        currentBoardDetails?.size_id,
+      );
+      if (match) {
+        setSelectedBoard(match);
+      }
+      defaultBoardAppliedRef.current = true;
     }
-    defaultBoardAppliedRef.current = true;
-  }, [myBoards, boardsLoading, currentBoardDetails]);
+  }, [myBoards, boardsLoading, currentBoardDetails, hasActiveQueue, boardSlug]);
 
   // Data states
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -139,7 +157,6 @@ export default function LibraryPageContent() {
 
       const baseInput: DiscoverPlaylistsInput = {
         pageSize: 10,
-        // When a board is selected, filter by its type and layout
         ...(selectedBoard && {
           boardType: selectedBoard.boardType,
           layoutId: selectedBoard.layoutId,
@@ -175,7 +192,7 @@ export default function LibraryPageContent() {
   }, [fetchDiscoverData]);
 
   const getPlaylistUrl = useCallback((playlistUuid: string) => {
-    return `/my-library/playlist/${playlistUuid}`;
+    return `/playlists/${playlistUuid}`;
   }, []);
 
   // Filter discover playlists to exclude user's own
@@ -197,7 +214,23 @@ export default function LibraryPageContent() {
 
   const handleBoardSelect = useCallback((board: UserBoard | null) => {
     setSelectedBoard(board);
-  }, []);
+
+    // When rendered from a board route, switching boards navigates to the correct URL
+    if (boardSlug) {
+      if (board) {
+        router.push(constructBoardSlugUrl(board.slug, board.angle, 'playlists'));
+      } else {
+        router.push('/playlists');
+      }
+    }
+  }, [boardSlug, router]);
+
+  const handleAllBoardsKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleBoardSelect(null);
+    }
+  }, [handleBoardSelect]);
 
   // Header with back button
   const renderHeader = () => (
@@ -251,7 +284,10 @@ export default function LibraryPageContent() {
       <BoardScrollSection loading={boardsLoading && myBoards.length === 0} size="small">
         <div
           className={`${boardScrollStyles.cardScroll} ${boardScrollStyles.cardScrollSmall}`}
+          role="button"
+          tabIndex={0}
           onClick={() => handleBoardSelect(null)}
+          onKeyDown={handleAllBoardsKeyDown}
         >
           <div className={`${boardScrollStyles.cardSquare} ${boardScrollStyles.filterSquare} ${!selectedBoard ? boardScrollStyles.cardSquareSelected : ''}`}>
             <span className={boardScrollStyles.filterLabel}>All</span>
