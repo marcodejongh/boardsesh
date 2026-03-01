@@ -26,19 +26,18 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
   const pathname = usePathname();
 
   const handleAngleChange = useCallback((newAngle: number) => {
-    if (!activeSession || !boardDetails) return;
+    if (!boardDetails || angle === undefined) return;
 
-    // Navigate to the board route with the new angle
-    const boardPath = activeSession.boardPath;
-    // Replace angle in the board path
-    const pathParts = boardPath.split('/');
-    // For slug-based routes like /b/board-slug/angle, the angle is the last segment
-    if (pathParts.length > 0) {
-      pathParts[pathParts.length - 1] = newAngle.toString();
+    // Replace the current angle in the URL with the new one
+    // Same pattern as angle-selector.tsx — find by value, not position
+    const pathSegments = pathname.split('/');
+    const angleIndex = pathSegments.findIndex((segment) => segment === angle.toString());
+
+    if (angleIndex !== -1) {
+      pathSegments[angleIndex] = newAngle.toString();
+      router.push(pathSegments.join('/'));
     }
-    const newPath = pathParts.join('/');
-    router.push(`${newPath}/list`);
-  }, [activeSession, boardDetails, router]);
+  }, [boardDetails, angle, pathname, router]);
 
   const handleStopSession = useCallback(() => {
     endSessionWithSummary();
