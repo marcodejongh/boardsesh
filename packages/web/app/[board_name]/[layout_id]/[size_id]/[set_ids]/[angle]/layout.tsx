@@ -110,7 +110,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                       flex: 1,
                       paddingLeft: `${themeTokens.spacing[2]}px`,
                       paddingRight: `${themeTokens.spacing[2]}px`,
-                      paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))',
+                      paddingTop: 'var(--global-header-height)',
                       paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
                     }}
                   >

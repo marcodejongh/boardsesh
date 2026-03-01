@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
@@ -38,7 +38,6 @@ export default function HomePageContent({
   const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [_selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
 
   // Trust the SSR hint during the loading phase to prevent flash of unauthenticated content
   const isAuthenticated = status === 'authenticated' ? true : (status === 'loading' ? (isAuthenticatedSSR ?? false) : false);
@@ -72,27 +71,22 @@ export default function HomePageContent({
 
   const handleBoardFilter = useCallback((boardUuid: string | null) => {
     updateParam('board', boardUuid);
-    if (!boardUuid) {
-      setSelectedBoard(null);
-    }
   }, [updateParam]);
 
   const handleBoardSelect = useCallback((board: UserBoard) => {
-    setSelectedBoard(board);
     updateParam('board', board.uuid);
   }, [updateParam]);
 
   return (
     <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', pb: '60px' }}>
       {/* Feed */}
-      <Box component="main" sx={{ flex: 1, px: 2, py: 2, pt: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px) + 16px)' }}>
+      <Box component="main" sx={{ flex: 1, px: 2, py: 2, pt: 'calc(var(--global-header-height) + 16px)' }}>
         {isAuthenticated && (myBoards.length > 0 || isLoadingBoards) && (
           <BoardScrollSection loading={isLoadingBoards} size="small">
             <div
               className={`${boardScrollStyles.cardScroll} ${boardScrollStyles.cardScrollSmall}`}
               onClick={() => {
                 handleBoardFilter(null);
-                setSelectedBoard(null);
               }}
             >
               <div className={`${boardScrollStyles.cardSquare} ${boardScrollStyles.filterSquare} ${!selectedBoardUuid ? boardScrollStyles.cardSquareSelected : ''}`}>
