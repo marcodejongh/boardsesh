@@ -20,7 +20,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
-import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug, searchParamsToUrlParams, getContextAwarePlaylistUrl } from '@/app/lib/url-utils';
+import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug, searchParamsToUrlParams, getContextAwarePlaylistUrl, getPlaylistsBasePath } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useColorMode } from '@/app/hooks/use-color-mode';
 import { PlaylistsContext } from '../climb-actions/playlists-batch-context';
@@ -190,17 +190,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     track('Bottom Tab Bar', { tab: 'climbs' });
   };
 
-  const playlistsUrl = (() => {
-    // If on a /b/ slug route, construct board-scoped playlists URL
-    if (pathname.startsWith('/b/')) {
-      const segments = pathname.split('/');
-      if (segments.length >= 4) {
-        return `/b/${segments[2]}/${segments[3]}/playlists`;
-      }
-    }
-    // No board context — global playlists
-    return '/playlists';
-  })();
+  const playlistsUrl = getPlaylistsBasePath(pathname);
 
   const handleLibraryTab = () => {
     setIsCreateOpen(false);
