@@ -31,6 +31,7 @@ import type { SessionDetail, SessionDetailTick, SessionFeedParticipant } from '@
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
 import VoteButton from '@/app/components/social/vote-button';
 import FeedCommentButton from '@/app/components/social/feed-comment-button';
+import CommentSection from '@/app/components/social/comment-section';
 import { VoteSummaryProvider } from '@/app/components/social/vote-summary-context';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { FavoritesProvider } from '@/app/components/climb-actions/favorites-batch-context';
@@ -710,20 +711,22 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
         )}
 
         {/* Session-level social */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <VoteButton
-            entityType="session"
-            entityId={sessionId}
-            initialUpvotes={upvotes}
-            initialDownvotes={downvotes}
-            likeOnly
-          />
-          <FeedCommentButton
-            entityType="session"
-            entityId={sessionId}
-            commentCount={commentCount}
-            defaultExpanded
-          />
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <VoteButton
+              entityType="session"
+              entityId={sessionId}
+              initialUpvotes={upvotes}
+              initialDownvotes={downvotes}
+              likeOnly
+            />
+            <FeedCommentButton
+              entityType="session"
+              entityId={sessionId}
+              commentCount={commentCount}
+            />
+          </Box>
+          <CommentSection entityType="session" entityId={sessionId} title="Comments" />
         </Box>
 
         <Divider />

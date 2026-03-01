@@ -62,6 +62,7 @@ export const sessionFeedQueries = {
             t.status,
             t.board_type,
             t.difficulty,
+            t.attempt_count,
             COALESCE(t.session_id, t.inferred_session_id) AS effective_session_id,
             CASE WHEN t.session_id IS NOT NULL THEN 'party' ELSE 'inferred' END AS session_type
           FROM boardsesh_ticks t
@@ -80,7 +81,10 @@ export const sessionFeedQueries = {
             COUNT(*) AS tick_count,
             COUNT(*) FILTER (WHERE ts.status IN ('flash', 'send')) AS total_sends,
             COUNT(*) FILTER (WHERE ts.status = 'flash') AS total_flashes,
-            COUNT(*) FILTER (WHERE ts.status = 'attempt') AS total_attempts,
+            (
+              COALESCE(SUM(GREATEST(ts.attempt_count - 1, 0)) FILTER (WHERE ts.status = 'send'), 0)
+              + COALESCE(SUM(ts.attempt_count) FILTER (WHERE ts.status = 'attempt'), 0)
+            )::int AS total_attempts,
             ARRAY_AGG(DISTINCT ts.board_type) AS board_types,
             ARRAY_AGG(DISTINCT ts.user_id) AS user_ids
           FROM tick_sessions ts
@@ -397,8 +401,11 @@ export const sessionFeedQueries = {
     let totalAttempts = 0;
     for (const row of tickRows) {
       if (row.tick.status === 'flash') { totalFlashes++; totalSends++; }
-      else if (row.tick.status === 'send') { totalSends++; }
-      else if (row.tick.status === 'attempt') { totalAttempts++; }
+      else if (row.tick.status === 'send') {
+        totalSends++;
+        totalAttempts += Math.max(row.tick.attemptCount - 1, 0);
+      }
+      else if (row.tick.status === 'attempt') { totalAttempts += row.tick.attemptCount; }
     }
 
     const participants = await fetchParticipants(sessionId, isParty ? 'party' : 'inferred', userIds);
@@ -514,7 +521,10 @@ async function fetchParticipants(
       COALESCE(up.avatar_url, u.image) AS "avatarUrl",
       COUNT(*) FILTER (WHERE t.status IN ('flash', 'send'))::int AS sends,
       COUNT(*) FILTER (WHERE t.status = 'flash')::int AS flashes,
-      COUNT(*) FILTER (WHERE t.status = 'attempt')::int AS attempts
+      (
+        COALESCE(SUM(GREATEST(t.attempt_count - 1, 0)) FILTER (WHERE t.status = 'send'), 0)
+        + COALESCE(SUM(t.attempt_count) FILTER (WHERE t.status = 'attempt'), 0)
+      )::int AS attempts
     FROM boardsesh_ticks t
     LEFT JOIN users u ON u.id = t.user_id
     LEFT JOIN user_profiles up ON up.user_id = t.user_id
@@ -546,7 +556,7 @@ async function fetchParticipants(
  */
 function buildGradeDistributionFromTicks(
   tickRows: Array<{
-    tick: { status: string; difficulty: number | null; boardType: string };
+    tick: { status: string; difficulty: number | null; boardType: string; attemptCount: number };
     difficultyName: string | null;
   }>,
 ): SessionGradeDistributionItem[] {
@@ -558,8 +568,11 @@ function buildGradeDistributionFromTicks(
     const existing = gradeMap.get(key) ?? { grade: row.difficultyName, difficulty: row.tick.difficulty, flash: 0, send: 0, attempt: 0 };
 
     if (row.tick.status === 'flash') existing.flash++;
-    else if (row.tick.status === 'send') existing.send++;
-    else if (row.tick.status === 'attempt') existing.attempt++;
+    else if (row.tick.status === 'send') {
+      existing.send++;
+      existing.attempt += Math.max(row.tick.attemptCount - 1, 0);
+    }
+    else if (row.tick.status === 'attempt') existing.attempt += row.tick.attemptCount;
 
     gradeMap.set(key, existing);
   }
@@ -590,7 +603,10 @@ async function fetchParticipantsBatch(
       COALESCE(up.avatar_url, u.image) AS "avatarUrl",
       COUNT(*) FILTER (WHERE t.status IN ('flash', 'send'))::int AS sends,
       COUNT(*) FILTER (WHERE t.status = 'flash')::int AS flashes,
-      COUNT(*) FILTER (WHERE t.status = 'attempt')::int AS attempts
+      (
+        COALESCE(SUM(GREATEST(t.attempt_count - 1, 0)) FILTER (WHERE t.status = 'send'), 0)
+        + COALESCE(SUM(t.attempt_count) FILTER (WHERE t.status = 'attempt'), 0)
+      )::int AS attempts
     FROM boardsesh_ticks t
     LEFT JOIN users u ON u.id = t.user_id
     LEFT JOIN user_profiles up ON up.user_id = t.user_id
@@ -641,7 +657,10 @@ async function fetchGradeDistributionBatch(
       dg.difficulty AS diff_num,
       COUNT(*) FILTER (WHERE t.status = 'flash')::int AS flash,
       COUNT(*) FILTER (WHERE t.status = 'send')::int AS send,
-      COUNT(*) FILTER (WHERE t.status = 'attempt')::int AS attempt
+      (
+        COALESCE(SUM(GREATEST(t.attempt_count - 1, 0)) FILTER (WHERE t.status = 'send'), 0)
+        + COALESCE(SUM(t.attempt_count) FILTER (WHERE t.status = 'attempt'), 0)
+      )::int AS attempt
     FROM boardsesh_ticks t
     LEFT JOIN board_difficulty_grades dg
       ON dg.difficulty = t.difficulty AND dg.board_type = t.board_type
