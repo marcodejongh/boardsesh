@@ -23,8 +23,9 @@ import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
 
 import { useSession, signOut } from 'next-auth/react';
 import { useColorMode } from '@/app/hooks/use-color-mode';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { getPlaylistsBasePath } from '@/app/lib/url-utils';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import AuthModal from '../auth/auth-modal';
 import { HoldClassificationWizard } from '../hold-classification';
@@ -48,6 +49,7 @@ interface UserDrawerProps {
 export default function UserDrawer({ boardDetails, boardConfigs }: UserDrawerProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showHoldClassification, setShowHoldClassification] = useState(false);
@@ -84,7 +86,7 @@ export default function UserDrawer({ boardDetails, boardConfigs }: UserDrawerPro
     handleClose();
   };
 
-  const playlistsUrl = '/playlists';
+  const playlistsUrl = getPlaylistsBasePath(pathname);
 
   const userAvatar = session?.user?.image ?? undefined;
   const userName = session?.user?.name;
