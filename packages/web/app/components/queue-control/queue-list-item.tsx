@@ -215,7 +215,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
 
   const swipeableContentStyle = useMemo(
     () => ({
-      padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
+      padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[0]}px`,
       backgroundColor: isCurrent
         ? (getGradeTintColor(item.climb?.difficulty, 'light', isDark) ?? 'var(--semantic-selected)')
         : isHistory

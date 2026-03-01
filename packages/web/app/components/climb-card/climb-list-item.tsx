@@ -117,7 +117,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     () => ({
       display: 'flex' as const,
       alignItems: 'center' as const,
-      padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[3]}px`,
+      padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[2]}px`,
       gap: themeTokens.spacing[3],
       backgroundColor: selected
         ? (getGradeTintColor(climb.difficulty, 'light', isDark) ?? 'var(--semantic-selected)')

@@ -185,7 +185,7 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
   // Memoize inline style objects to prevent recreation on every render
   const suggestedItemStyle = useMemo(
     () => ({
-      padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[2]}px`,
+      padding: `${themeTokens.spacing[3]}px ${themeTokens.spacing[0]}px`,
       borderBottom: `1px solid var(--neutral-200)`,
     }),
     [],
