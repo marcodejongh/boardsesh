@@ -98,14 +98,12 @@ export default function BoardSearchResults({ query, authToken }: BoardSearchResu
       <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
         {isFetchingNextPage && <CircularProgress size={24} />}
       </Box>
-      {selectedBoardUuid && (
-        <BoardDetail
-          boardUuid={selectedBoardUuid}
-          open={!!selectedBoardUuid}
-          onClose={() => setSelectedBoardUuid(null)}
-          anchor="top"
-        />
-      )}
+      <BoardDetail
+        boardUuid={selectedBoardUuid ?? ''}
+        open={!!selectedBoardUuid}
+        onClose={() => setSelectedBoardUuid(null)}
+        anchor="top"
+      />
     </>
   );
 }

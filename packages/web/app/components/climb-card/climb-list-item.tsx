@@ -227,25 +227,24 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
         </div>
       </div>
 
-      {/* Actions Drawer - only mount when open */}
-      {isActionsOpen && (
-        <SwipeableDrawer
-          title={<DrawerClimbHeader climb={climb} boardDetails={boardDetails} />}
-          placement="bottom"
-          open={isActionsOpen}
-          onClose={() => setIsActionsOpen(false)}
-          styles={drawerStyles}
-        >
-          <ClimbActions
-            climb={climb}
-            boardDetails={boardDetails}
-            angle={climb.angle}
-            viewMode="list"
-            exclude={excludeActions}
-            onActionComplete={() => setIsActionsOpen(false)}
-          />
-        </SwipeableDrawer>
-      )}
+      {/* Actions Drawer */}
+      <SwipeableDrawer
+        title={<DrawerClimbHeader climb={climb} boardDetails={boardDetails} />}
+        placement="bottom"
+        open={isActionsOpen}
+        onClose={() => setIsActionsOpen(false)}
+        styles={drawerStyles}
+        keepMounted={false}
+      >
+        <ClimbActions
+          climb={climb}
+          boardDetails={boardDetails}
+          angle={climb.angle}
+          viewMode="list"
+          exclude={excludeActions}
+          onActionComplete={() => setIsActionsOpen(false)}
+        />
+      </SwipeableDrawer>
     </>
   );
 }, (prev, next) => {
