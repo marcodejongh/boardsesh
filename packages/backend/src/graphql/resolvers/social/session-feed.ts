@@ -270,7 +270,7 @@ export const sessionFeedQueries = {
       : [];
     const tickVoteMap = new Map(tickVoteCounts.map((v) => [v.entityId, Number(v.upvotes)]));
 
-    // Build ticks
+    // Build ticks (totalAttempts added below)
     const ticks: SessionDetailTick[] = tickRows.map((row) => ({
       uuid: row.tick.uuid,
       userId: row.tick.userId,
@@ -291,7 +291,102 @@ export const sessionFeedQueries = {
       setterUsername: row.setterUsername || null,
       climbedAt: row.tick.climbedAt,
       upvotes: tickVoteMap.get(row.tick.uuid) ?? 0,
+      totalAttempts: null,
     }));
+
+    // Compute totalAttempts for each tick: sum of attemptCount since last
+    // successful ascent (flash/send) by the same user on the same climb.
+    // Build unique combos of (userId, climbUuid, boardType, angle) from ticks
+    const comboSet = new Set<string>();
+    const comboValues: Array<{ userId: string; climbUuid: string; boardType: string; angle: number }> = [];
+    for (const row of tickRows) {
+      const key = `${row.tick.userId}|${row.tick.climbUuid}|${row.tick.boardType}|${row.tick.angle}`;
+      if (!comboSet.has(key)) {
+        comboSet.add(key);
+        comboValues.push({
+          userId: row.tick.userId,
+          climbUuid: row.tick.climbUuid,
+          boardType: row.tick.boardType,
+          angle: row.tick.angle,
+        });
+      }
+    }
+
+    if (comboValues.length > 0) {
+      // Build VALUES clause for the combos
+      const valuesSql = sql.join(
+        comboValues.map(
+          (c) => sql`(${c.userId}, ${c.climbUuid}, ${c.boardType}, ${c.angle})`,
+        ),
+        sql`, `,
+      );
+
+      const totalAttemptsResult = await db.execute(sql`
+        WITH combos(user_id, climb_uuid, board_type, angle) AS (
+          VALUES ${valuesSql}
+        ),
+        last_success AS (
+          SELECT
+            t.user_id,
+            t.climb_uuid,
+            t.board_type,
+            t.angle,
+            MAX(t.climbed_at) AS last_success_at
+          FROM boardsesh_ticks t
+          INNER JOIN combos c
+            ON t.user_id = c.user_id
+            AND t.climb_uuid = c.climb_uuid
+            AND t.board_type = c.board_type
+            AND t.angle = c.angle::int
+          WHERE t.status IN ('flash', 'send')
+          GROUP BY t.user_id, t.climb_uuid, t.board_type, t.angle
+        ),
+        attempts_since AS (
+          SELECT
+            t.user_id,
+            t.climb_uuid,
+            t.board_type,
+            t.angle,
+            SUM(t.attempt_count)::int AS total
+          FROM boardsesh_ticks t
+          INNER JOIN combos c
+            ON t.user_id = c.user_id
+            AND t.climb_uuid = c.climb_uuid
+            AND t.board_type = c.board_type
+            AND t.angle = c.angle::int
+          LEFT JOIN last_success ls
+            ON t.user_id = ls.user_id
+            AND t.climb_uuid = ls.climb_uuid
+            AND t.board_type = ls.board_type
+            AND t.angle = ls.angle
+          WHERE t.climbed_at >= COALESCE(ls.last_success_at, '1970-01-01'::timestamp)
+          GROUP BY t.user_id, t.climb_uuid, t.board_type, t.angle
+        )
+        SELECT * FROM attempts_since
+      `);
+
+      const attemptsRows = (totalAttemptsResult as unknown as {
+        rows: Array<{
+          user_id: string;
+          climb_uuid: string;
+          board_type: string;
+          angle: number;
+          total: number;
+        }>;
+      }).rows;
+
+      // Build lookup map
+      const attemptsMap = new Map<string, number>();
+      for (const r of attemptsRows) {
+        attemptsMap.set(`${r.user_id}|${r.climb_uuid}|${r.board_type}|${r.angle}`, r.total);
+      }
+
+      // Attach totalAttempts to each tick
+      for (const tick of ticks) {
+        const key = `${tick.userId}|${tick.climbUuid}|${tick.boardType}|${tick.angle}`;
+        tick.totalAttempts = attemptsMap.get(key) ?? null;
+      }
+    }
 
     // Compute aggregates
     const userIds = [...new Set(tickRows.map((r) => r.tick.userId))];
