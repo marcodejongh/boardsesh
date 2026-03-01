@@ -36,6 +36,8 @@ const noopCreatePlaylist = async (): Promise<Playlist> => {
     createdAt: '',
     updatedAt: '',
     climbCount: 0,
+    followerCount: 0,
+    isFollowedByMe: false,
   };
 };
 

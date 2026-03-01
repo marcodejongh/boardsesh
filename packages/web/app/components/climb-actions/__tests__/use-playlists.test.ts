@@ -29,6 +29,8 @@ describe('usePlaylists', () => {
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     climbCount: 5,
+    followerCount: 0,
+    isFollowedByMe: false,
   };
 
   const defaultContext = {
@@ -98,6 +100,8 @@ describe('usePlaylists', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         climbCount: 0,
+        followerCount: 0,
+        isFollowedByMe: false,
       };
       mockCreatePlaylist.mockResolvedValue(mockPlaylist);
 
@@ -181,6 +185,8 @@ describe('usePlaylists', () => {
         createdAt: '',
         updatedAt: '',
         climbCount: 0,
+        followerCount: 0,
+        isFollowedByMe: false,
       });
     });
 

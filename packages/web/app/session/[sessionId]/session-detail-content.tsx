@@ -39,7 +39,8 @@ import { FavoritesProvider } from '@/app/components/climb-actions/favorites-batc
 import { PlaylistsProvider } from '@/app/components/climb-actions/playlists-batch-context';
 import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
 import { useMyBoards } from '@/app/hooks/use-my-boards';
-import { getBoardDetailsForPlaylist, getDefaultAngleForBoard, getUserBoardDetails } from '@/app/lib/board-config-for-playlist';
+import { useBoardDetailsMap } from '@/app/hooks/use-board-details-map';
+import { getDefaultAngleForBoard } from '@/app/lib/board-config-for-playlist';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -50,8 +51,7 @@ import {
 } from '@/app/lib/graphql/operations/activity-feed';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { themeTokens } from '@/app/theme/theme-config';
-import type { UserBoard } from '@boardsesh/shared-schema';
-import type { Climb, BoardDetails, BoardName } from '@/app/lib/types';
+import type { Climb, BoardName } from '@/app/lib/types';
 import UserSearchDialog from './user-search-dialog';
 
 interface SessionDetailContentProps {
@@ -351,58 +351,12 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   const tickUuids = useMemo(() => ticks.map((t) => t.uuid), [ticks]);
 
   // Build boardDetailsMap for multi-board support
-  const { boardDetailsMap, defaultBoardDetails, unsupportedClimbs } = useMemo(() => {
-    const map: Record<string, BoardDetails> = {};
-    const unsupported = new Set<string>();
-
-    const userBoardsByKey = new Map<string, UserBoard>();
-    for (const board of myBoards) {
-      const key = `${board.boardType}:${board.layoutId}`;
-      if (!userBoardsByKey.has(key)) {
-        userBoardsByKey.set(key, board);
-      }
-    }
-
-    for (const climb of sessionClimbs) {
-      const bt = climb.boardType;
-      const layoutId = climb.layoutId;
-      if (!bt || layoutId == null) continue;
-
-      const key = `${bt}:${layoutId}`;
-      if (map[key]) continue;
-
-      const userBoard = userBoardsByKey.get(key);
-      if (userBoard) {
-        const details = getUserBoardDetails(userBoard);
-        if (details) {
-          map[key] = details;
-          continue;
-        }
-      }
-
-      const genericDetails = getBoardDetailsForPlaylist(bt, layoutId);
-      if (genericDetails) {
-        map[key] = genericDetails;
-      }
-    }
-
-    const userBoardTypes = new Set(myBoards.map((b) => b.boardType));
-    for (const climb of sessionClimbs) {
-      if (climb.boardType && !userBoardTypes.has(climb.boardType)) {
-        unsupported.add(climb.uuid);
-      }
-    }
-
-    let defaultDetails: BoardDetails | null = null;
-    if (myBoards.length > 0) {
-      defaultDetails = getUserBoardDetails(myBoards[0]);
-    }
-    if (!defaultDetails && boardTypes[0]) {
-      defaultDetails = getBoardDetailsForPlaylist(boardTypes[0], null);
-    }
-
-    return { boardDetailsMap: map, defaultBoardDetails: defaultDetails, unsupportedClimbs: unsupported };
-  }, [sessionClimbs, myBoards, boardTypes]);
+  const { boardDetailsMap, defaultBoardDetails, unsupportedClimbs } = useBoardDetailsMap(
+    sessionClimbs,
+    myBoards,
+    null,
+    boardTypes,
+  );
 
   // Climb actions data for favorites/playlists — derive from actual climb data, fall back to session metadata
   const climbUuids = useMemo(() => sessionClimbs.map((c) => c.uuid), [sessionClimbs]);

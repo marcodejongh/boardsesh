@@ -1,6 +1,7 @@
 import { pgTable, bigserial, text, timestamp, uniqueIndex, index, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from '../auth/users';
+import { playlists } from './playlists';
 
 export const userFollows = pgTable('user_follows', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
@@ -30,3 +31,17 @@ export const setterFollows = pgTable('setter_follows', {
 
 export type SetterFollow = typeof setterFollows.$inferSelect;
 export type NewSetterFollow = typeof setterFollows.$inferInsert;
+
+export const playlistFollows = pgTable('playlist_follows', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  followerId: text('follower_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  playlistUuid: text('playlist_uuid').references(() => playlists.uuid, { onDelete: 'cascade' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueFollow: uniqueIndex('unique_playlist_follow').on(table.followerId, table.playlistUuid),
+  followerIdx: index('playlist_follows_follower_idx').on(table.followerId),
+  playlistIdx: index('playlist_follows_playlist_idx').on(table.playlistUuid),
+}));
+
+export type PlaylistFollow = typeof playlistFollows.$inferSelect;
+export type NewPlaylistFollow = typeof playlistFollows.$inferInsert;

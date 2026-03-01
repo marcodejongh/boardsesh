@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import MuiAlert from '@mui/material/Alert';
 import MuiButton from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -19,19 +18,23 @@ import {
   ElectricBoltOutlined,
   EditOutlined,
   DeleteOutlined,
+  PeopleOutlined,
 } from '@mui/icons-material';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Climb, BoardDetails } from '@/app/lib/types';
+import { Climb } from '@/app/lib/types';
 import { executeGraphQL, createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_PLAYLIST,
   GET_PLAYLIST_CLIMBS,
   DELETE_PLAYLIST,
   UPDATE_PLAYLIST_LAST_ACCESSED,
+  FOLLOW_PLAYLIST,
+  UNFOLLOW_PLAYLIST,
   GetPlaylistQueryResponse,
   GetPlaylistQueryVariables,
   GetPlaylistClimbsQueryResponse,
   type GetPlaylistClimbsQueryVariables,
+  type GetPlaylistClimbsInput,
   Playlist,
   UpdatePlaylistLastAccessedMutationVariables,
   UpdatePlaylistLastAccessedMutationResponse,
@@ -41,12 +44,8 @@ import {
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { LoadingSpinner } from '@/app/components/ui/loading-spinner';
 import { EmptyState } from '@/app/components/ui/empty-state';
+import FollowButton from '@/app/components/ui/follow-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
-import { FavoritesProvider } from '@/app/components/climb-actions/favorites-batch-context';
-import { PlaylistsProvider } from '@/app/components/climb-actions/playlists-batch-context';
-import { ClimbCardSkeleton } from '@/app/components/board-page/board-page-skeleton';
-import ClimbsList from '@/app/components/board-page/climbs-list';
 import { getBoardDetailsForPlaylist, getDefaultAngleForBoard } from '@/app/lib/board-config-for-playlist';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useRouter } from 'next/navigation';
@@ -54,6 +53,8 @@ import BackButton from '@/app/components/back-button';
 import { PlaylistGeneratorDrawer } from '@/app/components/playlist-generator';
 import PlaylistEditDrawer from '@/app/components/library/playlist-edit-drawer';
 import CommentSection from '@/app/components/social/comment-section';
+import MultiboardClimbList from '@/app/components/climb-list/multiboard-climb-list';
+import type { UserBoard } from '@boardsesh/shared-schema';
 import styles from '@/app/components/library/playlist-view.module.css';
 
 // Validate hex color format
@@ -72,18 +73,6 @@ const PLAYLIST_COLORS = [
   themeTokens.colors.amber,
 ];
 
-const skeletonCardBoxSx = { width: { xs: '100%', lg: '50%' } };
-
-const ClimbsListSkeleton = ({ aspectRatio }: { aspectRatio: number }) => (
-  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-    {Array.from({ length: 6 }, (_, i) => (
-      <Box sx={skeletonCardBoxSx} key={i}>
-        <ClimbCardSkeleton aspectRatio={aspectRatio} />
-      </Box>
-    ))}
-  </Box>
-);
-
 type PlaylistDetailContentProps = {
   playlistUuid: string;
 };
@@ -100,13 +89,9 @@ export default function PlaylistDetailContent({
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [listRefreshKey, setListRefreshKey] = useState(0);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const [selectedClimbUuid, setSelectedClimbUuid] = useState<string | null>(null);
+  const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
   const lastAccessedUpdatedRef = useRef(false);
   const { token, isLoading: tokenLoading } = useWsAuthToken();
-
-  // Derived board details from playlist
-  const [boardDetails, setBoardDetails] = useState<BoardDetails | null>(null);
-  const [angle, setAngle] = useState<number>(40);
 
   const fetchPlaylist = useCallback(async () => {
     if (tokenLoading) return;
@@ -127,14 +112,6 @@ export default function PlaylistDetailContent({
       }
 
       setPlaylist(response.playlist);
-
-      // Derive board details
-      const details = getBoardDetailsForPlaylist(
-        response.playlist.boardType,
-        response.playlist.layoutId,
-      );
-      setBoardDetails(details);
-      setAngle(getDefaultAngleForBoard(response.playlist.boardType));
     } catch (err) {
       console.error('Error fetching playlist:', err);
       setError('Failed to load playlist');
@@ -161,7 +138,7 @@ export default function PlaylistDetailContent({
     }
   }, [playlist, token, playlistUuid]);
 
-  // === Playlist climbs data fetching ===
+  // === Playlist climbs data fetching (all-boards mode by default) ===
 
   const {
     data: climbsData,
@@ -170,38 +147,37 @@ export default function PlaylistDetailContent({
     isFetching: isFetchingClimbs,
     isFetchingNextPage,
     isLoading: isClimbsLoading,
-    error: climbsError,
   } = useInfiniteQuery({
     queryKey: [
       'playlistClimbs',
       playlistUuid,
-      boardDetails?.board_name,
-      boardDetails?.layout_id,
-      boardDetails?.size_id,
-      angle,
+      selectedBoard?.uuid ?? 'all',
       listRefreshKey,
     ],
     queryFn: async ({ pageParam = 0 }) => {
-      if (!boardDetails) throw new Error('Board details not available');
       const client = createGraphQLHttpClient(token);
+
+      const input: GetPlaylistClimbsInput = {
+        playlistId: playlistUuid,
+        page: pageParam as number,
+        pageSize: 20,
+        // Specific-board mode when a board is selected
+        ...(selectedBoard && {
+          boardName: selectedBoard.boardType,
+          layoutId: selectedBoard.layoutId,
+          sizeId: selectedBoard.sizeId,
+          setIds: selectedBoard.setIds,
+          angle: selectedBoard.angle ?? getDefaultAngleForBoard(selectedBoard.boardType),
+        }),
+      };
+
       const response = await client.request<GetPlaylistClimbsQueryResponse>(
         GET_PLAYLIST_CLIMBS,
-        {
-          input: {
-            playlistId: playlistUuid,
-            boardName: boardDetails.board_name,
-            layoutId: boardDetails.layout_id,
-            sizeId: boardDetails.size_id,
-            setIds: boardDetails.set_ids.join(','),
-            angle: angle,
-            page: pageParam,
-            pageSize: 20,
-          },
-        } satisfies GetPlaylistClimbsQueryVariables,
+        { input } satisfies GetPlaylistClimbsQueryVariables,
       );
       return response.playlistClimbs;
     },
-    enabled: !tokenLoading && !!token && !!boardDetails,
+    enabled: !tokenLoading && !!token,
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       if (!lastPage.hasMore) return undefined;
@@ -210,42 +186,21 @@ export default function PlaylistDetailContent({
     staleTime: 5 * 60 * 1000,
   });
 
-  const allClimbs: Climb[] = climbsData?.pages.flatMap((page) => page.climbs as Climb[]) ?? [];
-
-  // Filter out cross-layout climbs
-  const { visibleClimbs, hiddenCount } = useMemo(() => {
-    const visible: Climb[] = [];
-    let hidden = 0;
-
-    for (const climb of allClimbs) {
-      const isCrossLayout = climb.layoutId != null && climb.layoutId !== boardDetails?.layout_id;
-      if (isCrossLayout) {
-        hidden++;
-      } else {
-        visible.push({ ...climb, angle });
-      }
-    }
-
-    return { visibleClimbs: visible, hiddenCount: hidden };
-  }, [allClimbs, boardDetails?.layout_id, angle]);
-
-  // Climb UUIDs for favorites/playlists provider
-  const climbUuids = useMemo(
-    () => visibleClimbs.map((climb) => climb.uuid),
-    [visibleClimbs],
+  const allClimbs: Climb[] = useMemo(
+    () => climbsData?.pages.flatMap((page) => page.climbs as Climb[]) ?? [],
+    [climbsData],
   );
 
-  // Favorites and playlists data fetching
-  const { favoritesProviderProps, playlistsProviderProps } = useClimbActionsData({
-    boardName: boardDetails?.board_name ?? '',
-    layoutId: boardDetails?.layout_id ?? 0,
-    angle,
-    climbUuids,
-  });
-
-  const handleClimbSelect = useCallback((climb: Climb) => {
-    setSelectedClimbUuid(climb.uuid);
-  }, []);
+  // Collect unique board types for the filter
+  const boardTypes = useMemo(() => {
+    const types = new Set<string>();
+    for (const climb of allClimbs) {
+      if (climb.boardType) types.add(climb.boardType);
+    }
+    // Also include the playlist's own board type
+    if (playlist?.boardType) types.add(playlist.boardType);
+    return Array.from(types);
+  }, [allClimbs, playlist?.boardType]);
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -281,6 +236,10 @@ export default function PlaylistDetailContent({
     }
   }, [token, playlist, playlistUuid, router, showMessage]);
 
+  const handleBoardSelect = useCallback((board: UserBoard | null) => {
+    setSelectedBoard(board);
+  }, []);
+
   const isOwner = playlist?.userRole === 'owner';
 
   const getPlaylistColor = () => {
@@ -289,6 +248,14 @@ export default function PlaylistDetailContent({
     }
     return PLAYLIST_COLORS[0];
   };
+
+  // Board details for the generator drawer
+  const generatorBoardDetails = useMemo(() => {
+    if (!playlist) return null;
+    return getBoardDetailsForPlaylist(playlist.boardType, playlist.layoutId);
+  }, [playlist]);
+
+  const generatorAngle = playlist ? getDefaultAngleForBoard(playlist.boardType) : 40;
 
   if (loading || tokenLoading) {
     return (
@@ -314,80 +281,6 @@ export default function PlaylistDetailContent({
       </div>
     );
   }
-
-  // Render the climbs section content
-  const renderClimbsSection = () => {
-    if (!boardDetails) {
-      return (
-        <div className={styles.errorContainer}>
-          <Typography variant="body2" color="text.secondary">
-            Unable to load climb previews for this board configuration.
-          </Typography>
-        </div>
-      );
-    }
-
-    const aspectRatio = boardDetails.boardWidth / boardDetails.boardHeight;
-
-    if ((isClimbsLoading || tokenLoading) && allClimbs.length === 0) {
-      return (
-        <div className={styles.climbsSection}>
-          <ClimbsListSkeleton aspectRatio={aspectRatio} />
-        </div>
-      );
-    }
-
-    if (climbsError) {
-      return (
-        <div className={styles.climbsSection}>
-          <EmptyState description="Failed to load climbs" />
-        </div>
-      );
-    }
-
-    if (visibleClimbs.length === 0 && hiddenCount === 0 && !isFetchingClimbs) {
-      return (
-        <div className={styles.climbsSection}>
-          <EmptyState description="No climbs in this playlist yet" />
-        </div>
-      );
-    }
-
-    // Build header with hidden-count alert and all-hidden empty state
-    const climbsHeader = (
-      <>
-        {hiddenCount > 0 && (
-          <MuiAlert severity="info" className={styles.hiddenClimbsNotice}>
-            {`Not showing ${hiddenCount} ${hiddenCount === 1 ? 'climb' : 'climbs'} from other layouts`}
-          </MuiAlert>
-        )}
-        {visibleClimbs.length === 0 && hiddenCount > 0 && !isFetchingClimbs && (
-          <EmptyState description="All climbs in this playlist are from other layouts" />
-        )}
-      </>
-    );
-
-    return (
-      <div className={styles.climbsSection}>
-        <FavoritesProvider {...favoritesProviderProps}>
-          <PlaylistsProvider {...playlistsProviderProps}>
-            <ClimbsList
-              boardDetails={boardDetails}
-              climbs={visibleClimbs}
-              selectedClimbUuid={selectedClimbUuid}
-              isFetching={isFetchingClimbs}
-              hasMore={hasNextPage ?? false}
-              onClimbSelect={handleClimbSelect}
-              onLoadMore={handleLoadMore}
-              header={climbsHeader}
-              hideEndMessage
-              showBottomSpacer
-            />
-          </PlaylistsProvider>
-        </FavoritesProvider>
-      </div>
-    );
-  };
 
   return (
     <>
@@ -419,6 +312,10 @@ export default function PlaylistDetailContent({
                 <span className={styles.heroMetaItem}>
                   {playlist.climbCount} {playlist.climbCount === 1 ? 'climb' : 'climbs'}
                 </span>
+                <span className={styles.heroMetaItem}>
+                  <PeopleOutlined sx={{ fontSize: 14, verticalAlign: 'middle', mr: 0.5 }} />
+                  {playlist.followerCount} {playlist.followerCount === 1 ? 'follower' : 'followers'}
+                </span>
                 <span
                   className={`${styles.visibilityBadge} ${
                     playlist.isPublic ? styles.publicBadge : styles.privateBadge
@@ -435,6 +332,26 @@ export default function PlaylistDetailContent({
                 <Typography variant="body2" className={styles.heroDescription}>
                   {playlist.description}
                 </Typography>
+              )}
+              {/* Follow button for non-owners on public playlists */}
+              {!isOwner && playlist.isPublic && (
+                <Box sx={{ mt: 1 }}>
+                  <FollowButton
+                    entityId={playlist.uuid}
+                    initialIsFollowing={playlist.isFollowedByMe}
+                    followMutation={FOLLOW_PLAYLIST}
+                    unfollowMutation={UNFOLLOW_PLAYLIST}
+                    entityLabel="playlist"
+                    getFollowVariables={(id) => ({ input: { playlistUuid: id } })}
+                    onFollowChange={(isFollowing) => {
+                      setPlaylist({
+                        ...playlist,
+                        followerCount: playlist.followerCount + (isFollowing ? 1 : -1),
+                        isFollowedByMe: isFollowing,
+                      });
+                    }}
+                  />
+                </Box>
               )}
             </div>
           </div>
@@ -474,8 +391,25 @@ export default function PlaylistDetailContent({
           </Menu>
         </div>
 
-        {/* Climbs List */}
-        {renderClimbsSection()}
+        {/* Climbs List with multi-board support */}
+        <div className={styles.climbsSection}>
+          {allClimbs.length === 0 && !isFetchingClimbs && !isClimbsLoading ? (
+            <EmptyState description="No climbs in this playlist yet" />
+          ) : (
+            <MultiboardClimbList
+              climbs={allClimbs}
+              isFetching={isFetchingClimbs}
+              isLoading={isClimbsLoading}
+              hasMore={hasNextPage ?? false}
+              onLoadMore={handleLoadMore}
+              showBoardFilter
+              boardTypes={boardTypes}
+              selectedBoard={selectedBoard}
+              onBoardSelect={handleBoardSelect}
+              fallbackBoardTypes={[playlist.boardType]}
+            />
+          )}
+        </div>
 
         {/* Discussion */}
         {playlist.isPublic && (
@@ -500,13 +434,13 @@ export default function PlaylistDetailContent({
       )}
 
       {/* Generator Drawer */}
-      {boardDetails && (
+      {generatorBoardDetails && (
         <PlaylistGeneratorDrawer
           open={generatorOpen}
           onClose={() => setGeneratorOpen(false)}
           playlistUuid={playlistUuid}
-          boardDetails={boardDetails}
-          angle={angle}
+          boardDetails={generatorBoardDetails}
+          angle={generatorAngle}
           onSuccess={handlePlaylistUpdated}
         />
       )}

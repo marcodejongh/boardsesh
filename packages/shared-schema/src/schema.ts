@@ -815,6 +815,10 @@ export const typeDefs = /* GraphQL */ `
     climbCount: Int!
     "Current user's role (owner/editor/viewer)"
     userRole: String
+    "Number of users following this playlist"
+    followerCount: Int!
+    "Whether the current user follows this playlist"
+    isFollowedByMe: Boolean!
   }
 
   """
@@ -939,16 +943,16 @@ export const typeDefs = /* GraphQL */ `
   input GetPlaylistClimbsInput {
     "Playlist ID"
     playlistId: ID!
-    "Board name for climb lookup"
-    boardName: String!
+    "Board name for climb lookup (omit for all-boards mode)"
+    boardName: String
     "Layout ID"
-    layoutId: Int!
+    layoutId: Int
     "Size ID"
-    sizeId: Int!
+    sizeId: Int
     "Set IDs"
-    setIds: String!
+    setIds: String
     "Board angle"
-    angle: Int!
+    angle: Int
     "Page number"
     page: Int
     "Page size"
@@ -2159,6 +2163,14 @@ export const typeDefs = /* GraphQL */ `
   input FollowSetterInput {
     "The setter's Aurora username"
     setterUsername: String!
+  }
+
+  """
+  Input for following/unfollowing a playlist.
+  """
+  input FollowPlaylistInput {
+    "The playlist UUID"
+    playlistUuid: ID!
   }
 
   """
@@ -3441,6 +3453,16 @@ export const typeDefs = /* GraphQL */ `
     Unfollow a setter by username.
     """
     unfollowSetter(input: FollowSetterInput!): Boolean!
+
+    """
+    Follow a playlist. Idempotent. Only public playlists can be followed.
+    """
+    followPlaylist(input: FollowPlaylistInput!): Boolean!
+
+    """
+    Unfollow a playlist.
+    """
+    unfollowPlaylist(input: FollowPlaylistInput!): Boolean!
 
     """
     Subscribe to new climbs for a board type and layout.

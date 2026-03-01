@@ -219,18 +219,38 @@ export const setterFollowQueries = {
       }
 
       const angle = validatedInput.angle ?? DEFAULT_ANGLE;
+      const { layoutId, sizeId } = validatedInput;
       const tables = getBoardTables(boardName);
+
+      // Build WHERE conditions for board filter
+      const filterConditions: ReturnType<typeof eq>[] = [
+        eq(tables.climbs.setterUsername, username),
+        eq(tables.climbs.boardType, boardName),
+      ];
+
+      // Filter by layout if provided
+      if (layoutId != null) {
+        filterConditions.push(eq(tables.climbs.layoutId, layoutId));
+      }
+
+      // Filter by size edges if sizeId is provided
+      if (sizeId != null) {
+        const sizeEdges = getSizeEdges(boardName, sizeId);
+        if (sizeEdges && boardName !== 'moonboard') {
+          filterConditions.push(
+            sql`${tables.climbs.edgeLeft} > ${sizeEdges.edgeLeft}`,
+            sql`${tables.climbs.edgeRight} < ${sizeEdges.edgeRight}`,
+            sql`${tables.climbs.edgeBottom} > ${sizeEdges.edgeBottom}`,
+            sql`${tables.climbs.edgeTop} < ${sizeEdges.edgeTop}`,
+          );
+        }
+      }
 
       // Get total count
       const [countResult] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(tables.climbs)
-        .where(
-          and(
-            eq(tables.climbs.setterUsername, username),
-            eq(tables.climbs.boardType, boardName)
-          )
-        );
+        .where(and(...filterConditions));
 
       const totalCount = Number(countResult?.count ?? 0);
 
@@ -265,12 +285,7 @@ export const setterFollowQueries = {
             eq(tables.difficultyGrades.boardType, boardName)
           )
         )
-        .where(
-          and(
-            eq(tables.climbs.setterUsername, username),
-            eq(tables.climbs.boardType, boardName)
-          )
-        )
+        .where(and(...filterConditions))
         .orderBy(
           sortBy === 'popular'
             ? sql`COALESCE(${tables.climbStats.ascensionistCount}, 0) DESC`
