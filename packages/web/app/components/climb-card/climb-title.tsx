@@ -39,6 +39,9 @@ type ClimbTitleProps = {
   centered?: boolean;
   /** Font size for the climb name. Use a design token, e.g. themeTokens.typography.fontSize.lg */
   titleFontSize?: number;
+  /** Grade position: 'inline' (default) keeps grade in subtitle, 'right' floats colorized grade to the far right.
+   *  When 'right', renders name + stars/setter on left and large colorized V-grade on right. Overrides layout prop. */
+  gradePosition?: 'inline' | 'right';
 };
 
 /**
@@ -56,6 +59,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   layout = 'stacked',
   centered = false,
   titleFontSize,
+  gradePosition = 'inline',
 }) => {
   const isDark = useIsDarkMode();
 
@@ -174,6 +178,65 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
       By {climb.setter_username} - {climb.ascensionist_count ?? 0} ascents
     </Typography>
   );
+
+  if (gradePosition === 'right') {
+    const subtitleParts: string[] = [];
+    if (hasGrade) {
+      subtitleParts.push(`${climb.quality_average}\u2605`);
+    }
+    if (showSetterInfo && climb.setter_username) {
+      subtitleParts.push(climb.setter_username);
+    }
+
+    const subtitleContent = subtitleParts.length > 0
+      ? subtitleParts.join(' \u00b7 ')
+      : <Box component="span" sx={{ fontStyle: 'italic' }}>project</Box>;
+
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px`, width: '100%' }} className={className}>
+        {/* Left: Name + subtitle */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+          {/* Row 1: Name with addon */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
+            {nameElement}
+            {nameAddon}
+          </Box>
+          {/* Row 2: Stars + setter */}
+          <Typography
+            variant="body2"
+            component="span"
+            color="text.secondary"
+            sx={{
+              fontSize: themeTokens.typography.fontSize.xs,
+              fontWeight: themeTokens.typography.fontWeight.normal,
+              ...textOverflowStyles,
+            }}
+          >
+            {subtitleContent}
+          </Typography>
+        </Box>
+        {/* Right: rightAddon + colorized grade */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px`, flexShrink: 0 }}>
+          {rightAddon}
+          {largeGradeElement}
+          {!vGrade && displayDifficulty && (
+            <Typography
+              variant="body2"
+              component="span"
+              color="text.secondary"
+              sx={{
+                fontSize: nameFontSize,
+                fontWeight: themeTokens.typography.fontWeight.semibold,
+                lineHeight: 1,
+              }}
+            >
+              {displayDifficulty}
+            </Typography>
+          )}
+        </Box>
+      </Box>
+    );
+  }
 
   if (layout === 'horizontal') {
     const secondLineContent = [];

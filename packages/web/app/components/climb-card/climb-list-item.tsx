@@ -2,7 +2,6 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined';
 import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
@@ -10,6 +9,7 @@ import Favorite from '@mui/icons-material/Favorite';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbThumbnail from './climb-thumbnail';
+import ClimbTitle from './climb-title';
 import DrawerClimbHeader from './drawer-climb-header';
 import { AscentStatus } from '../queue-control/queue-list-item';
 import { ClimbActions } from '../climb-actions';
@@ -18,7 +18,7 @@ import { useFavorite } from '../climb-actions';
 import { useSwipeActions } from '@/app/hooks/use-swipe-actions';
 import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getSoftGradeColor, getGradeTintColor, formatVGrade } from '@/app/lib/grade-colors';
+import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useIsDarkMode } from '@/app/hooks/use-is-dark-mode';
 import { getExcludedClimbActions } from '@/app/lib/climb-action-utils';
 
@@ -59,10 +59,6 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     onSwipeRight: handleSwipeRight,
     disabled: disableSwipe,
   });
-
-  const vGrade = formatVGrade(climb.difficulty);
-  const gradeColor = getSoftGradeColor(climb.difficulty, isDark);
-  const hasQuality = climb.quality_average && climb.quality_average !== '0';
 
   const excludeActions = getExcludedClimbActions(boardDetails.board_name, 'list');
 
@@ -143,57 +139,6 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     [],
   );
 
-  const nameStyle = useMemo(
-    () => ({
-      fontSize: themeTokens.typography.fontSize.xl,
-      fontWeight: themeTokens.typography.fontWeight.semibold,
-      whiteSpace: 'nowrap' as const,
-      overflow: 'hidden' as const,
-      textOverflow: 'ellipsis' as const,
-      display: 'block' as const,
-    }),
-    [],
-  );
-
-  const subtitleStyle = useMemo(
-    () => ({
-      fontSize: themeTokens.typography.fontSize.xs,
-      whiteSpace: 'nowrap' as const,
-      overflow: 'hidden' as const,
-      textOverflow: 'ellipsis' as const,
-      display: 'block' as const,
-    }),
-    [],
-  );
-
-  const rightContentStyle = useMemo(
-    () => ({
-      display: 'flex' as const,
-      alignItems: 'center' as const,
-      gap: themeTokens.spacing[1],
-      flexShrink: 0,
-    }),
-    [],
-  );
-
-  const vGradeStyle = useMemo(
-    () => ({
-      fontSize: themeTokens.typography.fontSize['2xl'],
-      fontWeight: themeTokens.typography.fontWeight.bold,
-      lineHeight: 1,
-      color: gradeColor ?? 'var(--neutral-500)',
-    }),
-    [gradeColor],
-  );
-
-  const difficultyStyle = useMemo(
-    () => ({
-      fontSize: themeTokens.typography.fontSize.sm,
-      fontWeight: themeTokens.typography.fontWeight.semibold,
-    }),
-    [],
-  );
-
   const iconButtonStyle = useMemo(
     () => ({ flexShrink: 0, color: 'var(--neutral-400)' }),
     [],
@@ -256,48 +201,15 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
             />
           </div>
 
-          {/* Center: Name, quality, setter */}
+          {/* Center + Right: Name, stars, setter, colorized grade */}
           <div style={centerStyle}>
-            <Typography
-              variant="body2"
-              component="span"
-              style={nameStyle}
-            >
-              {climb.name}
-            </Typography>
-            <Typography
-              variant="body2"
-              component="span"
-              color="text.secondary"
-              style={subtitleStyle}
-            >
-              {hasQuality ? `${climb.quality_average}\u2605` : ''}{' '}
-              {climb.setter_username && `${climb.setter_username}`}
-            </Typography>
-          </div>
-
-          {/* Right: Ascent status + V-grade colorized */}
-          <div style={rightContentStyle}>
-            <AscentStatus climbUuid={climb.uuid} fontSize={20} />
-            {vGrade && (
-              <Typography
-                variant="body2"
-                component="span"
-                style={vGradeStyle}
-              >
-                {vGrade}
-              </Typography>
-            )}
-            {!vGrade && climb.difficulty && (
-              <Typography
-                variant="body2"
-                component="span"
-                color="text.secondary"
-                style={difficultyStyle}
-              >
-                {climb.difficulty}
-              </Typography>
-            )}
+            <ClimbTitle
+              climb={climb}
+              gradePosition="right"
+              showSetterInfo
+              titleFontSize={themeTokens.typography.fontSize.xl}
+              rightAddon={<AscentStatus climbUuid={climb.uuid} fontSize={20} />}
+            />
           </div>
 
           {/* Ellipsis menu button */}

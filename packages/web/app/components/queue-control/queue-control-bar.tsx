@@ -306,7 +306,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                     >
                       <ClimbTitle
                         climb={currentClimb}
-                        showAngle
+                        gradePosition="right"
+                        showSetterInfo
                       />
                     </div>
 
@@ -321,7 +322,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                       >
                         <ClimbTitle
                           climb={peekClimbData}
-                          showAngle
+                          gradePosition="right"
+                          showSetterInfo
                         />
                       </div>
                     )}
