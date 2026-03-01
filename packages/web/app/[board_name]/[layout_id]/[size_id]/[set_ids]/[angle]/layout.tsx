@@ -102,7 +102,6 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
               <BluetoothProvider boardDetails={boardDetails}>
                 <UISearchParamsProvider>
                   <QueueBridgeInjector boardDetails={boardDetails} angle={angle} />
-                  <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
 
                   <main
                     id="content-for-scrollable"
@@ -114,6 +113,7 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
                       paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
                     }}
                   >
+                    <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
                     <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
                       {children}
                     </Suspense>
