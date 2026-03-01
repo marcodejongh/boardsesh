@@ -76,7 +76,6 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
                 <BluetoothProvider boardDetails={boardDetails}>
                   <UISearchParamsProvider>
                     <QueueBridgeInjector boardDetails={boardDetails} angle={angle} />
-                    <BoardSeshHeader boardDetails={boardDetails} angle={angle} isAngleAdjustable={board.isAngleAdjustable} />
 
                     <main
                       id="content-for-scrollable"
@@ -88,6 +87,7 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
                         paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
                       }}
                     >
+                      <BoardSeshHeader boardDetails={boardDetails} angle={angle} isAngleAdjustable={board.isAngleAdjustable} />
                       <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
                         {children}
                       </Suspense>
