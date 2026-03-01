@@ -135,7 +135,7 @@ const ClimbsList = ({
     display: 'flex',
     alignItems: 'center',
     position: 'relative' as const,
-    padding: `${themeTokens.spacing[1]}px 60px ${themeTokens.spacing[2]}px ${themeTokens.spacing[1]}px`,
+    padding: `0px 60px ${themeTokens.spacing[1]}px ${themeTokens.spacing[1]}px`,
     minWidth: 0,
   }), []);
 
@@ -175,7 +175,7 @@ const ClimbsList = ({
   }), []);
 
   return (
-    <Box sx={{ pt: `${themeTokens.spacing[1]}px` }}>
+    <Box>
       {/* Optional header content (e.g. BoardCreationBanner) */}
       {header}
       {/* View mode toggle + optional inline header content */}
