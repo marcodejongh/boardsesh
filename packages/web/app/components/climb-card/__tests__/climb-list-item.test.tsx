@@ -42,6 +42,7 @@ vi.mock('@/app/lib/hooks/use-double-tap', () => ({
 
 vi.mock('@/app/lib/grade-colors', () => ({
   getSoftGradeColor: () => '#888',
+  getSoftVGradeColor: () => '#888',
   getGradeTintColor: () => null,
   formatVGrade: (d: string) => (d.startsWith('V') ? d : null),
 }));
@@ -73,7 +74,7 @@ vi.mock('@/app/theme/theme-config', () => ({
     neutral: { 200: '#E5E7EB', 400: '#9CA3AF', 500: '#6B7280' },
     typography: {
       fontSize: { xs: 12, sm: 14, xl: 20, '2xl': 24 },
-      fontWeight: { semibold: 600, bold: 700 },
+      fontWeight: { normal: 400, semibold: 600, bold: 700 },
     },
   },
 }));
