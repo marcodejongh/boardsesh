@@ -30,7 +30,7 @@ import { useSession } from 'next-auth/react';
 import type { SessionDetail, SessionDetailTick, SessionFeedParticipant } from '@boardsesh/shared-schema';
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
 import VoteButton from '@/app/components/social/vote-button';
-import CommentSection from '@/app/components/social/comment-section';
+import FeedCommentButton from '@/app/components/social/feed-comment-button';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { FavoritesProvider } from '@/app/components/climb-actions/favorites-batch-context';
 import { PlaylistsProvider } from '@/app/components/climb-actions/playlists-batch-context';
@@ -201,6 +201,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
     ticks,
     upvotes,
     downvotes,
+    commentCount,
   } = session;
 
   const currentUserId = authSession?.user?.id;
@@ -367,9 +368,8 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
               <VoteButton
                 entityType="tick"
                 entityId={tick.uuid}
-                initialUpvotes={0}
+                initialUpvotes={tick.upvotes}
                 initialDownvotes={0}
-                initialUserVote={0}
                 likeOnly
               />
             </Box>
@@ -676,9 +676,13 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
             initialDownvotes={downvotes}
             likeOnly
           />
+          <FeedCommentButton
+            entityType="session"
+            entityId={sessionId}
+            commentCount={commentCount}
+            defaultExpanded
+          />
         </Box>
-
-        <CommentSection entityType="session" entityId={sessionId} />
 
         <Divider />
 

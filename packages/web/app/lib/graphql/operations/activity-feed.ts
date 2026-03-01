@@ -75,6 +75,7 @@ export const GET_SESSION_DETAIL = gql`
         frames
         setterUsername
         climbedAt
+        upvotes
       }
     }
   }
@@ -107,6 +108,7 @@ export const UPDATE_INFERRED_SESSION = gql`
         frames
         setterUsername
         climbedAt
+        upvotes
       }
     }
   }
@@ -135,6 +137,7 @@ export const ADD_USER_TO_SESSION = gql`
         frames
         setterUsername
         climbedAt
+        upvotes
       }
     }
   }
@@ -163,6 +166,7 @@ export const REMOVE_USER_FROM_SESSION = gql`
         frames
         setterUsername
         climbedAt
+        upvotes
       }
     }
   }

@@ -66,9 +66,9 @@ vi.mock('@/app/components/social/vote-summary-context', () => ({
   useVoteSummaryContext: () => null,
 }));
 
-vi.mock('@/app/components/social/comment-section', () => ({
-  default: ({ entityType, entityId }: { entityType: string; entityId: string }) => (
-    <div data-testid="comment-section" data-entity-type={entityType} data-entity-id={entityId} />
+vi.mock('@/app/components/social/feed-comment-button', () => ({
+  default: ({ entityType, entityId, commentCount }: { entityType: string; entityId: string; commentCount?: number }) => (
+    <div data-testid="feed-comment-button" data-entity-type={entityType} data-entity-id={entityId} data-comment-count={commentCount ?? 0} />
   ),
 }));
 
@@ -169,6 +169,7 @@ function makeSession(overrides: Partial<SessionDetail> = {}): SessionDetail {
         frames: 'abc',
         setterUsername: 'setter1',
         climbedAt: '2024-01-15T10:30:00.000Z',
+        upvotes: 3,
       },
     ],
     upvotes: 5,
@@ -210,11 +211,12 @@ describe('SessionDetailContent', () => {
     expect(sessionVote!.getAttribute('data-entity-id')).toBe('session-1');
   });
 
-  it('renders CommentSection with session entity type', () => {
+  it('renders FeedCommentButton with session entity type and comment count', () => {
     render(<SessionDetailContent session={makeSession()} />);
-    const commentSection = screen.getByTestId('comment-section');
-    expect(commentSection.getAttribute('data-entity-type')).toBe('session');
-    expect(commentSection.getAttribute('data-entity-id')).toBe('session-1');
+    const commentButton = screen.getByTestId('feed-comment-button');
+    expect(commentButton.getAttribute('data-entity-type')).toBe('session');
+    expect(commentButton.getAttribute('data-entity-id')).toBe('session-1');
+    expect(commentButton.getAttribute('data-comment-count')).toBe('2');
   });
 
   it('shows session name when available', () => {
@@ -290,13 +292,13 @@ describe('SessionDetailContent', () => {
           uuid: 'tick-1', userId: 'user-1', climbUuid: 'climb-1', climbName: 'Duplicated Climb',
           boardType: 'kilter', layoutId: 1, angle: 40, status: 'send', attemptCount: 1,
           difficulty: 20, difficultyName: 'V5', quality: 3, isMirror: false, isBenchmark: false,
-          comment: null, frames: 'abc', setterUsername: 'setter1', climbedAt: '2024-01-15T10:30:00.000Z',
+          comment: null, frames: 'abc', setterUsername: 'setter1', climbedAt: '2024-01-15T10:30:00.000Z', upvotes: 0,
         },
         {
           uuid: 'tick-2', userId: 'user-1', climbUuid: 'climb-1', climbName: 'Duplicated Climb',
           boardType: 'kilter', layoutId: 1, angle: 40, status: 'flash', attemptCount: 1,
           difficulty: 20, difficultyName: 'V5', quality: 3, isMirror: false, isBenchmark: false,
-          comment: null, frames: 'abc', setterUsername: 'setter1', climbedAt: '2024-01-15T11:00:00.000Z',
+          comment: null, frames: 'abc', setterUsername: 'setter1', climbedAt: '2024-01-15T11:00:00.000Z', upvotes: 0,
         },
       ],
     });
@@ -316,13 +318,13 @@ describe('SessionDetailContent', () => {
           uuid: 'tick-1', userId: 'user-1', climbUuid: 'climb-1', climbName: 'Shared Climb',
           boardType: 'kilter', layoutId: 1, angle: 40, status: 'send', attemptCount: 2,
           difficulty: 20, difficultyName: 'V5', quality: 3, isMirror: false, isBenchmark: false,
-          comment: null, frames: 'abc', setterUsername: 'setter1', climbedAt: '2024-01-15T10:30:00.000Z',
+          comment: null, frames: 'abc', setterUsername: 'setter1', climbedAt: '2024-01-15T10:30:00.000Z', upvotes: 0,
         },
         {
           uuid: 'tick-2', userId: 'user-2', climbUuid: 'climb-1', climbName: 'Shared Climb',
           boardType: 'kilter', layoutId: 1, angle: 40, status: 'flash', attemptCount: 1,
           difficulty: 20, difficultyName: 'V5', quality: 3, isMirror: false, isBenchmark: false,
-          comment: null, frames: 'abc', setterUsername: 'setter1', climbedAt: '2024-01-15T10:35:00.000Z',
+          comment: null, frames: 'abc', setterUsername: 'setter1', climbedAt: '2024-01-15T10:35:00.000Z', upvotes: 0,
         },
       ],
     });

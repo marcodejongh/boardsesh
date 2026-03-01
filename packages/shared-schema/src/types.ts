@@ -808,6 +808,7 @@ export type SessionDetailTick = {
   frames?: string | null;
   setterUsername?: string | null;
   climbedAt: string;
+  upvotes: number;
 };
 
 export type SessionDetail = {

@@ -2643,6 +2643,7 @@ export const typeDefs = /* GraphQL */ `
     frames: String
     setterUsername: String
     climbedAt: String!
+    upvotes: Int!
   }
 
   """
