@@ -744,34 +744,36 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
         )}
 
         {/* Session-level social */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <VoteButton
-            entityType="session"
-            entityId={sessionId}
-            initialUpvotes={upvotes}
-            initialDownvotes={downvotes}
-            likeOnly
-          />
-          <IconButton
-            size="small"
-            onClick={() => setSessionCommentsOpen((prev) => !prev)}
-            sx={{ color: sessionCommentsOpen ? 'text.primary' : 'text.secondary' }}
-          >
-            <ChatBubbleOutlineOutlined fontSize="small" />
-            {commentCount > 0 && (
-              <Typography
-                variant="caption"
-                component="span"
-                sx={{ ml: 0.5, color: 'inherit', userSelect: 'none', fontSize: 12 }}
-              >
-                {commentCount}
-              </Typography>
-            )}
-          </IconButton>
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <VoteButton
+              entityType="session"
+              entityId={sessionId}
+              initialUpvotes={upvotes}
+              initialDownvotes={downvotes}
+              likeOnly
+            />
+            <IconButton
+              size="small"
+              onClick={() => setSessionCommentsOpen((prev) => !prev)}
+              sx={{ color: sessionCommentsOpen ? 'text.primary' : 'text.secondary' }}
+            >
+              <ChatBubbleOutlineOutlined fontSize="small" />
+              {commentCount > 0 && (
+                <Typography
+                  variant="caption"
+                  component="span"
+                  sx={{ ml: 0.5, color: 'inherit', userSelect: 'none', fontSize: 12 }}
+                >
+                  {commentCount}
+                </Typography>
+              )}
+            </IconButton>
+          </Box>
+          <Collapse in={sessionCommentsOpen} unmountOnExit>
+            <CommentSection entityType="session" entityId={sessionId} title="Comments" />
+          </Collapse>
         </Box>
-        <Collapse in={sessionCommentsOpen} unmountOnExit>
-          <CommentSection entityType="session" entityId={sessionId} title="Comments" />
-        </Collapse>
 
         <Divider />
 

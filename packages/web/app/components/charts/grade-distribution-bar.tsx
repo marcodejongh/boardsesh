@@ -104,6 +104,7 @@ export default function GradeDistributionBar({
     },
     scales: {
       x: {
+        type: 'category' as const,
         stacked,
         ticks: compact ? { font: { size: 9 } } : undefined,
       },
