@@ -148,6 +148,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     () => ({
       wrapper: { height: 'auto', width: '100%' },
       body: { padding: `${themeTokens.spacing[2]}px 0` },
+      header: { paddingLeft: `${themeTokens.spacing[3]}px`, paddingRight: `${themeTokens.spacing[3]}px` },
     }),
     [],
   );
