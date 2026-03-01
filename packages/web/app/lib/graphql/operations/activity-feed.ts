@@ -76,6 +76,7 @@ export const GET_SESSION_DETAIL = gql`
         setterUsername
         climbedAt
         upvotes
+        totalAttempts
       }
     }
   }
@@ -109,6 +110,7 @@ export const UPDATE_INFERRED_SESSION = gql`
         setterUsername
         climbedAt
         upvotes
+        totalAttempts
       }
     }
   }
@@ -138,6 +140,7 @@ export const ADD_USER_TO_SESSION = gql`
         setterUsername
         climbedAt
         upvotes
+        totalAttempts
       }
     }
   }
@@ -167,6 +170,7 @@ export const REMOVE_USER_FROM_SESSION = gql`
         setterUsername
         climbedAt
         upvotes
+        totalAttempts
       }
     }
   }

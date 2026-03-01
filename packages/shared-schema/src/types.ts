@@ -809,6 +809,7 @@ export type SessionDetailTick = {
   setterUsername?: string | null;
   climbedAt: string;
   upvotes: number;
+  totalAttempts?: number | null;
 };
 
 export type SessionDetail = {

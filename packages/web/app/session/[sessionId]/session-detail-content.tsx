@@ -31,6 +31,7 @@ import type { SessionDetail, SessionDetailTick, SessionFeedParticipant } from '@
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
 import VoteButton from '@/app/components/social/vote-button';
 import FeedCommentButton from '@/app/components/social/feed-comment-button';
+import { VoteSummaryProvider } from '@/app/components/social/vote-summary-context';
 import ClimbsList from '@/app/components/board-page/climbs-list';
 import { FavoritesProvider } from '@/app/components/climb-actions/favorites-batch-context';
 import { PlaylistsProvider } from '@/app/components/climb-actions/playlists-batch-context';
@@ -85,6 +86,39 @@ function getStatusColor(status: string): 'success' | 'primary' | 'default' {
   if (status === 'flash') return 'success';
   if (status === 'send') return 'primary';
   return 'default';
+}
+
+function ordinalSuffix(n: number): string {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
+function formatAttemptText(tick: SessionDetailTick): string | null {
+  if (tick.status === 'flash') return null;
+
+  const sessionAttempts = tick.attemptCount;
+  const total = tick.totalAttempts;
+
+  if (tick.status === 'send') {
+    const parts = [`on ${ordinalSuffix(sessionAttempts)} attempt`];
+    if (total != null && total > sessionAttempts) {
+      parts.push(`${total} total`);
+    }
+    return parts.join(', ');
+  }
+
+  // attempt status
+  const parts = [`${sessionAttempts} attempt${sessionAttempts !== 1 ? 's' : ''}`];
+  if (total != null && total > sessionAttempts) {
+    parts.push(`${total} total`);
+  }
+  return parts.join(', ');
 }
 
 /**
@@ -232,6 +266,9 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   // Group ticks by climb for rendering tick details below each climb
   const ticksByClimb = useMemo(() => groupTicksByClimbUuid(ticks), [ticks]);
 
+  // Collect tick UUIDs for batch vote summary fetching
+  const tickUuids = useMemo(() => ticks.map((t) => t.uuid), [ticks]);
+
   // Build boardDetailsMap for multi-board support
   const { boardDetailsMap, defaultBoardDetails, unsupportedClimbs } = useMemo(() => {
     const map: Record<string, BoardDetails> = {};
@@ -324,54 +361,59 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, px: 2, pb: 1 }}>
         {climbTicks.map((tick) => {
           const participant = isMultiUser ? participantMap.get(tick.userId) : null;
+          const attemptText = formatAttemptText(tick);
           return (
             <Box
               key={tick.uuid}
               sx={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: 0.75,
+                flexDirection: 'column',
+                gap: 0.25,
                 py: 0.25,
                 borderTop: `1px solid ${themeTokens.neutral[100]}`,
               }}
             >
-              {isMultiUser && (
-                <>
-                  <Avatar
-                    src={participant?.avatarUrl ?? undefined}
-                    sx={{ width: 18, height: 18 }}
-                  >
-                    {!participant?.avatarUrl && <PersonOutlined sx={{ fontSize: 10 }} />}
-                  </Avatar>
-                  <Typography variant="caption" sx={{ flex: 1, minWidth: 0 }} noWrap>
-                    {participant?.displayName || 'Climber'}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                {isMultiUser && (
+                  <>
+                    <Avatar
+                      src={participant?.avatarUrl ?? undefined}
+                      sx={{ width: 18, height: 18 }}
+                    >
+                      {!participant?.avatarUrl && <PersonOutlined sx={{ fontSize: 10 }} />}
+                    </Avatar>
+                    <Typography variant="caption" sx={{ minWidth: 0 }} noWrap>
+                      {participant?.displayName || 'Climber'}
+                    </Typography>
+                  </>
+                )}
+                <Chip
+                  label={tick.status}
+                  size="small"
+                  color={getStatusColor(tick.status)}
+                  variant={tick.status === 'attempt' ? 'outlined' : 'filled'}
+                  sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontSize: themeTokens.typography.fontSize.xs - 1 } }}
+                />
+                {attemptText && (
+                  <Typography variant="caption" color="text.secondary">
+                    {attemptText}
                   </Typography>
-                </>
-              )}
-              <Chip
-                label={tick.status}
-                size="small"
-                color={getStatusColor(tick.status)}
-                variant={tick.status === 'attempt' ? 'outlined' : 'filled'}
-                sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontSize: themeTokens.typography.fontSize.xs - 1 } }}
-              />
-              {tick.attemptCount > 1 && (
-                <Typography variant="caption" color="text.secondary">
-                  {tick.attemptCount}x
-                </Typography>
-              )}
+                )}
+                <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                  <VoteButton
+                    entityType="tick"
+                    entityId={tick.uuid}
+                    initialUpvotes={tick.upvotes}
+                    likeOnly
+                  />
+                  <FeedCommentButton entityType="tick" entityId={tick.uuid} />
+                </Box>
+              </Box>
               {tick.comment && (
-                <Typography variant="caption" color="text.secondary" sx={{ flex: isMultiUser ? undefined : 1, minWidth: 0 }} noWrap>
+                <Typography variant="caption" color="text.secondary" sx={{ pl: isMultiUser ? 3.5 : 0, minWidth: 0 }} noWrap>
                   {tick.comment}
                 </Typography>
               )}
-              <VoteButton
-                entityType="tick"
-                entityId={tick.uuid}
-                initialUpvotes={tick.upvotes}
-                initialDownvotes={0}
-                likeOnly
-              />
             </Box>
           );
         })}
@@ -693,23 +735,25 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
       </Box>
 
       {defaultBoardDetails && sessionClimbs.length > 0 && (
-        <FavoritesProvider {...favoritesProviderProps}>
-          <PlaylistsProvider {...playlistsProviderProps}>
-            <ClimbsList
-              boardDetails={defaultBoardDetails}
-              boardDetailsMap={boardDetailsMap}
-              unsupportedClimbs={unsupportedClimbs}
-              climbs={sessionClimbs}
-              isFetching={false}
-              hasMore={false}
-              onClimbSelect={navigateToClimb}
-              onLoadMore={noopLoadMore}
-              hideEndMessage
-              showBottomSpacer
-              renderItemExtra={renderTickDetails}
-            />
-          </PlaylistsProvider>
-        </FavoritesProvider>
+        <VoteSummaryProvider entityType="tick" entityIds={tickUuids}>
+          <FavoritesProvider {...favoritesProviderProps}>
+            <PlaylistsProvider {...playlistsProviderProps}>
+              <ClimbsList
+                boardDetails={defaultBoardDetails}
+                boardDetailsMap={boardDetailsMap}
+                unsupportedClimbs={unsupportedClimbs}
+                climbs={sessionClimbs}
+                isFetching={false}
+                hasMore={false}
+                onClimbSelect={navigateToClimb}
+                onLoadMore={noopLoadMore}
+                hideEndMessage
+                showBottomSpacer
+                renderItemExtra={renderTickDetails}
+              />
+            </PlaylistsProvider>
+          </FavoritesProvider>
+        </VoteSummaryProvider>
       )}
 
       {/* Add User Dialog */}

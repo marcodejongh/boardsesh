@@ -2644,6 +2644,8 @@ export const typeDefs = /* GraphQL */ `
     setterUsername: String
     climbedAt: String!
     upvotes: Int!
+    "Total attempts (sum of attemptCount) since last successful ascent by this user on this climb"
+    totalAttempts: Int
   }
 
   """
