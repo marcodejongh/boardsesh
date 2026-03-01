@@ -75,10 +75,13 @@ const PLAYLIST_COLORS = [
 
 type PlaylistDetailContentProps = {
   playlistUuid: string;
+  /** Base path for navigating back to the playlists library (e.g. "/b/my-kilter/40/playlists"). Defaults to "/playlists". */
+  playlistsBasePath?: string;
 };
 
 export default function PlaylistDetailContent({
   playlistUuid,
+  playlistsBasePath = '/playlists',
 }: PlaylistDetailContentProps) {
   const router = useRouter();
   const { showMessage } = useSnackbar();
@@ -229,12 +232,12 @@ export default function PlaylistDetailContent({
       );
 
       showMessage('Playlist deleted', 'success');
-      router.push('/playlists');
+      router.push(playlistsBasePath);
     } catch (err) {
       console.error('Error deleting playlist:', err);
       showMessage('Failed to delete playlist', 'error');
     }
-  }, [token, playlist, playlistUuid, router, showMessage]);
+  }, [token, playlist, playlistUuid, router, showMessage, playlistsBasePath]);
 
   const handleBoardSelect = useCallback((board: UserBoard | null) => {
     setSelectedBoard(board);
@@ -286,7 +289,7 @@ export default function PlaylistDetailContent({
     <>
       {/* Back Button */}
       <div className={styles.actionsSection}>
-        <BackButton fallbackUrl="/playlists" />
+        <BackButton fallbackUrl={playlistsBasePath} />
       </div>
 
       {/* Main Content */}

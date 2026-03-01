@@ -26,7 +26,7 @@ import {
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useMyBoards } from '@/app/hooks/use-my-boards';
 import { useQueueBridgeBoardInfo } from '@/app/components/queue-control/queue-bridge-context';
-import { constructBoardSlugUrl } from '@/app/lib/url-utils';
+import { constructBoardSlugUrl, constructBoardSlugPlaylistsUrl } from '@/app/lib/url-utils';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import AuthModal from '@/app/components/auth/auth-modal';
 import PlaylistCardGrid from '@/app/components/library/playlist-card-grid';
@@ -58,9 +58,11 @@ type LibraryPageContentProps = {
   /** When set, the page was rendered from a board route and this board is pre-selected. */
   boardSlug?: string;
   boardAngle?: number;
+  /** Base path for playlist detail links (e.g. "/b/my-kilter/40/playlists" or "/kilter/original/12x12/default/45/playlists"). Defaults to "/playlists". */
+  playlistsBasePath?: string;
 };
 
-export default function LibraryPageContent({ boardSlug, boardAngle: _boardAngle }: LibraryPageContentProps) {
+export default function LibraryPageContent({ boardSlug, boardAngle, playlistsBasePath = '/playlists' }: LibraryPageContentProps) {
   const { data: session, status: sessionStatus } = useSession();
   const { token, isLoading: tokenLoading } = useWsAuthToken();
   const router = useRouter();
@@ -192,8 +194,8 @@ export default function LibraryPageContent({ boardSlug, boardAngle: _boardAngle 
   }, [fetchDiscoverData]);
 
   const getPlaylistUrl = useCallback((playlistUuid: string) => {
-    return `/playlists/${playlistUuid}`;
-  }, []);
+    return `${playlistsBasePath}/${playlistUuid}`;
+  }, [playlistsBasePath]);
 
   // Filter discover playlists to exclude user's own
   const getDiscoverPlaylists = useCallback(() => {
@@ -216,14 +218,14 @@ export default function LibraryPageContent({ boardSlug, boardAngle: _boardAngle 
     setSelectedBoard(board);
 
     // When rendered from a board route, switching boards navigates to the correct URL
-    if (boardSlug) {
+    if (boardSlug || playlistsBasePath !== '/playlists') {
       if (board) {
-        router.push(constructBoardSlugUrl(board.slug, board.angle, 'playlists'));
+        router.push(constructBoardSlugPlaylistsUrl(board.slug, board.angle));
       } else {
         router.push('/playlists');
       }
     }
-  }, [boardSlug, router]);
+  }, [boardSlug, playlistsBasePath, router]);
 
   const handleAllBoardsKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {

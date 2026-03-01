@@ -20,7 +20,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
-import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug, searchParamsToUrlParams } from '@/app/lib/url-utils';
+import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug, searchParamsToUrlParams, getContextAwarePlaylistUrl } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useColorMode } from '@/app/hooks/use-color-mode';
 import { PlaylistsContext } from '../climb-actions/playlists-batch-context';
@@ -134,8 +134,8 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
   })();
 
   const getPlaylistUrl = useCallback((playlistUuid: string) => {
-    return `/playlists/${playlistUuid}`;
-  }, []);
+    return getContextAwarePlaylistUrl(pathname, playlistUuid);
+  }, [pathname]);
 
   const handleHomeTab = () => {
     setIsCreateOpen(false);
