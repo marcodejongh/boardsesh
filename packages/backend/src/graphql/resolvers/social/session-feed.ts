@@ -252,6 +252,24 @@ export const sessionFeedQueries = {
 
     if (tickRows.length === 0) return null;
 
+    // Batch-fetch tick vote counts
+    const tickUuids = tickRows.map((r) => r.tick.uuid);
+    const tickVoteCounts = tickUuids.length > 0
+      ? await db
+          .select({
+            entityId: dbSchema.voteCounts.entityId,
+            upvotes: sql<number>`COALESCE(${dbSchema.voteCounts.upvotes}, 0)`,
+          })
+          .from(dbSchema.voteCounts)
+          .where(
+            and(
+              eq(dbSchema.voteCounts.entityType, 'tick'),
+              inArray(dbSchema.voteCounts.entityId, tickUuids),
+            ),
+          )
+      : [];
+    const tickVoteMap = new Map(tickVoteCounts.map((v) => [v.entityId, Number(v.upvotes)]));
+
     // Build ticks
     const ticks: SessionDetailTick[] = tickRows.map((row) => ({
       uuid: row.tick.uuid,
@@ -272,6 +290,7 @@ export const sessionFeedQueries = {
       frames: row.frames || null,
       setterUsername: row.setterUsername || null,
       climbedAt: row.tick.climbedAt,
+      upvotes: tickVoteMap.get(row.tick.uuid) ?? 0,
     }));
 
     // Compute aggregates

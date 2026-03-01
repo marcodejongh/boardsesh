@@ -13,14 +13,16 @@ interface FeedCommentButtonProps {
   entityType: SocialEntityType;
   entityId: string;
   commentCount?: number;
+  defaultExpanded?: boolean;
 }
 
 export default function FeedCommentButton({
   entityType,
   entityId,
   commentCount = 0,
+  defaultExpanded = false,
 }: FeedCommentButtonProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultExpanded);
 
   const handleToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
