@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import type { SessionDetail } from '@boardsesh/shared-schema';
 
@@ -66,9 +66,9 @@ vi.mock('@/app/components/social/vote-summary-context', () => ({
   useVoteSummaryContext: () => null,
 }));
 
-vi.mock('@/app/components/social/feed-comment-button', () => ({
-  default: ({ entityType, entityId, commentCount }: { entityType: string; entityId: string; commentCount?: number }) => (
-    <div data-testid="feed-comment-button" data-entity-type={entityType} data-entity-id={entityId} data-comment-count={commentCount ?? 0} />
+vi.mock('@/app/components/social/comment-section', () => ({
+  default: ({ entityType, entityId, title }: { entityType: string; entityId: string; title?: string }) => (
+    <div data-testid="comment-section" data-entity-type={entityType} data-entity-id={entityId} data-title={title ?? ''} />
   ),
 }));
 
@@ -211,25 +211,24 @@ describe('SessionDetailContent', () => {
     expect(sessionVote!.getAttribute('data-entity-id')).toBe('session-1');
   });
 
-  it('renders FeedCommentButton with session entity type and comment count', () => {
+  it('renders session-level CommentSection expanded by default', () => {
     render(<SessionDetailContent session={makeSession()} />);
-    const commentButtons = screen.getAllByTestId('feed-comment-button');
-    const sessionComment = commentButtons.find(
+    const commentSections = screen.getAllByTestId('comment-section');
+    const sessionComment = commentSections.find(
       (el) => el.getAttribute('data-entity-type') === 'session',
     );
     expect(sessionComment).toBeTruthy();
     expect(sessionComment!.getAttribute('data-entity-id')).toBe('session-1');
-    expect(sessionComment!.getAttribute('data-comment-count')).toBe('2');
   });
 
-  it('renders FeedCommentButton on each tick', () => {
+  it('renders comment toggle button on each tick', () => {
     render(<SessionDetailContent session={makeSession()} />);
-    const commentButtons = screen.getAllByTestId('feed-comment-button');
-    const tickComment = commentButtons.find(
-      (el) => el.getAttribute('data-entity-type') === 'tick',
+    // Each tick should have a comment toggle button (tick comments are collapsed by default)
+    const commentButtons = screen.getAllByRole('button').filter(
+      (el) => el.querySelector('[data-testid="ChatBubbleOutlineOutlinedIcon"]'),
     );
-    expect(tickComment).toBeTruthy();
-    expect(tickComment!.getAttribute('data-entity-id')).toBe('tick-1');
+    // At least one comment toggle for the tick (plus one for session-level)
+    expect(commentButtons.length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows session name when available', () => {
@@ -387,5 +386,64 @@ describe('SessionDetailContent', () => {
     // Participant names appear in multiple places (header, stats, tick details)
     expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Bob').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('tick comment section is hidden by default', () => {
+    render(<SessionDetailContent session={makeSession()} />);
+    // By default, tick comment sections should not be visible (only session-level is expanded)
+    const allCommentSections = screen.getAllByTestId('comment-section');
+    const tickCommentSections = allCommentSections.filter(
+      (el) => el.getAttribute('data-entity-type') === 'tick',
+    );
+    expect(tickCommentSections).toHaveLength(0);
+  });
+
+  it('tick comment toggle button exists for each tick', () => {
+    render(<SessionDetailContent session={makeSession()} />);
+    // Find tick-level comment toggle buttons (ChatBubbleOutlineOutlined icons not inside the session-level area)
+    const allButtons = screen.getAllByRole('button');
+    const tickCommentButtons = allButtons.filter((btn) => {
+      const icon = btn.querySelector('[data-testid="ChatBubbleOutlineOutlinedIcon"]');
+      return !!icon;
+    });
+    // At least 2: one for the session-level toggle and one for the tick-level toggle
+    expect(tickCommentButtons.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('session comment section renders below the vote button row', () => {
+    const { container } = render(<SessionDetailContent session={makeSession()} />);
+    // Session-level CommentSection should be a sibling of the vote/comment button row, not nested inside it
+    const sessionCommentSection = screen.getAllByTestId('comment-section').find(
+      (el) => el.getAttribute('data-entity-type') === 'session',
+    );
+    expect(sessionCommentSection).toBeTruthy();
+    // The comment section should NOT be inside the flex row that contains the vote button
+    const sessionVoteButton = screen.getAllByTestId('vote-button').find(
+      (el) => el.getAttribute('data-entity-type') === 'session',
+    );
+    expect(sessionVoteButton).toBeTruthy();
+    // The vote button's parent flex row should NOT contain the comment section
+    const voteParentRow = sessionVoteButton!.parentElement;
+    expect(voteParentRow).toBeTruthy();
+    expect(voteParentRow!.contains(sessionCommentSection!)).toBe(false);
+  });
+
+  it('displays comment count on session comment toggle button', () => {
+    render(<SessionDetailContent session={makeSession({ commentCount: 5 })} />);
+    expect(screen.getByText('5')).toBeTruthy();
+  });
+
+  it('shows tick comment text when present', () => {
+    const session = makeSession({
+      ticks: [{
+        uuid: 'tick-1', userId: 'user-1', climbUuid: 'climb-1', climbName: 'Commented Climb',
+        boardType: 'kilter', layoutId: 1, angle: 40, status: 'send', attemptCount: 1,
+        difficulty: 20, difficultyName: 'V5', quality: 3, isMirror: false, isBenchmark: false,
+        comment: 'Great beta!', frames: 'abc', setterUsername: 'setter1',
+        climbedAt: '2024-01-15T10:30:00.000Z', upvotes: 0,
+      }],
+    });
+    render(<SessionDetailContent session={session} />);
+    expect(screen.getByText('Great beta!')).toBeTruthy();
   });
 });
