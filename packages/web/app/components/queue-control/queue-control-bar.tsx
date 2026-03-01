@@ -278,9 +278,9 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
               backgroundColor: gradeTintColor ?? (isDark ? 'transparent' : 'var(--semantic-surface)'),
             }}
           >
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }} className={styles.row}>
+            <Box sx={{ display: 'flex', flexWrap: 'nowrap', justifyContent: 'space-between', alignItems: 'center' }} className={styles.row}>
               {/* Left section: Thumbnail and climb info */}
-              <Box sx={{ flex: 'auto' }} className={styles.climbInfoCol}>
+              <Box sx={{ flex: 1 }} className={styles.climbInfoCol}>
                 <div className={styles.climbInfoInner} style={{ gap: themeTokens.spacing[2] }}>
                   {/* Board preview — STATIC, with crossfade on enter */}
                   <div className={`${styles.boardPreviewContainer} ${enterDirection ? styles.thumbnailEnter : ''}`}>

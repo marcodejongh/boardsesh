@@ -5,6 +5,7 @@
 
 .layout {
   min-height: 100vh;
+  padding-top: var(--global-header-height);
   background: var(--semantic-background, #F9FAFB);
 }
 

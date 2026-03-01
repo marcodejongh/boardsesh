@@ -2,6 +2,7 @@
 
 .pageLayout {
   min-height: 100vh;
+  padding-top: var(--global-header-height);
   background: var(--neutral-50);
 }
 

@@ -10,7 +10,6 @@ import SearchPill from '../search-drawer/search-pill';
 import UnifiedSearchDrawer from '../search-drawer/unified-search-drawer';
 import AccordionSearchForm from '../search-drawer/accordion-search-form';
 import { BoardDetails } from '@/app/lib/types';
-import { BoardConfigData } from '@/app/lib/server-board-configs';
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { useQueueContext } from '../graphql-queue';
 import { useUISearchParams } from '../queue-control/ui-searchparams-provider';
@@ -21,14 +20,12 @@ import ChevronLeftOutlined from '@mui/icons-material/ChevronLeftOutlined';
 import AngleSelector from './angle-selector';
 import styles from './header.module.css';
 import Link from 'next/link';
-import UserDrawer from '../user-drawer/user-drawer';
 
 type PageMode = 'list' | 'view' | 'play' | 'create' | 'other';
 
 type BoardSeshHeaderProps = {
   boardDetails: BoardDetails;
   angle?: number;
-  boardConfigs?: BoardConfigData;
   isAngleAdjustable?: boolean;
 };
 
@@ -44,7 +41,7 @@ function usePageMode(): PageMode {
   }, [pathname]);
 }
 
-export default function BoardSeshHeader({ boardDetails, angle, boardConfigs, isAngleAdjustable }: BoardSeshHeaderProps) {
+export default function BoardSeshHeader({ boardDetails, angle, isAngleAdjustable }: BoardSeshHeaderProps) {
   const { currentClimb, totalSearchResultCount, isFetchingClimbs } = useQueueContext();
   const { uiSearchParams, clearClimbSearchParams } = useUISearchParams();
   const pageMode = usePageMode();
@@ -52,7 +49,7 @@ export default function BoardSeshHeader({ boardDetails, angle, boardConfigs, isA
   const router = useRouter();
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
 
-  // Create mode has its own header in the form — hide the global header
+  // Create mode has its own header in the form — hide the board toolbar
   if (pageMode === 'create') {
     return null;
   }
@@ -80,67 +77,74 @@ export default function BoardSeshHeader({ boardDetails, angle, boardConfigs, isA
     ? `/${boardDetails.board_name}/${generateLayoutSlug(boardDetails.layout_name)}/${generateSizeSlug(boardDetails.size_name, boardDetails.size_description)}/${generateSetSlug(boardDetails.set_names)}/${angle}/create`
     : null;
 
+  // Check if we have any content to show — if not, don't render the toolbar
+  const hasBackButton = pageMode === 'play';
+  const hasSearchPill = pageMode === 'list';
+  const hasAngleSelector = angle !== undefined;
+  const hasCreateButton = !!createClimbUrl;
+
+  if (!hasBackButton && !hasSearchPill && !hasAngleSelector && !hasCreateButton) {
+    return null;
+  }
+
   return (
     <Box
-      component="header"
-      className={`${styles.header} header-shadow`}
+      component="div"
+      className={styles.header}
       sx={{
         background: 'var(--semantic-surface)',
-        height: '8dvh',
-        minHeight: 48,
         lineHeight: 'normal',
         display: 'flex',
         padding: '0 12px',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 10,
+        alignItems: 'center',
+        minHeight: 40,
+        gap: '8px',
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
-        {/* Left section: Avatar + Back button */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-          <UserDrawer boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} />
+      {/* Left section: Back button */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+        {hasBackButton && (
+          <div className={styles.mobileOnly}>
+            <IconButton
+              aria-label="Back to climb list"
+              onClick={() => router.push(getBackToListUrl())}
+            >
+              <ChevronLeftOutlined />
+            </IconButton>
+          </div>
+        )}
+      </Box>
 
-          {/* Play page: Show back button next to logo (mobile only) */}
-          {pageMode === 'play' && (
-            <div className={styles.mobileOnly}>
-              <IconButton
-                aria-label="Back to climb list"
-                onClick={() => router.push(getBackToListUrl())}
-              >
-                <ChevronLeftOutlined />
+      {/* Center Section - Content varies by page mode */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', gap: '2px', flex: 1, alignItems: 'center' }}>
+        {hasSearchPill && (
+          <div className={styles.mobileOnly} style={{ flex: 1 }}>
+            <SearchPill onClick={() => setSearchDropdownOpen(true)} />
+          </div>
+        )}
+      </Box>
+
+      {/* Right Section */}
+      <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+        {hasAngleSelector && (
+          <AngleSelector
+            boardName={boardDetails.board_name}
+            boardDetails={boardDetails}
+            currentAngle={angle}
+            currentClimb={currentClimb}
+            isAngleAdjustable={isAngleAdjustable}
+          />
+        )}
+
+        {hasCreateButton && (
+          <div className={styles.desktopOnly}>
+            <Link href={createClimbUrl}>
+              <IconButton title="Create new climb">
+                <AddOutlined />
               </IconButton>
-            </div>
-          )}
-        </Box>
-
-        {/* Center Section - Content varies by page mode */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: '2px', flex: 1, alignItems: 'center' }}>
-          {/* List page: Show search pill (mobile only) */}
-          {pageMode === 'list' && (
-            <div className={styles.mobileOnly} style={{ flex: 1 }}>
-              <SearchPill onClick={() => setSearchDropdownOpen(true)} />
-            </div>
-          )}
-        </Box>
-
-        {/* Right Section */}
-        <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          {angle !== undefined && <AngleSelector boardName={boardDetails.board_name} boardDetails={boardDetails} currentAngle={angle} currentClimb={currentClimb} isAngleAdjustable={isAngleAdjustable} />}
-
-          {/* Desktop: show Create Climb button */}
-          {createClimbUrl && (
-            <div className={styles.desktopOnly}>
-              <Link href={createClimbUrl}>
-                <IconButton title="Create new climb">
-                  <AddOutlined />
-                </IconButton>
-              </Link>
-            </div>
-          )}
-        </Box>
+            </Link>
+          </div>
+        )}
       </Box>
 
       {/* Search drawer (mobile) */}
