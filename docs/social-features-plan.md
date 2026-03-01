@@ -2245,7 +2245,7 @@ packages/web/app/components/search-drawer/
   playlist-search-results.tsx # NEW: Playlist search result list
   search-dropdown.tsx        # MODIFIED: Add category pill at top, switch form per category
   accordion-search-form.tsx  # MODIFIED: Only render when category = 'climbs'
-  search-pill.tsx            # MODIFIED: Show active category in pill summary
+  search-drawer-bridge-context.tsx # EXISTING: Bridge context that exposes search drawer open/summary/filter state to GlobalHeader
 
 packages/web/app/components/board-page/
   header.tsx                 # MODIFIED: Search bar also appears on home page
@@ -2378,7 +2378,7 @@ The search drawer is extended with a **search category pill bar** at the top, al
 #### Current Architecture (reference)
 
 The existing search system consists of:
-- `SearchPill` (in `header.tsx`) -- triggers `SearchDropdown`
+- `SearchDrawerBridgeInjector` (in `header.tsx`) -- registers the search drawer opener with `GlobalHeader` via bridge context
 - `SearchDropdown` -- full-screen swipeable drawer with `AccordionSearchForm`
 - `AccordionSearchForm` -- 4 collapsible filter panels (Climb, Quality, Progress, Holds)
 - `UISearchParamsProvider` -- manages filter state with 500ms debounce
@@ -2472,10 +2472,10 @@ The playlist search category shows a simplified form:
 #### Home Page Integration
 
 The home page (`packages/web/app/(app)/page.tsx` or equivalent) is modified to:
-1. Include the `SearchPill` component in the page header (same as climb list page)
+1. Use the `SearchDrawerBridgeInjector` to register a search drawer opener with `GlobalHeader` via the bridge context
 2. Pass `defaultCategory="users"` to the search drawer
-3. The search pill shows "Search users..." as placeholder text when on the home page
-4. Tapping the pill opens the unified search drawer with the Users category pre-selected
+3. The search summary in `GlobalHeader` shows "Search users..." as placeholder text when on the home page
+4. Tapping the search area in the header opens the unified search drawer with the Users category pre-selected
 
 #### Climb List Page Integration
 

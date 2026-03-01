@@ -2,6 +2,9 @@
 
 import React, { createContext, useContext, useState, useCallback, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
 
+// useLayoutEffect emits SSR warnings in Next.js; fall back to useEffect on the server.
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
 // -------------------------------------------------------------------
 // State context (consumed by GlobalHeader)
 // -------------------------------------------------------------------
@@ -122,7 +125,7 @@ export function SearchDrawerBridgeInjector({
   activeRef.current = active;
 
   // Register/deregister based on whether we're on the list page
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (isOnListPage) {
       register(() => openDrawerRef.current(), summaryRef.current, activeRef.current);
     } else {
