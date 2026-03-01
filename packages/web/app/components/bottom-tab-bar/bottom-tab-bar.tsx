@@ -152,13 +152,13 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     setIsCreatePlaylistOpen(false);
 
     let url: string | null = null;
+    const lastUsed = await getLastUsedBoard();
 
     if (isOnBoardPage) {
       // On a board page, use listUrl derived from the current pathname
       url = listUrl;
     } else {
       // Not on a board page: prefer the stored URL (preserves /b/ format)
-      const lastUsed = await getLastUsedBoard();
       if (lastUsed?.url) {
         url = lastUsed.url;
       }
@@ -170,7 +170,6 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
 
     // Final fallback for isOnBoardPage case where listUrl is null
     if (!url) {
-      const lastUsed = await getLastUsedBoard();
       url = lastUsed?.url ?? null;
     }
 
