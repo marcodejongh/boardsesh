@@ -36,9 +36,9 @@ describe('formatGradeLabels', () => {
     expect(formatGradeLabels(['6A', '7A+'])).toEqual(['6A', '7A+']);
   });
 
-  it('returns V-grade without "+" for single-entry V-grades', () => {
-    // 7a+ is the only grade for V7, so it should not get "+"
-    expect(formatGradeLabels(['7a/V6', '7a+/V7'])).toEqual(['V6', 'V7']);
+  it('adds "+" when Font grade has "+" suffix regardless of context', () => {
+    // 7a+ has "+" in Font grade, so V7 gets "+" even as the only entry
+    expect(formatGradeLabels(['7a/V6', '7a+/V7'])).toEqual(['V6', 'V7+']);
   });
 
   it('handles empty array', () => {
@@ -107,7 +107,7 @@ describe('GradeDistributionBar', () => {
     expect(data.labels).toEqual(['V3', 'V3+']);
   });
 
-  it('renders V-grade labels for single-entry V-grades without "+"', () => {
+  it('renders V-grade labels with "+" when Font grade has "+" suffix', () => {
     const gradeDistribution = [
       { grade: '7a+/V7', flash: 0, send: 1, attempt: 0 },
       { grade: '7a/V6', flash: 1, send: 0, attempt: 0 },
@@ -116,7 +116,7 @@ describe('GradeDistributionBar', () => {
     render(<GradeDistributionBar gradeDistribution={gradeDistribution} />);
     const chartEl = screen.getByTestId('chart-bar');
     const data = JSON.parse(chartEl.getAttribute('data-data') || '{}');
-    // Reversed: V6 first, V7 second — each is the only grade at its level
-    expect(data.labels).toEqual(['V6', 'V7']);
+    // Reversed: V6 first, V7+ second (7a+ has "+" in Font grade)
+    expect(data.labels).toEqual(['V6', 'V7+']);
   });
 });

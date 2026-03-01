@@ -6,6 +6,7 @@ import {
   getGradeColorWithOpacity,
   isLightColor,
   getGradeTextColor,
+  formatVGrade,
   V_GRADE_COLORS,
   FONT_GRADE_COLORS,
 } from '../grade-colors';
@@ -156,6 +157,47 @@ describe('Grade Colors', () => {
 
     it('returns "inherit" for undefined input', () => {
       expect(getGradeTextColor(undefined)).toBe('inherit');
+    });
+  });
+
+  describe('getVGradeColor with "+" suffix', () => {
+    it('strips "+" and returns correct color', () => {
+      expect(getVGradeColor('V5+')).toBe(V_GRADE_COLORS['V5']);
+      expect(getVGradeColor('V3+')).toBe(V_GRADE_COLORS['V3']);
+    });
+  });
+
+  describe('formatVGrade', () => {
+    it('extracts V-grade from combined Font/V-grade strings', () => {
+      expect(formatVGrade('6a/V3')).toBe('V3');
+      expect(formatVGrade('6b/V4')).toBe('V4');
+    });
+
+    it('adds "+" when Font grade has "+" suffix', () => {
+      expect(formatVGrade('6a+/V3')).toBe('V3+');
+      expect(formatVGrade('6c+/V5')).toBe('V5+');
+      expect(formatVGrade('7a+/V7')).toBe('V7+');
+    });
+
+    it('returns plain V-grade when Font grade has no "+"', () => {
+      expect(formatVGrade('6c/V5')).toBe('V5');
+      expect(formatVGrade('7a/V6')).toBe('V6');
+    });
+
+    it('passes through bare V-grade strings without "+"', () => {
+      expect(formatVGrade('V3')).toBe('V3');
+      expect(formatVGrade('V10')).toBe('V10');
+    });
+
+    it('returns null for strings without V-grade', () => {
+      expect(formatVGrade('6A')).toBeNull();
+      expect(formatVGrade('0')).toBeNull();
+    });
+
+    it('returns null for null/undefined/empty', () => {
+      expect(formatVGrade(null)).toBeNull();
+      expect(formatVGrade(undefined)).toBeNull();
+      expect(formatVGrade('')).toBeNull();
     });
   });
 });

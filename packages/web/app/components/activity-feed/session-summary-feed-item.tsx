@@ -14,7 +14,7 @@ import FlagOutlined from '@mui/icons-material/FlagOutlined';
 import GroupsOutlined from '@mui/icons-material/GroupsOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import type { ActivityFeedItem } from '@boardsesh/shared-schema';
-import { getGradeColor } from '@/app/lib/grade-colors';
+import { getGradeColor, formatVGrade } from '@/app/lib/grade-colors';
 
 interface SessionSummaryMetadata {
   totalSends?: number;
@@ -97,7 +97,7 @@ export default function SessionSummaryFeedItem({ item }: SessionSummaryFeedItemP
             {gradeDistribution.slice(0, 6).map((g) => (
               <Box key={g.grade} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Typography variant="caption" sx={{ fontWeight: 600, minWidth: 24 }}>
-                  {g.grade}
+                  {formatVGrade(g.grade) ?? g.grade}
                 </Typography>
                 <LinearProgress
                   variant="determinate"

@@ -21,7 +21,7 @@ import OutcomeDoughnut from '@/app/components/charts/outcome-doughnut';
 import VoteButton from '@/app/components/social/vote-button';
 import FeedCommentButton from '@/app/components/social/feed-comment-button';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getGradeColor, getGradeTextColor } from '@/app/lib/grade-colors';
+import { getGradeColor, getGradeTextColor, formatVGrade } from '@/app/lib/grade-colors';
 
 interface SessionFeedCardProps {
   session: SessionFeedItem;
@@ -224,7 +224,7 @@ export default function SessionFeedCard({ session }: SessionFeedCardProps) {
             )}
             {hardestGrade && (
               <Chip
-                label={hardestGrade}
+                label={formatVGrade(hardestGrade) ?? hardestGrade}
                 size="small"
                 sx={{
                   borderRadius: themeTokens.borderRadius.full,
