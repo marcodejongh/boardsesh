@@ -7,7 +7,6 @@ import CardContent from '@mui/material/CardContent';
 import MuiButton from '@mui/material/Button';
 import MuiTypography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import Drawer from '@mui/material/Drawer';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
@@ -15,6 +14,7 @@ import { usePathname } from 'next/navigation';
 import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
 import { themeTokens } from '@/app/theme/theme-config';
 import { constructBoardSlugListUrl } from '@/app/lib/url-utils';
+import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
 import { useRouter } from 'next/navigation';
 import CreateBoardForm from './create-board-form';
 import type { UserBoard } from '@boardsesh/shared-schema';
@@ -111,18 +111,12 @@ export default function BoardCreationBanner({
         </CardContent>
       </Card>
 
-      <Drawer
-        anchor="bottom"
+      <SwipeableDrawer
+        placement="bottom"
         open={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        PaperProps={{
-          sx: {
-            maxHeight: '80dvh',
-            borderTopLeftRadius: themeTokens.borderRadius.xl,
-            borderTopRightRadius: themeTokens.borderRadius.xl,
-            p: 2,
-          },
-        }}
+        title="Save Board"
+        styles={{ wrapper: { maxHeight: '80dvh' } }}
       >
         <CreateBoardForm
           boardType={boardType}
@@ -133,7 +127,7 @@ export default function BoardCreationBanner({
           onSuccess={handleBoardCreated}
           onCancel={() => setIsDrawerOpen(false)}
         />
-      </Drawer>
+      </SwipeableDrawer>
     </>
   );
 }
