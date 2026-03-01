@@ -9,6 +9,7 @@ import {
   UpdatePlaylistInputSchema,
   AddClimbToPlaylistInputSchema,
   RemoveClimbFromPlaylistInputSchema,
+  FollowPlaylistInputSchema,
 } from '../../../validation/schemas';
 
 export const playlistMutations = {
@@ -66,6 +67,8 @@ export const playlistMutations = {
       updatedAt: playlist.updatedAt.toISOString(),
       climbCount: 0,
       userRole: 'owner',
+      followerCount: 0,
+      isFollowedByMe: false,
     };
   },
 
@@ -144,6 +147,8 @@ export const playlistMutations = {
       updatedAt: updated.updatedAt.toISOString(),
       climbCount: climbCount[0]?.count || 0,
       userRole: 'owner',
+      followerCount: 0,
+      isFollowedByMe: false,
     };
   },
 
@@ -381,6 +386,70 @@ export const playlistMutations = {
       .update(dbSchema.playlists)
       .set({ lastAccessedAt: new Date() })
       .where(eq(dbSchema.playlists.id, ownership[0].id));
+
+    return true;
+  },
+
+  /**
+   * Follow a public playlist. Idempotent (onConflictDoNothing).
+   */
+  followPlaylist: async (
+    _: unknown,
+    { input }: { input: { playlistUuid: string } },
+    ctx: ConnectionContext,
+  ): Promise<boolean> => {
+    requireAuthenticated(ctx);
+    const validatedInput = validateInput(FollowPlaylistInputSchema, input, 'input');
+    const userId = ctx.userId!;
+
+    // Verify playlist exists and is public
+    const [playlist] = await db
+      .select({
+        uuid: dbSchema.playlists.uuid,
+        isPublic: dbSchema.playlists.isPublic,
+      })
+      .from(dbSchema.playlists)
+      .where(eq(dbSchema.playlists.uuid, validatedInput.playlistUuid))
+      .limit(1);
+
+    if (!playlist) {
+      throw new Error('Playlist not found');
+    }
+    if (!playlist.isPublic) {
+      throw new Error('Cannot follow a private playlist');
+    }
+
+    await db
+      .insert(dbSchema.playlistFollows)
+      .values({
+        followerId: userId,
+        playlistUuid: validatedInput.playlistUuid,
+      })
+      .onConflictDoNothing();
+
+    return true;
+  },
+
+  /**
+   * Unfollow a playlist.
+   */
+  unfollowPlaylist: async (
+    _: unknown,
+    { input }: { input: { playlistUuid: string } },
+    ctx: ConnectionContext,
+  ): Promise<boolean> => {
+    requireAuthenticated(ctx);
+    const validatedInput = validateInput(FollowPlaylistInputSchema, input, 'input');
+    const userId = ctx.userId!;
+
+    await db
+      .delete(dbSchema.playlistFollows)
+      .where(
+        and(
+          eq(dbSchema.playlistFollows.followerId, userId),
+          eq(dbSchema.playlistFollows.playlistUuid, validatedInput.playlistUuid)
+        )
+      );
 
     return true;
   },

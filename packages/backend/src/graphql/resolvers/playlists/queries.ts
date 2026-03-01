@@ -100,6 +100,8 @@ export const playlistQueries = {
       lastAccessedAt: p.lastAccessedAt?.toISOString() ?? null,
       climbCount: countMap.get(p.id.toString()) || 0,
       userRole: p.role,
+      followerCount: 0,
+      isFollowedByMe: false,
     }));
   },
 
@@ -180,6 +182,8 @@ export const playlistQueries = {
       lastAccessedAt: p.lastAccessedAt?.toISOString() ?? null,
       climbCount: countMap.get(p.id.toString()) || 0,
       userRole: p.role,
+      followerCount: 0,
+      isFollowedByMe: false,
     }));
   },
 
@@ -249,6 +253,29 @@ export const playlistQueries = {
       .where(eq(dbSchema.playlistClimbs.playlistId, playlist.id))
       .limit(1);
 
+    // Get follower count
+    const [followerResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(dbSchema.playlistFollows)
+      .where(eq(dbSchema.playlistFollows.playlistUuid, playlist.uuid));
+
+    const followerCount = Number(followerResult?.count ?? 0);
+
+    // Check if current user follows this playlist
+    let isFollowedByMe = false;
+    if (userId) {
+      const [followCheck] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(dbSchema.playlistFollows)
+        .where(
+          and(
+            eq(dbSchema.playlistFollows.followerId, userId),
+            eq(dbSchema.playlistFollows.playlistUuid, playlist.uuid)
+          )
+        );
+      isFollowedByMe = Number(followCheck?.count ?? 0) > 0;
+    }
+
     return {
       id: playlist.id.toString(),
       uuid: playlist.uuid,
@@ -264,6 +291,8 @@ export const playlistQueries = {
       lastAccessedAt: playlist.lastAccessedAt?.toISOString() ?? null,
       climbCount: climbCount[0]?.count || 0,
       userRole,
+      followerCount,
+      isFollowedByMe,
     };
   },
 
@@ -310,17 +339,20 @@ export const playlistQueries = {
   },
 
   /**
-   * Get climbs in a playlist with full climb data
+   * Get climbs in a playlist with full climb data.
+   * Supports two modes:
+   * - Specific-board mode (when boardName is provided): filters by board type, layout, and size edges
+   * - All-boards mode (when boardName is omitted): returns climbs across all board types
    */
   playlistClimbs: async (
     _: unknown,
     { input }: { input: {
       playlistId: string;
-      boardName: string;
-      layoutId: number;
-      sizeId: number;
-      setIds: string;
-      angle: number;
+      boardName?: string;
+      layoutId?: number;
+      sizeId?: number;
+      setIds?: string;
+      angle?: number;
       page?: number;
       pageSize?: number;
     } },
@@ -329,19 +361,6 @@ export const playlistQueries = {
     validateInput(GetPlaylistClimbsInputSchema, input, 'input');
 
     const userId = ctx.userId;
-    const boardName = input.boardName as BoardName;
-
-    // Validate board name
-    if (!isValidBoardName(boardName)) {
-      throw new Error(`Invalid board name: ${boardName}. Must be one of: ${SUPPORTED_BOARDS.join(', ')}`);
-    }
-
-    // Get size edges for filtering
-    const sizeEdges = getSizeEdges(boardName, input.sizeId);
-    if (!sizeEdges) {
-      throw new Error(`Invalid size ID: ${input.sizeId} for board: ${boardName}`);
-    }
-
     const page = input.page ?? 0;
     const pageSize = input.pageSize ?? 20;
 
@@ -382,7 +401,6 @@ export const playlistQueries = {
     }
 
     const playlistId = playlistResult[0].id;
-    const tables = getBoardTables(boardName);
 
     // Get total count of climbs in the playlist
     const countResult = await db
@@ -392,86 +410,188 @@ export const playlistQueries = {
 
     const totalCount = countResult[0]?.count || 0;
 
-    // Get playlist climbs with full climb data
-    // Note: We use a subquery approach to avoid duplicates when joining stats
-    // The issue: when playlistClimbs.angle is NULL, directly using COALESCE causes cartesian product
-    const results = await db
-      .select({
-        // Playlist climb data
-        climbUuid: dbSchema.playlistClimbs.climbUuid,
-        angle: dbSchema.playlistClimbs.angle,
-        position: dbSchema.playlistClimbs.position,
-        // Climb data
-        uuid: tables.climbs.uuid,
-        layoutId: tables.climbs.layoutId,
-        setter_username: tables.climbs.setterUsername,
-        name: tables.climbs.name,
-        description: tables.climbs.description,
-        frames: tables.climbs.frames,
-        // Stats data - use the angle from playlist if available, otherwise use climb's default angle
-        ascensionist_count: tables.climbStats.ascensionistCount,
-        difficulty: tables.difficultyGrades.boulderName,
-        quality_average: sql<number>`ROUND(${tables.climbStats.qualityAverage}::numeric, 2)`,
-        difficulty_error: sql<number>`ROUND(${tables.climbStats.difficultyAverage}::numeric - ${tables.climbStats.displayDifficulty}::numeric, 2)`,
-        benchmark_difficulty: tables.climbStats.benchmarkDifficulty,
-      })
-      .from(dbSchema.playlistClimbs)
-      .innerJoin(
-        tables.climbs,
-        and(
-          eq(tables.climbs.uuid, dbSchema.playlistClimbs.climbUuid),
-          eq(tables.climbs.boardType, boardName)
-        )
-      )
-      .leftJoin(
-        tables.climbStats,
-        and(
-          eq(tables.climbStats.climbUuid, dbSchema.playlistClimbs.climbUuid),
-          eq(tables.climbStats.boardType, boardName),
-          // Use the route angle (from input) to fetch stats for the current board angle
-          eq(tables.climbStats.angle, input.angle)
-        )
-      )
-      .leftJoin(
-        tables.difficultyGrades,
-        and(
-          eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
-          eq(tables.difficultyGrades.boardType, boardName)
-        )
-      )
-      .where(eq(dbSchema.playlistClimbs.playlistId, playlistId))
-      .orderBy(asc(dbSchema.playlistClimbs.position), asc(dbSchema.playlistClimbs.addedAt))
-      .limit(pageSize + 1)
-      .offset(page * pageSize);
+    if (input.boardName) {
+      // === Specific-board mode ===
+      const boardName = input.boardName as BoardName;
+      if (!isValidBoardName(boardName)) {
+        throw new Error(`Invalid board name: ${boardName}. Must be one of: ${SUPPORTED_BOARDS.join(', ')}`);
+      }
 
-    // Check if there are more results available
-    const hasMore = results.length > pageSize;
-    const trimmedResults = hasMore ? results.slice(0, pageSize) : results;
+      const tables = getBoardTables(boardName);
 
-    // Transform results to Climb type
-    // Use the input angle (route angle) for consistent stats display
-    const climbs: Climb[] = trimmedResults.map((result) => ({
-      uuid: result.uuid || result.climbUuid,
-      layoutId: result.layoutId,
-      setter_username: result.setter_username || '',
-      name: result.name || '',
-      description: result.description || '',
-      frames: result.frames || '',
-      angle: input.angle,
-      ascensionist_count: Number(result.ascensionist_count || 0),
-      difficulty: result.difficulty || '',
-      quality_average: result.quality_average?.toString() || '0',
-      stars: Math.round((Number(result.quality_average) || 0) * 5),
-      difficulty_error: result.difficulty_error?.toString() || '0',
-      benchmark_difficulty: result.benchmark_difficulty && result.benchmark_difficulty > 0 ? result.benchmark_difficulty.toString() : null,
-      litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', boardName)[0],
-    }));
+      // Build climb join conditions
+      const climbJoinConditions = [
+        eq(tables.climbs.uuid, dbSchema.playlistClimbs.climbUuid),
+        eq(tables.climbs.boardType, boardName),
+      ];
 
-    return {
-      climbs,
-      totalCount,
-      hasMore,
-    };
+      // Filter by layout if provided
+      if (input.layoutId != null) {
+        climbJoinConditions.push(eq(tables.climbs.layoutId, input.layoutId));
+      }
+
+      // Filter by size edges if sizeId is provided
+      if (input.sizeId != null) {
+        const sizeEdges = getSizeEdges(boardName, input.sizeId);
+        if (sizeEdges && boardName !== 'moonboard') {
+          climbJoinConditions.push(
+            sql`${tables.climbs.edgeLeft} > ${sizeEdges.edgeLeft}`,
+            sql`${tables.climbs.edgeRight} < ${sizeEdges.edgeRight}`,
+            sql`${tables.climbs.edgeBottom} > ${sizeEdges.edgeBottom}`,
+            sql`${tables.climbs.edgeTop} < ${sizeEdges.edgeTop}`,
+          );
+        }
+      }
+
+      const inputAngle = input.angle ?? 40;
+
+      const results = await db
+        .select({
+          climbUuid: dbSchema.playlistClimbs.climbUuid,
+          playlistAngle: dbSchema.playlistClimbs.angle,
+          position: dbSchema.playlistClimbs.position,
+          uuid: tables.climbs.uuid,
+          layoutId: tables.climbs.layoutId,
+          setter_username: tables.climbs.setterUsername,
+          name: tables.climbs.name,
+          description: tables.climbs.description,
+          frames: tables.climbs.frames,
+          ascensionist_count: tables.climbStats.ascensionistCount,
+          difficulty: tables.difficultyGrades.boulderName,
+          quality_average: sql<number>`ROUND(${tables.climbStats.qualityAverage}::numeric, 2)`,
+          difficulty_error: sql<number>`ROUND(${tables.climbStats.difficultyAverage}::numeric - ${tables.climbStats.displayDifficulty}::numeric, 2)`,
+          benchmark_difficulty: tables.climbStats.benchmarkDifficulty,
+        })
+        .from(dbSchema.playlistClimbs)
+        .innerJoin(
+          tables.climbs,
+          and(...climbJoinConditions)
+        )
+        .leftJoin(
+          tables.climbStats,
+          and(
+            eq(tables.climbStats.climbUuid, dbSchema.playlistClimbs.climbUuid),
+            eq(tables.climbStats.boardType, boardName),
+            eq(tables.climbStats.angle, inputAngle)
+          )
+        )
+        .leftJoin(
+          tables.difficultyGrades,
+          and(
+            eq(tables.difficultyGrades.difficulty, sql`ROUND(${tables.climbStats.displayDifficulty}::numeric)`),
+            eq(tables.difficultyGrades.boardType, boardName)
+          )
+        )
+        .where(eq(dbSchema.playlistClimbs.playlistId, playlistId))
+        .orderBy(asc(dbSchema.playlistClimbs.position), asc(dbSchema.playlistClimbs.addedAt))
+        .limit(pageSize + 1)
+        .offset(page * pageSize);
+
+      const hasMore = results.length > pageSize;
+      const trimmedResults = hasMore ? results.slice(0, pageSize) : results;
+
+      const climbs: Climb[] = trimmedResults.map((result) => ({
+        uuid: result.uuid || result.climbUuid,
+        layoutId: result.layoutId,
+        setter_username: result.setter_username || '',
+        name: result.name || '',
+        description: result.description || '',
+        frames: result.frames || '',
+        angle: inputAngle,
+        ascensionist_count: Number(result.ascensionist_count || 0),
+        difficulty: result.difficulty || '',
+        quality_average: result.quality_average?.toString() || '0',
+        stars: Math.round((Number(result.quality_average) || 0) * 5),
+        difficulty_error: result.difficulty_error?.toString() || '0',
+        benchmark_difficulty: result.benchmark_difficulty && result.benchmark_difficulty > 0 ? result.benchmark_difficulty.toString() : null,
+        litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', boardName)[0],
+        boardType: boardName,
+      }));
+
+      return { climbs, totalCount, hasMore };
+    } else {
+      // === All-boards mode ===
+      // Query across all board types, following the setterClimbsFull all-boards pattern
+      const DEFAULT_ANGLE = 40;
+      const tables = getBoardTables('kilter'); // All unified — just need table refs
+
+      const results = await db
+        .select({
+          climbUuid: dbSchema.playlistClimbs.climbUuid,
+          position: dbSchema.playlistClimbs.position,
+          playlistAngle: dbSchema.playlistClimbs.angle,
+          uuid: tables.climbs.uuid,
+          layoutId: tables.climbs.layoutId,
+          boardType: tables.climbs.boardType,
+          setter_username: tables.climbs.setterUsername,
+          name: tables.climbs.name,
+          description: tables.climbs.description,
+          frames: tables.climbs.frames,
+          statsAngle: tables.climbStats.angle,
+          ascensionist_count: tables.climbStats.ascensionistCount,
+          difficulty: tables.difficultyGrades.boulderName,
+          quality_average: sql<number>`ROUND(${tables.climbStats.qualityAverage}::numeric, 2)`,
+          difficulty_error: sql<number>`ROUND(${tables.climbStats.difficultyAverage}::numeric - ${tables.climbStats.displayDifficulty}::numeric, 2)`,
+          benchmark_difficulty: tables.climbStats.benchmarkDifficulty,
+        })
+        .from(dbSchema.playlistClimbs)
+        .innerJoin(
+          tables.climbs,
+          eq(tables.climbs.uuid, dbSchema.playlistClimbs.climbUuid)
+          // No boardType filter — join across all boards
+        )
+        .leftJoin(
+          tables.climbStats,
+          and(
+            eq(tables.climbStats.boardType, tables.climbs.boardType),
+            eq(tables.climbStats.climbUuid, tables.climbs.uuid),
+            eq(tables.climbStats.angle, sql`(
+              SELECT s.angle FROM board_climb_stats s
+              WHERE s.board_type = ${tables.climbs.boardType}
+                AND s.climb_uuid = ${tables.climbs.uuid}
+              ORDER BY s.ascensionist_count DESC NULLS LAST
+              LIMIT 1
+            )`)
+          )
+        )
+        .leftJoin(
+          tables.difficultyGrades,
+          and(
+            eq(tables.difficultyGrades.boardType, tables.climbs.boardType),
+            eq(tables.difficultyGrades.difficulty, sql`CAST(${tables.climbStats.displayDifficulty} AS INTEGER)`)
+          )
+        )
+        .where(eq(dbSchema.playlistClimbs.playlistId, playlistId))
+        .orderBy(asc(dbSchema.playlistClimbs.position), asc(dbSchema.playlistClimbs.addedAt))
+        .limit(pageSize + 1)
+        .offset(page * pageSize);
+
+      const hasMore = results.length > pageSize;
+      const trimmedResults = hasMore ? results.slice(0, pageSize) : results;
+
+      const climbs: Climb[] = trimmedResults.map((result) => {
+        const bt = (result.boardType || 'kilter') as BoardName;
+        return {
+          uuid: result.uuid || result.climbUuid,
+          layoutId: result.layoutId,
+          setter_username: result.setter_username || '',
+          name: result.name || '',
+          description: result.description || '',
+          frames: result.frames || '',
+          angle: result.playlistAngle ?? result.statsAngle ?? DEFAULT_ANGLE,
+          ascensionist_count: Number(result.ascensionist_count || 0),
+          difficulty: result.difficulty || '',
+          quality_average: result.quality_average?.toString() || '0',
+          stars: Math.round((Number(result.quality_average) || 0) * 5),
+          difficulty_error: result.difficulty_error?.toString() || '0',
+          benchmark_difficulty: result.benchmark_difficulty && result.benchmark_difficulty > 0 ? result.benchmark_difficulty.toString() : null,
+          litUpHoldsMap: convertLitUpHoldsStringToMap(result.frames || '', bt)[0],
+          boardType: bt,
+        };
+      });
+
+      return { climbs, totalCount, hasMore };
+    }
   },
 
   /**

@@ -17,6 +17,8 @@ export const PLAYLIST_FIELDS = gql`
     lastAccessedAt
     climbCount
     userRole
+    followerCount
+    isFollowedByMe
   }
 `;
 
@@ -112,6 +114,7 @@ export const GET_PLAYLIST_CLIMBS = gql`
       climbs {
         uuid
         layoutId
+        boardType
         setter_username
         name
         description
@@ -148,6 +151,8 @@ export interface Playlist {
   lastAccessedAt?: string | null;
   climbCount: number;
   userRole?: string;
+  followerCount: number;
+  isFollowedByMe: boolean;
 }
 
 export interface GetAllUserPlaylistsInput {
@@ -275,11 +280,11 @@ export interface RemoveClimbFromPlaylistMutationResponse {
 
 export interface GetPlaylistClimbsInput {
   playlistId: string;
-  boardName: string;
-  layoutId: number;
-  sizeId: number;
-  setIds: string;
-  angle: number;
+  boardName?: string;
+  layoutId?: number;
+  sizeId?: number;
+  setIds?: string;
+  angle?: number;
   page?: number;
   pageSize?: number;
 }
@@ -292,6 +297,7 @@ export interface PlaylistClimbsResult {
   climbs: Array<{
     uuid: string;
     layoutId?: number | null;
+    boardType?: string;
     setter_username: string;
     name: string;
     description: string;
@@ -473,4 +479,40 @@ export interface SearchPlaylistsQueryResponse {
     totalCount: number;
     hasMore: boolean;
   };
+}
+
+// ============================================
+// Playlist Follow Types and Operations
+// ============================================
+
+export const FOLLOW_PLAYLIST = gql`
+  mutation FollowPlaylist($input: FollowPlaylistInput!) {
+    followPlaylist(input: $input)
+  }
+`;
+
+export const UNFOLLOW_PLAYLIST = gql`
+  mutation UnfollowPlaylist($input: FollowPlaylistInput!) {
+    unfollowPlaylist(input: $input)
+  }
+`;
+
+export interface FollowPlaylistInput {
+  playlistUuid: string;
+}
+
+export interface FollowPlaylistMutationVariables {
+  input: FollowPlaylistInput;
+}
+
+export interface FollowPlaylistMutationResponse {
+  followPlaylist: boolean;
+}
+
+export interface UnfollowPlaylistMutationVariables {
+  input: FollowPlaylistInput;
+}
+
+export interface UnfollowPlaylistMutationResponse {
+  unfollowPlaylist: boolean;
 }

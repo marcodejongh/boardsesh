@@ -440,11 +440,11 @@ export const GetPlaylistsForClimbInputSchema = z.object({
 
 export const GetPlaylistClimbsInputSchema = z.object({
   playlistId: z.string().min(1),
-  boardName: BoardNameSchema,
-  layoutId: z.number().int().positive(),
-  sizeId: z.number().int().positive(),
-  setIds: z.string().min(1),
-  angle: z.number().int(),
+  boardName: BoardNameSchema.optional(),
+  layoutId: z.number().int().positive().optional(),
+  sizeId: z.number().int().positive().optional(),
+  setIds: z.string().min(1).optional(),
+  angle: z.number().int().optional(),
   page: z.number().int().min(0).optional(),
   pageSize: z.number().int().min(1).max(100).optional(),
 });
@@ -522,6 +522,13 @@ export const SearchUsersInputSchema = z.object({
  */
 export const FollowSetterInputSchema = z.object({
   setterUsername: z.string().min(1, 'Setter username cannot be empty').max(100),
+});
+
+/**
+ * Follow playlist input validation schema
+ */
+export const FollowPlaylistInputSchema = z.object({
+  playlistUuid: z.string().min(1, 'Playlist UUID cannot be empty'),
 });
 
 /**
