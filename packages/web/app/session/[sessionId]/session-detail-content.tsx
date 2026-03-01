@@ -8,6 +8,7 @@ import CardContent from '@mui/material/CardContent';
 import Avatar from '@mui/material/Avatar';
 import AvatarGroup from '@mui/material/AvatarGroup';
 import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
@@ -23,6 +24,7 @@ import EditOutlined from '@mui/icons-material/EditOutlined';
 import PersonAddOutlined from '@mui/icons-material/PersonAddOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import CheckOutlined from '@mui/icons-material/CheckOutlined';
+import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import RemoveCircleOutlineOutlined from '@mui/icons-material/RemoveCircleOutlineOutlined';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -30,7 +32,6 @@ import { useSession } from 'next-auth/react';
 import type { SessionDetail, SessionDetailTick, SessionFeedParticipant } from '@boardsesh/shared-schema';
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
 import VoteButton from '@/app/components/social/vote-button';
-import FeedCommentButton from '@/app/components/social/feed-comment-button';
 import CommentSection from '@/app/components/social/comment-section';
 import { VoteSummaryProvider } from '@/app/components/social/vote-summary-context';
 import ClimbsList from '@/app/components/board-page/climbs-list';
@@ -186,6 +187,84 @@ function groupTicksByClimbUuid(ticks: SessionDetailTick[]): Map<string, SessionD
   return map;
 }
 
+function SessionTickItem({
+  tick,
+  isMultiUser,
+  participant,
+}: {
+  tick: SessionDetailTick;
+  isMultiUser: boolean;
+  participant: SessionFeedParticipant | null;
+}) {
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const attemptText = formatAttemptText(tick);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0.25,
+        py: 0.25,
+        borderTop: `1px solid ${themeTokens.neutral[100]}`,
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+        {isMultiUser && (
+          <>
+            <Avatar
+              src={participant?.avatarUrl ?? undefined}
+              sx={{ width: 18, height: 18 }}
+            >
+              {!participant?.avatarUrl && <PersonOutlined sx={{ fontSize: 10 }} />}
+            </Avatar>
+            <Typography variant="caption" sx={{ minWidth: 0 }} noWrap>
+              {participant?.displayName || 'Climber'}
+            </Typography>
+          </>
+        )}
+        <Chip
+          label={tick.status}
+          size="small"
+          color={getStatusColor(tick.status)}
+          variant={tick.status === 'attempt' ? 'outlined' : 'filled'}
+          sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontSize: themeTokens.typography.fontSize.xs - 1 } }}
+        />
+        {attemptText && (
+          <Typography variant="caption" color="text.secondary">
+            {attemptText}
+          </Typography>
+        )}
+        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          <VoteButton
+            entityType="tick"
+            entityId={tick.uuid}
+            initialUpvotes={tick.upvotes}
+            likeOnly
+          />
+          <IconButton
+            size="small"
+            onClick={() => setCommentsOpen((prev) => !prev)}
+            sx={{ color: commentsOpen ? 'text.primary' : 'text.secondary' }}
+          >
+            <ChatBubbleOutlineOutlined fontSize="small" />
+          </IconButton>
+        </Box>
+      </Box>
+      {tick.comment && (
+        <Typography variant="caption" color="text.secondary" sx={{ pl: isMultiUser ? 3.5 : 0, minWidth: 0 }} noWrap>
+          {tick.comment}
+        </Typography>
+      )}
+      <Collapse in={commentsOpen} unmountOnExit>
+        <Box sx={{ mt: 0.5 }}>
+          <CommentSection entityType="tick" entityId={tick.uuid} title="Comments" />
+        </Box>
+      </Collapse>
+    </Box>
+  );
+}
+
 export default function SessionDetailContent({ session: initialSession }: SessionDetailContentProps) {
   const { data: authSession } = useSession();
   const { token: authToken } = useWsAuthToken();
@@ -199,6 +278,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   const [saving, setSaving] = useState(false);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+  const [sessionCommentsOpen, setSessionCommentsOpen] = useState(true);
 
   const { boards: myBoards } = useMyBoards(true);
 
@@ -362,60 +442,13 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, px: 2, pb: 1 }}>
         {climbTicks.map((tick) => {
           const participant = isMultiUser ? participantMap.get(tick.userId) : null;
-          const attemptText = formatAttemptText(tick);
           return (
-            <Box
+            <SessionTickItem
               key={tick.uuid}
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 0.25,
-                py: 0.25,
-                borderTop: `1px solid ${themeTokens.neutral[100]}`,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                {isMultiUser && (
-                  <>
-                    <Avatar
-                      src={participant?.avatarUrl ?? undefined}
-                      sx={{ width: 18, height: 18 }}
-                    >
-                      {!participant?.avatarUrl && <PersonOutlined sx={{ fontSize: 10 }} />}
-                    </Avatar>
-                    <Typography variant="caption" sx={{ minWidth: 0 }} noWrap>
-                      {participant?.displayName || 'Climber'}
-                    </Typography>
-                  </>
-                )}
-                <Chip
-                  label={tick.status}
-                  size="small"
-                  color={getStatusColor(tick.status)}
-                  variant={tick.status === 'attempt' ? 'outlined' : 'filled'}
-                  sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontSize: themeTokens.typography.fontSize.xs - 1 } }}
-                />
-                {attemptText && (
-                  <Typography variant="caption" color="text.secondary">
-                    {attemptText}
-                  </Typography>
-                )}
-                <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                  <VoteButton
-                    entityType="tick"
-                    entityId={tick.uuid}
-                    initialUpvotes={tick.upvotes}
-                    likeOnly
-                  />
-                  <FeedCommentButton entityType="tick" entityId={tick.uuid} />
-                </Box>
-              </Box>
-              {tick.comment && (
-                <Typography variant="caption" color="text.secondary" sx={{ pl: isMultiUser ? 3.5 : 0, minWidth: 0 }} noWrap>
-                  {tick.comment}
-                </Typography>
-              )}
-            </Box>
+              tick={tick}
+              isMultiUser={isMultiUser}
+              participant={participant ?? null}
+            />
           );
         })}
       </Box>
@@ -720,13 +753,26 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
               initialDownvotes={downvotes}
               likeOnly
             />
-            <FeedCommentButton
-              entityType="session"
-              entityId={sessionId}
-              commentCount={commentCount}
-            />
+            <IconButton
+              size="small"
+              onClick={() => setSessionCommentsOpen((prev) => !prev)}
+              sx={{ color: sessionCommentsOpen ? 'text.primary' : 'text.secondary' }}
+            >
+              <ChatBubbleOutlineOutlined fontSize="small" />
+              {commentCount > 0 && (
+                <Typography
+                  variant="caption"
+                  component="span"
+                  sx={{ ml: 0.5, color: 'inherit', userSelect: 'none', fontSize: 12 }}
+                >
+                  {commentCount}
+                </Typography>
+              )}
+            </IconButton>
           </Box>
-          <CommentSection entityType="session" entityId={sessionId} title="Comments" />
+          <Collapse in={sessionCommentsOpen} unmountOnExit>
+            <CommentSection entityType="session" entityId={sessionId} title="Comments" />
+          </Collapse>
         </Box>
 
         <Divider />
