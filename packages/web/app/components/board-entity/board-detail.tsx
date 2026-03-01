@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Box from '@mui/material/Box';
-import Drawer from '@mui/material/Drawer';
-import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
 import MuiTypography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
@@ -12,7 +10,6 @@ import Tabs from '@mui/material/Tabs';
 import Divider from '@mui/material/Divider';
 import MuiButton from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
-import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
@@ -45,6 +42,7 @@ import FollowButton from '@/app/components/ui/follow-button';
 import BoardLeaderboard from './board-leaderboard';
 import EditBoardForm from './edit-board-form';
 import CommentSection from '@/app/components/social/comment-section';
+import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
 import GymDetail from '@/app/components/gym-entity/gym-detail';
 import GymSelector from '@/app/components/gym-entity/gym-selector';
 
@@ -151,47 +149,14 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
   };
 
   return (
-    <Drawer
-      anchor={anchor}
+    <SwipeableDrawer
+      placement={anchor}
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          height: '90dvh',
-          ...(anchor === 'bottom'
-            ? {
-                borderTopLeftRadius: themeTokens.borderRadius.xl,
-                borderTopRightRadius: themeTokens.borderRadius.xl,
-              }
-            : {
-                borderBottomLeftRadius: themeTokens.borderRadius.xl,
-                borderBottomRightRadius: themeTokens.borderRadius.xl,
-              }),
-        },
-      }}
+      height="90dvh"
+      keepMounted={false}
+      styles={{ body: { padding: 0, overflow: 'hidden' } }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* Handle bar (top for bottom-anchored, bottom for top-anchored) */}
-        {anchor === 'bottom' && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: 'var(--neutral-300)',
-              }}
-            />
-          </Box>
-        )}
-
-        {/* Close button */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 1 }}>
-          <IconButton onClick={onClose} size="small">
-            <CloseOutlined />
-          </IconButton>
-        </Box>
-
         {isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
             <CircularProgress />
@@ -367,7 +332,7 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
             </Box>
 
             {/* Gym detail drawer */}
-            {board.gymUuid && showGymDetail && (
+            {board.gymUuid && (
               <GymDetail
                 gymUuid={board.gymUuid}
                 open={showGymDetail}
@@ -377,21 +342,7 @@ export default function BoardDetail({ boardUuid, open, onClose, onDeleted, ancho
             )}
           </>
         )}
-
-        {anchor === 'top' && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', pb: 1 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: 'var(--neutral-300)',
-              }}
-            />
-          </Box>
-        )}
-      </Box>
-    </Drawer>
+    </SwipeableDrawer>
   );
 }
 

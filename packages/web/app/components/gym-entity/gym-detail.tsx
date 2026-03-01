@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Box from '@mui/material/Box';
-import Drawer from '@mui/material/Drawer';
-import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
 import MuiTypography from '@mui/material/Typography';
 import Tab from '@mui/material/Tab';
@@ -16,7 +14,6 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
-import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
@@ -25,6 +22,7 @@ import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import PeopleOutlined from '@mui/icons-material/PeopleOutlined';
 import ChatBubbleOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import type { Gym } from '@boardsesh/shared-schema';
+import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
@@ -121,38 +119,15 @@ export default function GymDetail({ gymUuid, open, onClose, onDeleted, anchor = 
   };
 
   return (
-    <Drawer
-      anchor={anchor}
+    <>
+    <SwipeableDrawer
+      placement={anchor}
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          height: '90dvh',
-          ...(anchor === 'bottom'
-            ? {
-                borderTopLeftRadius: themeTokens.borderRadius.xl,
-                borderTopRightRadius: themeTokens.borderRadius.xl,
-              }
-            : {
-                borderBottomLeftRadius: themeTokens.borderRadius.xl,
-                borderBottomRightRadius: themeTokens.borderRadius.xl,
-              }),
-        },
-      }}
+      height="90dvh"
+      keepMounted={false}
+      styles={{ body: { padding: 0, overflow: 'hidden' } }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {anchor === 'bottom' && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', pt: 1 }}>
-            <Box sx={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--neutral-300)' }} />
-          </Box>
-        )}
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', px: 1 }}>
-          <IconButton onClick={onClose} size="small">
-            <CloseOutlined />
-          </IconButton>
-        </Box>
-
         {isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
             <CircularProgress />
@@ -286,13 +261,7 @@ export default function GymDetail({ gymUuid, open, onClose, onDeleted, anchor = 
             </Box>
           </>
         )}
-
-        {anchor === 'top' && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', pb: 1 }}>
-            <Box sx={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--neutral-300)' }} />
-          </Box>
-        )}
-      </Box>
+    </SwipeableDrawer>
 
       {/* Delete confirmation dialog */}
       <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
@@ -309,7 +278,7 @@ export default function GymDetail({ gymUuid, open, onClose, onDeleted, anchor = 
           </MuiButton>
         </DialogActions>
       </Dialog>
-    </Drawer>
+    </>
   );
 }
 

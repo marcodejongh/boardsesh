@@ -98,14 +98,12 @@ export default function GymSearchResults({ query, authToken }: GymSearchResultsP
       <Box ref={sentinelRef} sx={{ display: 'flex', justifyContent: 'center', py: 2, minHeight: 20 }}>
         {isFetchingNextPage && <CircularProgress size={24} />}
       </Box>
-      {selectedGymUuid && (
-        <GymDetail
-          gymUuid={selectedGymUuid}
-          open={!!selectedGymUuid}
-          onClose={() => setSelectedGymUuid(null)}
-          anchor="top"
-        />
-      )}
+      <GymDetail
+        gymUuid={selectedGymUuid ?? ''}
+        open={!!selectedGymUuid}
+        onClose={() => setSelectedGymUuid(null)}
+        anchor="top"
+      />
     </>
   );
 }
