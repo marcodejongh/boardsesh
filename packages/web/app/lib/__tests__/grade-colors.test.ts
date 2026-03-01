@@ -173,10 +173,19 @@ describe('Grade Colors', () => {
       expect(formatVGrade('6b/V4')).toBe('V4');
     });
 
-    it('adds "+" when Font grade has "+" suffix', () => {
-      expect(formatVGrade('6a+/V3')).toBe('V3+');
-      expect(formatVGrade('6c+/V5')).toBe('V5+');
-      expect(formatVGrade('7a+/V7')).toBe('V7+');
+    it('adds "+" when Font grade has "+" and V-grade has multiple Font grades', () => {
+      expect(formatVGrade('6a+/V3')).toBe('V3+');  // V3 has 6a and 6a+
+      expect(formatVGrade('6c+/V5')).toBe('V5+');  // V5 has 6c and 6c+
+      expect(formatVGrade('6b+/V4')).toBe('V4+');  // V4 has 6b and 6b+
+      expect(formatVGrade('7b+/V8')).toBe('V8+');  // V8 has 7b and 7b+
+    });
+
+    it('does not add "+" when V-grade has only one Font grade', () => {
+      expect(formatVGrade('7a+/V7')).toBe('V7');   // V7 only has 7a+
+      expect(formatVGrade('7c+/V10')).toBe('V10'); // V10 only has 7c+
+      expect(formatVGrade('8a+/V12')).toBe('V12'); // V12 only has 8a+
+      expect(formatVGrade('8b+/V14')).toBe('V14'); // V14 only has 8b+
+      expect(formatVGrade('8c+/V16')).toBe('V16'); // V16 only has 8c+
     });
 
     it('returns plain V-grade when Font grade has no "+"', () => {
