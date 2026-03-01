@@ -5,7 +5,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import CopyrightOutlined from '@mui/icons-material/CopyrightOutlined';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getSoftVGradeColor, extractVGrade } from '@/app/lib/grade-colors';
+import { getSoftVGradeColor, formatVGrade } from '@/app/lib/grade-colors';
 import { useIsDarkMode } from '@/app/hooks/use-is-dark-mode';
 
 export type ClimbTitleData = {
@@ -84,7 +84,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
   const benchmarkValue = climb.benchmark_difficulty != null ? Number(climb.benchmark_difficulty) : null;
   const isBenchmark = benchmarkValue !== null && benchmarkValue > 0 && !Number.isNaN(benchmarkValue);
 
-  const vGrade = extractVGrade(displayDifficulty);
+  const vGrade = formatVGrade(displayDifficulty);
 
   const textOverflowStyles = ellipsis
     ? {

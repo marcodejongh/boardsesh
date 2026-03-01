@@ -18,7 +18,7 @@ import TimerOutlined from '@mui/icons-material/TimerOutlined';
 import FlagOutlined from '@mui/icons-material/FlagOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import type { SessionSummary } from '@boardsesh/shared-schema';
-import { getGradeColor } from '@/app/lib/grade-colors';
+import { getGradeColor, formatVGrade } from '@/app/lib/grade-colors';
 
 interface SessionSummaryViewProps {
   summary: SessionSummary;
@@ -106,7 +106,7 @@ export default function SessionSummaryView({ summary }: SessionSummaryViewProps)
                 {summary.hardestClimb.climbName}
               </Typography>
               <Chip
-                label={summary.hardestClimb.grade}
+                label={formatVGrade(summary.hardestClimb.grade) ?? summary.hardestClimb.grade}
                 size="small"
                 sx={{
                   bgcolor: getGradeColor(summary.hardestClimb.grade),
@@ -133,7 +133,7 @@ export default function SessionSummaryView({ summary }: SessionSummaryViewProps)
                     variant="body2"
                     sx={{ minWidth: 40, fontWeight: 600, textAlign: 'right' }}
                   >
-                    {g.grade}
+                    {formatVGrade(g.grade) ?? g.grade}
                   </Typography>
                   <LinearProgress
                     variant="determinate"

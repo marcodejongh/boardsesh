@@ -50,6 +50,7 @@ import {
 } from '@/app/lib/graphql/operations/activity-feed';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { themeTokens } from '@/app/theme/theme-config';
+import { formatVGrade } from '@/app/lib/grade-colors';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import type { Climb, BoardDetails, BoardName } from '@/app/lib/types';
 import UserSearchDialog from './user-search-dialog';
@@ -707,7 +708,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
           )}
           <Chip label={`${tickCount} climb${tickCount !== 1 ? 's' : ''}`} variant="outlined" />
           {hardestGrade && (
-            <Chip label={`Hardest: ${hardestGrade}`} variant="outlined" />
+            <Chip label={`Hardest: ${formatVGrade(hardestGrade) ?? hardestGrade}`} variant="outlined" />
           )}
         </Box>
 
@@ -755,6 +756,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
             />
             <IconButton
               size="small"
+              data-testid="session-comment-toggle"
               onClick={() => setSessionCommentsOpen((prev) => !prev)}
               sx={{ color: sessionCommentsOpen ? 'text.primary' : 'text.secondary' }}
             >

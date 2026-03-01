@@ -47,6 +47,10 @@ vi.mock('@/app/theme/theme-config', () => ({
   },
 }));
 
+vi.mock('@/app/lib/grade-colors', () => ({
+  formatVGrade: (g: string | null | undefined) => g ?? null,
+}));
+
 vi.mock('../[sessionId]/user-search-dialog', () => ({
   default: () => null,
 }));
@@ -224,14 +228,7 @@ describe('SessionDetailContent', () => {
   it('expands session-level CommentSection when comment button is clicked', () => {
     render(<SessionDetailContent session={makeSession()} />);
 
-    // Find the session-level comment button: it's the comment button that is a sibling
-    // of the session VoteButton (data-entity-type="session")
-    const sessionVoteButton = screen.getAllByTestId('vote-button').find(
-      (el) => el.getAttribute('data-entity-type') === 'session',
-    )!;
-    const sessionButtonRow = sessionVoteButton.parentElement!;
-    const sessionCommentButton = sessionButtonRow.querySelector('button')!;
-    fireEvent.click(sessionCommentButton);
+    fireEvent.click(screen.getByTestId('session-comment-toggle'));
 
     // After clicking, the session comment section should be visible
     const commentSections = screen.getAllByTestId('comment-section');
@@ -435,20 +432,17 @@ describe('SessionDetailContent', () => {
     render(<SessionDetailContent session={makeSession()} />);
 
     // Expand session comments by clicking the toggle button
-    const sessionVoteButton = screen.getAllByTestId('vote-button').find(
-      (el) => el.getAttribute('data-entity-type') === 'session',
-    )!;
-    const sessionButtonRow = sessionVoteButton.parentElement!;
-    const sessionCommentButton = sessionButtonRow.querySelector('button')!;
-    fireEvent.click(sessionCommentButton);
+    const sessionCommentToggle = screen.getByTestId('session-comment-toggle');
+    fireEvent.click(sessionCommentToggle);
 
     // Session-level CommentSection should be a sibling of the vote/comment button row, not nested inside it
     const sessionCommentSection = screen.getAllByTestId('comment-section').find(
       (el) => el.getAttribute('data-entity-type') === 'session',
     );
     expect(sessionCommentSection).toBeTruthy();
-    // The vote button's parent flex row should NOT contain the comment section
-    expect(sessionButtonRow.contains(sessionCommentSection!)).toBe(false);
+    // The toggle button's parent flex row should NOT contain the comment section
+    const buttonRow = sessionCommentToggle.parentElement!;
+    expect(buttonRow.contains(sessionCommentSection!)).toBe(false);
   });
 
   it('displays comment count on session comment toggle button', () => {

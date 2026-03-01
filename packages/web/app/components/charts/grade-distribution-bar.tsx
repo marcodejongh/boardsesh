@@ -3,7 +3,7 @@
 import React from 'react';
 import { Bar } from 'react-chartjs-2';
 import './chart-registry'; // Ensure Chart.js components are registered
-import { extractVGrade } from '@/app/lib/grade-colors';
+import { formatVGrade } from '@/app/lib/grade-colors';
 
 export interface GradeDistributionItem {
   grade: string;
@@ -25,28 +25,12 @@ interface GradeDistributionBarProps {
 }
 
 /**
- * Format a grade string to a V-grade label for chart display.
- * When multiple Font grades share the same V-grade (e.g., "6c/V5" and "6c+/V5"),
- * the harder variant is labeled with "+" (e.g., "V5+").
+ * Format grade strings to V-grade labels for chart display.
+ * Uses formatVGrade which appends "+" when the Font grade has a "+"
+ * (e.g., "6c+/V5" → "V5+").
  */
 export function formatGradeLabels(grades: string[]): string[] {
-  const vGrades = grades.map((g) => extractVGrade(g));
-
-  return grades.map((grade, i) => {
-    const vGrade = vGrades[i];
-    if (!vGrade) return grade;
-
-    // Check if another grade in the list shares the same V-grade
-    const sameVGradeIndices = vGrades
-      .map((v, idx) => (v === vGrade ? idx : -1))
-      .filter((idx) => idx !== -1);
-
-    if (sameVGradeIndices.length > 1 && i > sameVGradeIndices[0]) {
-      return `${vGrade}+`;
-    }
-
-    return vGrade;
-  });
+  return grades.map((g) => formatVGrade(g) ?? g);
 }
 
 // Match profile page "Ascents by Difficulty" colors

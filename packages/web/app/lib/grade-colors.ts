@@ -61,13 +61,14 @@ export const FONT_GRADE_COLORS: Record<string, string> = {
 };
 
 /**
- * Get color for a V-grade string (e.g., "V3", "V10")
- * @param vGrade - V-grade string like "V3" or "V10"
+ * Get color for a V-grade string (e.g., "V3", "V10", "V5+")
+ * @param vGrade - V-grade string like "V3", "V10", or "V5+"
  * @returns Hex color string, or undefined if not found
  */
 export function getVGradeColor(vGrade: string | null | undefined): string | undefined {
   if (!vGrade) return undefined;
-  const normalized = vGrade.toUpperCase();
+  // Strip trailing "+" so "V5+" looks up the same color as "V5"
+  const normalized = vGrade.toUpperCase().replace(/\+$/, '');
   return V_GRADE_COLORS[normalized];
 }
 
@@ -114,6 +115,30 @@ export function extractVGrade(difficulty: string | null | undefined): string | n
   if (!difficulty) return null;
   const vGradeMatch = difficulty.match(/V\d+/i);
   return vGradeMatch ? vGradeMatch[0].toUpperCase() : null;
+}
+
+/**
+ * Format a difficulty string to a V-grade display label.
+ * When the Font grade has a "+" suffix (e.g., "6c+" in "6c+/V5"),
+ * the result includes "+" (e.g., "V5+").
+ * @param difficulty - Difficulty string (e.g., "6c+/V5", "6a/V3", "V3")
+ * @returns Formatted V-grade string (e.g., "V5+", "V3") or null if not found
+ */
+export function formatVGrade(difficulty: string | null | undefined): string | null {
+  if (!difficulty) return null;
+  const vGrade = extractVGrade(difficulty);
+  if (!vGrade) return null;
+
+  // Check if the font grade part (before "/") has a "+" suffix
+  const slashIndex = difficulty.indexOf('/');
+  if (slashIndex > 0) {
+    const fontPart = difficulty.substring(0, slashIndex);
+    if (fontPart.endsWith('+')) {
+      return `${vGrade}+`;
+    }
+  }
+
+  return vGrade;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import type { SessionFeedItem } from '@boardsesh/shared-schema';
 
@@ -53,6 +53,7 @@ vi.mock('@/app/theme/theme-config', () => ({
 vi.mock('@/app/lib/grade-colors', () => ({
   getGradeColor: () => '#F44336',
   getGradeTextColor: () => '#FFFFFF',
+  formatVGrade: (g: string | null | undefined) => g ?? null,
 }));
 
 import SessionFeedCard from '../session-feed-card';
