@@ -1,14 +1,14 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import CircularProgress from '@mui/material/CircularProgress';
 import MuiButton from '@mui/material/Button';
 import SearchOutlined from '@mui/icons-material/SearchOutlined';
-import SearchPill from '../search-drawer/search-pill';
 import UnifiedSearchDrawer from '../search-drawer/unified-search-drawer';
 import AccordionSearchForm from '../search-drawer/accordion-search-form';
+import { SearchDrawerBridgeInjector } from '../search-drawer/search-drawer-bridge-context';
 import { BoardDetails } from '@/app/lib/types';
 import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug } from '@/app/lib/url-utils';
 import { useQueueContext } from '../graphql-queue';
@@ -49,6 +49,13 @@ export default function BoardSeshHeader({ boardDetails, angle, isAngleAdjustable
   const router = useRouter();
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
 
+  // Stable callback for the bridge injector
+  const openDrawer = useCallback(() => setSearchDropdownOpen(true), []);
+
+  // Compute filter summary for the bridge
+  const summary = getSearchPillSummary(uiSearchParams);
+  const filtersActive = hasActiveFilters(uiSearchParams);
+
   // Create mode has its own header in the form — hide the board toolbar
   if (pageMode === 'create') {
     return null;
@@ -79,82 +86,82 @@ export default function BoardSeshHeader({ boardDetails, angle, isAngleAdjustable
 
   // Check if we have any content to show — if not, don't render the toolbar
   const hasBackButton = pageMode === 'play';
-  const hasSearchPill = pageMode === 'list';
   const hasAngleSelector = angle !== undefined;
   const hasCreateButton = !!createClimbUrl;
 
-  if (!hasBackButton && !hasSearchPill && !hasAngleSelector && !hasCreateButton) {
-    return null;
-  }
-
   return (
-    <Box
-      component="div"
-      className={styles.header}
-      sx={{
-        background: 'var(--semantic-surface)',
-        lineHeight: 'normal',
-        display: 'flex',
-        padding: '0 12px',
-        alignItems: 'center',
-        minHeight: 40,
-        gap: '8px',
-      }}
-    >
-      {/* Left section: Back button */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-        {hasBackButton && (
-          <div className={styles.mobileOnly}>
-            <IconButton
-              aria-label="Back to climb list"
-              onClick={() => router.push(getBackToListUrl())}
-            >
-              <ChevronLeftOutlined />
-            </IconButton>
-          </div>
-        )}
-      </Box>
+    <>
+      {/* Bridge injector: exposes drawer open callback and filter summary to the global header */}
+      <SearchDrawerBridgeInjector
+        openDrawer={openDrawer}
+        summary={summary}
+        hasActiveFilters={filtersActive}
+        isOnListPage={pageMode === 'list'}
+      />
 
-      {/* Center Section - Content varies by page mode */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', gap: '2px', flex: 1, alignItems: 'center' }}>
-        {hasSearchPill && (
-          <div className={styles.mobileOnly} style={{ flex: 1 }}>
-            <SearchPill onClick={() => setSearchDropdownOpen(true)} />
-          </div>
-        )}
-      </Box>
+      {(hasBackButton || hasAngleSelector || hasCreateButton) && (
+        <Box
+          component="div"
+          className={styles.header}
+          sx={{
+            background: 'var(--semantic-surface)',
+            lineHeight: 'normal',
+            display: 'flex',
+            padding: '0 12px',
+            alignItems: 'center',
+            minHeight: 40,
+            gap: '8px',
+          }}
+        >
+          {/* Left section: Back button */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            {hasBackButton && (
+              <div className={styles.mobileOnly}>
+                <IconButton
+                  aria-label="Back to climb list"
+                  onClick={() => router.push(getBackToListUrl())}
+                >
+                  <ChevronLeftOutlined />
+                </IconButton>
+              </div>
+            )}
+          </Box>
 
-      {/* Right Section */}
-      <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-        {hasAngleSelector && (
-          <AngleSelector
-            boardName={boardDetails.board_name}
-            boardDetails={boardDetails}
-            currentAngle={angle}
-            currentClimb={currentClimb}
-            isAngleAdjustable={isAngleAdjustable}
-          />
-        )}
+          {/* Center Section (spacer) */}
+          <Box sx={{ flex: 1 }} />
 
-        {hasCreateButton && (
-          <div className={styles.desktopOnly}>
-            <Link href={createClimbUrl}>
-              <IconButton title="Create new climb">
-                <AddOutlined />
-              </IconButton>
-            </Link>
-          </div>
-        )}
-      </Box>
+          {/* Right Section */}
+          <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            {hasAngleSelector && (
+              <AngleSelector
+                boardName={boardDetails.board_name}
+                boardDetails={boardDetails}
+                currentAngle={angle}
+                currentClimb={currentClimb}
+                isAngleAdjustable={isAngleAdjustable}
+              />
+            )}
 
-      {/* Search drawer (mobile) */}
+            {hasCreateButton && (
+              <div className={styles.desktopOnly}>
+                <Link href={createClimbUrl}>
+                  <IconButton title="Create new climb">
+                    <AddOutlined />
+                  </IconButton>
+                </Link>
+              </div>
+            )}
+          </Box>
+        </Box>
+      )}
+
+      {/* Search drawer (controlled via bridge from global header on list pages) */}
       <UnifiedSearchDrawer
         boardDetails={boardDetails}
         defaultCategory="climbs"
         open={searchDropdownOpen}
         onClose={() => {
-          const filtersActive = hasActiveFilters(uiSearchParams);
-          if (filtersActive) {
+          if (hasActiveFilters(uiSearchParams)) {
             const label = getSearchPillSummary(uiSearchParams);
             addRecentSearch(label, uiSearchParams).catch(() => {});
           }
@@ -164,9 +171,9 @@ export default function BoardSeshHeader({ boardDetails, angle, isAngleAdjustable
           <AccordionSearchForm boardDetails={boardDetails} />
         )}
         renderClimbFooter={() => {
-          const filtersActive = hasActiveFilters(uiSearchParams);
+          const currentFiltersActive = hasActiveFilters(uiSearchParams);
           const resultCount = totalSearchResultCount ?? 0;
-          const showResultCount = filtersActive && !isFetchingClimbs && resultCount > 0;
+          const showResultCount = currentFiltersActive && !isFetchingClimbs && resultCount > 0;
           return (
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 2, px: 3, background: 'var(--semantic-surface)', borderTop: '1px solid var(--neutral-100)' }}>
               <MuiButton
@@ -180,7 +187,7 @@ export default function BoardSeshHeader({ boardDetails, angle, isAngleAdjustable
                 variant="contained"
                 startIcon={isFetchingClimbs ? <CircularProgress size={20} /> : <SearchOutlined />}
                 onClick={() => {
-                  if (filtersActive) {
+                  if (currentFiltersActive) {
                     const label = getSearchPillSummary(uiSearchParams);
                     addRecentSearch(label, uiSearchParams).catch(() => {});
                   }
@@ -195,6 +202,6 @@ export default function BoardSeshHeader({ boardDetails, angle, isAngleAdjustable
           );
         }}
       />
-    </Box>
+    </>
   );
 }
