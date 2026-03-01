@@ -22,7 +22,7 @@ describe('formatGradeLabels', () => {
     expect(formatGradeLabels(['V3', 'V5'])).toEqual(['V3', 'V5']);
   });
 
-  it('adds "+" when two Font grades share the same V-grade', () => {
+  it('adds "+" when Font grade has "+" suffix (e.g., 6c+ → V5+)', () => {
     expect(formatGradeLabels(['6c/V5', '6c+/V5'])).toEqual(['V5', 'V5+']);
   });
 
