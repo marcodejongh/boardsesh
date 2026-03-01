@@ -213,10 +213,23 @@ describe('SessionDetailContent', () => {
 
   it('renders FeedCommentButton with session entity type and comment count', () => {
     render(<SessionDetailContent session={makeSession()} />);
-    const commentButton = screen.getByTestId('feed-comment-button');
-    expect(commentButton.getAttribute('data-entity-type')).toBe('session');
-    expect(commentButton.getAttribute('data-entity-id')).toBe('session-1');
-    expect(commentButton.getAttribute('data-comment-count')).toBe('2');
+    const commentButtons = screen.getAllByTestId('feed-comment-button');
+    const sessionComment = commentButtons.find(
+      (el) => el.getAttribute('data-entity-type') === 'session',
+    );
+    expect(sessionComment).toBeTruthy();
+    expect(sessionComment!.getAttribute('data-entity-id')).toBe('session-1');
+    expect(sessionComment!.getAttribute('data-comment-count')).toBe('2');
+  });
+
+  it('renders FeedCommentButton on each tick', () => {
+    render(<SessionDetailContent session={makeSession()} />);
+    const commentButtons = screen.getAllByTestId('feed-comment-button');
+    const tickComment = commentButtons.find(
+      (el) => el.getAttribute('data-entity-type') === 'tick',
+    );
+    expect(tickComment).toBeTruthy();
+    expect(tickComment!.getAttribute('data-entity-id')).toBe('tick-1');
   });
 
   it('shows session name when available', () => {
@@ -284,6 +297,40 @@ describe('SessionDetailContent', () => {
     render(<SessionDetailContent session={makeSession()} />);
     // The status chip should be rendered via renderItemExtra
     expect(screen.getByText('send')).toBeTruthy();
+    // Shows descriptive attempt text instead of "1x"
+    expect(screen.getByText('on 1st attempt')).toBeTruthy();
+  });
+
+  it('shows total attempts when totalAttempts exceeds attemptCount', () => {
+    const session = makeSession({
+      ticks: [{
+        uuid: 'tick-1', userId: 'user-1', climbUuid: 'climb-1', climbName: 'Hard Climb',
+        boardType: 'kilter', layoutId: 1, angle: 40, status: 'send', attemptCount: 3,
+        difficulty: 20, difficultyName: 'V5', quality: 3, isMirror: false, isBenchmark: false,
+        comment: null, frames: 'abc', setterUsername: 'setter1', climbedAt: '2024-01-15T10:30:00.000Z',
+        upvotes: 0, totalAttempts: 15,
+      }],
+    });
+    render(<SessionDetailContent session={session} />);
+    expect(screen.getByText('on 3rd attempt, 15 total')).toBeTruthy();
+  });
+
+  it('does not show extra attempt text for flash status', () => {
+    const session = makeSession({
+      totalAttempts: 0,
+      ticks: [{
+        uuid: 'tick-1', userId: 'user-1', climbUuid: 'climb-1', climbName: 'Easy Climb',
+        boardType: 'kilter', layoutId: 1, angle: 40, status: 'flash', attemptCount: 1,
+        difficulty: 10, difficultyName: 'V2', quality: 3, isMirror: false, isBenchmark: false,
+        comment: null, frames: 'abc', setterUsername: 'setter1', climbedAt: '2024-01-15T10:30:00.000Z',
+        upvotes: 0,
+      }],
+    });
+    render(<SessionDetailContent session={session} />);
+    expect(screen.getByText('flash')).toBeTruthy();
+    // No "on Nth attempt" or "N attempts" text should appear for flash
+    expect(screen.queryByText(/on \d+\w+ attempt/)).toBeNull();
+    expect(screen.queryByText(/\d+ attempts?$/)).toBeNull();
   });
 
   it('deduplicates climbs with same climbUuid', () => {

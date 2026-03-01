@@ -403,6 +403,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
                   <VoteButton
                     entityType="tick"
                     entityId={tick.uuid}
+                    initialUpvotes={tick.upvotes}
                     likeOnly
                   />
                   <FeedCommentButton entityType="tick" entityId={tick.uuid} />
