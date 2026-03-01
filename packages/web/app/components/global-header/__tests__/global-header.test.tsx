@@ -12,6 +12,17 @@ vi.mock('@/app/components/persistent-session/persistent-session-context', () => 
   useIsOnBoardRoute: () => mockIsOnBoardRoute,
 }));
 
+const mockOpenClimbSearchDrawer = vi.fn();
+let mockBridgeState = {
+  openClimbSearchDrawer: null as (() => void) | null,
+  searchPillSummary: null as string | null,
+  hasActiveFilters: false,
+};
+
+vi.mock('@/app/components/search-drawer/search-drawer-bridge-context', () => ({
+  useSearchDrawerBridge: () => mockBridgeState,
+}));
+
 vi.mock('@/app/components/search-drawer/unified-search-drawer', () => ({
   default: ({ open, defaultCategory }: { open: boolean; onClose: () => void; defaultCategory: string }) =>
     open ? <div data-testid="unified-search-drawer" data-category={defaultCategory} /> : null,
@@ -40,6 +51,11 @@ describe('GlobalHeader', () => {
     vi.clearAllMocks();
     mockActiveSession = null;
     mockIsOnBoardRoute = false;
+    mockBridgeState = {
+      openClimbSearchDrawer: null,
+      searchPillSummary: null,
+      hasActiveFilters: false,
+    };
   });
 
   it('renders user drawer, search pill, and Sesh button', () => {
@@ -91,5 +107,87 @@ describe('GlobalHeader', () => {
     fireEvent.click(screen.getByText('Sesh'));
     expect(screen.getByTestId('sesh-settings-drawer')).toBeTruthy();
     expect(screen.queryByTestId('start-sesh-drawer')).toBeNull();
+  });
+
+  // -----------------------------------------------------------------------
+  // Bridge integration tests
+  // -----------------------------------------------------------------------
+  describe('with search drawer bridge active (on board list page)', () => {
+    beforeEach(() => {
+      mockBridgeState = {
+        openClimbSearchDrawer: mockOpenClimbSearchDrawer,
+        searchPillSummary: 'V5-V7 · Tall',
+        hasActiveFilters: true,
+      };
+    });
+
+    it('shows filter summary text instead of "Search" when bridge is active', () => {
+      render(<GlobalHeader boardConfigs={mockBoardConfigs} />);
+
+      expect(screen.getByText('V5-V7 · Tall')).toBeTruthy();
+      expect(screen.queryByText('Search')).toBeNull();
+    });
+
+    it('calls openClimbSearchDrawer instead of opening its own drawer', () => {
+      render(<GlobalHeader boardConfigs={mockBoardConfigs} />);
+
+      fireEvent.click(screen.getByText('V5-V7 · Tall'));
+
+      expect(mockOpenClimbSearchDrawer).toHaveBeenCalledTimes(1);
+      // Should NOT open its own UnifiedSearchDrawer
+      expect(screen.queryByTestId('unified-search-drawer')).toBeNull();
+    });
+
+    it('shows active indicator dot when filters are active', () => {
+      const { container } = render(<GlobalHeader boardConfigs={mockBoardConfigs} />);
+
+      const activeIndicator = container.querySelector('[class*="searchPillActiveIndicator"]');
+      expect(activeIndicator).toBeTruthy();
+    });
+
+    it('does not show active indicator dot when filters are not active', () => {
+      mockBridgeState = {
+        openClimbSearchDrawer: mockOpenClimbSearchDrawer,
+        searchPillSummary: 'Search climbs...',
+        hasActiveFilters: false,
+      };
+
+      const { container } = render(<GlobalHeader boardConfigs={mockBoardConfigs} />);
+
+      const activeIndicator = container.querySelector('[class*="searchPillActiveIndicator"]');
+      expect(activeIndicator).toBeNull();
+    });
+
+    it('adds onboarding-search-button id when bridge is active', () => {
+      render(<GlobalHeader boardConfigs={mockBoardConfigs} />);
+
+      const searchButton = screen.getByText('V5-V7 · Tall').closest('button');
+      expect(searchButton?.id).toBe('onboarding-search-button');
+    });
+
+    it('does not add onboarding-search-button id when bridge is inactive', () => {
+      mockBridgeState = {
+        openClimbSearchDrawer: null,
+        searchPillSummary: null,
+        hasActiveFilters: false,
+      };
+
+      render(<GlobalHeader boardConfigs={mockBoardConfigs} />);
+
+      const searchButton = screen.getByText('Search').closest('button');
+      expect(searchButton?.id).toBe('');
+    });
+
+    it('shows "Search" when bridge has null summary', () => {
+      mockBridgeState = {
+        openClimbSearchDrawer: mockOpenClimbSearchDrawer,
+        searchPillSummary: null,
+        hasActiveFilters: false,
+      };
+
+      render(<GlobalHeader boardConfigs={mockBoardConfigs} />);
+
+      expect(screen.getByText('Search')).toBeTruthy();
+    });
   });
 });

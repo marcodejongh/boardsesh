@@ -112,41 +112,31 @@ export function SearchDrawerBridgeInjector({
   isOnListPage,
 }: SearchDrawerBridgeInjectorProps) {
   const { register, update, deregister } = useContext(SearchDrawerBridgeSetterContext);
-  const hasRegisteredRef = useRef(false);
+
+  // Store mutable values in refs so effects don't depend on their identity
+  const openDrawerRef = useRef(openDrawer);
+  const summaryRef = useRef(summary);
+  const activeRef = useRef(active);
+  openDrawerRef.current = openDrawer;
+  summaryRef.current = summary;
+  activeRef.current = active;
 
   // Register/deregister based on whether we're on the list page
   useLayoutEffect(() => {
     if (isOnListPage) {
-      register(openDrawer, summary, active);
-      hasRegisteredRef.current = true;
-    } else if (hasRegisteredRef.current) {
+      register(() => openDrawerRef.current(), summaryRef.current, activeRef.current);
+    } else {
       deregister();
-      hasRegisteredRef.current = false;
     }
-
-    return () => {
-      if (hasRegisteredRef.current) {
-        deregister();
-        hasRegisteredRef.current = false;
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { deregister(); };
   }, [isOnListPage, register, deregister]);
 
   // Update summary and active filters when they change (while on list page)
   useEffect(() => {
-    if (hasRegisteredRef.current && isOnListPage) {
+    if (isOnListPage) {
       update(summary, active);
     }
   }, [summary, active, isOnListPage, update]);
-
-  // Update the openDrawer ref when the callback changes
-  useEffect(() => {
-    if (hasRegisteredRef.current && isOnListPage) {
-      register(openDrawer, summary, active);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openDrawer]);
 
   return null;
 }
