@@ -7,7 +7,8 @@ import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import QueueMusicOutlined from '@mui/icons-material/QueueMusicOutlined';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { getContextAwarePlaylistUrl } from '@/app/lib/url-utils';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
@@ -32,6 +33,7 @@ type PlaylistPage = {
 
 export default function PlaylistSearchResults({ query, authToken }: PlaylistSearchResultsProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const debouncedQuery = useDebouncedValue(query, 300);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<
@@ -101,7 +103,7 @@ export default function PlaylistSearchResults({ query, authToken }: PlaylistSear
         {results.map((playlist) => (
           <Box
             key={playlist.uuid}
-            onClick={() => router.push(`/playlists/${playlist.uuid}`)}
+            onClick={() => router.push(getContextAwarePlaylistUrl(pathname, playlist.uuid))}
             sx={{
               p: 2,
               borderRadius: 2,

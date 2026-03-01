@@ -6,6 +6,7 @@ import {
   SearchRequestPagination,
   ClimbUuid,
   BoardDetails,
+  BoardName,
 } from '@/app/lib/types';
 import { BOARD_NAME_PREFIX_REGEX } from '@/app/lib/board-constants';
 import { PAGE_LIMIT } from '../components/board-page/constants';
@@ -569,3 +570,45 @@ export const constructBoardSlugPlayUrl = (slug: string, angle: number, climbUuid
  */
 export const constructBoardSlugViewUrl = (slug: string, angle: number, climbUuid: string) =>
   constructBoardSlugUrl(slug, angle, `view/${climbUuid}`);
+
+/**
+ * Construct a board slug URL for the playlists library.
+ * /b/{board-slug}/{angle}/playlists
+ */
+export const constructBoardSlugPlaylistsUrl = (slug: string, angle: number) =>
+  constructBoardSlugUrl(slug, angle, 'playlists');
+
+/**
+ * Extract the playlists base path from the current pathname.
+ * - On a /b/{slug}/{angle}/... route → /b/{slug}/{angle}/playlists
+ * - On an old-style /{board}/{layout}/{size}/{sets}/{angle}/... route → /{board}/{layout}/{size}/{sets}/{angle}/playlists
+ * - Otherwise → /playlists
+ */
+export const getPlaylistsBasePath = (pathname: string): string => {
+  // Board slug route: /b/{slug}/{angle}/...
+  if (pathname.startsWith('/b/')) {
+    const segments = pathname.split('/');
+    if (segments.length >= 4) {
+      return `/b/${segments[2]}/${segments[3]}/playlists`;
+    }
+  }
+
+  // Old-style route: /{board_name}/{layout_id}/{size_id}/{set_ids}/{angle}/...
+  const oldStyleMatch = pathname.match(/^\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)/);
+  if (oldStyleMatch) {
+    const [, boardName] = oldStyleMatch;
+    const validBoardNames: readonly string[] = ['kilter', 'tension', 'moonboard'] satisfies readonly BoardName[];
+    if (validBoardNames.includes(boardName)) {
+      return `/${oldStyleMatch.slice(1, 6).join('/')}/playlists`;
+    }
+  }
+
+  return '/playlists';
+};
+
+/**
+ * Build a context-aware URL for a specific playlist detail page.
+ * Uses the current pathname to determine whether to use board-scoped or global URL.
+ */
+export const getContextAwarePlaylistUrl = (pathname: string, playlistUuid: string): string =>
+  `${getPlaylistsBasePath(pathname)}/${playlistUuid}`;

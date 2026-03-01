@@ -2,6 +2,7 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { resolveBoardBySlug } from '@/app/lib/board-slug-utils';
+import { constructBoardSlugPlaylistsUrl } from '@/app/lib/url-utils';
 import LibraryPageContent from '@/app/playlists/library-page-content';
 import styles from '@/app/components/library/library.module.css';
 
@@ -26,7 +27,10 @@ export default async function BoardSlugPlaylistsPage(props: PlaylistsPageProps) 
 
   return (
     <div className={styles.pageContainer}>
-      <LibraryPageContent boardSlug={params.board_slug} boardAngle={Number(params.angle)} />
+      <LibraryPageContent
+        boardSlug={params.board_slug}
+        playlistsBasePath={constructBoardSlugPlaylistsUrl(params.board_slug, Number(params.angle))}
+      />
     </div>
   );
 }
