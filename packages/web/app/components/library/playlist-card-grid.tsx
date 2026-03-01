@@ -8,14 +8,12 @@ import styles from './library.module.css';
 
 type PlaylistCardGridProps = {
   playlists: Playlist[];
-  selectedBoard: string;
   getPlaylistUrl: (uuid: string) => string;
   loading?: boolean;
 };
 
 export default function PlaylistCardGrid({
   playlists,
-  selectedBoard,
   getPlaylistUrl,
   loading,
 }: PlaylistCardGridProps) {
@@ -35,13 +33,8 @@ export default function PlaylistCardGrid({
     );
   }
 
-  // Filter by selected board
-  const filtered = selectedBoard === 'all'
-    ? playlists
-    : playlists.filter((p) => p.boardType === selectedBoard);
-
   // Show up to 8 playlists
-  const display = filtered.slice(0, 8);
+  const display = playlists.slice(0, 8);
 
   if (display.length === 0) {
     return null;

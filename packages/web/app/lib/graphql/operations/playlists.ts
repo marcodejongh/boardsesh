@@ -348,8 +348,8 @@ export interface DiscoverablePlaylist {
 }
 
 export interface DiscoverPlaylistsInput {
-  boardType: string;
-  layoutId: number;
+  boardType?: string;
+  layoutId?: number;
   name?: string;
   creatorIds?: string[];
   sortBy?: 'recent' | 'popular';

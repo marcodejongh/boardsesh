@@ -466,8 +466,8 @@ export const GetUserFavoriteClimbsInputSchema = z.object({
  * Discover playlists input validation schema
  */
 export const DiscoverPlaylistsInputSchema = z.object({
-  boardType: BoardNameSchema,
-  layoutId: z.number().int().positive(),
+  boardType: BoardNameSchema.optional(),
+  layoutId: z.number().int().positive().optional(),
   // Optional filters
   name: z.string().max(100).optional(),
   creatorIds: z.array(z.string().min(1)).optional(),

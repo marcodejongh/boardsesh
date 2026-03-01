@@ -651,8 +651,8 @@ export const playlistQueries = {
   discoverPlaylists: async (
     _: unknown,
     { input }: { input: {
-      boardType: string;
-      layoutId: number;
+      boardType?: string;
+      layoutId?: number;
       name?: string;
       creatorIds?: string[];
       sortBy?: 'recent' | 'popular';
@@ -669,13 +669,21 @@ export const playlistQueries = {
     // Build conditions for filtering
     const conditions = [
       eq(dbSchema.playlists.isPublic, true),
-      eq(dbSchema.playlists.boardType, input.boardType),
-      // Include playlists with matching layoutId OR null layoutId (Aurora-synced circuits)
-      or(
-        eq(dbSchema.playlists.layoutId, input.layoutId),
-        isNull(dbSchema.playlists.layoutId)
-      ),
     ];
+
+    // Only filter by boardType/layoutId if provided
+    if (input.boardType) {
+      conditions.push(eq(dbSchema.playlists.boardType, input.boardType));
+    }
+    if (input.layoutId != null) {
+      // Include playlists with matching layoutId OR null layoutId (Aurora-synced circuits)
+      conditions.push(
+        or(
+          eq(dbSchema.playlists.layoutId, input.layoutId),
+          isNull(dbSchema.playlists.layoutId)
+        )!,
+      );
+    }
 
     // Add name filter if provided (case-insensitive partial match)
     if (input.name) {
