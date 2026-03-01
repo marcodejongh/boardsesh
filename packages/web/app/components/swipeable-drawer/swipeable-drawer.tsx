@@ -117,7 +117,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
           ...userStyles?.header,
         }}
       >
-        <Typography variant="h6" component="div" sx={{ fontWeight: themeTokens.typography.fontWeight.semibold, fontSize: themeTokens.typography.fontSize.base }}>
+        <Typography variant="h6" component="div" sx={{ flex: 1, minWidth: 0, fontWeight: themeTokens.typography.fontWeight.semibold, fontSize: themeTokens.typography.fontSize.base }}>
           {userTitle}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
