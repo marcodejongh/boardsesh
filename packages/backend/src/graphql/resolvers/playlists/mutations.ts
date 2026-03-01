@@ -11,6 +11,7 @@ import {
   RemoveClimbFromPlaylistInputSchema,
   FollowPlaylistInputSchema,
 } from '../../../validation/schemas';
+import { getPlaylistFollowStats } from './queries';
 
 export const playlistMutations = {
   /**
@@ -126,12 +127,15 @@ export const playlistMutations = {
       .where(eq(dbSchema.playlists.id, playlistId))
       .returning();
 
-    // Get climb count
+    // Get climb count and follow stats
     const climbCount = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(dbSchema.playlistClimbs)
       .where(eq(dbSchema.playlistClimbs.playlistId, playlistId))
       .limit(1);
+
+    const followStats = await getPlaylistFollowStats([updated.uuid], userId);
+    const stats = followStats.get(updated.uuid) ?? { followerCount: 0, isFollowedByMe: false };
 
     return {
       id: updated.id.toString(),
@@ -147,8 +151,8 @@ export const playlistMutations = {
       updatedAt: updated.updatedAt.toISOString(),
       climbCount: climbCount[0]?.count || 0,
       userRole: 'owner',
-      followerCount: 0,
-      isFollowedByMe: false,
+      followerCount: stats.followerCount,
+      isFollowedByMe: stats.isFollowedByMe,
     };
   },
 

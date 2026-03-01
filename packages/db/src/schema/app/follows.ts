@@ -1,6 +1,7 @@
 import { pgTable, bigserial, text, timestamp, uniqueIndex, index, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from '../auth/users';
+import { playlists } from './playlists';
 
 export const userFollows = pgTable('user_follows', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
@@ -34,7 +35,7 @@ export type NewSetterFollow = typeof setterFollows.$inferInsert;
 export const playlistFollows = pgTable('playlist_follows', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   followerId: text('follower_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  playlistUuid: text('playlist_uuid').notNull(),
+  playlistUuid: text('playlist_uuid').references(() => playlists.uuid, { onDelete: 'cascade' }).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   uniqueFollow: uniqueIndex('unique_playlist_follow').on(table.followerId, table.playlistUuid),

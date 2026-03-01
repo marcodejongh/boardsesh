@@ -1,0 +1,1 @@
+ALTER TABLE "playlist_follows" ADD CONSTRAINT "playlist_follows_playlist_uuid_playlists_uuid_fk" FOREIGN KEY ("playlist_uuid") REFERENCES "public"."playlists"("uuid") ON DELETE cascade ON UPDATE no action;

@@ -17,6 +17,57 @@ import { getBoardTables, isValidBoardName } from '../../../db/queries/util/table
 import { getSizeEdges } from '../../../db/queries/util/product-sizes-data';
 import { convertLitUpHoldsStringToMap } from '../../../db/queries/util/hold-state';
 
+/**
+ * Batch-fetch followerCount and isFollowedByMe for a list of playlist UUIDs.
+ * Returns a Map keyed by playlist UUID.
+ */
+export async function getPlaylistFollowStats(
+  playlistUuids: string[],
+  currentUserId: string | null,
+): Promise<Map<string, { followerCount: number; isFollowedByMe: boolean }>> {
+  const result = new Map<string, { followerCount: number; isFollowedByMe: boolean }>();
+
+  if (playlistUuids.length === 0) return result;
+
+  // Follower counts
+  const followerCounts = await db
+    .select({
+      playlistUuid: dbSchema.playlistFollows.playlistUuid,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(dbSchema.playlistFollows)
+    .where(inArray(dbSchema.playlistFollows.playlistUuid, playlistUuids))
+    .groupBy(dbSchema.playlistFollows.playlistUuid);
+
+  const countMap = new Map(followerCounts.map(r => [r.playlistUuid, r.count]));
+
+  // Is-followed-by-me check (only if authenticated)
+  const followedSet = new Set<string>();
+  if (currentUserId) {
+    const followed = await db
+      .select({ playlistUuid: dbSchema.playlistFollows.playlistUuid })
+      .from(dbSchema.playlistFollows)
+      .where(
+        and(
+          eq(dbSchema.playlistFollows.followerId, currentUserId),
+          inArray(dbSchema.playlistFollows.playlistUuid, playlistUuids),
+        )
+      );
+    for (const r of followed) {
+      followedSet.add(r.playlistUuid);
+    }
+  }
+
+  for (const uuid of playlistUuids) {
+    result.set(uuid, {
+      followerCount: countMap.get(uuid) ?? 0,
+      isFollowedByMe: followedSet.has(uuid),
+    });
+  }
+
+  return result;
+}
+
 export const playlistQueries = {
   /**
    * Get all playlists owned by the authenticated user for a specific board and layout
@@ -85,24 +136,33 @@ export const playlistQueries = {
 
     const countMap = new Map(climbCounts.map(c => [c.playlistId.toString(), c.count]));
 
-    return userPlaylists.map(p => ({
-      id: p.id.toString(),
-      uuid: p.uuid,
-      boardType: p.boardType,
-      layoutId: p.layoutId,
-      name: p.name,
-      description: p.description,
-      isPublic: p.isPublic,
-      color: p.color,
-      icon: p.icon,
-      createdAt: p.createdAt.toISOString(),
-      updatedAt: p.updatedAt.toISOString(),
-      lastAccessedAt: p.lastAccessedAt?.toISOString() ?? null,
-      climbCount: countMap.get(p.id.toString()) || 0,
-      userRole: p.role,
-      followerCount: 0,
-      isFollowedByMe: false,
-    }));
+    // Fetch follow stats for all playlists
+    const followStats = await getPlaylistFollowStats(
+      userPlaylists.map(p => p.uuid),
+      userId,
+    );
+
+    return userPlaylists.map(p => {
+      const stats = followStats.get(p.uuid) ?? { followerCount: 0, isFollowedByMe: false };
+      return {
+        id: p.id.toString(),
+        uuid: p.uuid,
+        boardType: p.boardType,
+        layoutId: p.layoutId,
+        name: p.name,
+        description: p.description,
+        isPublic: p.isPublic,
+        color: p.color,
+        icon: p.icon,
+        createdAt: p.createdAt.toISOString(),
+        updatedAt: p.updatedAt.toISOString(),
+        lastAccessedAt: p.lastAccessedAt?.toISOString() ?? null,
+        climbCount: countMap.get(p.id.toString()) || 0,
+        userRole: p.role,
+        followerCount: stats.followerCount,
+        isFollowedByMe: stats.isFollowedByMe,
+      };
+    });
   },
 
   /**
@@ -167,24 +227,33 @@ export const playlistQueries = {
 
     const countMap = new Map(climbCounts.map(c => [c.playlistId.toString(), c.count]));
 
-    return userPlaylists.map(p => ({
-      id: p.id.toString(),
-      uuid: p.uuid,
-      boardType: p.boardType,
-      layoutId: p.layoutId,
-      name: p.name,
-      description: p.description,
-      isPublic: p.isPublic,
-      color: p.color,
-      icon: p.icon,
-      createdAt: p.createdAt.toISOString(),
-      updatedAt: p.updatedAt.toISOString(),
-      lastAccessedAt: p.lastAccessedAt?.toISOString() ?? null,
-      climbCount: countMap.get(p.id.toString()) || 0,
-      userRole: p.role,
-      followerCount: 0,
-      isFollowedByMe: false,
-    }));
+    // Fetch follow stats for all playlists
+    const followStats = await getPlaylistFollowStats(
+      userPlaylists.map(p => p.uuid),
+      userId,
+    );
+
+    return userPlaylists.map(p => {
+      const stats = followStats.get(p.uuid) ?? { followerCount: 0, isFollowedByMe: false };
+      return {
+        id: p.id.toString(),
+        uuid: p.uuid,
+        boardType: p.boardType,
+        layoutId: p.layoutId,
+        name: p.name,
+        description: p.description,
+        isPublic: p.isPublic,
+        color: p.color,
+        icon: p.icon,
+        createdAt: p.createdAt.toISOString(),
+        updatedAt: p.updatedAt.toISOString(),
+        lastAccessedAt: p.lastAccessedAt?.toISOString() ?? null,
+        climbCount: countMap.get(p.id.toString()) || 0,
+        userRole: p.role,
+        followerCount: stats.followerCount,
+        isFollowedByMe: stats.isFollowedByMe,
+      };
+    });
   },
 
   /**
@@ -253,28 +322,9 @@ export const playlistQueries = {
       .where(eq(dbSchema.playlistClimbs.playlistId, playlist.id))
       .limit(1);
 
-    // Get follower count
-    const [followerResult] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(dbSchema.playlistFollows)
-      .where(eq(dbSchema.playlistFollows.playlistUuid, playlist.uuid));
-
-    const followerCount = Number(followerResult?.count ?? 0);
-
-    // Check if current user follows this playlist
-    let isFollowedByMe = false;
-    if (userId) {
-      const [followCheck] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(dbSchema.playlistFollows)
-        .where(
-          and(
-            eq(dbSchema.playlistFollows.followerId, userId),
-            eq(dbSchema.playlistFollows.playlistUuid, playlist.uuid)
-          )
-        );
-      isFollowedByMe = Number(followCheck?.count ?? 0) > 0;
-    }
+    // Get follow stats
+    const followStats = await getPlaylistFollowStats([playlist.uuid], userId ?? null);
+    const stats = followStats.get(playlist.uuid) ?? { followerCount: 0, isFollowedByMe: false };
 
     return {
       id: playlist.id.toString(),
@@ -291,8 +341,8 @@ export const playlistQueries = {
       lastAccessedAt: playlist.lastAccessedAt?.toISOString() ?? null,
       climbCount: climbCount[0]?.count || 0,
       userRole,
-      followerCount,
-      isFollowedByMe,
+      followerCount: stats.followerCount,
+      isFollowedByMe: stats.isFollowedByMe,
     };
   },
 
