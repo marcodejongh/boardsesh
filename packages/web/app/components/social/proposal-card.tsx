@@ -31,6 +31,7 @@ import { VOTE_ON_PROPOSAL, RESOLVE_PROPOSAL, DELETE_PROPOSAL } from '@/app/lib/g
 import type { Proposal } from '@boardsesh/shared-schema';
 import type { Climb, BoardDetails, BoardName } from '@/app/lib/types';
 import ClimbListItem from '@/app/components/climb-card/climb-list-item';
+import { useOptionalQueueContext } from '@/app/components/graphql-queue';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import { getDefaultBoardConfig } from '@/app/lib/default-board-configs';
@@ -59,6 +60,7 @@ interface ProposalCardProps {
 
 export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDelete, highlight }: ProposalCardProps) {
   const { token } = useWsAuthToken();
+  const queueContext = useOptionalQueueContext();
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState('');
   const [localProposal, setLocalProposal] = useState(proposal);
@@ -171,6 +173,12 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDe
     return { climb, boardDetails };
   }, [localProposal]);
 
+  const handleSetActive = useCallback(() => {
+    if (climbAndBoardDetails && queueContext) {
+      queueContext.setCurrentClimb(climbAndBoardDetails.climb);
+    }
+  }, [climbAndBoardDetails, queueContext]);
+
   const typeColor = TYPE_COLORS[localProposal.type] || themeTokens.neutral[500];
 
   return (
@@ -192,7 +200,7 @@ export default function ProposalCard({ proposal, isAdminOrLeader, onUpdate, onDe
             <ClimbListItem
               climb={climbAndBoardDetails.climb}
               boardDetails={climbAndBoardDetails.boardDetails}
-              disableSwipe
+              onSelect={queueContext ? handleSetActive : undefined}
             />
           )}
 
