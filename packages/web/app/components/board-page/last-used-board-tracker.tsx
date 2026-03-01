@@ -11,6 +11,7 @@ interface LastUsedBoardTrackerProps {
   sizeDescription?: string;
   setNames: string[];
   angle: number;
+  boardSlug?: string;
 }
 
 export default function LastUsedBoardTracker({
@@ -21,6 +22,7 @@ export default function LastUsedBoardTracker({
   sizeDescription,
   setNames,
   angle,
+  boardSlug,
 }: LastUsedBoardTrackerProps) {
   useEffect(() => {
     setLastUsedBoard({
@@ -31,8 +33,9 @@ export default function LastUsedBoardTracker({
       sizeDescription,
       setNames,
       angle,
+      boardSlug,
     });
-  }, [url, boardName, layoutName, sizeName, sizeDescription, setNames, angle]);
+  }, [url, boardName, layoutName, sizeName, sizeDescription, setNames, angle, boardSlug]);
 
   return null;
 }

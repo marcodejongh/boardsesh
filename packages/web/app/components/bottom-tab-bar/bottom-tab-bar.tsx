@@ -144,14 +144,31 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     track('Bottom Tab Bar', { tab: 'home' });
   };
 
+  // Whether we're currently on a board page (URL derived from pathname is reliable)
+  const isOnBoardPage = pathname.startsWith('/b/') || (!!effectiveBoardDetails && pathname !== '/' && !pathname.startsWith('/notifications') && !pathname.startsWith('/playlists'));
+
   const handleClimbsTab = async () => {
     setIsCreateOpen(false);
     setIsCreatePlaylistOpen(false);
 
-    // 1. Try effectiveBoardDetails (from current route or active session)
-    let url = listUrl;
+    let url: string | null = null;
 
-    // 2. Try getLastUsedBoard() from IndexedDB
+    if (isOnBoardPage) {
+      // On a board page, use listUrl derived from the current pathname
+      url = listUrl;
+    } else {
+      // Not on a board page: prefer the stored URL (preserves /b/ format)
+      const lastUsed = await getLastUsedBoard();
+      if (lastUsed?.url) {
+        url = lastUsed.url;
+      }
+      // Fall back to computed listUrl from session board details
+      if (!url) {
+        url = listUrl;
+      }
+    }
+
+    // Try getLastUsedBoard() as final fallback
     if (!url) {
       const lastUsed = await getLastUsedBoard();
       if (lastUsed?.url) {
@@ -159,7 +176,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
       }
     }
 
-    // 3. Open board selector drawer if no board context
+    // Open board selector drawer if no board context
     if (!url) {
       if (boardConfigs) {
         setIsBoardSelectorOpen(true);
