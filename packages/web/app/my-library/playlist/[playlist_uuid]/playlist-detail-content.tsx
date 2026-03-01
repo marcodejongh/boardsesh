@@ -34,6 +34,7 @@ import {
   GetPlaylistQueryVariables,
   GetPlaylistClimbsQueryResponse,
   type GetPlaylistClimbsQueryVariables,
+  type GetPlaylistClimbsInput,
   Playlist,
   UpdatePlaylistLastAccessedMutationVariables,
   UpdatePlaylistLastAccessedMutationResponse,
@@ -156,20 +157,19 @@ export default function PlaylistDetailContent({
     queryFn: async ({ pageParam = 0 }) => {
       const client = createGraphQLHttpClient(token);
 
-      const input: Record<string, unknown> = {
+      const input: GetPlaylistClimbsInput = {
         playlistId: playlistUuid,
-        page: pageParam,
+        page: pageParam as number,
         pageSize: 20,
+        // Specific-board mode when a board is selected
+        ...(selectedBoard && {
+          boardName: selectedBoard.boardType,
+          layoutId: selectedBoard.layoutId,
+          sizeId: selectedBoard.sizeId,
+          setIds: selectedBoard.setIds,
+          angle: selectedBoard.angle ?? getDefaultAngleForBoard(selectedBoard.boardType),
+        }),
       };
-
-      // Specific-board mode when a board is selected
-      if (selectedBoard) {
-        input.boardName = selectedBoard.boardType;
-        input.layoutId = selectedBoard.layoutId;
-        input.sizeId = selectedBoard.sizeId;
-        input.setIds = selectedBoard.setIds;
-        input.angle = selectedBoard.angle ?? getDefaultAngleForBoard(selectedBoard.boardType);
-      }
 
       const response = await client.request<GetPlaylistClimbsQueryResponse>(
         GET_PLAYLIST_CLIMBS,
