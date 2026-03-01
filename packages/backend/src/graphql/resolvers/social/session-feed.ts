@@ -6,6 +6,19 @@ import { ActivityFeedInputSchema } from '../../../validation/schemas';
 import { encodeOffsetCursor, decodeOffsetCursor } from '../../../utils/feed-cursor';
 import type { SessionFeedItem, SessionDetail, SessionGradeDistributionItem, SessionFeedParticipant, SessionDetailTick } from '@boardsesh/shared-schema';
 
+/**
+ * Extract typed rows from db.execute() result with runtime validation.
+ * db.execute() returns a pg-compatible QueryResult with a .rows property,
+ * but the TypeScript union type of our db instance doesn't expose it directly.
+ */
+function extractRows<T>(result: unknown): T[] {
+  const r = result as Record<string, unknown>;
+  if (r && Array.isArray(r.rows)) {
+    return r.rows as T[];
+  }
+  return [];
+}
+
 export const sessionFeedQueries = {
   /**
    * Session-grouped activity feed (public, no auth required).
@@ -114,8 +127,7 @@ export const sessionFeedQueries = {
       throw err;
     }
 
-    // db.execute() returns QueryResult (neon-serverless) with .rows property
-    const rows = (sessionRows as unknown as { rows: Array<{
+    const rows = extractRows<{
       session_id: string;
       session_type: string;
       session_first_tick: string;
@@ -130,7 +142,7 @@ export const sessionFeedQueries = {
       vote_up: number;
       vote_down: number;
       comment_count: number;
-    }> }).rows;
+    }>(sessionRows);
 
     const hasMore = rows.length > limit;
     const resultRows = hasMore ? rows.slice(0, limit) : rows;
@@ -365,15 +377,13 @@ export const sessionFeedQueries = {
         SELECT * FROM attempts_since
       `);
 
-      const attemptsRows = (totalAttemptsResult as unknown as {
-        rows: Array<{
-          user_id: string;
-          climb_uuid: string;
-          board_type: string;
-          angle: number;
-          total: number;
-        }>;
-      }).rows;
+      const attemptsRows = extractRows<{
+        user_id: string;
+        climb_uuid: string;
+        board_type: string;
+        angle: number;
+        total: number;
+      }>(totalAttemptsResult);
 
       // Build lookup map
       const attemptsMap = new Map<string, number>();
@@ -523,15 +533,14 @@ async function fetchParticipants(
     ORDER BY sends DESC
   `);
 
-  // db.execute() returns QueryResult with .rows property
-  return ((participantRows as unknown as { rows: Array<{
+  return extractRows<{
     userId: string;
     displayName: string | null;
     avatarUrl: string | null;
     sends: number;
     flashes: number;
     attempts: number;
-  }> }).rows).map((r) => ({
+  }>(participantRows).map((r) => ({
     userId: r.userId,
     displayName: r.displayName,
     avatarUrl: r.avatarUrl,
@@ -599,7 +608,7 @@ async function fetchParticipantsBatch(
     ORDER BY sends DESC
   `);
 
-  const rows = (result as unknown as { rows: Array<{
+  const rows = extractRows<{
     effective_session_id: string;
     userId: string;
     displayName: string | null;
@@ -607,7 +616,7 @@ async function fetchParticipantsBatch(
     sends: number;
     flashes: number;
     attempts: number;
-  }> }).rows;
+  }>(result);
 
   const map = new Map<string, SessionFeedParticipant[]>();
   for (const r of rows) {
@@ -651,14 +660,14 @@ async function fetchGradeDistributionBatch(
     ORDER BY dg.difficulty DESC
   `);
 
-  const rows = (result as unknown as { rows: Array<{
+  const rows = extractRows<{
     effective_session_id: string;
     grade: string | null;
     diff_num: number;
     flash: number;
     send: number;
     attempt: number;
-  }> }).rows;
+  }>(result);
 
   const map = new Map<string, SessionGradeDistributionItem[]>();
   for (const r of rows) {

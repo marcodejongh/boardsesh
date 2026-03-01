@@ -317,7 +317,6 @@ describe('SessionDetailContent', () => {
 
   it('does not show extra attempt text for flash status', () => {
     const session = makeSession({
-      totalAttempts: 0,
       ticks: [{
         uuid: 'tick-1', userId: 'user-1', climbUuid: 'climb-1', climbName: 'Easy Climb',
         boardType: 'kilter', layoutId: 1, angle: 40, status: 'flash', attemptCount: 1,
