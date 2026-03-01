@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -25,6 +25,7 @@ import {
 } from '@/app/lib/graphql/operations/playlists';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useMyBoards } from '@/app/hooks/use-my-boards';
+import { useQueueBridgeBoardInfo } from '@/app/components/queue-control/queue-bridge-context';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import AuthModal from '@/app/components/auth/auth-modal';
 import PlaylistCardGrid from '@/app/components/library/playlist-card-grid';
@@ -35,6 +36,24 @@ import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
 import styles from '@/app/components/library/library.module.css';
 import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module.css';
 
+/**
+ * Find the UserBoard that best matches the current session/queue board.
+ * Matches on boardType + layoutId + sizeId.
+ */
+function findMatchingBoard(
+  boards: UserBoard[],
+  boardName: string | undefined,
+  layoutId: number | undefined,
+  sizeId: number | undefined,
+): UserBoard | null {
+  if (!boardName) return null;
+  return boards.find((b) =>
+    b.boardType === boardName &&
+    b.layoutId === layoutId &&
+    b.sizeId === sizeId,
+  ) ?? null;
+}
+
 export default function LibraryPageContent() {
   const { data: session, status: sessionStatus } = useSession();
   const { token, isLoading: tokenLoading } = useWsAuthToken();
@@ -44,13 +63,34 @@ export default function LibraryPageContent() {
   const [hasMounted, setHasMounted] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const defaultBoardAppliedRef = useRef(false);
 
   // Fetch user's boards for the board selector
   const { boards: myBoards, isLoading: boardsLoading } = useMyBoards(hasMounted);
 
+  // Get current session/queue board info to use as default selection
+  const { boardDetails: currentBoardDetails } = useQueueBridgeBoardInfo();
+
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  // Auto-select the board matching the current session/queue (once boards load)
+  useEffect(() => {
+    if (defaultBoardAppliedRef.current || boardsLoading || myBoards.length === 0) return;
+
+    const match = findMatchingBoard(
+      myBoards,
+      currentBoardDetails?.board_name,
+      currentBoardDetails?.layout_id,
+      currentBoardDetails?.size_id,
+    );
+
+    if (match) {
+      setSelectedBoard(match);
+    }
+    defaultBoardAppliedRef.current = true;
+  }, [myBoards, boardsLoading, currentBoardDetails]);
 
   // Data states
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
