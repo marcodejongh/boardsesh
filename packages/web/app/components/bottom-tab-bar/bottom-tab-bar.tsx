@@ -48,7 +48,7 @@ const isValidHexColor = (color: string): boolean => {
 const getActiveTab = (pathname: string): Tab => {
   if (pathname === '/') return 'home';
   if (pathname.startsWith('/notifications')) return 'notifications';
-  if (pathname.startsWith('/my-library') || pathname.includes('/playlist/')) return 'library';
+  if (pathname.startsWith('/playlists') || pathname.includes('/playlists')) return 'library';
   return 'climbs';
 };
 
@@ -134,7 +134,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
   })();
 
   const getPlaylistUrl = useCallback((playlistUuid: string) => {
-    return `/my-library/playlist/${playlistUuid}`;
+    return `/playlists/${playlistUuid}`;
   }, []);
 
   const handleHomeTab = () => {
@@ -190,13 +190,24 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     track('Bottom Tab Bar', { tab: 'climbs' });
   };
 
+  const playlistsUrl = (() => {
+    // If on a /b/ slug route, construct board-scoped playlists URL
+    if (pathname.startsWith('/b/')) {
+      const segments = pathname.split('/');
+      if (segments.length >= 4) {
+        return `/b/${segments[2]}/${segments[3]}/playlists`;
+      }
+    }
+    // No board context — global playlists
+    return '/playlists';
+  })();
+
   const handleLibraryTab = () => {
     setIsCreateOpen(false);
     setIsCreatePlaylistOpen(false);
-    const url = '/my-library';
     const currentUrl = pathname + (typeof window !== 'undefined' ? window.location.search : '');
-    if (url !== currentUrl) {
-      router.push(url);
+    if (playlistsUrl !== currentUrl) {
+      router.push(playlistsUrl);
     }
     track('Bottom Tab Bar', { tab: 'library' });
   };

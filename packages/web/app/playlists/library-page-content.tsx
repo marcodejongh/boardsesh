@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import MuiButton from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
 import {
   LabelOutlined,
   LoginOutlined,
   SentimentDissatisfiedOutlined,
   ArrowBackOutlined,
 } from '@mui/icons-material';
-import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { executeGraphQL } from '@/app/lib/graphql/client';
@@ -24,35 +24,91 @@ import {
   DiscoverablePlaylist,
 } from '@/app/lib/graphql/operations/playlists';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { getDefaultLayoutForBoard } from '@/app/lib/board-config-for-playlist';
+import { useMyBoards } from '@/app/hooks/use-my-boards';
+import { useQueueBridgeBoardInfo } from '@/app/components/queue-control/queue-bridge-context';
+import { constructBoardSlugUrl } from '@/app/lib/url-utils';
+import type { UserBoard } from '@boardsesh/shared-schema';
 import AuthModal from '@/app/components/auth/auth-modal';
 import PlaylistCardGrid from '@/app/components/library/playlist-card-grid';
 import PlaylistScrollSection from '@/app/components/library/playlist-scroll-section';
 import PlaylistCard from '@/app/components/library/playlist-card';
+import BoardScrollSection from '@/app/components/board-scroll/board-scroll-section';
+import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
 import styles from '@/app/components/library/library.module.css';
-import IconButton from '@mui/material/IconButton';
+import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module.css';
 
-const BOARD_OPTIONS = ['all', 'kilter', 'tension', 'moonboard'] as const;
+/**
+ * Find the UserBoard that best matches a board identified by type + layout + size.
+ */
+function findMatchingBoard(
+  boards: UserBoard[],
+  boardName: string | undefined,
+  layoutId: number | undefined,
+  sizeId: number | undefined,
+): UserBoard | null {
+  if (!boardName) return null;
+  return boards.find((b) =>
+    b.boardType === boardName &&
+    b.layoutId === layoutId &&
+    b.sizeId === sizeId,
+  ) ?? null;
+}
 
 type LibraryPageContentProps = {
-  boardFilter?: string;
+  /** When set, the page was rendered from a board route and this board is pre-selected. */
+  boardSlug?: string;
+  boardAngle?: number;
 };
 
-export default function LibraryPageContent({
-  boardFilter,
-}: LibraryPageContentProps) {
+export default function LibraryPageContent({ boardSlug, boardAngle: _boardAngle }: LibraryPageContentProps) {
   const { data: session, status: sessionStatus } = useSession();
   const { token, isLoading: tokenLoading } = useWsAuthToken();
   const router = useRouter();
   const isAuthenticated = sessionStatus === 'authenticated';
 
   const [hasMounted, setHasMounted] = useState(false);
-  const selectedBoard = boardFilter ?? 'all';
+  const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const defaultBoardAppliedRef = useRef(false);
+
+  // Fetch user's boards for the board selector
+  const { boards: myBoards, isLoading: boardsLoading } = useMyBoards(hasMounted);
+
+  // Get current session/queue board info to use as default selection (global route only)
+  const { boardDetails: currentBoardDetails, hasActiveQueue } = useQueueBridgeBoardInfo();
 
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  // Auto-select the matching board once boards finish loading
+  useEffect(() => {
+    if (defaultBoardAppliedRef.current || boardsLoading || myBoards.length === 0) return;
+
+    if (boardSlug) {
+      // Board route: match by slug
+      const match = myBoards.find((b) => b.slug === boardSlug);
+      if (match) {
+        setSelectedBoard(match);
+      }
+      defaultBoardAppliedRef.current = true;
+    } else {
+      // Global route: match from current session/queue board
+      // Wait if there's an active queue but board details haven't loaded yet
+      if (!currentBoardDetails && hasActiveQueue) return;
+
+      const match = findMatchingBoard(
+        myBoards,
+        currentBoardDetails?.board_name,
+        currentBoardDetails?.layout_id,
+        currentBoardDetails?.size_id,
+      );
+      if (match) {
+        setSelectedBoard(match);
+      }
+      defaultBoardAppliedRef.current = true;
+    }
+  }, [myBoards, boardsLoading, currentBoardDetails, hasActiveQueue, boardSlug]);
 
   // Data states
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -75,8 +131,9 @@ export default function LibraryPageContent({
       setPlaylistsLoading(true);
       setError(null);
 
-      const input: GetAllUserPlaylistsInput =
-        selectedBoard !== 'all' ? { boardType: selectedBoard } : {};
+      const input: GetAllUserPlaylistsInput = selectedBoard
+        ? { boardType: selectedBoard.boardType }
+        : {};
 
       const playlistsRes = await executeGraphQL<GetAllUserPlaylistsQueryResponse, { input: GetAllUserPlaylistsInput }>(
         GET_ALL_USER_PLAYLISTS,
@@ -93,28 +150,17 @@ export default function LibraryPageContent({
     }
   }, [selectedBoard, token, tokenLoading, isAuthenticated]);
 
-  // Fetch discover playlists (only when a specific board is selected)
+  // Fetch discover playlists (works for both "All" and specific board)
   const fetchDiscoverData = useCallback(async () => {
-    if (selectedBoard === 'all') {
-      setPopularPlaylists([]);
-      setRecentPlaylists([]);
-      setDiscoverLoading(false);
-      return;
-    }
-
-    const layoutId = getDefaultLayoutForBoard(selectedBoard);
-    if (!layoutId) {
-      setDiscoverLoading(false);
-      return;
-    }
-
     try {
       setDiscoverLoading(true);
 
       const baseInput: DiscoverPlaylistsInput = {
-        boardType: selectedBoard,
-        layoutId,
         pageSize: 10,
+        ...(selectedBoard && {
+          boardType: selectedBoard.boardType,
+          layoutId: selectedBoard.layoutId,
+        }),
       };
 
       const [popularRes, recentRes] = await Promise.all([
@@ -146,7 +192,7 @@ export default function LibraryPageContent({
   }, [fetchDiscoverData]);
 
   const getPlaylistUrl = useCallback((playlistUuid: string) => {
-    return `/my-library/playlist/${playlistUuid}`;
+    return `/playlists/${playlistUuid}`;
   }, []);
 
   // Filter discover playlists to exclude user's own
@@ -166,7 +212,27 @@ export default function LibraryPageContent({
     return filtered;
   }, [popularPlaylists, recentPlaylists, session?.user?.id]);
 
-  // Header with board filter pills
+  const handleBoardSelect = useCallback((board: UserBoard | null) => {
+    setSelectedBoard(board);
+
+    // When rendered from a board route, switching boards navigates to the correct URL
+    if (boardSlug) {
+      if (board) {
+        router.push(constructBoardSlugUrl(board.slug, board.angle, 'playlists'));
+      } else {
+        router.push('/playlists');
+      }
+    }
+  }, [boardSlug, router]);
+
+  const handleAllBoardsKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleBoardSelect(null);
+    }
+  }, [handleBoardSelect]);
+
+  // Header with back button
   const renderHeader = () => (
     <div className={styles.header}>
       <IconButton
@@ -177,17 +243,9 @@ export default function LibraryPageContent({
       >
         <ArrowBackOutlined />
       </IconButton>
-      <div className={styles.pillsScroll}>
-        {BOARD_OPTIONS.map((board) => (
-          <Link
-            key={board}
-            href={board === 'all' ? '/my-library/all' : `/my-library/${board}`}
-            className={`${styles.pill} ${selectedBoard === board ? styles.pillActive : ''}`}
-          >
-            {board === 'all' ? 'All' : board.charAt(0).toUpperCase() + board.slice(1)}
-          </Link>
-        ))}
-      </div>
+      <Typography variant="h6" component="h1" sx={{ fontWeight: 600 }}>
+        Playlists
+      </Typography>
     </div>
   );
 
@@ -214,13 +272,40 @@ export default function LibraryPageContent({
   const discoverItems = getDiscoverPlaylists();
 
   // Filter playlists by selected board
-  const filteredPlaylists = selectedBoard === 'all'
-    ? playlists
-    : playlists.filter((p) => p.boardType === selectedBoard);
+  const filteredPlaylists = selectedBoard
+    ? playlists.filter((p) => p.boardType === selectedBoard.boardType)
+    : playlists;
 
   return (
     <>
       {renderHeader()}
+
+      {/* Board Selector */}
+      <BoardScrollSection loading={boardsLoading && myBoards.length === 0} size="small">
+        <div
+          className={`${boardScrollStyles.cardScroll} ${boardScrollStyles.cardScrollSmall}`}
+          role="button"
+          tabIndex={0}
+          onClick={() => handleBoardSelect(null)}
+          onKeyDown={handleAllBoardsKeyDown}
+        >
+          <div className={`${boardScrollStyles.cardSquare} ${boardScrollStyles.filterSquare} ${!selectedBoard ? boardScrollStyles.cardSquareSelected : ''}`}>
+            <span className={boardScrollStyles.filterLabel}>All</span>
+          </div>
+          <div className={`${boardScrollStyles.cardName} ${!selectedBoard ? boardScrollStyles.cardNameSelected : ''}`}>
+            All Boards
+          </div>
+        </div>
+        {myBoards.map((board) => (
+          <BoardScrollCard
+            key={board.uuid}
+            userBoard={board}
+            size="small"
+            selected={selectedBoard?.uuid === board.uuid}
+            onClick={() => handleBoardSelect(board)}
+          />
+        ))}
+      </BoardScrollSection>
 
       {/* Sign-in banner for non-authenticated users */}
       {hasMounted && !isAuthenticated && sessionStatus !== 'loading' && (
@@ -247,8 +332,7 @@ export default function LibraryPageContent({
       {/* Authenticated: Recent Playlists Grid */}
       {isAuthenticated && (
         <PlaylistCardGrid
-          playlists={playlists}
-          selectedBoard={selectedBoard}
+          playlists={filteredPlaylists}
           getPlaylistUrl={getPlaylistUrl}
           loading={isLoading}
         />

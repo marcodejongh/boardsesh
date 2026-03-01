@@ -34,15 +34,20 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      // Redirect old board-scoped playlist routes to /my-library
+      // Redirect old playlist routes to /playlists
       {
-        source: '/:board/:layout/:size/:set/:angle/playlists',
-        destination: '/my-library',
+        source: '/my-library',
+        destination: '/playlists',
+        permanent: true,
+      },
+      {
+        source: '/my-library/:path*',
+        destination: '/playlists/:path*',
         permanent: true,
       },
       {
         source: '/:board/:layout/:size/:set/:angle/playlist/:uuid',
-        destination: '/my-library/playlist/:uuid',
+        destination: '/playlists/:uuid',
         permanent: true,
       },
     ];

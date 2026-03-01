@@ -21,47 +21,6 @@
   box-shadow: var(--shadow-sm);
 }
 
-.pillsScroll {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  flex: 1;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.pillsScroll::-webkit-scrollbar {
-  display: none;
-}
-
-.pill {
-  flex-shrink: 0;
-  padding: 6px 16px;
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 500;
-  border: 1px solid var(--neutral-200);
-  background-color: var(--neutral-50);
-  color: var(--neutral-500);
-  cursor: pointer;
-  transition: all 150ms ease;
-  white-space: nowrap;
-}
-
-.pill:hover {
-  background-color: var(--neutral-100);
-}
-
-.pillActive {
-  background-color: var(--semantic-selected);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.pillActive:hover {
-  background-color: var(--semantic-selectedHover);
-}
-
 /* Section Title */
 .sectionTitle {
   font-size: 20px;

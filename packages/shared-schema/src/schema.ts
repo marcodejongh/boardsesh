@@ -1019,10 +1019,10 @@ export const typeDefs = /* GraphQL */ `
   Input for discovering public playlists.
   """
   input DiscoverPlaylistsInput {
-    "Board type"
-    boardType: String!
-    "Layout ID"
-    layoutId: Int!
+    "Board type (optional — omit to discover across all boards)"
+    boardType: String
+    "Layout ID (optional — omit to discover across all layouts)"
+    layoutId: Int
     "Filter by name (partial match)"
     name: String
     "Filter by creator IDs"

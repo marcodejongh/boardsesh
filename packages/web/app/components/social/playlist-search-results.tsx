@@ -101,7 +101,7 @@ export default function PlaylistSearchResults({ query, authToken }: PlaylistSear
         {results.map((playlist) => (
           <Box
             key={playlist.uuid}
-            onClick={() => router.push(`/my-library/playlist/${playlist.uuid}`)}
+            onClick={() => router.push(`/playlists/${playlist.uuid}`)}
             sx={{
               p: 2,
               borderRadius: 2,

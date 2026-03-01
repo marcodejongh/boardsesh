@@ -229,7 +229,7 @@ export default function PlaylistDetailContent({
       );
 
       showMessage('Playlist deleted', 'success');
-      router.push('/my-library');
+      router.push('/playlists');
     } catch (err) {
       console.error('Error deleting playlist:', err);
       showMessage('Failed to delete playlist', 'error');
@@ -286,7 +286,7 @@ export default function PlaylistDetailContent({
     <>
       {/* Back Button */}
       <div className={styles.actionsSection}>
-        <BackButton fallbackUrl="/my-library" />
+        <BackButton fallbackUrl="/playlists" />
       </div>
 
       {/* Main Content */}
