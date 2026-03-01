@@ -278,7 +278,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   const [saving, setSaving] = useState(false);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
-  const [sessionCommentsOpen, setSessionCommentsOpen] = useState(true);
+  const [sessionCommentsOpen, setSessionCommentsOpen] = useState(false);
 
   const { boards: myBoards } = useMyBoards(true);
 
