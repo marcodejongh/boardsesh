@@ -56,8 +56,8 @@ vi.mock('@/app/components/charts/grade-distribution-bar', () => ({
 }));
 
 vi.mock('@/app/components/social/vote-button', () => ({
-  default: ({ entityType, entityId }: { entityType: string; entityId: string }) => (
-    <div data-testid="vote-button" data-entity-type={entityType} data-entity-id={entityId} />
+  default: ({ entityType, entityId, initialUpvotes }: { entityType: string; entityId: string; initialUpvotes?: number }) => (
+    <div data-testid="vote-button" data-entity-type={entityType} data-entity-id={entityId} data-initial-upvotes={initialUpvotes ?? 0} />
   ),
 }));
 
@@ -269,7 +269,7 @@ describe('SessionDetailContent', () => {
     expect(screen.getByText('Hardest: V8')).toBeTruthy();
   });
 
-  it('renders per-tick VoteButton with tick entity type for single-user sessions', () => {
+  it('renders per-tick VoteButton with tick entity type and SSR upvotes', () => {
     render(<SessionDetailContent session={makeSession()} />);
     const voteButtons = screen.getAllByTestId('vote-button');
     const tickVote = voteButtons.find(
@@ -277,6 +277,7 @@ describe('SessionDetailContent', () => {
     );
     expect(tickVote).toBeTruthy();
     expect(tickVote!.getAttribute('data-entity-id')).toBe('tick-1');
+    expect(tickVote!.getAttribute('data-initial-upvotes')).toBe('3');
   });
 
   it('renders tick status details for single-user sessions', () => {
