@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import Box from '@mui/material/Box';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
@@ -16,6 +16,7 @@ import type { SessionFeedResult } from '@boardsesh/shared-schema';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import { useMyBoards } from '@/app/hooks/use-my-boards';
 import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module.css';
+import UnifiedSearchDrawer from '@/app/components/search-drawer/unified-search-drawer';
 
 type FeedTab = 'sessions' | 'proposals' | 'comments';
 const VALID_TABS: FeedTab[] = ['sessions', 'proposals', 'comments'];
@@ -49,6 +50,7 @@ export default function HomePageContent({
     ? (tabParam as FeedTab)
     : initialTab;
   const selectedBoardUuid = searchParams.get('board') || initialBoardUuid || null;
+  const [findClimbersOpen, setFindClimbersOpen] = useState(false);
 
   // Helper: update a URL param via shallow navigation
   const updateParam = useCallback((key: string, value: string | null) => {
@@ -124,6 +126,7 @@ export default function HomePageContent({
             isAuthenticated={isAuthenticated}
             boardUuid={selectedBoardUuid}
             initialFeedResult={initialFeedResult}
+            onFindClimbers={() => setFindClimbersOpen(true)}
           />
         )}
 
@@ -141,6 +144,12 @@ export default function HomePageContent({
           />
         )}
       </Box>
+
+      <UnifiedSearchDrawer
+        open={findClimbersOpen}
+        onClose={() => setFindClimbersOpen(false)}
+        defaultCategory="users"
+      />
     </Box>
   );
 }

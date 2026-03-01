@@ -491,7 +491,7 @@ export default function SessionDetailContent({ session: initialSession }: Sessio
   const noopLoadMore = useCallback(() => {}, []);
 
   return (
-    <Box sx={{ minHeight: '100dvh', pb: '60px' }}>
+    <Box sx={{ minHeight: '100dvh', pb: '60px', pt: 'var(--global-header-height)' }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderBottom: `1px solid ${themeTokens.neutral[200]}` }}>
         <IconButton component={Link} href="/" size="small">

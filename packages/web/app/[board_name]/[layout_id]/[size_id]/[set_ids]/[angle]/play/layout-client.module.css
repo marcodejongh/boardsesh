@@ -20,8 +20,8 @@
 .sider {
   position: fixed !important;
   right: 0;
-  top: 8vh; /* Below the header */
-  height: calc(92vh - 64px); /* Full height minus header and queue bar */
+  top: var(--global-header-height);
+  height: calc(100dvh - var(--global-header-height) - 64px);
   overflow-y: auto;
   background: var(--semantic-surface);
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
