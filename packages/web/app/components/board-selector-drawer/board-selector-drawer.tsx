@@ -191,6 +191,12 @@ export default function BoardSelectorDrawer({
   const handleSavedConfigSelect = useCallback(
     (config: StoredBoardConfig) => {
       const angle = config.angle || 40;
+      const layouts = boardConfigs.layouts[config.board] || [];
+      const sizes = boardConfigs.sizes[`${config.board}-${config.layoutId}`] || [];
+      const configSets = boardConfigs.sets[`${config.board}-${config.layoutId}-${config.sizeId}`] || [];
+      const layout = layouts.find((l) => l.id === config.layoutId);
+      const size = sizes.find((s) => s.id === config.sizeId);
+      const setNames = configSets.filter((s) => config.setIds.includes(s.id)).map((s) => s.name);
 
       // Check if this saved config matches a server board with a slug
       const configSetIdsSorted = [...config.setIds].sort().join(',');
@@ -204,16 +210,9 @@ export default function BoardSelectorDrawer({
 
       if (matchingServerBoard) {
         const url = constructBoardSlugListUrl(matchingServerBoard.slug, angle);
-        handleSelectBoard(url, config.board, '', '', undefined, [], angle, config);
+        handleSelectBoard(url, config.board, layout?.name ?? '', size?.name ?? '', size?.description, setNames, angle, config);
         return;
       }
-
-      const layouts = boardConfigs.layouts[config.board] || [];
-      const sizes = boardConfigs.sizes[`${config.board}-${config.layoutId}`] || [];
-      const configSets = boardConfigs.sets[`${config.board}-${config.layoutId}-${config.sizeId}`] || [];
-      const layout = layouts.find((l) => l.id === config.layoutId);
-      const size = sizes.find((s) => s.id === config.sizeId);
-      const setNames = configSets.filter((s) => config.setIds.includes(s.id)).map((s) => s.name);
 
       if (layout && size && setNames.length > 0) {
         const url = constructClimbListWithSlugs(config.board, layout.name, size.name, size.description, setNames, angle);
