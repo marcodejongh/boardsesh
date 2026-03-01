@@ -18,7 +18,7 @@ import { useFavorite } from '../climb-actions';
 import { useSwipeActions } from '@/app/hooks/use-swipe-actions';
 import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getSoftGradeColor, getGradeTintColor, extractVGrade } from '@/app/lib/grade-colors';
+import { getSoftGradeColor, getGradeTintColor, formatVGrade } from '@/app/lib/grade-colors';
 import { useIsDarkMode } from '@/app/hooks/use-is-dark-mode';
 import { getExcludedClimbActions } from '@/app/lib/climb-action-utils';
 
@@ -60,7 +60,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     disabled: disableSwipe,
   });
 
-  const vGrade = extractVGrade(climb.difficulty);
+  const vGrade = formatVGrade(climb.difficulty);
   const gradeColor = getSoftGradeColor(climb.difficulty, isDark);
   const hasQuality = climb.quality_average && climb.quality_average !== '0';
 

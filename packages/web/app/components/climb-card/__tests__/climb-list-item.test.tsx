@@ -43,7 +43,7 @@ vi.mock('@/app/lib/hooks/use-double-tap', () => ({
 vi.mock('@/app/lib/grade-colors', () => ({
   getSoftGradeColor: () => '#888',
   getGradeTintColor: () => null,
-  extractVGrade: (d: string) => (d.startsWith('V') ? d : null),
+  formatVGrade: (d: string) => (d.startsWith('V') ? d : null),
 }));
 
 vi.mock('@/app/lib/climb-action-utils', () => ({

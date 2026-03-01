@@ -47,6 +47,10 @@ vi.mock('@/app/theme/theme-config', () => ({
   },
 }));
 
+vi.mock('@/app/lib/grade-colors', () => ({
+  formatVGrade: (g: string | null | undefined) => g ?? null,
+}));
+
 vi.mock('../[sessionId]/user-search-dialog', () => ({
   default: () => null,
 }));
@@ -211,8 +215,22 @@ describe('SessionDetailContent', () => {
     expect(sessionVote!.getAttribute('data-entity-id')).toBe('session-1');
   });
 
-  it('renders session-level CommentSection expanded by default', () => {
+  it('renders session-level CommentSection collapsed by default', () => {
     render(<SessionDetailContent session={makeSession()} />);
+    // Session comments should be collapsed by default
+    const commentSections = screen.queryAllByTestId('comment-section');
+    const sessionComment = commentSections.find(
+      (el) => el.getAttribute('data-entity-type') === 'session',
+    );
+    expect(sessionComment).toBeFalsy();
+  });
+
+  it('expands session-level CommentSection when comment button is clicked', () => {
+    render(<SessionDetailContent session={makeSession()} />);
+
+    fireEvent.click(screen.getByTestId('session-comment-toggle'));
+
+    // After clicking, the session comment section should be visible
     const commentSections = screen.getAllByTestId('comment-section');
     const sessionComment = commentSections.find(
       (el) => el.getAttribute('data-entity-type') === 'session',
@@ -390,8 +408,8 @@ describe('SessionDetailContent', () => {
 
   it('tick comment section is hidden by default', () => {
     render(<SessionDetailContent session={makeSession()} />);
-    // By default, tick comment sections should not be visible (only session-level is expanded)
-    const allCommentSections = screen.getAllByTestId('comment-section');
+    // By default, all comment sections (both session and tick) should be collapsed
+    const allCommentSections = screen.queryAllByTestId('comment-section');
     const tickCommentSections = allCommentSections.filter(
       (el) => el.getAttribute('data-entity-type') === 'tick',
     );
@@ -410,22 +428,21 @@ describe('SessionDetailContent', () => {
     expect(tickCommentButtons.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('session comment section renders below the vote button row', () => {
-    const { container } = render(<SessionDetailContent session={makeSession()} />);
+  it('session comment section renders below the vote button row when expanded', () => {
+    render(<SessionDetailContent session={makeSession()} />);
+
+    // Expand session comments by clicking the toggle button
+    const sessionCommentToggle = screen.getByTestId('session-comment-toggle');
+    fireEvent.click(sessionCommentToggle);
+
     // Session-level CommentSection should be a sibling of the vote/comment button row, not nested inside it
     const sessionCommentSection = screen.getAllByTestId('comment-section').find(
       (el) => el.getAttribute('data-entity-type') === 'session',
     );
     expect(sessionCommentSection).toBeTruthy();
-    // The comment section should NOT be inside the flex row that contains the vote button
-    const sessionVoteButton = screen.getAllByTestId('vote-button').find(
-      (el) => el.getAttribute('data-entity-type') === 'session',
-    );
-    expect(sessionVoteButton).toBeTruthy();
-    // The vote button's parent flex row should NOT contain the comment section
-    const voteParentRow = sessionVoteButton!.parentElement;
-    expect(voteParentRow).toBeTruthy();
-    expect(voteParentRow!.contains(sessionCommentSection!)).toBe(false);
+    // The toggle button's parent flex row should NOT contain the comment section
+    const buttonRow = sessionCommentToggle.parentElement!;
+    expect(buttonRow.contains(sessionCommentSection!)).toBe(false);
   });
 
   it('displays comment count on session comment toggle button', () => {
