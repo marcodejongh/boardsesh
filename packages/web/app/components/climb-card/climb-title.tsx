@@ -197,7 +197,7 @@ const ClimbTitle: React.FC<ClimbTitleProps> = ({
         {/* Left: Name + subtitle */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
           {/* Row 1: Name with addon */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px` }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: `${themeTokens.spacing[2]}px`, minWidth: 0 }}>
             {nameElement}
             {nameAddon}
           </Box>
