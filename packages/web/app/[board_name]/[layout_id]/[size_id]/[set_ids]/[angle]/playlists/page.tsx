@@ -17,13 +17,13 @@ export default async function PlaylistsPage(props: { params: Promise<BoardRouteP
   const params = await props.params;
 
   try {
-    const parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    // Validate route params (throws if invalid board/layout/size/set combination)
+    await parseBoardRouteParamsWithSlugs(params);
     const playlistsBasePath = `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/playlists`;
 
     return (
       <div className={styles.pageContainer}>
         <LibraryPageContent
-          boardAngle={parsedParams.angle}
           playlistsBasePath={playlistsBasePath}
         />
       </div>

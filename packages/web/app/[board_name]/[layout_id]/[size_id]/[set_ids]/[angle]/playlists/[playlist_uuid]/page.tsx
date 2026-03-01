@@ -21,6 +21,7 @@ export default async function PlaylistDetailPage(props: {
   const params = await props.params;
 
   try {
+    // Validate route params (throws if invalid board/layout/size/set combination)
     await parseBoardRouteParamsWithSlugs(params);
     const playlistsBasePath = `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/playlists`;
 

@@ -16,6 +16,9 @@ import {
   isUuidOnly,
   isNumericId,
   getBaseBoardPath,
+  getPlaylistsBasePath,
+  getContextAwarePlaylistUrl,
+  constructBoardSlugPlaylistsUrl,
   DEFAULT_SEARCH_PARAMS
 } from '../url-utils';
 
@@ -965,5 +968,117 @@ describe('Tension board URL slug symmetry', () => {
       expect(generateSizeSlug('Custom Size', 'Full Ride LED Kit'))
         .toBe(generateMatchSlug('Custom Size', 'Full Ride LED Kit'));
     });
+  });
+});
+
+describe('constructBoardSlugPlaylistsUrl', () => {
+  it('should construct playlists URL from slug and angle', () => {
+    expect(constructBoardSlugPlaylistsUrl('my-kilter', 40)).toBe('/b/my-kilter/40/playlists');
+  });
+
+  it('should handle angle 0', () => {
+    expect(constructBoardSlugPlaylistsUrl('my-board', 0)).toBe('/b/my-board/0/playlists');
+  });
+});
+
+describe('getPlaylistsBasePath', () => {
+  describe('board slug routes (/b/...)', () => {
+    it('should extract base path from /b/{slug}/{angle}/playlists', () => {
+      expect(getPlaylistsBasePath('/b/my-kilter/40/playlists')).toBe('/b/my-kilter/40/playlists');
+    });
+
+    it('should extract base path from /b/{slug}/{angle}/playlists/{uuid}', () => {
+      expect(getPlaylistsBasePath('/b/my-kilter/40/playlists/ABC123')).toBe('/b/my-kilter/40/playlists');
+    });
+
+    it('should extract base path from /b/{slug}/{angle}/list', () => {
+      expect(getPlaylistsBasePath('/b/my-kilter/40/list')).toBe('/b/my-kilter/40/playlists');
+    });
+
+    it('should extract base path from /b/{slug}/{angle}/play/{uuid}', () => {
+      expect(getPlaylistsBasePath('/b/my-kilter/40/play/abc-123')).toBe('/b/my-kilter/40/playlists');
+    });
+
+    it('should handle slug with hyphens', () => {
+      expect(getPlaylistsBasePath('/b/my-home-board/45/list')).toBe('/b/my-home-board/45/playlists');
+    });
+  });
+
+  describe('old-style routes (/{board}/{layout}/{size}/{sets}/{angle}/...)', () => {
+    it('should extract base path from old-style playlists URL', () => {
+      expect(getPlaylistsBasePath('/kilter/original/12x12/default/45/playlists'))
+        .toBe('/kilter/original/12x12/default/45/playlists');
+    });
+
+    it('should extract base path from old-style playlist detail URL', () => {
+      expect(getPlaylistsBasePath('/kilter/original/12x12/default/45/playlists/ABC123'))
+        .toBe('/kilter/original/12x12/default/45/playlists');
+    });
+
+    it('should extract base path from old-style list URL', () => {
+      expect(getPlaylistsBasePath('/kilter/original/12x12/default/45/list'))
+        .toBe('/kilter/original/12x12/default/45/playlists');
+    });
+
+    it('should work for tension board', () => {
+      expect(getPlaylistsBasePath('/tension/original/full-wall/screw_bolt/35/list'))
+        .toBe('/tension/original/full-wall/screw_bolt/35/playlists');
+    });
+
+    it('should work for moonboard', () => {
+      expect(getPlaylistsBasePath('/moonboard/mini/default/holds/25/list'))
+        .toBe('/moonboard/mini/default/holds/25/playlists');
+    });
+
+    it('should not match non-board first segments', () => {
+      expect(getPlaylistsBasePath('/playlists/some/extra/path/segments')).toBe('/playlists');
+      expect(getPlaylistsBasePath('/settings/board/config/stuff/more')).toBe('/playlists');
+    });
+  });
+
+  describe('global routes', () => {
+    it('should return /playlists for /playlists', () => {
+      expect(getPlaylistsBasePath('/playlists')).toBe('/playlists');
+    });
+
+    it('should return /playlists for /playlists/{uuid}', () => {
+      expect(getPlaylistsBasePath('/playlists/ABC123')).toBe('/playlists');
+    });
+
+    it('should return /playlists for root', () => {
+      expect(getPlaylistsBasePath('/')).toBe('/playlists');
+    });
+
+    it('should return /playlists for unrelated paths', () => {
+      expect(getPlaylistsBasePath('/notifications')).toBe('/playlists');
+      expect(getPlaylistsBasePath('/settings')).toBe('/playlists');
+    });
+  });
+});
+
+describe('getContextAwarePlaylistUrl', () => {
+  it('should build board-slug scoped URL when on a /b/ route', () => {
+    expect(getContextAwarePlaylistUrl('/b/my-kilter/40/playlists', 'ABC123'))
+      .toBe('/b/my-kilter/40/playlists/ABC123');
+  });
+
+  it('should build board-slug scoped URL when on /b/ list route', () => {
+    expect(getContextAwarePlaylistUrl('/b/my-kilter/40/list', 'ABC123'))
+      .toBe('/b/my-kilter/40/playlists/ABC123');
+  });
+
+  it('should build old-style scoped URL when on an old-style route', () => {
+    expect(getContextAwarePlaylistUrl('/kilter/original/12x12/default/45/list', 'ABC123'))
+      .toBe('/kilter/original/12x12/default/45/playlists/ABC123');
+  });
+
+  it('should build global URL when on a non-board route', () => {
+    expect(getContextAwarePlaylistUrl('/playlists', 'ABC123'))
+      .toBe('/playlists/ABC123');
+  });
+
+  it('should build global URL when on root', () => {
+    expect(getContextAwarePlaylistUrl('/', 'ABC123'))
+      .toBe('/playlists/ABC123');
   });
 });

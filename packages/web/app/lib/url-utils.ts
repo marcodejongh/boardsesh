@@ -6,6 +6,7 @@ import {
   SearchRequestPagination,
   ClimbUuid,
   BoardDetails,
+  BoardName,
 } from '@/app/lib/types';
 import { BOARD_NAME_PREFIX_REGEX } from '@/app/lib/board-constants';
 import { PAGE_LIMIT } from '../components/board-page/constants';
@@ -596,7 +597,7 @@ export const getPlaylistsBasePath = (pathname: string): string => {
   const oldStyleMatch = pathname.match(/^\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)/);
   if (oldStyleMatch) {
     const [, boardName] = oldStyleMatch;
-    const validBoardNames = ['kilter', 'tension', 'moonboard'];
+    const validBoardNames: readonly string[] = ['kilter', 'tension', 'moonboard'] satisfies readonly BoardName[];
     if (validBoardNames.includes(boardName)) {
       return `/${oldStyleMatch.slice(1, 6).join('/')}/playlists`;
     }

@@ -29,7 +29,6 @@ export default async function BoardSlugPlaylistsPage(props: PlaylistsPageProps) 
     <div className={styles.pageContainer}>
       <LibraryPageContent
         boardSlug={params.board_slug}
-        boardAngle={Number(params.angle)}
         playlistsBasePath={constructBoardSlugPlaylistsUrl(params.board_slug, Number(params.angle))}
       />
     </div>
