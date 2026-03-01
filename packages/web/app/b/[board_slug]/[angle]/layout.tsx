@@ -67,6 +67,7 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
         sizeDescription={boardDetails.size_description}
         setNames={boardDetails.set_names || []}
         angle={angle}
+        boardSlug={board.slug}
       />
       <BoardProvider boardName={parsedParams.board_name}>
         <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>

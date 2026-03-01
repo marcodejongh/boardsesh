@@ -11,6 +11,7 @@ export interface LastUsedBoardData {
   sizeDescription?: string;
   setNames: string[];
   angle: number;
+  boardSlug?: string;
 }
 
 let migrationDone = false;
