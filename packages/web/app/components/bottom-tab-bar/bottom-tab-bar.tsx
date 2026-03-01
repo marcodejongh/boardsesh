@@ -168,12 +168,10 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
       }
     }
 
-    // Try getLastUsedBoard() as final fallback
+    // Final fallback for isOnBoardPage case where listUrl is null
     if (!url) {
       const lastUsed = await getLastUsedBoard();
-      if (lastUsed?.url) {
-        url = lastUsed.url;
-      }
+      url = lastUsed?.url ?? null;
     }
 
     // Open board selector drawer if no board context
