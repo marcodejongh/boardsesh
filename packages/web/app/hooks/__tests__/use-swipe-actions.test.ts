@@ -389,4 +389,44 @@ describe('useSwipeActions', () => {
     expect(options.onSwipeLeft).toHaveBeenCalledTimes(1);
     expect(options.onSwipeLeftLong).not.toHaveBeenCalled();
   });
+
+  it('emits swipe zone changes when crossing long-right threshold', () => {
+    const onSwipeZoneChange = vi.fn();
+    const options = {
+      ...createDefaultOptions(),
+      onSwipeRightLong: vi.fn(),
+      longSwipeRightThreshold: 150,
+      maxSwipe: 180,
+      onSwipeZoneChange,
+    };
+    renderHook(() => useSwipeActions(options));
+
+    mockIsHorizontalRef.current = true;
+    mockDetect.mockReturnValue(true);
+
+    act(() => {
+      capturedSwipeableConfig.onSwiping({
+        deltaX: 110,
+        deltaY: 0,
+        event: { nativeEvent: { preventDefault: vi.fn() } },
+      });
+    });
+
+    act(() => {
+      capturedSwipeableConfig.onSwiping({
+        deltaX: 160,
+        deltaY: 0,
+        event: { nativeEvent: { preventDefault: vi.fn() } },
+      });
+    });
+
+    act(() => {
+      capturedSwipeableConfig.onSwipedRight({ deltaX: 160 });
+    });
+
+    expect(onSwipeZoneChange).toHaveBeenCalledWith('right-short');
+    expect(onSwipeZoneChange).toHaveBeenCalledWith('right-long');
+    expect(onSwipeZoneChange).toHaveBeenCalledWith('none');
+    expect(options.onSwipeRightLong).toHaveBeenCalledTimes(1);
+  });
 });

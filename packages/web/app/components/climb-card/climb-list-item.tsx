@@ -8,6 +8,7 @@ import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined';
 import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
 import Favorite from '@mui/icons-material/Favorite';
 import AddOutlined from '@mui/icons-material/AddOutlined';
+import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import ClimbThumbnail from './climb-thumbnail';
 import ClimbTitle from './climb-title';
@@ -43,6 +44,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   const isDark = useIsDarkMode();
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
+  const [rightSwipeMode, setRightSwipeMode] = useState<'favorite' | 'playlist'>('favorite');
   const queueContext = useOptionalQueueContext();
   const addToQueue = queueContext?.addToQueue;
   const { isFavorited, toggleFavorite } = useFavorite({ climbUuid: climb.uuid });
@@ -64,10 +66,19 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     toggleFavorite();
   }, [toggleFavorite]);
 
+  const handleSwipeZoneChange = useCallback((zone: 'none' | 'left-short' | 'left-long' | 'right-short' | 'right-long') => {
+    if (zone === 'right-long') {
+      setRightSwipeMode('playlist');
+      return;
+    }
+    setRightSwipeMode('favorite');
+  }, []);
+
   const { swipeHandlers, contentRef, leftActionRef, rightActionRef } = useSwipeActions({
     onSwipeLeft: handleSwipeLeft,
     onSwipeRight: handleSwipeRight,
     onSwipeRightLong: handleSwipeRightLong,
+    onSwipeZoneChange: handleSwipeZoneChange,
     swipeThreshold: 90,
     longSwipeRightThreshold: 150,
     maxSwipe: 180,
@@ -93,7 +104,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       top: 0,
       bottom: 0,
       width: MAX_SWIPE,
-      backgroundColor: themeTokens.colors.error,
+      backgroundColor: rightSwipeMode === 'playlist' ? themeTokens.colors.primary : themeTokens.colors.error,
       display: 'flex' as const,
       alignItems: 'center' as const,
       justifyContent: 'flex-start' as const,
@@ -101,7 +112,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       opacity: 0,
       visibility: 'hidden' as const,
     }),
-    [],
+    [rightSwipeMode],
   );
 
   const rightActionStyle = useMemo(
@@ -178,9 +189,9 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
               style={leftActionStyle}
             >
               {isFavorited ? (
-                <Favorite style={iconStyle} />
+                rightSwipeMode === 'playlist' ? <LocalOfferOutlined style={iconStyle} /> : <Favorite style={iconStyle} />
               ) : (
-                <FavoriteBorderOutlined style={iconStyle} />
+                rightSwipeMode === 'playlist' ? <LocalOfferOutlined style={iconStyle} /> : <FavoriteBorderOutlined style={iconStyle} />
               )}
             </div>
 
