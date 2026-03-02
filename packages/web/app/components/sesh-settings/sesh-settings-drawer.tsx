@@ -53,16 +53,8 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
 
   const handleStopSession = useCallback(() => {
     endSessionWithSummary();
-
-    // Remove session from URL if on a board route
-    if (pathname.includes('session=')) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('session');
-      router.replace(url.pathname + (url.search || ''), { scroll: false });
-    }
-
     onClose();
-  }, [endSessionWithSummary, pathname, router, onClose]);
+  }, [endSessionWithSummary, onClose]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['activeSessionDetail', sessionId],
@@ -71,7 +63,7 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
       return client.request<GetSessionDetailQueryResponse>(GET_SESSION_DETAIL, { sessionId });
     },
     enabled: open && !!sessionId,
-    staleTime: 0,
+    staleTime: 5000,
     refetchOnWindowFocus: false,
   });
 

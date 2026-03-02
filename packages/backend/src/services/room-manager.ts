@@ -74,6 +74,7 @@ class RoomManager {
   private readonly RETRY_BASE_DELAY = 1000; // 1 second
   private writeRetryAttempts: Map<string, number> = new Map();
   private retryTimers: Map<string, NodeJS.Timeout> = new Map();
+  private pendingJoinPersists = new Map<string, Promise<void>>();
 
   /**
    * Reset all state (for testing purposes)
@@ -103,6 +104,9 @@ class RoomManager {
       clearTimeout(timer);
     }
     this.retryTimers.clear();
+
+    // Clear pending join persist promises
+    this.pendingJoinPersists.clear();
 
     // Reset the distributed state singleton so initialize() creates a fresh one
     forceResetDistributedState();
@@ -377,9 +381,12 @@ class RoomManager {
     // Await status update so callers see consistent Postgres state after join returns.
     await db.update(sessions).set({ status: 'active', lastActivity: new Date() }).where(eq(sessions.id, sessionId));
 
-    // Fire-and-forget Postgres metadata writes - Redis is the source of truth.
-    this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined)
-      .catch(err => console.warn(`[RoomManager] Background Postgres persist failed for session ${sessionId}:`, err));
+    // Background Postgres metadata writes - Redis is the source of truth.
+    // Track the promise so endSession/leaveSession can await it before updating status.
+    const persistPromise = this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined)
+      .catch(err => console.warn(`[RoomManager] Background Postgres persist failed for session ${sessionId}:`, err))
+      .finally(() => this.pendingJoinPersists.delete(sessionId));
+    this.pendingJoinPersists.set(sessionId, persistPromise);
 
     // Initialize queue state for new sessions with provided initial queue
     if (isNewSession && initialQueue && initialQueue.length > 0) {
@@ -471,6 +478,12 @@ class RoomManager {
             await this.redisStore.saveUsers(sessionId, []);
           }
           console.log(`[RoomManager] Session ${sessionId} marked inactive - grace period started (60s)`);
+        }
+
+        // Await any pending join persist to ensure the session row exists before updating status
+        const pendingJoinForLeave = this.pendingJoinPersists.get(sessionId);
+        if (pendingJoinForLeave) {
+          await pendingJoinForLeave;
         }
 
         // Update Postgres status to 'inactive' (keep queue state for recovery)
@@ -1400,6 +1413,12 @@ class RoomManager {
     if (graceTimer) {
       clearTimeout(graceTimer);
       this.sessionGraceTimers.delete(sessionId);
+    }
+
+    // Await any pending join persist to ensure the session row exists before updating status
+    const pendingJoin = this.pendingJoinPersists.get(sessionId);
+    if (pendingJoin) {
+      await pendingJoin;
     }
 
     // Remove from Redis
