@@ -32,6 +32,7 @@ import { BoardConfigData } from '@/app/lib/server-board-configs';
 import { useUnreadNotificationCount } from '@/app/hooks/use-unread-notification-count';
 import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
 import type { StoredBoardConfig } from '@/app/lib/saved-boards-db';
+import { isValidHexColor } from '@/app/lib/color-utils';
 
 type Tab = 'home' | 'climbs' | 'library' | 'create' | 'notifications';
 type PendingCreateAction = 'climb' | 'playlist' | null;
@@ -47,11 +48,6 @@ interface SelectedBoardContext {
   layoutId: number;
   angle: number;
 }
-
-// Validate hex color format
-const isValidHexColor = (color: string): boolean => {
-  return /^#([0-9A-Fa-f]{3}){1,2}$/.test(color);
-};
 
 const getActiveTab = (pathname: string): Tab => {
   if (pathname === '/') return 'home';

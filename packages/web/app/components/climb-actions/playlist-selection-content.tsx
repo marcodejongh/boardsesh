@@ -18,6 +18,7 @@ import type { Playlist } from './playlists-batch-context';
 import type { BoardDetails } from '@/app/lib/types';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useSnackbar } from '../providers/snackbar-provider';
+import { isValidHexColor } from '@/app/lib/color-utils';
 
 interface PlaylistSelectionContentProps {
   climbUuid: string;
@@ -25,11 +26,6 @@ interface PlaylistSelectionContentProps {
   angle: number;
   onDone?: () => void;
 }
-
-// Validate hex color format to prevent CSS injection
-const isValidHexColor = (color: string): boolean => {
-  return /^#([0-9A-Fa-f]{3}){1,2}$/.test(color);
-};
 
 export default function PlaylistSelectionContent({
   climbUuid,

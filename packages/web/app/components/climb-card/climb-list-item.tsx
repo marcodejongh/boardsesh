@@ -25,9 +25,10 @@ import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useIsDarkMode } from '@/app/hooks/use-is-dark-mode';
 import { getExcludedClimbActions } from '@/app/lib/climb-action-utils';
 
-// Maximum swipe distance
-const MAX_SWIPE = 120;
-const LONG_SWIPE_ACTION_WIDTH = 176;
+// Keep swipe visuals aligned with gesture max distance
+const MAX_GESTURE_SWIPE = 180;
+const SHORT_ACTION_WIDTH = 120;
+const LONG_SWIPE_ACTION_WIDTH = MAX_GESTURE_SWIPE;
 const SHORT_RIGHT_SWIPE_THRESHOLD = 90;
 const LONG_RIGHT_SWIPE_THRESHOLD = 150;
 
@@ -76,7 +77,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     onSwipeOffsetChange: (offset) => setRightSwipeOffset(offset > 0 ? offset : 0),
     swipeThreshold: SHORT_RIGHT_SWIPE_THRESHOLD,
     longSwipeRightThreshold: LONG_RIGHT_SWIPE_THRESHOLD,
-    maxSwipe: 180,
+    maxSwipe: MAX_GESTURE_SWIPE,
     disabled: disableSwipe,
   });
 
@@ -119,7 +120,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       left: 0,
       top: 0,
       bottom: 0,
-      width: MAX_SWIPE + ((LONG_SWIPE_ACTION_WIDTH - MAX_SWIPE) * longSwipeBlend),
+      width: SHORT_ACTION_WIDTH + ((LONG_SWIPE_ACTION_WIDTH - SHORT_ACTION_WIDTH) * longSwipeBlend),
       display: 'flex' as const,
       alignItems: 'center' as const,
       justifyContent: 'flex-start' as const,
@@ -168,7 +169,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       right: 0,
       top: 0,
       bottom: 0,
-      width: MAX_SWIPE,
+      width: MAX_GESTURE_SWIPE,
       backgroundColor: themeTokens.colors.primary,
       display: 'flex' as const,
       alignItems: 'center' as const,
