@@ -395,7 +395,9 @@ export class DistributedStateManager {
   private readonly instanceId: string;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private consecutiveHeartbeatFailures = 0;
+  private heartbeatCount = 0;
   private readonly maxHeartbeatFailures = 5;
+  private readonly cleanupEveryNHeartbeats = 4; // Every 4th heartbeat = ~2 minutes
   private isHealthy = true;
 
   constructor(
@@ -460,6 +462,14 @@ export class DistributedStateManager {
       if (!this.isHealthy) {
         console.log('[DistributedState] Redis connection restored, marking as healthy');
         this.isHealthy = true;
+      }
+
+      // Piggyback dead instance cleanup on every Nth heartbeat (~2 min)
+      this.heartbeatCount++;
+      if (this.heartbeatCount % this.cleanupEveryNHeartbeats === 0) {
+        this.cleanupDeadInstanceConnections().catch((err) => {
+          console.error('[DistributedState] Periodic dead instance cleanup failed:', err);
+        });
       }
     } catch (err) {
       this.consecutiveHeartbeatFailures++;
