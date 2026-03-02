@@ -616,12 +616,18 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           variables,
         });
 
-        // Clear pending queue after successful send
+        const joinedSession = response?.joinSession;
+        if (!joinedSession) {
+          console.error('[PersistentSession] JoinSession returned no session payload');
+          return null;
+        }
+
+        // Clear pending queue only after confirmed successful join payload
         if (initialQueueData) {
           setPendingInitialQueue(null);
         }
 
-        return response.joinSession;
+        return joinedSession;
       } catch (err) {
         console.error('[PersistentSession] JoinSession failed:', err);
         return null;
@@ -664,11 +670,16 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
               variables: { sessionId, sinceSequence: lastSeq },
             });
 
-            if (response.eventsReplay.events.length > 0) {
-              if (DEBUG) console.log(`[PersistentSession] Replaying ${response.eventsReplay.events.length} events`);
+            const replay = response?.eventsReplay;
+            if (!replay) {
+              throw new Error('eventsReplay payload missing');
+            }
+
+            if (replay.events.length > 0) {
+              if (DEBUG) console.log(`[PersistentSession] Replaying ${replay.events.length} events`);
 
               // Apply each event in order (transform from server to subscription format)
-              response.eventsReplay.events.forEach(event => {
+              replay.events.forEach(event => {
                 handleQueueEvent(transformToSubscriptionEvent(event));
               });
 

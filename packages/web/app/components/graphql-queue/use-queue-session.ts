@@ -163,7 +163,12 @@ export function useQueueSession({
           query: JOIN_SESSION,
           variables: { sessionId, boardPath, username, avatarUrl },
         });
-        return response.joinSession;
+        const joinedSession = response?.joinSession;
+        if (!joinedSession) {
+          console.error('[QueueSession] JoinSession returned no session payload');
+          return null;
+        }
+        return joinedSession;
       } catch (err) {
         console.error('[QueueSession] JoinSession failed:', err);
         return null;
@@ -223,7 +228,10 @@ export function useQueueSession({
           return;
         }
 
-        const sessionData = response.joinSession;
+        const sessionData = response?.joinSession;
+        if (!sessionData) {
+          throw new Error('JoinSession returned no session payload');
+        }
         if (DEBUG) console.log('[QueueSession] Joined session, clientId:', sessionData.clientId, 'isLeader:', sessionData.isLeader);
 
         setSession(sessionData);

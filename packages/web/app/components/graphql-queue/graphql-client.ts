@@ -118,7 +118,7 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
   if (DEBUG) console.log(`[GraphQL] execute START: ${opName}`);
 
   const executionPromise = new Promise<TData>((resolve, reject) => {
-    let result: TData;
+    let result: TData | undefined;
     let hasResolved = false;
 
     const unsubscribe = client.subscribe<TData>(
@@ -126,8 +126,9 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
       {
         next: (data) => {
           if (DEBUG) console.log(`[GraphQL] execute NEXT: ${opName}`, data.data ? 'has data' : 'no data', data.errors ? 'has errors' : 'no errors');
-          if (data.data) {
-            result = data.data;
+          // GraphQL can return null data values; keep the latest payload when present.
+          if ('data' in data) {
+            result = data.data as TData;
           }
           if (data.errors) {
             if (!hasResolved) {
@@ -150,6 +151,10 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
           if (!hasResolved) {
             hasResolved = true;
             unsubscribe();
+            if (result === undefined) {
+              reject(new Error(`GraphQL operation '${opName}' completed without data`));
+              return;
+            }
             resolve(result);
           }
         },
