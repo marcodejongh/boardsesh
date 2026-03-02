@@ -208,12 +208,13 @@ describe('ClimbListItem', () => {
     });
   });
 
-  it('configures short and long left swipe thresholds for queue and playlist actions', () => {
+  it('configures short swipe and long-right swipe thresholds for queue and playlist actions', () => {
     render(<ClimbListItem climb={makeClimb()} boardDetails={makeBoardDetails()} />);
 
     expect(capturedSwipeOptions).not.toBeNull();
     expect(capturedSwipeOptions?.swipeThreshold).toBe(90);
-    expect(capturedSwipeOptions?.longSwipeLeftThreshold).toBe(120);
-    expect(typeof capturedSwipeOptions?.onSwipeLeftLong).toBe('function');
+    expect(capturedSwipeOptions?.longSwipeRightThreshold).toBe(150);
+    expect(capturedSwipeOptions?.maxSwipe).toBe(180);
+    expect(typeof capturedSwipeOptions?.onSwipeRightLong).toBe('function');
   });
 });

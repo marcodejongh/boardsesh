@@ -16,10 +16,14 @@ export interface UseSwipeActionsOptions {
   onSwipeLeftLong?: () => void;
   /** Called when the user swipes right past the threshold */
   onSwipeRight: () => void;
+  /** Called when the user swipes right past the long-swipe threshold */
+  onSwipeRightLong?: () => void;
   /** Pixel threshold to trigger action (default: 100) */
   swipeThreshold?: number;
   /** Pixel threshold to trigger long left swipe action (optional) */
   longSwipeLeftThreshold?: number;
+  /** Pixel threshold to trigger long right swipe action (optional) */
+  longSwipeRightThreshold?: number;
   /** Maximum swipe distance in pixels (default: 120) */
   maxSwipe?: number;
   /** Whether swipe is disabled (e.g. in edit mode) */
@@ -53,8 +57,10 @@ export function useSwipeActions({
   onSwipeLeft,
   onSwipeLeftLong,
   onSwipeRight,
+  onSwipeRightLong,
   swipeThreshold = DEFAULT_SWIPE_THRESHOLD,
   longSwipeLeftThreshold,
+  longSwipeRightThreshold,
   maxSwipe = DEFAULT_MAX_SWIPE,
   disabled = false,
   completionAnimationMs = 200,
@@ -139,6 +145,11 @@ export function useSwipeActions({
     onSwipeLeftLong?.();
   }, [applyOffset, onSwipeLeftLong]);
 
+  const handleSwipeRightLongComplete = useCallback(() => {
+    applyOffset(0);
+    onSwipeRightLong?.();
+  }, [applyOffset, onSwipeRightLong]);
+
   const swipeHandlers = useSwipeable({
     onSwiping: (eventData) => {
       if (disabled) return;
@@ -176,7 +187,12 @@ export function useSwipeActions({
       resetDirection();
     },
     onSwipedRight: (eventData) => {
-      if (isHorizontalRef.current && Math.abs(eventData.deltaX) >= swipeThreshold) {
+      const swipeDistance = Math.abs(eventData.deltaX);
+      const longSwipeReady = typeof longSwipeRightThreshold === 'number' && swipeDistance >= longSwipeRightThreshold;
+
+      if (isHorizontalRef.current && longSwipeReady && onSwipeRightLong) {
+        handleSwipeRightLongComplete();
+      } else if (isHorizontalRef.current && swipeDistance >= swipeThreshold) {
         handleSwipeRightComplete();
       } else {
         resetOffset();

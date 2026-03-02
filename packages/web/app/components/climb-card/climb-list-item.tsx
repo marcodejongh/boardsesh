@@ -53,8 +53,8 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     addToQueue?.(climb);
   }, [climb, addToQueue]);
 
-  const handleSwipeLeftLong = useCallback(() => {
-    // Long swipe left = open add-to-playlist drawer
+  const handleSwipeRightLong = useCallback(() => {
+    // Long swipe right = open add-to-playlist drawer
     setIsActionsOpen(false);
     setIsPlaylistSelectorOpen(true);
   }, []);
@@ -66,10 +66,11 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
 
   const { swipeHandlers, contentRef, leftActionRef, rightActionRef } = useSwipeActions({
     onSwipeLeft: handleSwipeLeft,
-    onSwipeLeftLong: handleSwipeLeftLong,
     onSwipeRight: handleSwipeRight,
+    onSwipeRightLong: handleSwipeRightLong,
     swipeThreshold: 90,
-    longSwipeLeftThreshold: 120,
+    longSwipeRightThreshold: 150,
+    maxSwipe: 180,
     disabled: disableSwipe,
   });
 
