@@ -66,7 +66,15 @@ export default function SessionOverviewPanel({
   removingUserId = null,
   getParticipantHref,
 }: SessionOverviewPanelProps) {
-  const isMultiUser = participants.length > 1;
+  const uniqueParticipants = React.useMemo(() => {
+    const participantById = new Map<string, SessionFeedParticipant>();
+    for (const participant of participants) {
+      participantById.set(participant.userId, participant);
+    }
+    return Array.from(participantById.values());
+  }, [participants]);
+
+  const isMultiUser = uniqueParticipants.length > 1;
 
   return (
     <>
@@ -75,7 +83,7 @@ export default function SessionOverviewPanel({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             {isMultiUser ? (
               <AvatarGroup max={5} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: 14 } }}>
-                {participants.map((participant) => (
+                {uniqueParticipants.map((participant) => (
                   getParticipantHref ? (
                     <Avatar
                       key={participant.userId}
@@ -95,22 +103,22 @@ export default function SessionOverviewPanel({
                   )
                 ))}
               </AvatarGroup>
-            ) : participants[0] ? (
+            ) : uniqueParticipants[0] ? (
               getParticipantHref ? (
                 <Avatar
-                  src={participants[0].avatarUrl ?? undefined}
+                  src={uniqueParticipants[0].avatarUrl ?? undefined}
                   component="a"
-                  href={getParticipantHref(participants[0].userId)}
+                  href={getParticipantHref(uniqueParticipants[0].userId)}
                   sx={{ width: 40, height: 40 }}
                 >
-                  {!participants[0].avatarUrl && <PersonOutlined />}
+                  {!uniqueParticipants[0].avatarUrl && <PersonOutlined />}
                 </Avatar>
               ) : (
                 <Avatar
-                  src={participants[0].avatarUrl ?? undefined}
+                  src={uniqueParticipants[0].avatarUrl ?? undefined}
                   sx={{ width: 40, height: 40 }}
                 >
-                  {!participants[0].avatarUrl && <PersonOutlined />}
+                  {!uniqueParticipants[0].avatarUrl && <PersonOutlined />}
                 </Avatar>
               )
             ) : (
@@ -120,12 +128,12 @@ export default function SessionOverviewPanel({
             )}
             <Box sx={{ flex: 1 }}>
               <Typography variant="body2" fontWeight={600}>
-                {participants.length > 0
-                  ? participants.map((participant) => participant.displayName || 'Climber').join(', ')
+                {uniqueParticipants.length > 0
+                  ? uniqueParticipants.map((participant) => participant.displayName || 'Climber').join(', ')
                   : 'No participants yet'}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {participants.length} participant{participants.length !== 1 ? 's' : ''}
+                {uniqueParticipants.length} participant{uniqueParticipants.length !== 1 ? 's' : ''}
               </Typography>
             </Box>
             {canEditParticipants && onAddParticipant && (
@@ -137,7 +145,7 @@ export default function SessionOverviewPanel({
 
           {isMultiUser && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
-              {participants.map((participant) => (
+              {uniqueParticipants.map((participant) => (
                 <Box key={participant.userId} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Avatar src={participant.avatarUrl ?? undefined} sx={{ width: 20, height: 20 }}>
                     {!participant.avatarUrl && <PersonOutlined sx={{ fontSize: 10 }} />}

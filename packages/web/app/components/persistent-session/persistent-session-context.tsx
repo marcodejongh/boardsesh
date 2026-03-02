@@ -35,6 +35,11 @@ import {
   type EndSessionResponse,
 } from '@/app/lib/graphql/operations/sessions';
 import type { SessionLiveStats, SessionSummary } from '@boardsesh/shared-schema';
+import {
+  evaluateQueueEventSequence,
+  insertQueueItemIdempotent,
+  upsertSessionUser,
+} from './event-utils';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 
@@ -210,7 +215,7 @@ export interface PersistentSessionContextType {
 const PersistentSessionContext = createContext<PersistentSessionContextType | undefined>(undefined);
 
 export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { token: wsAuthToken } = useWsAuthToken();
+  const { token: wsAuthToken, isLoading: isAuthLoading } = useWsAuthToken();
   const { username, avatarUrl } = usePartyProfile();
 
   // Use refs for values that shouldn't trigger reconnection
@@ -285,6 +290,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   // Track if we're currently filtering corrupted items to prevent useEffect re-trigger loop
   const isFilteringCorruptedItemsRef = useRef(false);
 
+  // Refs for queue state so reconnect handler always sees current values (avoids stale closure)
+  const queueRef = useRef<LocalClimbQueueItem[]>([]);
+  const currentClimbQueueItemRef = useRef<LocalClimbQueueItem | null>(null);
+
   // Event subscribers
   const queueEventSubscribersRef = useRef<Set<(event: SubscriptionQueueEvent) => void>>(new Set());
   const sessionEventSubscribersRef = useRef<Set<(event: SessionEvent) => void>>(new Set());
@@ -297,6 +306,14 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   useEffect(() => {
     activeSessionRef.current = activeSession;
   }, [activeSession]);
+
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
+
+  useEffect(() => {
+    currentClimbQueueItemRef.current = currentClimbQueueItem;
+  }, [currentClimbQueueItem]);
 
   // Clean up old queues from IndexedDB on mount
   useEffect(() => {
@@ -370,18 +387,31 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   // Handle queue events internally
   const handleQueueEvent = useCallback((event: SubscriptionQueueEvent) => {
-    // Sequence validation for gap detection (use ref to avoid stale closure)
-    const lastSeq = lastReceivedSequenceRef.current;
-    if (event.__typename !== 'FullSync' && lastSeq !== null) {
-      const expectedSequence = lastSeq + 1;
-      if (event.sequence !== expectedSequence) {
+    // Sequence validation for stale/gap detection (use ref to avoid stale closure).
+    // FullSync always resets local state and sequence tracking.
+    if (event.__typename !== 'FullSync') {
+      const lastSeq = lastReceivedSequenceRef.current;
+      const sequenceDecision = evaluateQueueEventSequence(lastSeq, event.sequence);
+
+      if (sequenceDecision === 'ignore-stale') {
+        if (DEBUG) {
+          console.log(
+            `[PersistentSession] Ignoring stale/duplicate event with sequence ${event.sequence} ` +
+            `(last received: ${lastSeq})`
+          );
+        }
+        return;
+      }
+
+      if (sequenceDecision === 'gap') {
         console.warn(
-          `[PersistentSession] Sequence gap detected: expected ${expectedSequence}, got ${event.sequence}. ` +
-          `This may indicate missed events.`
+          `[PersistentSession] Sequence gap detected: expected ${lastSeq! + 1}, got ${event.sequence}. ` +
+          `Triggering resync.`
         );
-        // Note: Reconnection handles delta sync automatically.
-        // Mid-session gaps are rare (server skipped sequence or pubsub delivery issue).
-        // For now, we log and continue - state hash verification will catch drift.
+        if (triggerResyncRef.current) {
+          triggerResyncRef.current();
+        }
+        return;
       }
     }
 
@@ -402,13 +432,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           break;
         }
         setQueueState((prev) => {
-          const newQueue = [...prev];
-          if (event.position !== undefined && event.position >= 0) {
-            newQueue.splice(event.position, 0, event.addedItem as LocalClimbQueueItem);
-          } else {
-            newQueue.push(event.addedItem as LocalClimbQueueItem);
-          }
-          return newQueue;
+          return insertQueueItemIdempotent(
+            prev,
+            event.addedItem as LocalClimbQueueItem,
+            event.position,
+          );
         });
         updateLastReceivedSequence(event.sequence);
         break;
@@ -518,7 +546,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         case 'UserJoined':
           return {
             ...prev,
-            users: [...prev.users, event.user],
+            users: upsertSessionUser(prev.users, event.user),
           };
         case 'UserLeft':
           return {
@@ -561,6 +589,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   useEffect(() => {
     if (!activeSession) {
       if (DEBUG) console.log('[PersistentSession] No active session, skipping connection');
+      return;
+    }
+
+    if (isAuthLoading) {
+      if (DEBUG) console.log('[PersistentSession] Waiting for auth to load...');
       return;
     }
 
@@ -696,7 +729,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           applyFullSync(sessionData);
         } else if (gap === 0) {
           // No sequence gap, but verify state is actually in sync via hash
-          const localHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+          const localHash = computeQueueStateHash(queueRef.current, currentClimbQueueItemRef.current?.uuid || null);
           if (localHash !== sessionData.queueState.stateHash) {
             if (DEBUG) console.log('[PersistentSession] Hash mismatch on reconnect despite gap=0, applying full sync');
             applyFullSync(sessionData);
@@ -904,7 +937,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       }
     };
   // Note: username, avatarUrl, wsAuthToken are accessed via refs to prevent reconnection on changes
-  }, [activeSession, handleQueueEvent, handleSessionEvent]);
+  }, [activeSession, isAuthLoading, handleQueueEvent, handleSessionEvent]);
 
   // Periodic state hash verification
   // Runs every 60 seconds to detect state drift and auto-resync if needed
