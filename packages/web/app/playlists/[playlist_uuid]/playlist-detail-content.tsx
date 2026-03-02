@@ -54,6 +54,7 @@ import { PlaylistGeneratorDrawer } from '@/app/components/playlist-generator';
 import PlaylistEditDrawer from '@/app/components/library/playlist-edit-drawer';
 import CommentSection from '@/app/components/social/comment-section';
 import MultiboardClimbList from '@/app/components/climb-list/multiboard-climb-list';
+import { useMyBoards } from '@/app/hooks/use-my-boards';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import styles from '@/app/components/library/playlist-view.module.css';
 
@@ -77,11 +78,14 @@ type PlaylistDetailContentProps = {
   playlistUuid: string;
   /** Base path for navigating back to the playlists library (e.g. "/b/my-kilter/40/playlists"). Defaults to "/playlists". */
   playlistsBasePath?: string;
+  /** When set, auto-selects the matching board in the climb filter */
+  boardSlug?: string;
 };
 
 export default function PlaylistDetailContent({
   playlistUuid,
   playlistsBasePath = '/playlists',
+  boardSlug,
 }: PlaylistDetailContentProps) {
   const router = useRouter();
   const { showMessage } = useSnackbar();
@@ -94,7 +98,22 @@ export default function PlaylistDetailContent({
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
   const lastAccessedUpdatedRef = useRef(false);
+  const defaultBoardAppliedRef = useRef(false);
   const { token, isLoading: tokenLoading } = useWsAuthToken();
+
+  // Fetch user's boards for auto-selecting the board filter
+  const { boards: myBoards, isLoading: boardsLoading } = useMyBoards(!!boardSlug);
+
+  // Auto-select the matching board once boards finish loading
+  useEffect(() => {
+    if (!boardSlug || defaultBoardAppliedRef.current || boardsLoading || myBoards.length === 0) return;
+
+    const match = myBoards.find((b) => b.slug === boardSlug);
+    if (match) {
+      setSelectedBoard(match);
+    }
+    defaultBoardAppliedRef.current = true;
+  }, [boardSlug, myBoards, boardsLoading]);
 
   const fetchPlaylist = useCallback(async () => {
     if (tokenLoading) return;

@@ -923,6 +923,8 @@ export const typeDefs = /* GraphQL */ `
   input GetAllUserPlaylistsInput {
     "Optional filter by board type"
     boardType: String
+    "Optional filter by layout ID"
+    layoutId: Int
   }
 
   """

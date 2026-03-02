@@ -30,6 +30,7 @@ export default async function BoardSlugPlaylistDetailPage(props: PlaylistDetailP
       <PlaylistDetailContent
         playlistUuid={params.playlist_uuid}
         playlistsBasePath={playlistsBasePath}
+        boardSlug={params.board_slug}
       />
     </div>
   );
