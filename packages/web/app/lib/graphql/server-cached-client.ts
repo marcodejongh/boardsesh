@@ -209,6 +209,66 @@ export async function cachedSessionGroupedFeed(
 }
 
 /**
+ * Server-side fetch of the user's playlists (authenticated, not cached).
+ */
+export async function serverUserPlaylists(
+  authToken: string,
+  input: { boardType?: string; layoutId?: number } = {},
+): Promise<import('@/app/lib/graphql/operations/playlists').Playlist[] | null> {
+  const { GET_ALL_USER_PLAYLISTS } = await import('@/app/lib/graphql/operations/playlists');
+  type Response = import('@/app/lib/graphql/operations/playlists').GetAllUserPlaylistsQueryResponse;
+
+  try {
+    const response = await executeAuthenticatedGraphQL<Response>(
+      GET_ALL_USER_PLAYLISTS,
+      { input },
+      authToken,
+    );
+    return response.allUserPlaylists;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Server-side cached fetch of discover playlists (public, no auth needed).
+ */
+export async function cachedDiscoverPlaylists(
+  input: { boardType?: string; layoutId?: number } = {},
+): Promise<{
+  popular: import('@/app/lib/graphql/operations/playlists').DiscoverablePlaylist[];
+  recent: import('@/app/lib/graphql/operations/playlists').DiscoverablePlaylist[];
+} | null> {
+  const { DISCOVER_PLAYLISTS } = await import('@/app/lib/graphql/operations/playlists');
+  type Response = import('@/app/lib/graphql/operations/playlists').DiscoverPlaylistsQueryResponse;
+
+  try {
+    const popularQuery = createCachedGraphQLQuery<Response>(
+      DISCOVER_PLAYLISTS,
+      'discover-playlists-popular',
+      300, // 5 min cache
+    );
+    const recentQuery = createCachedGraphQLQuery<Response>(
+      DISCOVER_PLAYLISTS,
+      'discover-playlists-recent',
+      300,
+    );
+
+    const [popularRes, recentRes] = await Promise.all([
+      popularQuery({ input: { ...input, pageSize: 10, sortBy: 'popular' } }),
+      recentQuery({ input: { ...input, pageSize: 10, sortBy: 'recent' } }),
+    ]);
+
+    return {
+      popular: popularRes.discoverPlaylists.playlists,
+      recent: recentRes.discoverPlaylists.playlists,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetch the first page of grouped notifications server-side.
  * Returns null on failure so the client can fall back to client-side fetching.
  */
