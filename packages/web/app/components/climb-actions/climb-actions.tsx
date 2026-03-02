@@ -101,6 +101,7 @@ export function ClimbActions({
   size = 'default',
   className,
   onActionComplete,
+  onOpenPlaylistSelector,
   auroraAppUrl,
 }: ClimbActionsProps) {
   // Determine which actions to show
@@ -120,9 +121,10 @@ export function ClimbActions({
       currentPathname,
       viewMode,
       size,
+      onOpenPlaylistSelector,
       auroraAppUrl,
     }),
-    [climb, boardDetails, angle, currentPathname, viewMode, size, auroraAppUrl]
+    [climb, boardDetails, angle, currentPathname, viewMode, size, onOpenPlaylistSelector, auroraAppUrl]
   );
 
   // Memoize action complete handler to prevent creating new functions on every render
