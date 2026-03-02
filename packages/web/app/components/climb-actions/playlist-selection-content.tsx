@@ -118,6 +118,16 @@ export default function PlaylistSelectionContent({
     }
   }, [createFormValues, createPlaylist, addToPlaylist, boardDetails.board_name, onDone, showMessage]);
 
+  const handlePlaylistItemKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLLIElement>, playlistId: string, isInPlaylist: boolean) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        void handleTogglePlaylist(playlistId, isInPlaylist);
+      }
+    },
+    [handleTogglePlaylist]
+  );
+
   return (
     <Box sx={{ padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[2]}px ${themeTokens.spacing[3]}px` }}>
       <Box sx={{ marginBottom: themeTokens.spacing[1] }}>
@@ -172,7 +182,12 @@ export default function PlaylistSelectionContent({
                     return (
                       <ListItem
                         key={playlist.uuid}
-                        onClick={() => handleTogglePlaylist(playlist.uuid, isInPlaylist)}
+                        onClick={() => void handleTogglePlaylist(playlist.uuid, isInPlaylist)}
+                        onKeyDown={(event) => handlePlaylistItemKeyDown(event, playlist.uuid, isInPlaylist)}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isInPlaylist}
+                        aria-label={`${isInPlaylist ? 'Remove from' : 'Add to'} playlist ${playlist.name}`}
                         sx={{
                           padding: `${themeTokens.spacing[2]}px ${themeTokens.spacing[2]}px`,
                           cursor: 'pointer',

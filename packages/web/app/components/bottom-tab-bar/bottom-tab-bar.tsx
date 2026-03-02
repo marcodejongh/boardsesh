@@ -345,7 +345,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     router.push(url);
   }, [pendingCreateAction, router, showMessage]);
 
-  const validatePlaylistForm = (): boolean => {
+  const validatePlaylistForm = useCallback((): boolean => {
     const errors: Record<string, string> = {};
     if (!playlistFormValues.name.trim()) {
       errors.name = 'Please enter a playlist name';
@@ -357,7 +357,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     }
     setPlaylistFormErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [playlistFormValues]);
 
   const handleCreatePlaylist = useCallback(async () => {
     if (!validatePlaylistForm() || !createPlaylist) {
@@ -398,8 +398,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     } finally {
       setIsCreatingPlaylist(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playlistFormValues, createPlaylist, canCreatePlaylistHere, playlistBoardName, router, getPlaylistUrl, showMessage]);
+  }, [validatePlaylistForm, createPlaylist, canCreatePlaylistHere, playlistFormValues, playlistBoardName, router, getPlaylistUrl, showMessage]);
 
   return (
     <>

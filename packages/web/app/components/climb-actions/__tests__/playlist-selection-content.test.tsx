@@ -130,5 +130,33 @@ describe('PlaylistSelectionContent failures', () => {
     });
     expect(onDone).not.toHaveBeenCalled();
   });
-});
 
+  it('supports keyboard selection on playlist items', async () => {
+    const addToPlaylist = vi.fn().mockResolvedValue(undefined);
+    mockUsePlaylists.mockReturnValue({
+      playlists: [{ uuid: 'pl-1', id: '1', name: 'Keyboard Playlist', climbCount: 3, color: null }],
+      playlistsContainingClimb: new Set<string>(),
+      addToPlaylist,
+      removeFromPlaylist: vi.fn(),
+      createPlaylist: vi.fn(),
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+    render(
+      <PlaylistSelectionContent
+        climbUuid="climb-1"
+        angle={40}
+        boardDetails={createBoardDetails()}
+      />
+    );
+
+    const playlistItem = screen.getByRole('button', { name: /add to playlist keyboard playlist/i });
+    expect(playlistItem.getAttribute('tabindex')).toBe('0');
+    fireEvent.keyDown(playlistItem, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(addToPlaylist).toHaveBeenCalledWith('pl-1');
+    });
+  });
+});
