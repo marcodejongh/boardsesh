@@ -199,7 +199,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       cursor: 'pointer' as const,
       userSelect: 'none' as const,
     }),
-    [selected, climb.difficulty],
+    [selected, climb.difficulty, isDark],
   );
 
   const thumbnailStyle = useMemo(
