@@ -805,10 +805,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
         const sessionData = await joinSession(graphqlClient);
 
-        // Bail if a newer connection superseded this one (React Strict Mode re-mount)
+        // Bail if a newer connection superseded this one (React Strict Mode re-mount).
+        // Cleanup already disposed the client and reset refs — just return.
         if (connectionGenerationRef.current !== connectionGeneration) {
-          graphqlClient.dispose();
-          isConnectingRef.current = false;
           return;
         }
 
