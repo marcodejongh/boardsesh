@@ -455,6 +455,16 @@ export const sessionFeedQueries = {
     const ownerUserId = isParty
       ? partySession?.createdByUserId || null
       : inferredSession?.userId || null;
+    const boardPath = isParty
+      ? partySession?.boardPath || null
+      : null;
+    const endedAtRaw = isParty
+      ? partySession?.endedAt ?? null
+      : inferredSession?.endedAt ?? null;
+    const endedAt = endedAtRaw
+      ? (endedAtRaw instanceof Date ? endedAtRaw.toISOString() : String(endedAtRaw))
+      : null;
+    const isInProgress = isParty ? !partySession?.endedAt : false;
 
     return {
       sessionId,
@@ -473,6 +483,9 @@ export const sessionFeedQueries = {
       lastTickAt,
       durationMinutes,
       goal,
+      boardPath,
+      endedAt,
+      isInProgress,
       ticks,
       upvotes: voteData ? Number(voteData.upvotes) : 0,
       downvotes: voteData ? Number(voteData.downvotes) : 0,

@@ -270,6 +270,58 @@ export const SESSION_UPDATES = `
   }
 `;
 
+export const SESSION_STATS = `
+  subscription SessionStats($sessionId: ID!) {
+    sessionStats(sessionId: $sessionId) {
+      sessionId
+      totalSends
+      totalFlashes
+      totalAttempts
+      tickCount
+      participants {
+        userId
+        displayName
+        avatarUrl
+        sends
+        flashes
+        attempts
+      }
+      gradeDistribution {
+        grade
+        flash
+        send
+        attempt
+      }
+      boardTypes
+      hardestGrade
+      durationMinutes
+      goal
+      ticks {
+        uuid
+        userId
+        climbUuid
+        climbName
+        boardType
+        layoutId
+        angle
+        status
+        attemptCount
+        difficulty
+        difficultyName
+        quality
+        isMirror
+        isBenchmark
+        comment
+        frames
+        setterUsername
+        climbedAt
+        upvotes
+        totalAttempts
+      }
+    }
+  }
+`;
+
 // Query for delta sync event replay (Phase 2)
 export const EVENTS_REPLAY = `
   query EventsReplay($sessionId: ID!, $sinceSequence: Int!) {

@@ -829,6 +829,9 @@ export type SessionDetail = {
   lastTickAt: string;
   durationMinutes?: number | null;
   goal?: string | null;
+  boardPath?: string | null;
+  endedAt?: string | null;
+  isInProgress?: boolean;
   ticks: SessionDetailTick[];
   upvotes: number;
   downvotes: number;

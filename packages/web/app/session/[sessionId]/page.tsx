@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { GraphQLClient } from 'graphql-request';
 import { getGraphQLHttpUrl } from '@/app/lib/graphql/client';
 import { GET_SESSION_DETAIL, type GetSessionDetailQueryResponse } from '@/app/lib/graphql/operations/activity-feed';
-import SessionDetailContent from './session-detail-content';
+import SessionDetailLiveShell from './session-detail-live-shell';
 
 type Props = {
   params: Promise<{ sessionId: string }>;
@@ -48,5 +48,5 @@ export default async function SessionDetailPage({ params }: Props) {
   const sessionId = decodeURIComponent(rawSessionId);
   const session = await fetchSessionDetail(sessionId);
 
-  return <SessionDetailContent session={session} />;
+  return <SessionDetailLiveShell sessionId={sessionId} initialSession={session} />;
 }
