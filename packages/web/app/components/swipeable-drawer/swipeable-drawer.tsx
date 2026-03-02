@@ -216,8 +216,11 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     }
 
     // Full-height drawers should blend into the app/page background.
-    // Prefer the explicit fullHeight prop; fall back to string detection for callers
-    // that haven't adopted the prop yet.
+    // Prefer the explicit fullHeight prop. The string-based fallback below is
+    // best-effort for callers that haven't adopted the prop yet — it only
+    // matches exact '100%' / '100vh' / '100dvh' values, not expressions like
+    // calc(100vh) or custom-property references. New callers should always
+    // pass fullHeight explicitly.
     const normalizedHeight = typeof sx.height === 'string' ? sx.height.trim().toLowerCase() : '';
     const isFullHeightDrawer =
       fullHeightProp ??

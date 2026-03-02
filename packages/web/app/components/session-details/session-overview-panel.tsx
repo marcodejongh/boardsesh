@@ -19,6 +19,7 @@ import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import PersonAddOutlined from '@mui/icons-material/PersonAddOutlined';
 import RemoveCircleOutlineOutlined from '@mui/icons-material/RemoveCircleOutlineOutlined';
 import type { SessionFeedParticipant, SessionGradeDistributionItem } from '@boardsesh/shared-schema';
+import { deduplicateBy } from '@/app/utils/deduplicate';
 import GradeDistributionBar from '@/app/components/charts/grade-distribution-bar';
 import { formatVGrade } from '@/app/lib/grade-colors';
 
@@ -90,13 +91,10 @@ export default function SessionOverviewPanel({
   // Defensive dedup: during WebSocket reconnection race conditions the server
   // may briefly report the same participant twice. Deduplicating by userId
   // keeps the UI stable until the next authoritative state sync arrives.
-  const uniqueParticipants = React.useMemo(() => {
-    const participantById = new Map<string, SessionFeedParticipant>();
-    for (const participant of participants) {
-      participantById.set(participant.userId, participant);
-    }
-    return Array.from(participantById.values());
-  }, [participants]);
+  const uniqueParticipants = React.useMemo(
+    () => deduplicateBy(participants, (p) => p.userId),
+    [participants],
+  );
 
   const isMultiUser = uniqueParticipants.length > 1;
 

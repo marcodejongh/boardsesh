@@ -34,7 +34,7 @@ import SessionCreationForm from '../session-creation/session-creation-form';
 import type { SessionCreationFormData } from '../session-creation/session-creation-form';
 import { useCreateSession } from '@/app/hooks/use-create-session';
 import { getBaseBoardPath } from '@/app/lib/url-utils';
-import type { SessionUser } from '@boardsesh/shared-schema';
+import { deduplicateBy } from '@/app/utils/deduplicate';
 
 const getShareUrl = (pathname: string, sessionId: string | null) => {
   try {
@@ -217,13 +217,10 @@ export const ShareBoardButton = () => {
   // Defensive dedup: during WebSocket reconnection race conditions the server
   // may briefly report the same user twice. Deduplicating by ID keeps the UI
   // stable until the next authoritative state sync arrives.
-  const uniqueUsers = React.useMemo(() => {
-    const userById = new Map<string, SessionUser>();
-    for (const user of users ?? []) {
-      userById.set(user.id, user);
-    }
-    return Array.from(userById.values());
-  }, [users]);
+  const uniqueUsers = React.useMemo(
+    () => deduplicateBy(users ?? [], (u) => u.id),
+    [users],
+  );
 
   const copyToClipboard = () => {
     navigator.clipboard
