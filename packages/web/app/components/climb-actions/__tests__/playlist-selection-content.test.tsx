@@ -159,4 +159,42 @@ describe('PlaylistSelectionContent failures', () => {
       expect(addToPlaylist).toHaveBeenCalledWith('pl-1');
     });
   });
+
+  it('uses newPlaylist.uuid (not id) when auto-adding after create', async () => {
+    const addToPlaylist = vi.fn().mockResolvedValue(undefined);
+    const createPlaylist = vi.fn().mockResolvedValue({
+      id: 'numeric-id',
+      uuid: 'uuid-id',
+      name: 'Created Playlist',
+      climbCount: 0,
+      color: null,
+    });
+
+    mockUsePlaylists.mockReturnValue({
+      playlists: [{ uuid: 'pl-1', id: '1', name: 'Existing Playlist', climbCount: 3, color: null }],
+      playlistsContainingClimb: new Set<string>(),
+      addToPlaylist,
+      removeFromPlaylist: vi.fn(),
+      createPlaylist,
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+    render(
+      <PlaylistSelectionContent
+        climbUuid="climb-1"
+        angle={40}
+        boardDetails={createBoardDetails()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /create new playlist/i }));
+    fireEvent.change(screen.getByPlaceholderText('e.g., Hard Crimps'), { target: { value: 'Created Playlist' } });
+    fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
+
+    await waitFor(() => {
+      expect(createPlaylist).toHaveBeenCalled();
+      expect(addToPlaylist).toHaveBeenCalledWith('uuid-id');
+    });
+  });
 });

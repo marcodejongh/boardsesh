@@ -100,7 +100,7 @@ export default function PlaylistSelectionContent({
       const colorHex = createFormValues.color && isValidHexColor(createFormValues.color) ? createFormValues.color : undefined;
       const newPlaylist = await createPlaylist(createFormValues.name, createFormValues.description, colorHex, undefined);
 
-      await addToPlaylist(newPlaylist.id);
+      await addToPlaylist(newPlaylist.uuid);
 
       showMessage(`Created playlist "${createFormValues.name}"`, 'success');
       track('Create Playlist', {

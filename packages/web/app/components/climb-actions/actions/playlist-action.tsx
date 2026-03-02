@@ -138,7 +138,7 @@ export function PlaylistAction({
       const newPlaylist = await createPlaylist(createFormValues.name, createFormValues.description, colorHex, undefined);
 
       // Automatically add current climb to new playlist
-      await addToPlaylist(newPlaylist.id);
+      await addToPlaylist(newPlaylist.uuid);
 
       showMessage(`Created playlist "${createFormValues.name}"`, 'success');
       track('Create Playlist', {
