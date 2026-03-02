@@ -36,6 +36,8 @@ export interface SwipeableDrawerProps {
   className?: string;
   height?: string | number;
   width?: string | number;
+  /** Explicitly mark the drawer as full-height for styling (e.g. page-like background). */
+  fullHeight?: boolean;
   extra?: React.ReactNode;
   footer?: React.ReactNode;
   disablePortal?: boolean;
@@ -56,6 +58,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   title: userTitle,
   height,
   width,
+  fullHeight: fullHeightProp,
   extra,
   footer,
   disablePortal,
@@ -213,15 +216,18 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
     }
 
     // Full-height drawers should blend into the app/page background.
-    // This keeps 100% / 100vh / 100dvh sheets visually consistent on mobile.
+    // Prefer the explicit fullHeight prop; fall back to string detection for callers
+    // that haven't adopted the prop yet.
     const normalizedHeight = typeof sx.height === 'string' ? sx.height.trim().toLowerCase() : '';
-    const isFullHeightDrawer = normalizedHeight === '100%' || normalizedHeight === '100vh' || normalizedHeight === '100dvh';
+    const isFullHeightDrawer =
+      fullHeightProp ??
+      (normalizedHeight === '100%' || normalizedHeight === '100vh' || normalizedHeight === '100dvh');
     if (isFullHeightDrawer && !sx.backgroundColor) {
       sx.backgroundColor = 'var(--semantic-background)';
     }
 
     return sx;
-  }, [userStyles?.wrapper, height, width]);
+  }, [userStyles?.wrapper, height, width, fullHeightProp]);
 
   // SwipeableDrawer onClose handler
   const handleSwipeableClose = useCallback(() => {

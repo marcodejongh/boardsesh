@@ -66,6 +66,9 @@ export default function SessionOverviewPanel({
   removingUserId = null,
   getParticipantHref,
 }: SessionOverviewPanelProps) {
+  // Defensive dedup: during WebSocket reconnection race conditions the server
+  // may briefly report the same participant twice. Deduplicating by userId
+  // keeps the UI stable until the next authoritative state sync arrives.
   const uniqueParticipants = React.useMemo(() => {
     const participantById = new Map<string, SessionFeedParticipant>();
     for (const participant of participants) {

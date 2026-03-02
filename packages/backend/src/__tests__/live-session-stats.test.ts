@@ -118,4 +118,38 @@ describe('buildSessionStatsUpdatedEvent', () => {
       ticks: detail.ticks,
     });
   });
+
+  it('caps ticks to the 20 most recent', async () => {
+    const ticks = Array.from({ length: 30 }, (_, i) => ({
+      uuid: `tick-${i}`,
+      userId: 'user-1',
+      climbUuid: `climb-${i}`,
+      climbName: `Climb ${i}`,
+      boardType: 'kilter',
+      layoutId: 1,
+      angle: 40,
+      status: 'send' as const,
+      attemptCount: 1,
+      difficulty: 20,
+      difficultyName: 'V5',
+      quality: 3,
+      isMirror: false,
+      isBenchmark: false,
+      comment: null,
+      frames: 'abc',
+      setterUsername: 'setter',
+      climbedAt: `2024-01-15T10:${String(i).padStart(2, '0')}:00.000Z`,
+      upvotes: 0,
+      totalAttempts: 1,
+    }));
+    const detail = makeSessionDetail({ ticks });
+    sessionDetailMock.mockResolvedValue(detail);
+
+    const result = await buildSessionStatsUpdatedEvent('session-1');
+
+    expect(result).not.toBeNull();
+    expect(result!.ticks).toHaveLength(20);
+    expect(result!.ticks[0].uuid).toBe('tick-0');
+    expect(result!.ticks[19].uuid).toBe('tick-19');
+  });
 });

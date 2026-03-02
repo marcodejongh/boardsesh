@@ -243,6 +243,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     <SwipeableDrawer
       placement="bottom"
       height="100%"
+      fullHeight
       open={isOpen}
       onClose={handleClose}
       swipeEnabled={!isActionsOpen && !isQueueOpen && !isPlaylistSelectorOpen}

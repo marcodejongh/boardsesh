@@ -4,6 +4,12 @@ import React, { createContext, useContext, useState, useCallback, useMemo, useRe
 import { usePathname } from 'next/navigation'; // Used by useIsOnBoardRoute
 import { createGraphQLClient, execute, subscribe, Client } from '../graphql-queue/graphql-client';
 import {
+  INITIAL_RETRY_DELAY_MS,
+  MAX_RETRY_DELAY_MS,
+  BACKOFF_MULTIPLIER,
+  MAX_TRANSIENT_RETRIES,
+} from '../graphql-queue/retry-constants';
+import {
   JOIN_SESSION,
   LEAVE_SESSION,
   ADD_QUEUE_ITEM,
@@ -40,6 +46,7 @@ import {
   insertQueueItemIdempotent,
   upsertSessionUser,
 } from './event-utils';
+import { TransientJoinError } from './errors';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 
@@ -609,6 +616,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     mountedRef.current = true;
     let graphqlClient: Client | null = null;
     let retryConnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let transientRetryCount = 0;
 
     async function joinSession(clientToUse: Client): Promise<Session | null> {
       if (DEBUG) console.log('[PersistentSession] Calling joinSession mutation...');
@@ -787,7 +795,21 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
         setClient(graphqlClient);
 
-        const sessionData = await joinSession(graphqlClient);
+        let sessionData: Awaited<ReturnType<typeof joinSession>>;
+        try {
+          sessionData = await joinSession(graphqlClient);
+        } catch (joinErr) {
+          // Convert generic "completed without data" from graphql-client into a typed
+          // TransientJoinError so the outer catch can apply backoff retry logic.
+          if (
+            joinErr instanceof Error &&
+            joinErr.message.includes('completed without data') &&
+            !(joinErr instanceof TransientJoinError)
+          ) {
+            throw new TransientJoinError(joinErr.message);
+          }
+          throw joinErr;
+        }
 
         if (!mountedRef.current) {
           graphqlClient.dispose();
@@ -795,11 +817,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         }
 
         if (!sessionData) {
-          throw new Error('JoinSession returned no payload');
+          throw new TransientJoinError('JoinSession returned no payload');
         }
 
         if (DEBUG) console.log('[PersistentSession] Joined session, clientId:', sessionData.clientId);
 
+        transientRetryCount = 0;
         setSession(sessionData);
         setHasConnected(true);
         setIsConnecting(false);
@@ -866,25 +889,38 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       } catch (err) {
         console.error('[PersistentSession] Connection failed:', err);
         isConnectingRef.current = false;
-        const message = err instanceof Error ? err.message : String(err);
-        const isTransientJoinFailure =
-          message.includes('JoinSession returned no payload') ||
-          message.includes('completed without data');
+        const isTransientJoinFailure = err instanceof TransientJoinError;
 
         if (mountedRef.current) {
           setError(err instanceof Error ? err : new Error(String(err)));
           setIsConnecting(false);
           if (isTransientJoinFailure) {
-            // Keep active session and retry shortly; avoids join/leave thrash loops.
-            retryConnectTimeout = setTimeout(() => {
-              if (
-                mountedRef.current &&
-                activeSessionRef.current?.sessionId === sessionId &&
-                !isConnectingRef.current
-              ) {
-                connect();
-              }
-            }, 1000);
+            transientRetryCount++;
+            if (transientRetryCount > MAX_TRANSIENT_RETRIES) {
+              // Exhausted transient retries — treat as definitive failure.
+              console.warn(
+                `[PersistentSession] Exhausted ${MAX_TRANSIENT_RETRIES} transient retries, clearing session`,
+              );
+              transientRetryCount = 0;
+              removePreference(ACTIVE_SESSION_KEY).catch(() => {});
+              setActiveSession(null);
+            } else {
+              // Retry with exponential backoff; avoids join/leave thrash loops.
+              const delay = Math.min(
+                INITIAL_RETRY_DELAY_MS * Math.pow(BACKOFF_MULTIPLIER, transientRetryCount - 1),
+                MAX_RETRY_DELAY_MS,
+              );
+              if (DEBUG) console.log(`[PersistentSession] Transient retry ${transientRetryCount}/${MAX_TRANSIENT_RETRIES} in ${delay}ms`);
+              retryConnectTimeout = setTimeout(() => {
+                if (
+                  mountedRef.current &&
+                  activeSessionRef.current?.sessionId === sessionId &&
+                  !isConnectingRef.current
+                ) {
+                  connect();
+                }
+              }, delay);
+            }
           } else {
             // Clear persisted session on definitive failures (session may have expired)
             removePreference(ACTIVE_SESSION_KEY).catch(() => {});

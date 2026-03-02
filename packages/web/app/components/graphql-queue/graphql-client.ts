@@ -5,10 +5,7 @@ export type { Client };
 const DEBUG = process.env.NODE_ENV === 'development';
 const MUTATION_TIMEOUT_MS = 30_000; // 30 second timeout for mutations
 
-// Exponential backoff configuration for reconnection
-const INITIAL_RETRY_DELAY_MS = 1000; // Start with 1 second
-const MAX_RETRY_DELAY_MS = 30_000; // Cap at 30 seconds
-const BACKOFF_MULTIPLIER = 2; // Double the delay each retry
+import { INITIAL_RETRY_DELAY_MS, MAX_RETRY_DELAY_MS, BACKOFF_MULTIPLIER } from './retry-constants';
 
 let clientCounter = 0;
 

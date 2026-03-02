@@ -76,6 +76,9 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
   const sessionForView = useMemo<SessionDetail | null>(() => {
     if (!activeSession || !sessionId) return null;
 
+    // nowIso is an acceptable short-lived fallback: it's only used when
+    // sessionDetail hasn't loaded yet, and is replaced by mergedStats or the
+    // real sessionDetail as soon as either arrives.
     const nowIso = new Date().toISOString();
     const fallbackFirstTick = session?.startedAt ?? nowIso;
     const fallbackDurationMinutes = session?.startedAt
@@ -159,6 +162,7 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
       placement="top"
       open={open}
       onClose={onClose}
+      fullHeight
       styles={{
         wrapper: { height: '100dvh' },
         body: { padding: 0, paddingBottom: 0 },

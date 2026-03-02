@@ -214,6 +214,9 @@ export const ShareBoardButton = () => {
   const isConnected = !!(sessionId && hasConnected);
 
   const shareUrl = getShareUrl(pathname, sessionId);
+  // Defensive dedup: during WebSocket reconnection race conditions the server
+  // may briefly report the same user twice. Deduplicating by ID keeps the UI
+  // stable until the next authoritative state sync arrives.
   const uniqueUsers = React.useMemo(() => {
     const userById = new Map<string, SessionUser>();
     for (const user of users ?? []) {

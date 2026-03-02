@@ -8,8 +8,7 @@ import { SaveTickInputSchema } from '../../../validation/schemas';
 import { resolveBoardFromPath } from '../social/boards';
 import { publishSocialEvent } from '../../../events';
 import { assignInferredSession } from '../../../jobs/inferred-session-builder';
-import { buildSessionStatsUpdatedEvent } from '../sessions/live-session-stats';
-import { pubsub } from '../../../pubsub';
+import { publishDebouncedSessionStats } from '../sessions/debounced-stats-publisher';
 
 export const tickMutations = {
   /**
@@ -110,17 +109,9 @@ export const tickMutations = {
       });
     }
 
-    // Publish live session stats updates for active party sessions (non-blocking).
+    // Publish live session stats updates for active party sessions (debounced, non-blocking).
     if (tick.sessionId) {
-      buildSessionStatsUpdatedEvent(tick.sessionId)
-        .then((event) => {
-          if (event) {
-            pubsub.publishSessionEvent(tick.sessionId!, event);
-          }
-        })
-        .catch((error) => {
-          console.error(`[saveTick] Failed to publish SessionStatsUpdated for session ${tick.sessionId}:`, error);
-        });
+      publishDebouncedSessionStats(tick.sessionId);
     }
 
     return result;

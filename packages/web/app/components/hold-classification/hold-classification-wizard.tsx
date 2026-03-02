@@ -350,6 +350,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         open={open}
         onClose={onClose}
         placement="bottom"
+        fullHeight
         styles={{
           wrapper: { height: '100dvh' },
           header: { paddingTop: 'max(16px, env(safe-area-inset-top))' },
@@ -371,6 +372,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         open={open}
         onClose={onClose}
         placement="bottom"
+        fullHeight
         styles={{
           wrapper: { height: '100dvh' },
           header: { paddingTop: 'max(16px, env(safe-area-inset-top))' },
@@ -392,6 +394,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
         open={open}
         onClose={onClose}
         placement="bottom"
+        fullHeight
         styles={{
           wrapper: { height: '100dvh' },
           header: { paddingTop: 'max(16px, env(safe-area-inset-top))' },
@@ -422,6 +425,7 @@ const HoldClassificationWizard: React.FC<HoldClassificationWizardProps> = ({
       open={open}
       onClose={onClose}
       placement="bottom"
+      fullHeight
       styles={{
         wrapper: { height: '100dvh' },
         header: {

@@ -67,6 +67,7 @@ export default function UnifiedSearchDrawer({
       open={open}
       onClose={handleClose}
       height={isClimbMode ? '100%' : '80vh'}
+      fullHeight={isClimbMode}
       showDragHandle
       showCloseButton={false}
       swipeEnabled
