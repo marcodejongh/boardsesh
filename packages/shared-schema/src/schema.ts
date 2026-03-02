@@ -3785,6 +3785,8 @@ export const typeDefs = /* GraphQL */ `
     durationMinutes: Int
     "Session goal"
     goal: String
+    "Current session ticks (latest first)"
+    ticks: [SessionDetailTick!]!
   }
 
   """

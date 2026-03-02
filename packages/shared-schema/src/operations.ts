@@ -243,6 +243,28 @@ export const SESSION_UPDATES = `
         hardestGrade
         durationMinutes
         goal
+        ticks {
+          uuid
+          userId
+          climbUuid
+          climbName
+          boardType
+          layoutId
+          angle
+          status
+          attemptCount
+          difficulty
+          difficultyName
+          quality
+          isMirror
+          isBenchmark
+          comment
+          frames
+          setterUsername
+          climbedAt
+          upvotes
+          totalAttempts
+        }
       }
     }
   }

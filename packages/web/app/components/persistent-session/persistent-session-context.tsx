@@ -505,6 +505,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         hardestGrade: event.hardestGrade,
         durationMinutes: event.durationMinutes,
         goal: event.goal,
+        ticks: event.ticks,
       });
       notifySessionSubscribers(event);
       return;

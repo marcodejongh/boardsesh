@@ -848,6 +848,7 @@ export type SessionLiveStats = {
   hardestGrade?: string | null;
   durationMinutes?: number | null;
   goal?: string | null;
+  ticks: SessionDetailTick[];
 };
 
 // ============================================
@@ -1378,6 +1379,7 @@ export type SessionEvent =
       hardestGrade?: string | null;
       durationMinutes?: number | null;
       goal?: string | null;
+      ticks: SessionDetailTick[];
     };
 
 export type ConnectionContext = {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -64,7 +64,7 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
     onClose();
   }, [endSessionWithSummary, pathname, router, onClose]);
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['activeSessionDetail', sessionId],
     queryFn: async () => {
       const client = createGraphQLHttpClient(authToken);
@@ -80,13 +80,6 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
     if (liveSessionStats?.sessionId !== sessionId) return null;
     return liveSessionStats;
   }, [liveSessionStats, sessionId]);
-
-  // Keep full session detail (including tick rows/charts inputs) fresh while the drawer is open.
-  // Live WS stats signal that underlying ticks changed; refetch details to mirror /session/[id].
-  useEffect(() => {
-    if (!open || !sessionId || !mergedStats) return;
-    refetch();
-  }, [open, sessionId, mergedStats, refetch]);
 
   const sessionForView = useMemo<SessionDetail | null>(() => {
     if (!activeSession || !sessionId) return null;
@@ -130,6 +123,14 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
 
     if (!mergedStats) return base;
 
+    const mergedTicks = mergedStats.ticks;
+    const firstTickAt = mergedTicks.length > 0
+      ? mergedTicks[mergedTicks.length - 1].climbedAt
+      : base.firstTickAt;
+    const lastTickAt = mergedTicks.length > 0
+      ? mergedTicks[0].climbedAt
+      : base.lastTickAt;
+
     return {
       ...base,
       participants: mergedStats.participants,
@@ -142,6 +143,9 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
       hardestGrade: mergedStats.hardestGrade,
       durationMinutes: mergedStats.durationMinutes,
       goal: mergedStats.goal,
+      firstTickAt,
+      lastTickAt,
+      ticks: mergedTicks,
     };
   }, [
     activeSession,
