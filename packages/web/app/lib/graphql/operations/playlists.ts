@@ -157,6 +157,7 @@ export interface Playlist {
 
 export interface GetAllUserPlaylistsInput {
   boardType?: string;
+  layoutId?: number;
 }
 
 export interface GetAllUserPlaylistsQueryVariables {

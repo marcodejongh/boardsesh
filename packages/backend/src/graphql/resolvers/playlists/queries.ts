@@ -171,7 +171,7 @@ export const playlistQueries = {
    */
   allUserPlaylists: async (
     _: unknown,
-    { input }: { input: { boardType?: string } },
+    { input }: { input: { boardType?: string; layoutId?: number } },
     ctx: ConnectionContext
   ): Promise<unknown[]> => {
     requireAuthenticated(ctx);
@@ -183,6 +183,16 @@ export const playlistQueries = {
 
     if (input.boardType) {
       conditions.push(eq(dbSchema.playlists.boardType, input.boardType));
+    }
+
+    if (input.layoutId != null) {
+      // Include playlists with matching layoutId OR null layoutId (Aurora-synced circuits)
+      conditions.push(
+        or(
+          eq(dbSchema.playlists.layoutId, input.layoutId),
+          isNull(dbSchema.playlists.layoutId)
+        )!,
+      );
     }
 
     const userPlaylists = await db

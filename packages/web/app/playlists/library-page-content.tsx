@@ -133,7 +133,7 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
       setError(null);
 
       const input: GetAllUserPlaylistsInput = selectedBoard
-        ? { boardType: selectedBoard.boardType }
+        ? { boardType: selectedBoard.boardType, layoutId: selectedBoard.layoutId }
         : {};
 
       const playlistsRes = await executeGraphQL<GetAllUserPlaylistsQueryResponse, { input: GetAllUserPlaylistsInput }>(
@@ -272,9 +272,12 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
   const isLoading = !hasMounted || playlistsLoading || tokenLoading || sessionStatus === 'loading';
   const discoverItems = getDiscoverPlaylists();
 
-  // Filter playlists by selected board
+  // Filter playlists by selected board (boardType + layoutId)
   const filteredPlaylists = selectedBoard
-    ? playlists.filter((p) => p.boardType === selectedBoard.boardType)
+    ? playlists.filter((p) =>
+        p.boardType === selectedBoard.boardType &&
+        (p.layoutId == null || p.layoutId === selectedBoard.layoutId)
+      )
     : playlists;
 
   return (
