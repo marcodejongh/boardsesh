@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "tsx scripts/dev-with-tailscale.ts",
     "build": "npm run generate:openapi && next build",
     "build:ci": "npm run generate:openapi && next build",
     "generate:openapi": "tsx scripts/generate-openapi.ts",
