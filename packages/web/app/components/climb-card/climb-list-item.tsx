@@ -27,6 +27,7 @@ import { getExcludedClimbActions } from '@/app/lib/climb-action-utils';
 
 // Maximum swipe distance
 const MAX_SWIPE = 120;
+const LONG_SWIPE_ACTION_WIDTH = 176;
 
 type ClimbListItemProps = {
   climb: Climb;
@@ -103,7 +104,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
       left: 0,
       top: 0,
       bottom: 0,
-      width: MAX_SWIPE,
+      width: rightSwipeMode === 'playlist' ? LONG_SWIPE_ACTION_WIDTH : MAX_SWIPE,
       backgroundColor: rightSwipeMode === 'playlist' ? themeTokens.colors.primary : themeTokens.colors.error,
       display: 'flex' as const,
       alignItems: 'center' as const,
