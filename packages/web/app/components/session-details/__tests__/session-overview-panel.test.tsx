@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import type { SessionFeedParticipant, SessionGradeDistributionItem } from '@boardsesh/shared-schema';
 
 // Mock dependencies
 vi.mock('@/app/components/charts/grade-distribution-bar', () => ({
@@ -14,24 +13,7 @@ vi.mock('@/app/lib/grade-colors', () => ({
 
 import SessionOverviewPanel from '../session-overview-panel';
 
-interface SessionOverviewPanelProps {
-  participants: SessionFeedParticipant[];
-  totalSends: number;
-  totalFlashes: number;
-  totalAttempts: number;
-  tickCount: number;
-  gradeDistribution: SessionGradeDistributionItem[];
-  boardTypes: string[];
-  hardestGrade?: string | null;
-  durationMinutes?: number | null;
-  goal?: string | null;
-  ownerUserId?: string | null;
-  canEditParticipants?: boolean;
-  onAddParticipant?: () => void;
-  onRemoveParticipant?: (userId: string) => void;
-  removingUserId?: string | null;
-  getParticipantHref?: (userId: string) => string;
-}
+type SessionOverviewPanelProps = React.ComponentProps<typeof SessionOverviewPanel>;
 
 function makeProps(overrides: Partial<SessionOverviewPanelProps> = {}): SessionOverviewPanelProps {
   return {
@@ -82,7 +64,7 @@ describe('SessionOverviewPanel', () => {
   });
 
   it('deduplicates participants by userId', () => {
-    const duplicate: SessionFeedParticipant = {
+    const duplicate: SessionOverviewPanelProps['participants'][number] = {
       userId: 'user-1',
       displayName: 'Alice',
       avatarUrl: null,

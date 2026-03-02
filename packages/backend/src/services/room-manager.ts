@@ -77,6 +77,17 @@ class RoomManager {
   private pendingJoinPersists = new Map<string, Promise<void>>();
 
   /**
+   * Await any in-flight persistSessionJoin for a session so that subsequent
+   * status UPDATEs don't race against the INSERT that creates the row.
+   */
+  private async awaitPendingJoinPersist(sessionId: string): Promise<void> {
+    const pending = this.pendingJoinPersists.get(sessionId);
+    if (pending) {
+      await pending;
+    }
+  }
+
+  /**
    * Reset all state (for testing purposes)
    */
   reset(): void {
@@ -382,11 +393,18 @@ class RoomManager {
     await db.update(sessions).set({ status: 'active', lastActivity: new Date() }).where(eq(sessions.id, sessionId));
 
     // Background Postgres metadata writes - Redis is the source of truth.
-    // Track the promise so endSession/leaveSession can await it before updating status.
-    const persistPromise = this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined)
-      .catch(err => console.warn(`[RoomManager] Background Postgres persist failed for session ${sessionId}:`, err))
-      .finally(() => this.pendingJoinPersists.delete(sessionId));
-    this.pendingJoinPersists.set(sessionId, persistPromise);
+    // Chain onto any existing pending persist so concurrent joins for the same session
+    // are serialized and endSession/leaveSession can await the full chain.
+    const previous = this.pendingJoinPersists.get(sessionId) ?? Promise.resolve();
+    const chained = previous
+      .then(() => this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined))
+      .catch(err => console.warn(`[RoomManager] Background Postgres persist failed for session ${sessionId}:`, err));
+    this.pendingJoinPersists.set(sessionId, chained);
+    chained.finally(() => {
+      if (this.pendingJoinPersists.get(sessionId) === chained) {
+        this.pendingJoinPersists.delete(sessionId);
+      }
+    });
 
     // Initialize queue state for new sessions with provided initial queue
     if (isNewSession && initialQueue && initialQueue.length > 0) {
@@ -480,11 +498,7 @@ class RoomManager {
           console.log(`[RoomManager] Session ${sessionId} marked inactive - grace period started (60s)`);
         }
 
-        // Await any pending join persist to ensure the session row exists before updating status
-        const pendingJoinForLeave = this.pendingJoinPersists.get(sessionId);
-        if (pendingJoinForLeave) {
-          await pendingJoinForLeave;
-        }
+        await this.awaitPendingJoinPersist(sessionId);
 
         // Update Postgres status to 'inactive' (keep queue state for recovery)
         await db
@@ -1415,11 +1429,7 @@ class RoomManager {
       this.sessionGraceTimers.delete(sessionId);
     }
 
-    // Await any pending join persist to ensure the session row exists before updating status
-    const pendingJoin = this.pendingJoinPersists.get(sessionId);
-    if (pendingJoin) {
-      await pendingJoin;
-    }
+    await this.awaitPendingJoinPersist(sessionId);
 
     // Remove from Redis
     if (this.redisStore) {

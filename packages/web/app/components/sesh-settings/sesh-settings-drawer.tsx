@@ -198,6 +198,7 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
 
         {sessionForView && (
           <SessionDetailContent
+            key={`${sessionForView.sessionId}:${sessionForView.ticks.length}:${sessionForView.ticks[0]?.uuid ?? ''}`}
             session={sessionForView}
             embedded
             fallbackBoardDetails={boardDetails}
