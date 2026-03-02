@@ -18,6 +18,8 @@ import {
   getBaseBoardPath,
   getPlaylistsBasePath,
   getContextAwarePlaylistUrl,
+  getContextAwareClimbViewUrl,
+  constructBoardSlugViewUrl,
   constructBoardSlugPlaylistsUrl,
   DEFAULT_SEARCH_PARAMS
 } from '../url-utils';
@@ -978,6 +980,44 @@ describe('constructBoardSlugPlaylistsUrl', () => {
 
   it('should handle angle 0', () => {
     expect(constructBoardSlugPlaylistsUrl('my-board', 0)).toBe('/b/my-board/0/playlists');
+  });
+});
+
+describe('constructBoardSlugViewUrl', () => {
+  it('should construct board-slug view URL with UUID when no climb name is provided', () => {
+    expect(constructBoardSlugViewUrl('my-kilter', 40, 'ABC123')).toBe('/b/my-kilter/40/view/ABC123');
+  });
+
+  it('should construct board-slug view URL with climb slug and UUID when climb name is provided', () => {
+    expect(constructBoardSlugViewUrl('my-kilter', 40, 'ABC123', 'Moon Landing')).toBe('/b/my-kilter/40/view/moon-landing-ABC123');
+  });
+});
+
+describe('getContextAwareClimbViewUrl', () => {
+  const boardDetails = {
+    board_name: 'kilter',
+    layout_id: 1,
+    size_id: 2,
+    set_ids: [3, 4],
+    layout_name: 'Homewall',
+    size_name: '8x12 Full Ride',
+    size_description: 'Main',
+    set_names: ['Main Kicker', 'Aux Kicker'],
+  } as any;
+
+  it('should preserve /b/{slug}/{angle} context from list routes', () => {
+    expect(getContextAwareClimbViewUrl('/b/moonrise-gym/40/list', boardDetails, 40, 'ABC123', 'Moon Landing'))
+      .toBe('/b/moonrise-gym/40/view/moon-landing-ABC123');
+  });
+
+  it('should preserve /b/{slug}/{angle} context from play routes', () => {
+    expect(getContextAwareClimbViewUrl('/b/moonrise-gym/40/play/some-climb', boardDetails, 40, 'ABC123', 'Moon Landing'))
+      .toBe('/b/moonrise-gym/40/view/moon-landing-ABC123');
+  });
+
+  it('should fall back to canonical URL outside /b routes', () => {
+    expect(getContextAwareClimbViewUrl('/kilter/homewall/8x12/main_aux/40/list', boardDetails, 40, 'ABC123', 'Moon Landing'))
+      .toBe('/kilter/homewall/8x12-main/main-kicker_aux-kicker/40/view/moon-landing-ABC123');
   });
 });
 

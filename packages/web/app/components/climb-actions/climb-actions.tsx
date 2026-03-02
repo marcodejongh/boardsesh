@@ -94,6 +94,7 @@ export function ClimbActions({
   climb,
   boardDetails,
   angle,
+  currentPathname,
   viewMode,
   include,
   exclude = [],
@@ -116,11 +117,12 @@ export function ClimbActions({
       climb,
       boardDetails,
       angle,
+      currentPathname,
       viewMode,
       size,
       auroraAppUrl,
     }),
-    [climb, boardDetails, angle, viewMode, size, auroraAppUrl]
+    [climb, boardDetails, angle, currentPathname, viewMode, size, auroraAppUrl]
   );
 
   // Memoize action complete handler to prevent creating new functions on every render

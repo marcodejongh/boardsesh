@@ -5,6 +5,7 @@ import MuiCard from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
+import { usePathname } from 'next/navigation';
 
 import ClimbCardCover from './climb-card-cover';
 import ClimbTitle from './climb-title';
@@ -71,6 +72,7 @@ function ClimbCardWithActions({
   selected?: boolean;
   unsupported?: boolean;
 }) {
+  const pathname = usePathname();
   const { mode } = useColorMode();
   const isDark = mode === 'dark';
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} onDoubleClick={onCoverDoubleClick} />;
@@ -106,6 +108,7 @@ function ClimbCardWithActions({
             climb={climb}
             boardDetails={boardDetails}
             angle={climb.angle}
+            currentPathname={pathname}
             viewMode="icon"
             exclude={excludeActions}
           />

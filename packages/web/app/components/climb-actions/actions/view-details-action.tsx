@@ -8,8 +8,7 @@ import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import {
-  constructClimbViewUrl,
-  constructClimbViewUrlWithSlugs,
+  getContextAwareClimbViewUrl,
 } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import { buildActionResult, computeActionDisplay } from '../action-view-renderer';
@@ -20,6 +19,7 @@ export function ViewDetailsAction({
   climb,
   boardDetails,
   angle,
+  currentPathname,
   viewMode,
   size = 'default',
   showLabel,
@@ -29,28 +29,13 @@ export function ViewDetailsAction({
 }: ClimbActionProps): ClimbActionResult {
   const { iconSize, shouldShowLabel } = computeActionDisplay(viewMode, size, showLabel);
 
-  const url = boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
-    ? constructClimbViewUrlWithSlugs(
-        boardDetails.board_name,
-        boardDetails.layout_name,
-        boardDetails.size_name,
-        boardDetails.size_description,
-        boardDetails.set_names,
-        angle,
-        climb.uuid,
-        climb.name,
-      )
-    : constructClimbViewUrl(
-        {
-          board_name: boardDetails.board_name,
-          layout_id: boardDetails.layout_id,
-          size_id: boardDetails.size_id,
-          set_ids: boardDetails.set_ids,
-          angle,
-        },
-        climb.uuid,
-        climb.name,
-      );
+  const url = getContextAwareClimbViewUrl(
+    currentPathname ?? '',
+    boardDetails,
+    angle,
+    climb.uuid,
+    climb.name,
+  );
 
   const handleClick = () => {
     track('Climb Info Viewed', {
