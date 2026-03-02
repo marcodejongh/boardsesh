@@ -568,8 +568,20 @@ export const constructBoardSlugPlayUrl = (slug: string, angle: number, climbUuid
  * Construct a board slug URL for the climb view.
  * /b/{board-slug}/{angle}/view/{climb_uuid}
  */
-export const constructBoardSlugViewUrl = (slug: string, angle: number, climbUuid: string) =>
-  constructBoardSlugUrl(slug, angle, `view/${climbUuid}`);
+export const constructBoardSlugViewUrl = (
+  slug: string,
+  angle: number,
+  climbUuid: string,
+  climbName?: string,
+) => {
+  if (climbName && climbName.trim()) {
+    const climbSlug = generateSlugFromText(climbName.trim());
+    if (climbSlug) {
+      return constructBoardSlugUrl(slug, angle, `view/${climbSlug}-${climbUuid}`);
+    }
+  }
+  return constructBoardSlugUrl(slug, angle, `view/${climbUuid}`);
+};
 
 /**
  * Construct a board slug URL for the playlists library.
@@ -577,6 +589,59 @@ export const constructBoardSlugViewUrl = (slug: string, angle: number, climbUuid
  */
 export const constructBoardSlugPlaylistsUrl = (slug: string, angle: number) =>
   constructBoardSlugUrl(slug, angle, 'playlists');
+
+const getBoardSlugRouteContext = (pathname: string): { slug: string; angle: number } | null => {
+  const match = pathname.match(/^\/b\/([^/]+)\/(-?\d+)(?:\/|$)/);
+  if (!match) return null;
+
+  const angle = Number(match[2]);
+  if (Number.isNaN(angle)) return null;
+
+  return { slug: match[1], angle };
+};
+
+/**
+ * Build a climb-view URL that preserves board-slug routing context when present.
+ * - On /b/{slug}/{angle}/... routes, returns /b/{slug}/{angle}/view/{slug-uuid|uuid}
+ * - Otherwise, falls back to canonical board URLs.
+ */
+export const getContextAwareClimbViewUrl = (
+  pathname: string,
+  boardDetails: BoardDetails,
+  angle: number,
+  climbUuid: string,
+  climbName?: string,
+): string => {
+  const boardSlugRoute = getBoardSlugRouteContext(pathname);
+  if (boardSlugRoute) {
+    return constructBoardSlugViewUrl(boardSlugRoute.slug, boardSlugRoute.angle, climbUuid, climbName);
+  }
+
+  if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
+    return constructClimbViewUrlWithSlugs(
+      boardDetails.board_name,
+      boardDetails.layout_name,
+      boardDetails.size_name,
+      boardDetails.size_description,
+      boardDetails.set_names,
+      angle,
+      climbUuid,
+      climbName,
+    );
+  }
+
+  return constructClimbViewUrl(
+    {
+      board_name: boardDetails.board_name,
+      layout_id: boardDetails.layout_id,
+      size_id: boardDetails.size_id,
+      set_ids: boardDetails.set_ids,
+      angle,
+    },
+    climbUuid,
+    climbName,
+  );
+};
 
 /**
  * Extract the playlists base path from the current pathname.

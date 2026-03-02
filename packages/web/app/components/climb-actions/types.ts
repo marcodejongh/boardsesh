@@ -36,6 +36,8 @@ export interface ClimbActionBaseProps {
   climb: Climb;
   boardDetails: BoardDetails;
   angle: number;
+  /** Current route pathname for context-aware URL construction (e.g. preserving /b/{slug}/{angle}). */
+  currentPathname?: string;
 }
 
 /**

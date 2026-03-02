@@ -15,7 +15,7 @@ import { useQueueContext } from '../graphql-queue';
 import NextClimbButton from './next-climb-button';
 import { usePathname, useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { constructPlayUrlWithSlugs, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
+import { constructPlayUrlWithSlugs, getContextAwareClimbViewUrl } from '@/app/lib/url-utils';
 import { BoardRouteParameters, BoardDetails, Angle } from '@/app/lib/types';
 import PreviousClimbButton from './previous-climb-button';
 import QueueList, { QueueListHandle } from './queue-list';
@@ -100,23 +100,32 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
 
   // Build URL for a climb item (for navigation on view/play pages)
   const buildClimbUrl = useCallback((climb: { uuid: string; name: string }) => {
-    const urlConstructor = isPlayPage ? constructPlayUrlWithSlugs : constructClimbViewUrlWithSlugs;
-    const fallbackPath = isPlayPage ? 'play' : 'view';
+    let climbUrl: string | null = null;
 
-    let climbUrl = boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
-      ? urlConstructor(
-          boardDetails.board_name,
-          boardDetails.layout_name,
-          boardDetails.size_name,
-          boardDetails.size_description,
-          boardDetails.set_names,
-          angle,
-          climb.uuid,
-          climb.name,
-        )
-      : params.board_name
-        ? `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/${fallbackPath}/${climb.uuid}`
-        : null;
+    if (isPlayPage) {
+      climbUrl = boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
+        ? constructPlayUrlWithSlugs(
+            boardDetails.board_name,
+            boardDetails.layout_name,
+            boardDetails.size_name,
+            boardDetails.size_description,
+            boardDetails.set_names,
+            angle,
+            climb.uuid,
+            climb.name,
+          )
+        : params.board_name
+          ? `/${params.board_name}/${params.layout_id}/${params.size_id}/${params.set_ids}/${params.angle}/play/${climb.uuid}`
+          : null;
+    } else {
+      climbUrl = getContextAwareClimbViewUrl(
+        pathname,
+        boardDetails,
+        angle,
+        climb.uuid,
+        climb.name,
+      );
+    }
 
     if (!climbUrl) return null;
 
@@ -128,7 +137,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
       }
     }
     return climbUrl;
-  }, [boardDetails, angle, params, searchParams, isPlayPage]);
+  }, [pathname, boardDetails, angle, params, searchParams, isPlayPage]);
 
   // Handle swipe navigation
   const handleSwipeNext = useCallback(() => {

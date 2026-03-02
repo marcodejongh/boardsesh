@@ -4,8 +4,10 @@ import { renderHook, act } from '@testing-library/react';
 // --- Mocks ---
 
 const mockPush = vi.fn();
+let mockPathname = '/kilter/original/12x12/default/40/list';
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => mockPathname,
 }));
 
 const mockTrack = vi.fn();
@@ -39,8 +41,7 @@ vi.mock('../use-favorite', () => ({
 }));
 
 vi.mock('@/app/lib/url-utils', () => ({
-  constructClimbViewUrl: vi.fn(() => '/climb/view'),
-  constructClimbViewUrlWithSlugs: vi.fn(() => '/climb/view-slug'),
+  getContextAwareClimbViewUrl: vi.fn(() => '/climb/view-context'),
   constructCreateClimbUrl: vi.fn(() => '/climb/create'),
   constructClimbInfoUrl: vi.fn(() => '/climb/info'),
 }));
@@ -79,6 +80,7 @@ describe('useClimbActions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    mockPathname = '/kilter/original/12x12/default/40/list';
 
     // Provide navigator.share and clipboard mocks
     Object.defineProperty(global, 'navigator', {
@@ -117,7 +119,7 @@ describe('useClimbActions', () => {
     expect(mockTrack).toHaveBeenCalledWith('Climb Info Viewed', expect.objectContaining({
       climbUuid: 'climb-1',
     }));
-    expect(mockPush).toHaveBeenCalledWith('/climb/view-slug');
+    expect(mockPush).toHaveBeenCalledWith('/climb/view-context');
     expect(defaultOptions.onActionComplete).toHaveBeenCalledWith('viewDetails');
   });
 
@@ -297,7 +299,7 @@ describe('useClimbActions', () => {
   it('viewDetailsUrl uses slug URL when names available', () => {
     const { result } = renderHook(() => useClimbActions(defaultOptions));
 
-    expect(result.current.viewDetailsUrl).toBe('/climb/view-slug');
+    expect(result.current.viewDetailsUrl).toBe('/climb/view-context');
   });
 
   it('forkUrl is null when canFork is false', () => {

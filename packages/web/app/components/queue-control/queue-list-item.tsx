@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import MuiTooltip from '@mui/material/Tooltip';
 import MuiAvatar from '@mui/material/Avatar';
 import MuiCheckbox from '@mui/material/Checkbox';
@@ -32,7 +32,7 @@ import { useOptionalBoardProvider } from '../board-provider/board-provider-conte
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useColorMode } from '@/app/hooks/use-color-mode';
-import { constructClimbViewUrl, constructClimbViewUrlWithSlugs, parseBoardRouteParams, constructClimbInfoUrl } from '@/app/lib/url-utils';
+import { constructClimbInfoUrl, getContextAwareClimbViewUrl } from '@/app/lib/url-utils';
 import { useDoubleTap } from '@/app/lib/hooks/use-double-tap';
 import styles from './queue-list-item.module.css';
 
@@ -117,6 +117,7 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   onToggleSelect,
 }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { mode } = useColorMode();
   const isDark = mode === 'dark';
   const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
@@ -126,32 +127,17 @@ const QueueListItem: React.FC<QueueListItemProps> = ({
   const handleViewClimb = useCallback(() => {
     if (!item.climb) return;
 
-    const climbViewUrl =
-      boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
-        ? constructClimbViewUrlWithSlugs(
-            boardDetails.board_name,
-            boardDetails.layout_name,
-            boardDetails.size_name,
-            boardDetails.size_description,
-            boardDetails.set_names,
-            item.climb.angle,
-            item.climb.uuid,
-            item.climb.name,
-          )
-        : (() => {
-            const routeParams = parseBoardRouteParams({
-              board_name: boardDetails.board_name,
-              layout_id: boardDetails.layout_id.toString(),
-              size_id: boardDetails.size_id.toString(),
-              set_ids: boardDetails.set_ids.join(','),
-              angle: item.climb.angle.toString(),
-            });
-            return constructClimbViewUrl(routeParams, item.climb.uuid, item.climb.name);
-          })();
+    const climbViewUrl = getContextAwareClimbViewUrl(
+      pathname,
+      boardDetails,
+      item.climb.angle,
+      item.climb.uuid,
+      item.climb.name,
+    );
 
     onClimbNavigate?.();
     router.push(climbViewUrl);
-  }, [item.climb, boardDetails, onClimbNavigate, router]);
+  }, [item.climb, pathname, boardDetails, onClimbNavigate, router]);
 
   const handleSwipeLeft = useCallback(() => {
     // Swipe left = remove from queue
