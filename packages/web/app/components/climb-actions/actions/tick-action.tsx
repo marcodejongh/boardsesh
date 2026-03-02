@@ -246,6 +246,7 @@ export function TickAction({
           placement="bottom"
           onClose={closeDrawer}
           open={drawerVisible}
+          fullHeight={!showBoardSelector}
           styles={{ wrapper: { height: showBoardSelector ? '60%' : '100%' } }}
         >
           {showBoardSelector ? (

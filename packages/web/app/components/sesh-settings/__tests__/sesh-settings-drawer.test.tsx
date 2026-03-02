@@ -15,10 +15,33 @@ let mockSession: Record<string, unknown> | null = {
   goal: 'Send V5',
   startedAt: new Date(Date.now() - 30 * 60000).toISOString(),
 };
-let mockUsers = [{ id: 'user-1', name: 'Alice' }, { id: 'user-2', name: 'Bob' }];
 const mockEndSessionWithSummary = vi.fn();
 let mockAngle: number | undefined = 40;
 let mockBoardDetails: Record<string, unknown> | null = { board_name: 'kilter' };
+let mockSessionDetail: Record<string, unknown> | null = {
+  sessionDetail: {
+    sessionId: 'session-123',
+    sessionType: 'party',
+    sessionName: 'Morning Sesh',
+    participants: [],
+    totalSends: 0,
+    totalFlashes: 0,
+    totalAttempts: 0,
+    tickCount: 0,
+    gradeDistribution: [],
+    boardTypes: [],
+    hardestGrade: null,
+    durationMinutes: 30,
+    goal: 'Send V5',
+    ticks: [],
+    upvotes: 0,
+    downvotes: 0,
+    voteScore: 0,
+    commentCount: 0,
+    firstTickAt: new Date().toISOString(),
+    lastTickAt: new Date().toISOString(),
+  },
+};
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -32,8 +55,9 @@ vi.mock('@/app/components/persistent-session/persistent-session-context', () => 
   usePersistentSession: () => ({
     activeSession: mockActiveSession,
     session: mockSession,
-    users: mockUsers,
+    users: [],
     endSessionWithSummary: mockEndSessionWithSummary,
+    liveSessionStats: null,
   }),
 }));
 
@@ -44,9 +68,38 @@ vi.mock('@/app/components/queue-control/queue-bridge-context', () => ({
   }),
 }));
 
+vi.mock('@/app/hooks/use-ws-auth-token', () => ({
+  useWsAuthToken: () => ({ token: null }),
+}));
+
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({
+    data: mockSessionDetail,
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 vi.mock('@/app/components/swipeable-drawer/swipeable-drawer', () => ({
-  default: ({ open, children, title }: { open: boolean; children: React.ReactNode; title: string }) =>
-    open ? <div data-testid="swipeable-drawer" data-title={title}>{children}</div> : null,
+  default: ({
+    open,
+    children,
+    title,
+    placement,
+    footer,
+  }: {
+    open: boolean;
+    children: React.ReactNode;
+    title: string;
+    placement: string;
+    footer: React.ReactNode;
+  }) =>
+    open ? (
+      <div data-testid="swipeable-drawer" data-title={title} data-placement={placement}>
+        {children}
+        {footer}
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/app/components/board-page/angle-selector', () => ({
@@ -57,6 +110,10 @@ vi.mock('@/app/components/board-page/angle-selector', () => ({
       <button data-testid="change-angle-20" onClick={() => onAngleChange(20)}>Set 20</button>
     </div>
   ),
+}));
+
+vi.mock('@/app/session/[sessionId]/session-detail-content', () => ({
+  default: () => <div data-testid="session-detail-content" />,
 }));
 
 import SeshSettingsDrawer from '../sesh-settings-drawer';
@@ -75,9 +132,32 @@ describe('SeshSettingsDrawer', () => {
       goal: 'Send V5',
       startedAt: new Date(Date.now() - 30 * 60000).toISOString(),
     };
-    mockUsers = [{ id: 'user-1', name: 'Alice' }, { id: 'user-2', name: 'Bob' }];
     mockAngle = 40;
     mockBoardDetails = { board_name: 'kilter' };
+    mockSessionDetail = {
+      sessionDetail: {
+        sessionId: 'session-123',
+        sessionType: 'party',
+        sessionName: 'Morning Sesh',
+        participants: [],
+        totalSends: 0,
+        totalFlashes: 0,
+        totalAttempts: 0,
+        tickCount: 0,
+        gradeDistribution: [],
+        boardTypes: [],
+        hardestGrade: null,
+        durationMinutes: 30,
+        goal: 'Send V5',
+        ticks: [],
+        upvotes: 0,
+        downvotes: 0,
+        voteScore: 0,
+        commentCount: 0,
+        firstTickAt: new Date().toISOString(),
+        lastTickAt: new Date().toISOString(),
+      },
+    };
   });
 
   it('renders nothing when activeSession is null', () => {
@@ -88,25 +168,19 @@ describe('SeshSettingsDrawer', () => {
     expect(container.innerHTML).toBe('');
   });
 
-  it('displays session name', () => {
+  it('renders drawer title', () => {
     render(<SeshSettingsDrawer open={true} onClose={vi.fn()} />);
-    expect(screen.getByText('Morning Sesh')).toBeTruthy();
+    expect(screen.getByTestId('swipeable-drawer').getAttribute('data-title')).toBe('Sesh Settings');
   });
 
-  it('displays participant count', () => {
+  it('renders session detail content', () => {
     render(<SeshSettingsDrawer open={true} onClose={vi.fn()} />);
-    expect(screen.getByText('2 participants')).toBeTruthy();
+    expect(screen.getByTestId('session-detail-content')).toBeTruthy();
   });
 
-  it('displays singular participant label for one user', () => {
-    mockUsers = [{ id: 'user-1', name: 'Alice' }];
+  it('opens as a top drawer', () => {
     render(<SeshSettingsDrawer open={true} onClose={vi.fn()} />);
-    expect(screen.getByText('1 participant')).toBeTruthy();
-  });
-
-  it('displays session goal', () => {
-    render(<SeshSettingsDrawer open={true} onClose={vi.fn()} />);
-    expect(screen.getByText('Goal: Send V5')).toBeTruthy();
+    expect(screen.getByTestId('swipeable-drawer').getAttribute('data-placement')).toBe('top');
   });
 
   it('shows angle selector when boardDetails and angle exist', () => {

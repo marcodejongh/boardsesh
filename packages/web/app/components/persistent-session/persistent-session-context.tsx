@@ -4,6 +4,12 @@ import React, { createContext, useContext, useState, useCallback, useMemo, useRe
 import { usePathname } from 'next/navigation'; // Used by useIsOnBoardRoute
 import { createGraphQLClient, execute, subscribe, Client } from '../graphql-queue/graphql-client';
 import {
+  INITIAL_RETRY_DELAY_MS,
+  MAX_RETRY_DELAY_MS,
+  BACKOFF_MULTIPLIER,
+  MAX_TRANSIENT_RETRIES,
+} from '../graphql-queue/retry-constants';
+import {
   JOIN_SESSION,
   LEAVE_SESSION,
   ADD_QUEUE_ITEM,
@@ -34,7 +40,13 @@ import {
   END_SESSION as END_SESSION_GQL,
   type EndSessionResponse,
 } from '@/app/lib/graphql/operations/sessions';
-import type { SessionSummary } from '@boardsesh/shared-schema';
+import type { SessionLiveStats, SessionSummary } from '@boardsesh/shared-schema';
+import {
+  evaluateQueueEventSequence,
+  insertQueueItemIdempotent,
+  upsertSessionUser,
+} from './event-utils';
+import { TransientJoinError } from './errors';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 
@@ -202,6 +214,7 @@ export interface PersistentSessionContextType {
 
   // Session ending with summary (elevated from GraphQLQueueProvider)
   endSessionWithSummary: () => void;
+  liveSessionStats: SessionLiveStats | null;
   sessionSummary: SessionSummary | null;
   dismissSessionSummary: () => void;
 }
@@ -267,6 +280,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     currentClimb: LocalClimbQueueItem | null;
     sessionName?: string;
   } | null>(null);
+  const [liveSessionStats, setLiveSessionStats] = useState<SessionLiveStats | null>(null);
 
   // Refs for cleanup and callbacks
   const queueUnsubscribeRef = useRef<(() => void) | null>(null);
@@ -282,6 +296,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const lastCorruptionResyncRef = useRef<number>(0);
   // Track if we're currently filtering corrupted items to prevent useEffect re-trigger loop
   const isFilteringCorruptedItemsRef = useRef(false);
+  // Generation counter to prevent stale connect() closures from executing after cleanup (React Strict Mode)
+  const connectionGenerationRef = useRef(0);
+
+  // Refs for queue state so reconnect handler always sees current values (avoids stale closure)
+  const queueRef = useRef<LocalClimbQueueItem[]>([]);
+  const currentClimbQueueItemRef = useRef<LocalClimbQueueItem | null>(null);
 
   // Event subscribers
   const queueEventSubscribersRef = useRef<Set<(event: SubscriptionQueueEvent) => void>>(new Set());
@@ -295,6 +315,14 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   useEffect(() => {
     activeSessionRef.current = activeSession;
   }, [activeSession]);
+
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
+
+  useEffect(() => {
+    currentClimbQueueItemRef.current = currentClimbQueueItem;
+  }, [currentClimbQueueItem]);
 
   // Clean up old queues from IndexedDB on mount
   useEffect(() => {
@@ -368,18 +396,31 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   // Handle queue events internally
   const handleQueueEvent = useCallback((event: SubscriptionQueueEvent) => {
-    // Sequence validation for gap detection (use ref to avoid stale closure)
-    const lastSeq = lastReceivedSequenceRef.current;
-    if (event.__typename !== 'FullSync' && lastSeq !== null) {
-      const expectedSequence = lastSeq + 1;
-      if (event.sequence !== expectedSequence) {
+    // Sequence validation for stale/gap detection (use ref to avoid stale closure).
+    // FullSync always resets local state and sequence tracking.
+    if (event.__typename !== 'FullSync') {
+      const lastSeq = lastReceivedSequenceRef.current;
+      const sequenceDecision = evaluateQueueEventSequence(lastSeq, event.sequence);
+
+      if (sequenceDecision === 'ignore-stale') {
+        if (DEBUG) {
+          console.log(
+            `[PersistentSession] Ignoring stale/duplicate event with sequence ${event.sequence} ` +
+            `(last received: ${lastSeq})`
+          );
+        }
+        return;
+      }
+
+      if (sequenceDecision === 'gap') {
         console.warn(
-          `[PersistentSession] Sequence gap detected: expected ${expectedSequence}, got ${event.sequence}. ` +
-          `This may indicate missed events.`
+          `[PersistentSession] Sequence gap detected: expected ${lastSeq! + 1}, got ${event.sequence}. ` +
+          `Triggering resync.`
         );
-        // Note: Reconnection handles delta sync automatically.
-        // Mid-session gaps are rare (server skipped sequence or pubsub delivery issue).
-        // For now, we log and continue - state hash verification will catch drift.
+        if (triggerResyncRef.current) {
+          triggerResyncRef.current();
+        }
+        return;
       }
     }
 
@@ -400,13 +441,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           break;
         }
         setQueueState((prev) => {
-          const newQueue = [...prev];
-          if (event.position !== undefined && event.position >= 0) {
-            newQueue.splice(event.position, 0, event.addedItem as LocalClimbQueueItem);
-          } else {
-            newQueue.push(event.addedItem as LocalClimbQueueItem);
-          }
-          return newQueue;
+          return insertQueueItemIdempotent(
+            prev,
+            event.addedItem as LocalClimbQueueItem,
+            event.position,
+          );
         });
         updateLastReceivedSequence(event.sequence);
         break;
@@ -490,6 +529,25 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   // Handle session events internally
   const handleSessionEvent = useCallback((event: SessionEvent) => {
+    if (event.__typename === 'SessionStatsUpdated') {
+      setLiveSessionStats({
+        sessionId: event.sessionId,
+        totalSends: event.totalSends,
+        totalFlashes: event.totalFlashes,
+        totalAttempts: event.totalAttempts,
+        tickCount: event.tickCount,
+        participants: event.participants,
+        gradeDistribution: event.gradeDistribution,
+        boardTypes: event.boardTypes,
+        hardestGrade: event.hardestGrade,
+        durationMinutes: event.durationMinutes,
+        goal: event.goal,
+        ticks: event.ticks,
+      });
+      notifySessionSubscribers(event);
+      return;
+    }
+
     setSession((prev) => {
       if (!prev) return prev;
 
@@ -497,7 +555,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         case 'UserJoined':
           return {
             ...prev,
-            users: [...prev.users, event.user],
+            users: upsertSessionUser(prev.users, event.user),
           };
         case 'UserLeft':
           return {
@@ -515,6 +573,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           };
         case 'SessionEnded':
           if (DEBUG) console.log('[PersistentSession] Session ended:', event.reason);
+          setLiveSessionStats(null);
           // Clear persisted session so it's not auto-restored on next page load
           removePreference(ACTIVE_SESSION_KEY).catch(() => {});
           return prev;
@@ -527,6 +586,14 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     notifySessionSubscribers(event);
   }, [notifySessionSubscribers]);
 
+  // Reset live stats when active session changes or clears.
+  useEffect(() => {
+    setLiveSessionStats((prev) => {
+      if (!activeSession) return null;
+      return prev?.sessionId === activeSession.sessionId ? prev : null;
+    });
+  }, [activeSession]);
+
   // Connect to session when activeSession changes
   useEffect(() => {
     if (!activeSession) {
@@ -534,8 +601,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       return;
     }
 
-    // Wait for auth to finish loading before connecting
-    // This prevents creating duplicate connections when token loads async
     if (isAuthLoading) {
       if (DEBUG) console.log('[PersistentSession] Waiting for auth to load...');
       return;
@@ -551,7 +616,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
     // Use ref for mounted flag so reconnect callback can safely check current state
     mountedRef.current = true;
+    // Increment generation so any stale connect() from a previous effect invocation bails out
+    const connectionGeneration = ++connectionGenerationRef.current;
     let graphqlClient: Client | null = null;
+    let retryConnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let transientRetryCount = 0;
 
     async function joinSession(clientToUse: Client): Promise<Session | null> {
       if (DEBUG) console.log('[PersistentSession] Calling joinSession mutation...');
@@ -586,12 +655,18 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           variables,
         });
 
-        // Clear pending queue after successful send
+        const joinedSession = response?.joinSession;
+        if (!joinedSession) {
+          console.error('[PersistentSession] JoinSession returned no session payload');
+          return null;
+        }
+
+        // Clear pending queue only after confirmed successful join payload
         if (initialQueueData) {
           setPendingInitialQueue(null);
         }
 
-        return response.joinSession;
+        return joinedSession;
       } catch (err) {
         console.error('[PersistentSession] JoinSession failed:', err);
         return null;
@@ -601,6 +676,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     async function handleReconnect() {
       // Use ref to safely check if component is still mounted
       if (!mountedRef.current || !graphqlClient) return;
+      // Bail if this effect invocation has been superseded
+      if (connectionGenerationRef.current !== connectionGeneration) return;
       if (isReconnectingRef.current) {
         if (DEBUG) console.log('[PersistentSession] Reconnection already in progress');
         return;
@@ -634,11 +711,16 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
               variables: { sessionId, sinceSequence: lastSeq },
             });
 
-            if (response.eventsReplay.events.length > 0) {
-              if (DEBUG) console.log(`[PersistentSession] Replaying ${response.eventsReplay.events.length} events`);
+            const replay = response?.eventsReplay;
+            if (!replay) {
+              throw new Error('eventsReplay payload missing');
+            }
+
+            if (replay.events.length > 0) {
+              if (DEBUG) console.log(`[PersistentSession] Replaying ${replay.events.length} events`);
 
               // Apply each event in order (transform from server to subscription format)
-              response.eventsReplay.events.forEach(event => {
+              replay.events.forEach(event => {
                 handleQueueEvent(transformToSubscriptionEvent(event));
               });
 
@@ -661,7 +743,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           applyFullSync(sessionData);
         } else if (gap === 0) {
           // No sequence gap, but verify state is actually in sync via hash
-          const localHash = computeQueueStateHash(queue, currentClimbQueueItem?.uuid || null);
+          const localHash = computeQueueStateHash(queueRef.current, currentClimbQueueItemRef.current?.uuid || null);
           if (localHash !== sessionData.queueState.stateHash) {
             if (DEBUG) console.log('[PersistentSession] Hash mismatch on reconnect despite gap=0, applying full sync');
             applyFullSync(sessionData);
@@ -692,6 +774,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     }
 
     async function connect() {
+      // Bail out if this effect invocation has been superseded (e.g. React Strict Mode re-mount)
+      if (connectionGenerationRef.current !== connectionGeneration) return;
       // Prevent duplicate connections during React re-renders or Strict Mode
       if (isConnectingRef.current) {
         if (DEBUG) console.log('[PersistentSession] Connection already in progress, skipping');
@@ -721,20 +805,28 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
         const sessionData = await joinSession(graphqlClient);
 
+        // Bail if a newer connection superseded this one (React Strict Mode re-mount)
+        if (connectionGenerationRef.current !== connectionGeneration) {
+          graphqlClient.dispose();
+          isConnectingRef.current = false;
+          return;
+        }
+
         if (!mountedRef.current) {
           graphqlClient.dispose();
           return;
         }
 
+        // joinSession() catches its own errors and returns null on failure
+        // (including "completed without data" from the graphql client).
+        // A null result is always a transient condition worth retrying.
         if (!sessionData) {
-          // Clear persisted session since the server rejected the join
-          removePreference(ACTIVE_SESSION_KEY).catch(() => {});
-          setActiveSession(null);
-          throw new Error('Failed to join session');
+          throw new TransientJoinError('JoinSession returned no payload');
         }
 
         if (DEBUG) console.log('[PersistentSession] Joined session, clientId:', sessionData.clientId);
 
+        transientRetryCount = 0;
         setSession(sessionData);
         setHasConnected(true);
         setIsConnecting(false);
@@ -801,13 +893,45 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       } catch (err) {
         console.error('[PersistentSession] Connection failed:', err);
         isConnectingRef.current = false;
+        const isTransientJoinFailure = err instanceof TransientJoinError;
+
         if (mountedRef.current) {
           setError(err instanceof Error ? err : new Error(String(err)));
           setIsConnecting(false);
-          // Clear persisted session if connection fails (session may have expired)
-          removePreference(ACTIVE_SESSION_KEY).catch(() => {});
-          // Clear active session so UI falls back to local queue
-          setActiveSession(null);
+          if (isTransientJoinFailure) {
+            transientRetryCount++;
+            if (transientRetryCount > MAX_TRANSIENT_RETRIES) {
+              // Exhausted transient retries — treat as definitive failure.
+              console.warn(
+                `[PersistentSession] Exhausted ${MAX_TRANSIENT_RETRIES} transient retries, clearing session`,
+              );
+              transientRetryCount = 0;
+              removePreference(ACTIVE_SESSION_KEY).catch(() => {});
+              setActiveSession(null);
+            } else {
+              // Retry with exponential backoff; avoids join/leave thrash loops.
+              const delay = Math.min(
+                INITIAL_RETRY_DELAY_MS * Math.pow(BACKOFF_MULTIPLIER, transientRetryCount - 1),
+                MAX_RETRY_DELAY_MS,
+              );
+              if (DEBUG) console.log(`[PersistentSession] Transient retry ${transientRetryCount}/${MAX_TRANSIENT_RETRIES} in ${delay}ms`);
+              retryConnectTimeout = setTimeout(() => {
+                if (
+                  connectionGenerationRef.current === connectionGeneration &&
+                  mountedRef.current &&
+                  activeSessionRef.current?.sessionId === sessionId &&
+                  !isConnectingRef.current
+                ) {
+                  connect();
+                }
+              }, delay);
+            }
+          } else {
+            // Clear persisted session on definitive failures (session may have expired)
+            removePreference(ACTIVE_SESSION_KEY).catch(() => {});
+            // Clear active session so UI falls back to local queue
+            setActiveSession(null);
+          }
         }
         if (graphqlClient) {
           graphqlClient.dispose();
@@ -849,6 +973,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       setSession(null);
       setHasConnected(false);
       setIsConnecting(false);
+      if (retryConnectTimeout) {
+        clearTimeout(retryConnectTimeout);
+      }
     };
   // Note: username, avatarUrl, wsAuthToken are accessed via refs to prevent reconnection on changes
   }, [activeSession, isAuthLoading, handleQueueEvent, handleSessionEvent]);
@@ -925,6 +1052,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     setActiveSession(null);
     setQueueState([]);
     setCurrentClimbQueueItem(null);
+    setLiveSessionStats(null);
     // Clear persisted session from IndexedDB
     removePreference(ACTIVE_SESSION_KEY).catch((err) =>
       console.error('[PersistentSession] Failed to clear persisted session:', err),
@@ -1177,6 +1305,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       subscribeToSessionEvents,
       triggerResync,
       endSessionWithSummary,
+      liveSessionStats,
       sessionSummary,
       dismissSessionSummary,
     }),
@@ -1208,6 +1337,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       subscribeToSessionEvents,
       triggerResync,
       endSessionWithSummary,
+      liveSessionStats,
       sessionSummary,
       dismissSessionSummary,
     ],

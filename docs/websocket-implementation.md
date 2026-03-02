@@ -396,6 +396,20 @@ sequenceDiagram
 -- Atomically sets new leader
 ```
 
+### Session Update Events
+
+`sessionUpdates(sessionId)` emits membership/lifecycle events and live stats updates.
+
+| Event | When emitted | Key fields |
+|-------|--------------|------------|
+| `UserJoined` | A client joins the session | `user` |
+| `UserLeft` | A client disconnects/leaves | `userId` |
+| `LeaderChanged` | Leader election selects a new leader | `leaderId` |
+| `SessionEnded` | Session is ended explicitly or by cleanup | `reason`, `newPath` |
+| `SessionStatsUpdated` | A tick is saved for an active party session | `totalSends`, `totalFlashes`, `totalAttempts`, `tickCount`, `participants`, `gradeDistribution`, `boardTypes`, `hardestGrade`, `durationMinutes`, `goal`, `ticks` |
+
+`SessionStatsUpdated` payloads now include full `ticks` rows so clients can update charts and climbs/attempt lists without issuing an extra session detail refetch.
+
 ---
 
 ## Queue State Synchronization

@@ -18,8 +18,11 @@ describe('CORS Handler', () => {
     delete process.env.TAILSCALE_HOSTNAME;
     delete process.env.DEV_ALLOWED_ORIGINS;
 
-    // Reset to a known state before each test
+    // Reset to a known state before each test.
+    // initCors invokes execFileSync (for Tailscale discovery), so clear the
+    // call history afterwards so individual tests start with a clean count.
     initCors('https://boardsesh.com');
+    vi.mocked(execFileSync).mockClear();
   });
 
   describe('initCors', () => {

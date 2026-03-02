@@ -18,22 +18,14 @@ vi.mock('next-auth/react', () => ({
   useSession: () => ({ data: null, status: 'unauthenticated' }),
 }));
 
-vi.mock('@/app/hooks/use-ws-auth-token', () => ({
-  useWsAuthToken: () => ({ token: null, isAuthenticated: false, isLoading: false, error: null }),
-}));
-
-vi.mock('@/app/components/providers/snackbar-provider', () => ({
-  useSnackbar: () => ({ showMessage: vi.fn() }),
-}));
-
-vi.mock('@/app/lib/graphql/client', () => ({
-  createGraphQLHttpClient: () => ({ request: vi.fn() }),
-}));
-
-vi.mock('@/app/lib/graphql/operations/activity-feed', () => ({
-  UPDATE_INFERRED_SESSION: 'mutation UpdateInferredSession',
-  ADD_USER_TO_SESSION: 'mutation AddUserToSession',
-  REMOVE_USER_FROM_SESSION: 'mutation RemoveUserFromSession',
+vi.mock('@/app/hooks/use-session-detail', () => ({
+  useSessionDetail: ({ initialData }: { initialData: unknown }) => ({
+    session: initialData ?? null,
+    isLoading: false,
+    updateSession: { isPending: false, mutateAsync: vi.fn() },
+    addUser: { isPending: false, mutateAsync: vi.fn() },
+    removeUser: { isPending: false, mutateAsync: vi.fn() },
+  }),
 }));
 
 vi.mock('@/app/theme/theme-config', () => ({
@@ -203,6 +195,45 @@ describe('SessionDetailContent', () => {
     expect(screen.getByTestId('climbs-list')).toBeTruthy();
     expect(screen.getByText('Test Climb')).toBeTruthy();
     expect(screen.getByText('Climbs (1)')).toBeTruthy();
+  });
+
+  it('updates rendered climbs when session prop changes without remount', () => {
+    const first = makeSession();
+    const second = makeSession({
+      tickCount: 2,
+      totalSends: 6,
+      ticks: [
+        first.ticks[0],
+        {
+          uuid: 'tick-2',
+          userId: 'user-1',
+          climbUuid: 'climb-2',
+          climbName: 'Second Climb',
+          boardType: 'kilter',
+          layoutId: 1,
+          angle: 40,
+          status: 'send',
+          attemptCount: 2,
+          difficulty: 21,
+          difficultyName: 'V6',
+          quality: 3,
+          isMirror: false,
+          isBenchmark: false,
+          comment: null,
+          frames: 'def',
+          setterUsername: 'setter2',
+          climbedAt: '2024-01-15T10:45:00.000Z',
+          upvotes: 1,
+        },
+      ],
+    });
+
+    const { rerender } = render(<SessionDetailContent session={first} />);
+    expect(screen.getByText('Climbs (1)')).toBeTruthy();
+
+    rerender(<SessionDetailContent session={second} />);
+    expect(screen.getByText('Climbs (2)')).toBeTruthy();
+    expect(screen.getByText('Second Climb')).toBeTruthy();
   });
 
   it('renders session-level VoteButton with session entity type', () => {

@@ -3692,7 +3692,7 @@ export const typeDefs = /* GraphQL */ `
   """
   type Subscription {
     """
-    Subscribe to session membership changes (users joining/leaving, leader changes).
+    Subscribe to real-time session events (membership, lifecycle, and live stats).
     """
     sessionUpdates(sessionId: ID!): SessionEvent!
 
@@ -3723,7 +3723,7 @@ export const typeDefs = /* GraphQL */ `
   """
   Union of possible session events.
   """
-  union SessionEvent = UserJoined | UserLeft | LeaderChanged | SessionEnded
+  union SessionEvent = UserJoined | UserLeft | LeaderChanged | SessionEnded | SessionStatsUpdated
 
   """
   Event when a user joins the session.
@@ -3757,6 +3757,36 @@ export const typeDefs = /* GraphQL */ `
     reason: String!
     "Optional path to redirect to"
     newPath: String
+  }
+
+  """
+  Event when session stats change due to logged attempts/sends.
+  """
+  type SessionStatsUpdated {
+    "Session ID these stats belong to"
+    sessionId: ID!
+    "Total sends (flash + send)"
+    totalSends: Int!
+    "Total flashes"
+    totalFlashes: Int!
+    "Total failed attempts (excludes successful send attempts)"
+    totalAttempts: Int!
+    "Total ticks in this session"
+    tickCount: Int!
+    "Per-participant session stats"
+    participants: [SessionFeedParticipant!]!
+    "Grade distribution with flash/send/attempt counts"
+    gradeDistribution: [SessionGradeDistributionItem!]!
+    "Board types climbed in this session"
+    boardTypes: [String!]!
+    "Hardest sent grade in this session"
+    hardestGrade: String
+    "Session duration in minutes"
+    durationMinutes: Int
+    "Session goal"
+    goal: String
+    "Current session ticks (latest first)"
+    ticks: [SessionDetailTick!]!
   }
 
   """

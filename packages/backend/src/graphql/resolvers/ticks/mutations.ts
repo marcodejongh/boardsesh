@@ -8,6 +8,7 @@ import { SaveTickInputSchema } from '../../../validation/schemas';
 import { resolveBoardFromPath } from '../social/boards';
 import { publishSocialEvent } from '../../../events';
 import { assignInferredSession } from '../../../jobs/inferred-session-builder';
+import { publishDebouncedSessionStats } from '../sessions/debounced-stats-publisher';
 
 export const tickMutations = {
   /**
@@ -106,6 +107,11 @@ export const tickMutations = {
       publishAscentEvent(tick, userId, boardId).catch(() => {
         // Final failure already logged inside publishAscentEvent
       });
+    }
+
+    // Publish live session stats updates for active party sessions (debounced, non-blocking).
+    if (tick.sessionId) {
+      publishDebouncedSessionStats(tick.sessionId);
     }
 
     return result;

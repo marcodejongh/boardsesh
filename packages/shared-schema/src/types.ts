@@ -836,6 +836,21 @@ export type SessionDetail = {
   commentCount: number;
 };
 
+export type SessionLiveStats = {
+  sessionId: string;
+  totalSends: number;
+  totalFlashes: number;
+  totalAttempts: number;
+  tickCount: number;
+  participants: SessionFeedParticipant[];
+  gradeDistribution: SessionGradeDistributionItem[];
+  boardTypes: string[];
+  hardestGrade?: string | null;
+  durationMinutes?: number | null;
+  goal?: string | null;
+  ticks: SessionDetailTick[];
+};
+
 // ============================================
 // Notification Types
 // ============================================
@@ -1350,7 +1365,22 @@ export type SessionEvent =
   | { __typename: 'UserJoined'; user: SessionUser }
   | { __typename: 'UserLeft'; userId: string }
   | { __typename: 'LeaderChanged'; leaderId: string }
-  | { __typename: 'SessionEnded'; reason: string; newPath?: string };
+  | { __typename: 'SessionEnded'; reason: string; newPath?: string }
+  | {
+      __typename: 'SessionStatsUpdated';
+      sessionId: string;
+      totalSends: number;
+      totalFlashes: number;
+      totalAttempts: number;
+      tickCount: number;
+      participants: SessionFeedParticipant[];
+      gradeDistribution: SessionGradeDistributionItem[];
+      boardTypes: string[];
+      hardestGrade?: string | null;
+      durationMinutes?: number | null;
+      goal?: string | null;
+      ticks: SessionDetailTick[];
+    };
 
 export type ConnectionContext = {
   connectionId: string;

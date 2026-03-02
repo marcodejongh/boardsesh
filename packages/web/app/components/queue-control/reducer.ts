@@ -1,6 +1,7 @@
 import { useReducer } from 'react';
 import { QueueState, QueueAction } from './types';
 import { SearchRequestPagination } from '@/app/lib/types';
+import { insertQueueItemIdempotent } from '../persistent-session/event-utils';
 
 const initialState = (initialSearchParams: SearchRequestPagination): QueueState => ({
   queue: [],
@@ -129,19 +130,11 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
         return state;
       }
 
-      // Skip if this exact queue item already exists (check by item.uuid for idempotency)
-      // Note: We check item.uuid, NOT climb.uuid - the same climb CAN appear multiple times
-      // in the queue (e.g., user adds it again after completing it)
-      if (state.queue.some(qItem => qItem?.uuid === item.uuid)) {
+      // Idempotent insert: checks by item.uuid (NOT climb.uuid - the same climb CAN appear
+      // multiple times in the queue, e.g., user adds it again after completing it)
+      const newQueue = insertQueueItemIdempotent(state.queue, item, position);
+      if (newQueue === state.queue) {
         return state;
-      }
-
-      const newQueue = [...state.queue];
-
-      if (position !== undefined && position >= 0 && position <= newQueue.length) {
-        newQueue.splice(position, 0, item);
-      } else {
-        newQueue.push(item);
       }
 
       return {

@@ -219,6 +219,53 @@ export const SESSION_UPDATES = `
         reason
         newPath
       }
+      ... on SessionStatsUpdated {
+        sessionId
+        totalSends
+        totalFlashes
+        totalAttempts
+        tickCount
+        participants {
+          userId
+          displayName
+          avatarUrl
+          sends
+          flashes
+          attempts
+        }
+        gradeDistribution {
+          grade
+          flash
+          send
+          attempt
+        }
+        boardTypes
+        hardestGrade
+        durationMinutes
+        goal
+        ticks {
+          uuid
+          userId
+          climbUuid
+          climbName
+          boardType
+          layoutId
+          angle
+          status
+          attemptCount
+          difficulty
+          difficultyName
+          quality
+          isMirror
+          isBenchmark
+          comment
+          frames
+          setterUsername
+          climbedAt
+          upvotes
+          totalAttempts
+        }
+      }
     }
   }
 `;

@@ -48,5 +48,5 @@ export default async function SessionDetailPage({ params }: Props) {
   const sessionId = decodeURIComponent(rawSessionId);
   const session = await fetchSessionDetail(sessionId);
 
-  return <SessionDetailContent session={session} />;
+  return <SessionDetailContent session={session} sessionId={sessionId} />;
 }
