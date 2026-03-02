@@ -105,7 +105,7 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
 
         // Create context on initial connection with auth info
         const context = createContext(undefined, isAuthenticated, authenticatedUserId, controllerId, controllerApiKey, controllerMac);
-        await roomManager.registerClient(context.connectionId);
+        await roomManager.registerClient(context.connectionId, undefined, authenticatedUserId);
         console.log(`Client connected: ${context.connectionId} (authenticated: ${isAuthenticated})`);
 
         // Store context in ctx.extra for access in other hooks

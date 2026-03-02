@@ -4,6 +4,7 @@ export {
   boardSessionClients as sessionClients,
   boardSessionQueues as sessionQueues,
   sessionBoards,
+  boardSessionParticipants,
   type BoardSession as Session,
   type NewBoardSession as NewSession,
   type BoardSessionClient as SessionClient,
@@ -12,4 +13,6 @@ export {
   type NewBoardSessionQueue as NewSessionQueue,
   type SessionBoard,
   type NewSessionBoard,
+  type BoardSessionParticipant,
+  type NewBoardSessionParticipant,
 } from '@boardsesh/db/schema/app';

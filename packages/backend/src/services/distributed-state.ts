@@ -279,6 +279,90 @@ const REFRESH_TTL_SCRIPT = `
 `;
 
 /**
+ * Lua script to prune stale members from a session.
+ * For each member in the session set, checks if the connection hash still exists.
+ * Removes stale entries, re-elects leader if needed, and cleans up empty sessions.
+ * KEYS[1] = session members key
+ * KEYS[2] = session leader key
+ * ARGV[1] = session TTL
+ * Returns: number of stale members removed
+ */
+const PRUNE_STALE_SESSION_MEMBERS_SCRIPT = `
+  local sessionMembersKey = KEYS[1]
+  local leaderKey = KEYS[2]
+  local sessionTTL = tonumber(ARGV[1])
+
+  local members = redis.call('SMEMBERS', sessionMembersKey)
+  local staleCount = 0
+  local leaderRemoved = false
+  local currentLeader = redis.call('GET', leaderKey)
+
+  for _, memberId in ipairs(members) do
+    local connKey = 'boardsesh:conn:' .. memberId
+    if redis.call('EXISTS', connKey) == 0 then
+      -- Connection hash expired/missing — this member is stale
+      redis.call('SREM', sessionMembersKey, memberId)
+      staleCount = staleCount + 1
+      if currentLeader == memberId then
+        leaderRemoved = true
+      end
+    end
+  end
+
+  -- If no stale members removed, nothing else to do
+  if staleCount == 0 then
+    return 0
+  end
+
+  -- Check remaining members
+  local remaining = redis.call('SMEMBERS', sessionMembersKey)
+  if #remaining == 0 then
+    -- Session is empty, clean up
+    redis.call('DEL', sessionMembersKey)
+    redis.call('DEL', leaderKey)
+    return staleCount
+  end
+
+  -- Re-elect leader if needed
+  if leaderRemoved then
+    -- Find the earliest connected remaining member
+    local candidates = {}
+    for _, memberId in ipairs(remaining) do
+      local connKey = 'boardsesh:conn:' .. memberId
+      local connectedAt = redis.call('HGET', connKey, 'connectedAt')
+      if connectedAt then
+        table.insert(candidates, {memberId, tonumber(connectedAt)})
+      end
+    end
+
+    if #candidates == 0 then
+      redis.call('DEL', leaderKey)
+    else
+      -- Clear old leader flag if their connection still exists
+      if currentLeader then
+        local oldConnKey = 'boardsesh:conn:' .. currentLeader
+        if redis.call('EXISTS', oldConnKey) == 1 then
+          redis.call('HSET', oldConnKey, 'isLeader', 'false')
+        end
+      end
+
+      table.sort(candidates, function(a, b) return a[2] < b[2] end)
+      local newLeaderId = candidates[1][1]
+      redis.call('SET', leaderKey, newLeaderId, 'EX', sessionTTL)
+      local newLeaderConnKey = 'boardsesh:conn:' .. newLeaderId
+      redis.call('HSET', newLeaderConnKey, 'isLeader', 'true')
+    end
+  end
+
+  -- Refresh TTL on session members set
+  if sessionTTL and sessionTTL > 0 then
+    redis.call('EXPIRE', sessionMembersKey, sessionTTL)
+  end
+
+  return staleCount
+`;
+
+/**
  * Validate connectionId format to prevent Redis key injection.
  * ConnectionIds should be UUIDs or similar safe identifiers.
  */
@@ -311,7 +395,9 @@ export class DistributedStateManager {
   private readonly instanceId: string;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private consecutiveHeartbeatFailures = 0;
+  private heartbeatCount = 0;
   private readonly maxHeartbeatFailures = 5;
+  private readonly cleanupEveryNHeartbeats = 4; // Every 4th heartbeat = ~2 minutes
   private isHealthy = true;
 
   constructor(
@@ -351,6 +437,11 @@ export class DistributedStateManager {
     // Initial heartbeat
     this.updateHeartbeatWithRecovery();
 
+    // Clean up connections from dead instances asynchronously on startup
+    this.cleanupDeadInstanceConnections().catch((err) => {
+      console.error('[DistributedState] Startup dead instance cleanup failed:', err);
+    });
+
     console.log(`[DistributedState] Started with instance ID: ${this.instanceId.slice(0, 8)}`);
   }
 
@@ -371,6 +462,14 @@ export class DistributedStateManager {
       if (!this.isHealthy) {
         console.log('[DistributedState] Redis connection restored, marking as healthy');
         this.isHealthy = true;
+      }
+
+      // Piggyback dead instance cleanup on every Nth heartbeat (~2 min)
+      this.heartbeatCount++;
+      if (this.heartbeatCount % this.cleanupEveryNHeartbeats === 0) {
+        this.cleanupDeadInstanceConnections().catch((err) => {
+          console.error('[DistributedState] Periodic dead instance cleanup failed:', err);
+        });
       }
     } catch (err) {
       this.consecutiveHeartbeatFailures++;
@@ -450,8 +549,9 @@ export class DistributedStateManager {
     multi.hmset(KEYS.connection(connectionId), this.connectionToHash(connection));
     multi.expire(KEYS.connection(connectionId), TTL.connection);
 
-    // Track connection under this instance
+    // Track connection under this instance (with TTL so orphaned sets self-heal)
     multi.sadd(KEYS.instanceConnections(this.instanceId), connectionId);
+    multi.expire(KEYS.instanceConnections(this.instanceId), 2 * 60 * 60); // 2 hours
 
     await multi.exec();
 
@@ -783,11 +883,33 @@ export class DistributedStateManager {
   }
 
   /**
-   * Get count of members in a session.
+   * Get count of live members in a session.
+   * Filters out stale entries whose connection hashes have expired.
    */
   async getSessionMemberCount(sessionId: string): Promise<number> {
     validateSessionId(sessionId);
-    return this.redis.scard(KEYS.sessionMembers(sessionId));
+    const memberIds = await this.redis.smembers(KEYS.sessionMembers(sessionId));
+
+    if (memberIds.length === 0) {
+      return 0;
+    }
+
+    // Pipeline EXISTS checks to filter out stale entries
+    const pipeline = this.redis.pipeline();
+    for (const memberId of memberIds) {
+      pipeline.exists(KEYS.connection(memberId));
+    }
+
+    const results = await pipeline.exec();
+    let count = 0;
+    if (results) {
+      for (const [err, exists] of results) {
+        if (!err && exists === 1) {
+          count++;
+        }
+      }
+    }
+    return count;
   }
 
   /**
@@ -830,12 +952,148 @@ export class DistributedStateManager {
   }
 
   /**
-   * Check if session has any members.
+   * Check if session has any live members.
    */
   async hasSessionMembers(sessionId: string): Promise<boolean> {
-    validateSessionId(sessionId);
-    const count = await this.redis.scard(KEYS.sessionMembers(sessionId));
+    const count = await this.getSessionMemberCount(sessionId);
     return count > 0;
+  }
+
+  /**
+   * Prune stale members from a single session.
+   * Removes members whose connection hashes have expired from the session set.
+   * @returns number of stale members removed
+   */
+  async cleanupStaleSessionMembers(sessionId: string): Promise<number> {
+    validateSessionId(sessionId);
+    const removed = (await this.redis.eval(
+      PRUNE_STALE_SESSION_MEMBERS_SCRIPT,
+      2,
+      KEYS.sessionMembers(sessionId),
+      KEYS.sessionLeader(sessionId),
+      TTL.sessionMembership.toString()
+    )) as number;
+
+    if (removed > 0) {
+      console.log(`[DistributedState] Pruned ${removed} stale members from session ${sessionId.slice(0, 8)}`);
+    }
+    return removed;
+  }
+
+  /**
+   * Discover instance IDs whose heartbeat has expired (dead instances).
+   * Scans for `boardsesh:instance:*:conns` keys and checks whether the
+   * corresponding heartbeat key still exists. Skips the current instance.
+   */
+  async discoverDeadInstances(): Promise<string[]> {
+    const deadInstances: string[] = [];
+    let cursor = '0';
+    const pattern = 'boardsesh:instance:*:conns';
+
+    do {
+      const [nextCursor, keys] = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = nextCursor;
+
+      for (const key of keys) {
+        // Extract instance ID from key: boardsesh:instance:<ID>:conns
+        const match = key.match(/^boardsesh:instance:(.+):conns$/);
+        if (!match) continue;
+
+        const instanceId = match[1];
+        if (instanceId === this.instanceId) continue; // Skip self
+
+        const heartbeatExists = await this.redis.exists(KEYS.instanceHeartbeat(instanceId));
+        if (!heartbeatExists) {
+          deadInstances.push(instanceId);
+        }
+      }
+    } while (cursor !== '0');
+
+    return deadInstances;
+  }
+
+  /**
+   * Clean up connections from dead backend instances.
+   * For each dead instance: gets its connections, groups by session,
+   * prunes stale members per session, and deletes instance tracking keys.
+   * @returns summary of cleanup performed
+   */
+  async cleanupDeadInstanceConnections(): Promise<{
+    deadInstances: string[];
+    staleConnections: string[];
+    sessionsAffected: string[];
+  }> {
+    const deadInstances = await this.discoverDeadInstances();
+    if (deadInstances.length === 0) {
+      return { deadInstances: [], staleConnections: [], sessionsAffected: [] };
+    }
+
+    console.log(`[DistributedState] Found ${deadInstances.length} dead instances: ${deadInstances.map(id => id.slice(0, 8)).join(', ')}`);
+
+    const allStaleConnections: string[] = [];
+    const allSessionsAffected = new Set<string>();
+
+    for (const instanceId of deadInstances) {
+      const connectionIds = await this.redis.smembers(KEYS.instanceConnections(instanceId));
+      if (connectionIds.length === 0) {
+        // No connections, just clean up the tracking key
+        await this.redis.del(KEYS.instanceConnections(instanceId));
+        continue;
+      }
+
+      console.log(`[DistributedState] Dead instance ${instanceId.slice(0, 8)} has ${connectionIds.length} orphaned connections`);
+
+      // Group connections by session for batch pruning
+      const sessionConnections = new Map<string, string[]>();
+      const pipeline = this.redis.pipeline();
+      for (const connId of connectionIds) {
+        pipeline.hget(KEYS.connection(connId), 'sessionId');
+      }
+      const results = await pipeline.exec();
+
+      if (results) {
+        for (let i = 0; i < connectionIds.length; i++) {
+          const [err, sessionId] = results[i] as [Error | null, string | null];
+          if (!err && sessionId && sessionId !== '') {
+            const conns = sessionConnections.get(sessionId) || [];
+            conns.push(connectionIds[i]);
+            sessionConnections.set(sessionId, conns);
+          }
+        }
+      }
+
+      // Delete all connection hashes for this dead instance
+      const delPipeline = this.redis.pipeline();
+      for (const connId of connectionIds) {
+        delPipeline.del(KEYS.connection(connId));
+      }
+      // Delete the instance tracking keys
+      delPipeline.del(KEYS.instanceConnections(instanceId));
+      await delPipeline.exec();
+
+      allStaleConnections.push(...connectionIds);
+
+      // Prune stale members from each affected session
+      for (const sessionId of sessionConnections.keys()) {
+        allSessionsAffected.add(sessionId);
+        try {
+          await this.cleanupStaleSessionMembers(sessionId);
+        } catch (err) {
+          console.error(`[DistributedState] Failed to prune session ${sessionId.slice(0, 8)}:`, err);
+        }
+      }
+    }
+
+    console.log(
+      `[DistributedState] Cleanup complete: removed ${allStaleConnections.length} stale connections ` +
+      `from ${deadInstances.length} dead instances affecting ${allSessionsAffected.size} sessions`
+    );
+
+    return {
+      deadInstances,
+      staleConnections: allStaleConnections,
+      sessionsAffected: Array.from(allSessionsAffected),
+    };
   }
 
   /**
@@ -855,11 +1113,18 @@ export class DistributedStateManager {
    * Update instance heartbeat.
    */
   private async updateHeartbeat(): Promise<void> {
-    await this.redis.setex(
+    const multi = this.redis.multi();
+    multi.setex(
       KEYS.instanceHeartbeat(this.instanceId),
       TTL.instanceHeartbeat,
       Date.now().toString()
     );
+    // Keep instance connection-set alive as long as the instance is running.
+    // Without this, the 2h TTL set at registerConnection() would expire for
+    // long-lived instances with no new connections, making them invisible
+    // to discoverDeadInstances() after a crash.
+    multi.expire(KEYS.instanceConnections(this.instanceId), 2 * 60 * 60); // 2 hours
+    await multi.exec();
   }
 
   /**

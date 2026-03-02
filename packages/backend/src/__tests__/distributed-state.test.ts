@@ -1090,3 +1090,249 @@ describe.skipIf(!redisAvailable)('DistributedStateManager - cleanup error handli
     expect(Object.keys(conn).length).toBe(0);
   });
 });
+
+describe.skipIf(!redisAvailable)('DistributedStateManager - Dead Instance Cleanup', () => {
+  let redis: Redis;
+  let liveManager: DistributedStateManager;
+
+  beforeAll(async () => {
+    redis = new Redis(REDIS_URL);
+    await new Promise<void>((resolve) => redis.once('ready', resolve));
+  });
+
+  afterAll(async () => {
+    forceResetDistributedState();
+    await redis.quit();
+  });
+
+  beforeEach(async () => {
+    forceResetDistributedState();
+    try {
+      const keys = await redis.keys('boardsesh:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (err) {
+      console.warn('Failed to clean up test keys:', err);
+    }
+    liveManager = new DistributedStateManager(redis, 'live-instance');
+  });
+
+  afterEach(async () => {
+    await liveManager.stop();
+    forceResetDistributedState();
+  });
+
+  describe('discoverDeadInstances', () => {
+    it('should return empty when no other instances exist', async () => {
+      liveManager.start();
+      // Give heartbeat time to run
+      await new Promise((r) => setTimeout(r, 100));
+
+      const dead = await liveManager.discoverDeadInstances();
+      expect(dead).toEqual([]);
+    });
+
+    it('should skip the current instance', async () => {
+      liveManager.start();
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Even if we manually clear our own heartbeat, discoverDeadInstances
+      // skips the current instance ID.
+      await redis.del('boardsesh:instance:live-instance:heartbeat');
+
+      const dead = await liveManager.discoverDeadInstances();
+      expect(dead).toEqual([]);
+    });
+
+    it('should find instances whose heartbeat expired', async () => {
+      // Simulate a dead instance: create its conns key but no heartbeat
+      await redis.sadd('boardsesh:instance:dead-inst:conns', 'orphan-conn-1');
+
+      const dead = await liveManager.discoverDeadInstances();
+      expect(dead).toEqual(['dead-inst']);
+    });
+
+    it('should not report instances with active heartbeats', async () => {
+      // Create another instance with a valid heartbeat
+      await redis.sadd('boardsesh:instance:alive-inst:conns', 'conn-x');
+      await redis.setex('boardsesh:instance:alive-inst:heartbeat', 60, Date.now().toString());
+
+      const dead = await liveManager.discoverDeadInstances();
+      expect(dead).toEqual([]);
+    });
+  });
+
+  describe('cleanupDeadInstanceConnections', () => {
+    it('should remove orphaned connections from dead instances', async () => {
+      // Register a live connection
+      await liveManager.registerConnection('live-conn', 'LiveUser');
+      await liveManager.joinSession('live-conn', 'shared-session');
+
+      // Simulate a dead instance with orphaned connections in the same session
+      const deadInstanceId = 'dead-instance-abc';
+      // Create connection hashes for the dead connections
+      await redis.hmset('boardsesh:conn:orphan-1', {
+        connectionId: 'orphan-1',
+        instanceId: deadInstanceId,
+        sessionId: 'shared-session',
+        userId: '',
+        username: 'Ghost1',
+        avatarUrl: '',
+        isLeader: 'false',
+        connectedAt: (Date.now() - 60000).toString(),
+      });
+      await redis.hmset('boardsesh:conn:orphan-2', {
+        connectionId: 'orphan-2',
+        instanceId: deadInstanceId,
+        sessionId: 'shared-session',
+        userId: '',
+        username: 'Ghost2',
+        avatarUrl: '',
+        isLeader: 'false',
+        connectedAt: (Date.now() - 60000).toString(),
+      });
+      // Add to instance tracking (no heartbeat = dead)
+      await redis.sadd(`boardsesh:instance:${deadInstanceId}:conns`, 'orphan-1', 'orphan-2');
+      // Add to session members
+      await redis.sadd('boardsesh:session:shared-session:members', 'orphan-1', 'orphan-2');
+
+      // Verify inflated count before cleanup
+      const rawCount = await redis.scard('boardsesh:session:shared-session:members');
+      expect(rawCount).toBe(3); // 1 live + 2 ghosts
+
+      // Run cleanup
+      const result = await liveManager.cleanupDeadInstanceConnections();
+
+      expect(result.deadInstances).toEqual([deadInstanceId]);
+      expect(result.staleConnections.sort()).toEqual(['orphan-1', 'orphan-2']);
+      expect(result.sessionsAffected).toEqual(['shared-session']);
+
+      // Verify connection hashes are deleted
+      const conn1 = await redis.hgetall('boardsesh:conn:orphan-1');
+      const conn2 = await redis.hgetall('boardsesh:conn:orphan-2');
+      expect(Object.keys(conn1).length).toBe(0);
+      expect(Object.keys(conn2).length).toBe(0);
+
+      // Verify instance tracking key is deleted
+      const instanceConns = await redis.smembers(`boardsesh:instance:${deadInstanceId}:conns`);
+      expect(instanceConns.length).toBe(0);
+
+      // Verify session member count is correct (only live connection)
+      const members = await liveManager.getSessionMembers('shared-session');
+      expect(members.length).toBe(1);
+      expect(members[0].username).toBe('LiveUser');
+    });
+
+    it('should return empty summary when no dead instances exist', async () => {
+      const result = await liveManager.cleanupDeadInstanceConnections();
+      expect(result.deadInstances).toEqual([]);
+      expect(result.staleConnections).toEqual([]);
+      expect(result.sessionsAffected).toEqual([]);
+    });
+
+    it('should handle dead instance with no connections', async () => {
+      // Dead instance with empty conns set
+      await redis.sadd('boardsesh:instance:empty-dead:conns', '__placeholder__');
+      await redis.srem('boardsesh:instance:empty-dead:conns', '__placeholder__');
+      // Actually just create the key with an entry then remove it—
+      // simpler: just create it directly
+      await redis.del('boardsesh:instance:empty-dead:conns');
+      // Need the key to exist for SCAN to find it
+      await redis.sadd('boardsesh:instance:empty-dead:conns', 'temp');
+      await redis.srem('boardsesh:instance:empty-dead:conns', 'temp');
+
+      // The key may or may not exist (Redis deletes empty sets).
+      // Either way, cleanup should not error.
+      const result = await liveManager.cleanupDeadInstanceConnections();
+      // May or may not find the instance depending on whether Redis kept the empty set
+      expect(result.staleConnections).toEqual([]);
+    });
+  });
+
+  describe('cleanupStaleSessionMembers', () => {
+    it('should remove members whose connection hashes expired', async () => {
+      await liveManager.registerConnection('real-conn', 'RealUser');
+      await liveManager.joinSession('real-conn', 'prune-session');
+
+      // Add a stale member directly (no connection hash)
+      await redis.sadd('boardsesh:session:prune-session:members', 'stale-conn');
+
+      // Verify stale member is in the set
+      const rawCount = await redis.scard('boardsesh:session:prune-session:members');
+      expect(rawCount).toBe(2);
+
+      const removed = await liveManager.cleanupStaleSessionMembers('prune-session');
+      expect(removed).toBe(1);
+
+      // Only real connection remains
+      const count = await liveManager.getSessionMemberCount('prune-session');
+      expect(count).toBe(1);
+    });
+
+    it('should re-elect leader when stale leader is pruned', async () => {
+      await liveManager.registerConnection('member-conn', 'Member');
+      await liveManager.joinSession('member-conn', 'leader-prune-session');
+
+      // Add a stale leader directly
+      await redis.sadd('boardsesh:session:leader-prune-session:members', 'stale-leader');
+      await redis.set('boardsesh:session:leader-prune-session:leader', 'stale-leader', 'EX', 14400);
+
+      const removed = await liveManager.cleanupStaleSessionMembers('leader-prune-session');
+      expect(removed).toBe(1);
+
+      // member-conn should now be leader
+      const leader = await liveManager.getSessionLeader('leader-prune-session');
+      expect(leader).toBe('member-conn');
+
+      const conn = await liveManager.getConnection('member-conn');
+      expect(conn!.isLeader).toBe(true);
+    });
+
+    it('should clean up empty session when all members are stale', async () => {
+      // Add only stale members
+      await redis.sadd('boardsesh:session:all-stale:members', 'gone-1', 'gone-2');
+      await redis.set('boardsesh:session:all-stale:leader', 'gone-1', 'EX', 14400);
+
+      const removed = await liveManager.cleanupStaleSessionMembers('all-stale');
+      expect(removed).toBe(2);
+
+      // Session should be cleaned up
+      const exists = await redis.exists('boardsesh:session:all-stale:members');
+      expect(exists).toBe(0);
+
+      const leader = await liveManager.getSessionLeader('all-stale');
+      expect(leader).toBeNull();
+    });
+
+    it('should return 0 when no stale members exist', async () => {
+      await liveManager.registerConnection('healthy-conn', 'Healthy');
+      await liveManager.joinSession('healthy-conn', 'healthy-session');
+
+      const removed = await liveManager.cleanupStaleSessionMembers('healthy-session');
+      expect(removed).toBe(0);
+    });
+  });
+
+  describe('getSessionMemberCount - stale filtering', () => {
+    it('should not count members whose connection hashes are missing', async () => {
+      await liveManager.registerConnection('counted-conn', 'Counted');
+      await liveManager.joinSession('counted-conn', 'count-session');
+
+      // Add stale members directly to the session set
+      await redis.sadd('boardsesh:session:count-session:members', 'ghost-1', 'ghost-2');
+
+      // Raw SCARD would return 3, but getSessionMemberCount should return 1
+      const rawCount = await redis.scard('boardsesh:session:count-session:members');
+      expect(rawCount).toBe(3);
+
+      const filteredCount = await liveManager.getSessionMemberCount('count-session');
+      expect(filteredCount).toBe(1);
+    });
+
+    it('should return 0 for empty session', async () => {
+      const count = await liveManager.getSessionMemberCount('nonexistent-session');
+      expect(count).toBe(0);
+    });
+  });
+});

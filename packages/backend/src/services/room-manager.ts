@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type Redis from 'ioredis';
 import { db } from '../db/client';
-import { sessions, sessionClients, sessionQueues, type Session } from '../db/schema';
+import { sessions, sessionQueues, boardSessionParticipants, type Session } from '../db/schema';
 import { eq, and, sql, gt, gte, lte, ne } from 'drizzle-orm';
 import type { ClimbQueueItem, SessionUser } from '@boardsesh/shared-schema';
 import { haversineDistance, getBoundingBox, DEFAULT_SEARCH_RADIUS_METERS } from '../utils/geo';
@@ -38,6 +38,7 @@ export class VersionConflictError extends Error {
 interface ConnectedClient {
   connectionId: string;
   sessionId: string | null;
+  userId: string | null;
   username: string;
   avatarUrl?: string;
   isLeader: boolean;
@@ -162,6 +163,7 @@ class RoomManager {
     this.clients.set(connectionId, {
       connectionId,
       sessionId: null,
+      userId: userId || null,
       username: defaultUsername,
       isLeader: false,
       connectedAt: new Date(),
@@ -170,7 +172,7 @@ class RoomManager {
 
     // Register in distributed state for cross-instance visibility
     // Await to ensure consistency - if this fails, the client is not properly registered
-    // Note: Postgres sessionClients table is only written on joinSession, not here,
+    // Note: Postgres is only written on joinSession (participant record), not here,
     // so rollback only needs to clean up the local map (no Postgres cleanup needed)
     if (this.distributedState) {
       try {
@@ -397,7 +399,7 @@ class RoomManager {
     // are serialized and endSession/leaveSession can await the full chain.
     const previous = this.pendingJoinPersists.get(sessionId) ?? Promise.resolve();
     const chained = previous
-      .then(() => this.persistSessionJoin(sessionId, boardPath, connectionId, client.username, isLeader, isNewSession ? sessionName : undefined))
+      .then(() => this.persistSessionJoin(sessionId, boardPath, client.userId, isNewSession ? sessionName : undefined))
       .catch(err => console.warn(`[RoomManager] Background Postgres persist failed for session ${sessionId}:`, err));
     this.pendingJoinPersists.set(sessionId, chained);
     chained.finally(() => {
@@ -512,9 +514,6 @@ class RoomManager {
     client.sessionId = null;
     client.isLeader = false;
 
-    // Remove from database
-    await this.persistSessionLeave(connectionId);
-
     // Elect new leader
     let newLeaderId: string | undefined;
 
@@ -528,15 +527,6 @@ class RoomManager {
         if (localNewLeader) {
           localNewLeader.isLeader = true;
         }
-        // Persist to Postgres - distributed state is source of truth, so log but don't fail
-        try {
-          await this.persistLeaderChange(sessionId, newLeaderId);
-        } catch (error) {
-          console.error(
-            `[RoomManager] Failed to persist leader change to Postgres for session ${sessionId}:`,
-            error
-          );
-        }
       }
     } else if (wasLeader && sessionClientIds && sessionClientIds.size > 0) {
       // Single instance mode: pick earliest connected client
@@ -549,14 +539,6 @@ class RoomManager {
         const newLeader = clientsArray[0];
         newLeader.isLeader = true;
         newLeaderId = newLeader.connectionId;
-        try {
-          await this.persistLeaderChange(sessionId, newLeaderId);
-        } catch (error) {
-          console.error(
-            `[RoomManager] Failed to persist leader change to Postgres for session ${sessionId}:`,
-            error
-          );
-        }
       }
     }
 
@@ -678,8 +660,6 @@ class RoomManager {
       if (avatarUrl !== undefined) {
         client.avatarUrl = avatarUrl;
       }
-      // Persist to database
-      await db.update(sessionClients).set({ username }).where(eq(sessionClients.id, connectionId));
 
       // Update distributed state
       if (this.distributedState) {
@@ -1115,9 +1095,7 @@ class RoomManager {
   private async persistSessionJoin(
     sessionId: string,
     boardPath: string,
-    clientId: string,
-    username: string,
-    isLeader: boolean,
+    userId: string | null,
     sessionName?: string
   ): Promise<void> {
     // Ensure session exists
@@ -1141,32 +1119,19 @@ class RoomManager {
         set: { boardPath, lastActivity: now },
       });
 
-    // Add client to session
-    await db
-      .insert(sessionClients)
-      .values({
-        id: clientId,
-        sessionId,
-        username,
-        isLeader,
-      })
-      .onConflictDoUpdate({
-        target: sessionClients.id,
-        set: { sessionId, username, isLeader },
-      });
+    // Record authenticated user as a session participant (permanent historical record)
+    if (userId) {
+      await db
+        .insert(boardSessionParticipants)
+        .values({
+          sessionId,
+          userId,
+          joinedAt: now,
+        })
+        .onConflictDoNothing();
+    }
   }
 
-  private async persistSessionLeave(clientId: string): Promise<void> {
-    await db.delete(sessionClients).where(eq(sessionClients.id, clientId));
-  }
-
-  private async persistLeaderChange(sessionId: string, newLeaderId: string): Promise<void> {
-    // Remove leader status from all clients in session
-    await db.update(sessionClients).set({ isLeader: false }).where(eq(sessionClients.sessionId, sessionId));
-
-    // Set new leader
-    await db.update(sessionClients).set({ isLeader: true }).where(eq(sessionClients.id, newLeaderId));
-  }
 
   /**
    * Get the Redis lock key for session restoration.
