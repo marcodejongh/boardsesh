@@ -12,10 +12,14 @@ const DEFAULT_MAX_SWIPE = 120;
 export interface UseSwipeActionsOptions {
   /** Called when the user swipes left past the threshold */
   onSwipeLeft: () => void;
+  /** Called when the user swipes left past the long-swipe threshold */
+  onSwipeLeftLong?: () => void;
   /** Called when the user swipes right past the threshold */
   onSwipeRight: () => void;
   /** Pixel threshold to trigger action (default: 100) */
   swipeThreshold?: number;
+  /** Pixel threshold to trigger long left swipe action (optional) */
+  longSwipeLeftThreshold?: number;
   /** Maximum swipe distance in pixels (default: 120) */
   maxSwipe?: number;
   /** Whether swipe is disabled (e.g. in edit mode) */
@@ -47,8 +51,10 @@ export interface UseSwipeActionsReturn {
  */
 export function useSwipeActions({
   onSwipeLeft,
+  onSwipeLeftLong,
   onSwipeRight,
   swipeThreshold = DEFAULT_SWIPE_THRESHOLD,
+  longSwipeLeftThreshold,
   maxSwipe = DEFAULT_MAX_SWIPE,
   disabled = false,
   completionAnimationMs = 200,
@@ -128,6 +134,11 @@ export function useSwipeActions({
     onSwipeRight();
   }, [onSwipeRight, applyOffset]);
 
+  const handleSwipeLeftLongComplete = useCallback(() => {
+    applyOffset(0);
+    onSwipeLeftLong?.();
+  }, [applyOffset, onSwipeLeftLong]);
+
   const swipeHandlers = useSwipeable({
     onSwiping: (eventData) => {
       if (disabled) return;
@@ -152,7 +163,12 @@ export function useSwipeActions({
       applyOffset(clampedOffset);
     },
     onSwipedLeft: (eventData) => {
-      if (isHorizontalRef.current && Math.abs(eventData.deltaX) >= swipeThreshold) {
+      const swipeDistance = Math.abs(eventData.deltaX);
+      const longSwipeReady = typeof longSwipeLeftThreshold === 'number' && swipeDistance >= longSwipeLeftThreshold;
+
+      if (isHorizontalRef.current && longSwipeReady && onSwipeLeftLong) {
+        handleSwipeLeftLongComplete();
+      } else if (isHorizontalRef.current && swipeDistance >= swipeThreshold) {
         handleSwipeLeftComplete();
       } else {
         resetOffset();

@@ -14,6 +14,7 @@ import ClimbTitle from './climb-title';
 import DrawerClimbHeader from './drawer-climb-header';
 import { AscentStatus } from '../queue-control/queue-list-item';
 import { ClimbActions } from '../climb-actions';
+import PlaylistSelectionContent from '../climb-actions/playlist-selection-content';
 import { useOptionalQueueContext } from '../graphql-queue';
 import { useFavorite } from '../climb-actions';
 import { useSwipeActions } from '@/app/hooks/use-swipe-actions';
@@ -41,6 +42,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   const pathname = usePathname();
   const isDark = useIsDarkMode();
   const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
   const queueContext = useOptionalQueueContext();
   const addToQueue = queueContext?.addToQueue;
   const { isFavorited, toggleFavorite } = useFavorite({ climbUuid: climb.uuid });
@@ -51,6 +53,12 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     addToQueue?.(climb);
   }, [climb, addToQueue]);
 
+  const handleSwipeLeftLong = useCallback(() => {
+    // Long swipe left = open add-to-playlist drawer
+    setIsActionsOpen(false);
+    setIsPlaylistSelectorOpen(true);
+  }, []);
+
   const handleSwipeRight = useCallback(() => {
     // Swipe right = toggle favorite
     toggleFavorite();
@@ -58,7 +66,10 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
 
   const { swipeHandlers, contentRef, leftActionRef, rightActionRef } = useSwipeActions({
     onSwipeLeft: handleSwipeLeft,
+    onSwipeLeftLong: handleSwipeLeftLong,
     onSwipeRight: handleSwipeRight,
+    swipeThreshold: 90,
+    longSwipeLeftThreshold: 120,
     disabled: disableSwipe,
   });
 
@@ -220,6 +231,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
             size="small"
             onClick={(e) => {
               e.stopPropagation();
+              setIsPlaylistSelectorOpen(false);
               setIsActionsOpen(true);
             }}
             style={iconButtonStyle}
@@ -245,7 +257,31 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           currentPathname={pathname}
           viewMode="list"
           exclude={excludeActions}
+          onOpenPlaylistSelector={() => {
+            setIsActionsOpen(false);
+            setIsPlaylistSelectorOpen(true);
+          }}
           onActionComplete={() => setIsActionsOpen(false)}
+        />
+      </SwipeableDrawer>
+
+      <SwipeableDrawer
+        title={<DrawerClimbHeader climb={climb} boardDetails={boardDetails} />}
+        placement="bottom"
+        open={isPlaylistSelectorOpen}
+        onClose={() => setIsPlaylistSelectorOpen(false)}
+        styles={{
+          wrapper: { height: 'auto', maxHeight: '70vh', width: '100%' },
+          body: { padding: 0 },
+          header: { paddingLeft: `${themeTokens.spacing[3]}px`, paddingRight: `${themeTokens.spacing[3]}px` },
+        }}
+        keepMounted={false}
+      >
+        <PlaylistSelectionContent
+          climbUuid={climb.uuid}
+          boardDetails={boardDetails}
+          angle={climb.angle}
+          onDone={() => setIsPlaylistSelectorOpen(false)}
         />
       </SwipeableDrawer>
     </>

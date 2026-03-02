@@ -5,6 +5,8 @@ import type { Climb, BoardDetails } from '@/app/lib/types';
 
 // --- Mocks ---
 
+let capturedSwipeOptions: Record<string, unknown> | null = null;
+
 vi.mock('next/navigation', () => ({
   usePathname: () => '/kilter/original/12x12/default/40/list',
 }));
@@ -28,13 +30,16 @@ vi.mock('../../climb-actions', () => ({
 }));
 
 vi.mock('@/app/hooks/use-swipe-actions', () => ({
-  useSwipeActions: ({ disabled }: { disabled?: boolean }) => ({
+  useSwipeActions: (options: { disabled?: boolean }) => {
+    capturedSwipeOptions = options;
+    return {
     swipeHandlers: { ref: vi.fn() },
     contentRef: vi.fn(),
     leftActionRef: vi.fn(),
     rightActionRef: vi.fn(),
-    _disabled: disabled,
-  }),
+    _disabled: options.disabled,
+  };
+  },
 }));
 
 vi.mock('@/app/lib/hooks/use-double-tap', () => ({
@@ -127,6 +132,7 @@ function makeBoardDetails(overrides: Partial<BoardDetails> = {}): BoardDetails {
 describe('ClimbListItem', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    capturedSwipeOptions = null;
   });
 
   describe('basic rendering', () => {
@@ -200,5 +206,14 @@ describe('ClimbListItem', () => {
       // Actions drawer should now be mounted
       expect(screen.getByTestId('climb-actions')).toBeTruthy();
     });
+  });
+
+  it('configures short and long left swipe thresholds for queue and playlist actions', () => {
+    render(<ClimbListItem climb={makeClimb()} boardDetails={makeBoardDetails()} />);
+
+    expect(capturedSwipeOptions).not.toBeNull();
+    expect(capturedSwipeOptions?.swipeThreshold).toBe(90);
+    expect(capturedSwipeOptions?.longSwipeLeftThreshold).toBe(120);
+    expect(typeof capturedSwipeOptions?.onSwipeLeftLong).toBe('function');
   });
 });
