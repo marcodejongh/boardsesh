@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Avatar from '@mui/material/Avatar';
@@ -270,6 +270,10 @@ export default function SessionDetailContent({
   const [sessionCommentsOpen, setSessionCommentsOpen] = useState(false);
 
   const { boards: myBoards } = useMyBoards(true);
+
+  useEffect(() => {
+    setSession(initialSession);
+  }, [initialSession]);
 
   if (!session) {
     return (

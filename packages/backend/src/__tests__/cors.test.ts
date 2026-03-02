@@ -79,6 +79,7 @@ describe('CORS Handler', () => {
     });
 
     it('adds Tailscale hostname origins from TAILSCALE_HOSTNAME env var', () => {
+      vi.mocked(execFileSync).mockClear();
       process.env.TAILSCALE_HOSTNAME = 'My-Laptop.tailnet123.ts.net';
       initCors('https://boardsesh.com');
 
@@ -89,6 +90,7 @@ describe('CORS Handler', () => {
     });
 
     it('adds Tailscale hostname origins from tailscale status when available', () => {
+      vi.mocked(execFileSync).mockClear();
       vi.mocked(execFileSync).mockReturnValue(
         JSON.stringify({ Self: { DNSName: 'my-mac.tailnet123.ts.net.' } })
       );

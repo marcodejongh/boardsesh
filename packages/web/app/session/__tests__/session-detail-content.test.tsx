@@ -205,6 +205,45 @@ describe('SessionDetailContent', () => {
     expect(screen.getByText('Climbs (1)')).toBeTruthy();
   });
 
+  it('updates rendered climbs when session prop changes without remount', () => {
+    const first = makeSession();
+    const second = makeSession({
+      tickCount: 2,
+      totalSends: 6,
+      ticks: [
+        first.ticks[0],
+        {
+          uuid: 'tick-2',
+          userId: 'user-1',
+          climbUuid: 'climb-2',
+          climbName: 'Second Climb',
+          boardType: 'kilter',
+          layoutId: 1,
+          angle: 40,
+          status: 'send',
+          attemptCount: 2,
+          difficulty: 21,
+          difficultyName: 'V6',
+          quality: 3,
+          isMirror: false,
+          isBenchmark: false,
+          comment: null,
+          frames: 'def',
+          setterUsername: 'setter2',
+          climbedAt: '2024-01-15T10:45:00.000Z',
+          upvotes: 1,
+        },
+      ],
+    });
+
+    const { rerender } = render(<SessionDetailContent session={first} />);
+    expect(screen.getByText('Climbs (1)')).toBeTruthy();
+
+    rerender(<SessionDetailContent session={second} />);
+    expect(screen.getByText('Climbs (2)')).toBeTruthy();
+    expect(screen.getByText('Second Climb')).toBeTruthy();
+  });
+
   it('renders session-level VoteButton with session entity type', () => {
     render(<SessionDetailContent session={makeSession()} />);
     const voteButtons = screen.getAllByTestId('vote-button');

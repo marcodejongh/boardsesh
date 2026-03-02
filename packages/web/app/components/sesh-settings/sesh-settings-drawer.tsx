@@ -206,7 +206,6 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
 
         {sessionForView && (
           <SessionDetailContent
-            key={`${sessionForView.sessionId}:${sessionForView.tickCount}:${sessionForView.totalSends}:${sessionForView.totalAttempts}:${sessionForView.totalFlashes}`}
             session={sessionForView}
             embedded
             fallbackBoardDetails={boardDetails}
