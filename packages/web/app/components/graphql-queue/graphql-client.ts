@@ -33,6 +33,7 @@ export interface GraphQLClientOptions {
   url: string;
   authToken?: string | null;
   onReconnect?: () => void;
+  onConnectionStateChange?: (connected: boolean) => void;
 }
 
 /**
@@ -53,7 +54,7 @@ export function createGraphQLClient(
     ? { url: urlOrOptions, onReconnect }
     : urlOrOptions;
 
-  const { url, authToken, onReconnect: onReconnectCallback } = options;
+  const { url, authToken, onReconnect: onReconnectCallback, onConnectionStateChange } = options;
 
   const clientId = ++clientCounter;
 
@@ -83,6 +84,7 @@ export function createGraphQLClient(
     on: {
       connected: () => {
         if (DEBUG) console.log(`[GraphQL] Client #${clientId} connected (first: ${!hasConnectedOnce})`);
+        onConnectionStateChange?.(true);
         if (hasConnectedOnce && onReconnectCallback) {
           if (DEBUG) console.log(`[GraphQL] Client #${clientId} reconnected, calling onReconnect`);
           onReconnectCallback();
@@ -91,6 +93,7 @@ export function createGraphQLClient(
       },
       closed: (event) => {
         if (DEBUG) console.log(`[GraphQL] Client #${clientId} closed`, event);
+        onConnectionStateChange?.(false);
       },
       error: (error) => {
         if (DEBUG) console.log(`[GraphQL] Client #${clientId} error`, error);

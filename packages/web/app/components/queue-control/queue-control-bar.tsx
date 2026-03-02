@@ -6,6 +6,8 @@ import MuiCard from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import SyncOutlined from '@mui/icons-material/SyncOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
@@ -88,7 +90,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
   const isPlayPage = pathname.includes('/play/');
-  const { currentClimb, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
+  const { currentClimb, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode, isReconnecting } = useQueueContext();
 
   const { mode } = useColorMode();
   const isDark = mode === 'dark';
@@ -396,6 +398,20 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
               </Box>
             </Box>
           </div>
+          {/* Reconnecting overlay — blocks interaction while WebSocket is down */}
+          {isReconnecting && (
+            <Box
+              className={styles.reconnectingOverlay}
+              sx={{ backgroundColor: 'var(--semantic-surface-overlay)' }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={16} sx={{ color: 'var(--neutral-400)' }} />
+                <Typography variant="body2" sx={{ color: 'var(--neutral-500)' }}>
+                  Reconnecting...
+                </Typography>
+              </Stack>
+            </Box>
+          )}
         </div>
         </CardContent>
       </MuiCard>

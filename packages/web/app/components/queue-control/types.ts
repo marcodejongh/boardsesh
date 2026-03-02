@@ -78,6 +78,7 @@ export interface QueueContextType {
   isLeader?: boolean;
   isBackendMode?: boolean;
   hasConnected?: boolean;
+  isReconnecting?: boolean;
   connectionError?: Error | null;
   disconnect?: () => void;
   addToQueue: (climb: Climb) => void;

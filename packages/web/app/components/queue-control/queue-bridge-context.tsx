@@ -227,6 +227,7 @@ function usePersistentSessionQueueAdapter(): {
       isLeader: ps.isLeader,
       isBackendMode: true,
       hasConnected: ps.hasConnected,
+      isReconnecting: isParty ? ps.isReconnecting : false,
       connectionError: ps.error,
       disconnect: ps.deactivateSession,
 
@@ -248,6 +249,7 @@ function usePersistentSessionQueueAdapter(): {
       parsedParams,
       isParty,
       ps.hasConnected,
+      ps.isReconnecting,
       ps.activeSession?.sessionId,
       ps.deactivateSession,
       ps.session?.goal,
