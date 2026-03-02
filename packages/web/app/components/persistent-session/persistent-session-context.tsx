@@ -296,6 +296,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const lastCorruptionResyncRef = useRef<number>(0);
   // Track if we're currently filtering corrupted items to prevent useEffect re-trigger loop
   const isFilteringCorruptedItemsRef = useRef(false);
+  // Generation counter to prevent stale connect() closures from executing after cleanup (React Strict Mode)
+  const connectionGenerationRef = useRef(0);
 
   // Refs for queue state so reconnect handler always sees current values (avoids stale closure)
   const queueRef = useRef<LocalClimbQueueItem[]>([]);
@@ -614,6 +616,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
     // Use ref for mounted flag so reconnect callback can safely check current state
     mountedRef.current = true;
+    // Increment generation so any stale connect() from a previous effect invocation bails out
+    const connectionGeneration = ++connectionGenerationRef.current;
     let graphqlClient: Client | null = null;
     let retryConnectTimeout: ReturnType<typeof setTimeout> | null = null;
     let transientRetryCount = 0;
@@ -672,6 +676,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     async function handleReconnect() {
       // Use ref to safely check if component is still mounted
       if (!mountedRef.current || !graphqlClient) return;
+      // Bail if this effect invocation has been superseded
+      if (connectionGenerationRef.current !== connectionGeneration) return;
       if (isReconnectingRef.current) {
         if (DEBUG) console.log('[PersistentSession] Reconnection already in progress');
         return;
@@ -768,6 +774,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     }
 
     async function connect() {
+      // Bail out if this effect invocation has been superseded (e.g. React Strict Mode re-mount)
+      if (connectionGenerationRef.current !== connectionGeneration) return;
       // Prevent duplicate connections during React re-renders or Strict Mode
       if (isConnectingRef.current) {
         if (DEBUG) console.log('[PersistentSession] Connection already in progress, skipping');
@@ -796,6 +804,13 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         setClient(graphqlClient);
 
         const sessionData = await joinSession(graphqlClient);
+
+        // Bail if a newer connection superseded this one (React Strict Mode re-mount)
+        if (connectionGenerationRef.current !== connectionGeneration) {
+          graphqlClient.dispose();
+          isConnectingRef.current = false;
+          return;
+        }
 
         if (!mountedRef.current) {
           graphqlClient.dispose();
@@ -902,6 +917,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
               if (DEBUG) console.log(`[PersistentSession] Transient retry ${transientRetryCount}/${MAX_TRANSIENT_RETRIES} in ${delay}ms`);
               retryConnectTimeout = setTimeout(() => {
                 if (
+                  connectionGenerationRef.current === connectionGeneration &&
                   mountedRef.current &&
                   activeSessionRef.current?.sessionId === sessionId &&
                   !isConnectingRef.current
