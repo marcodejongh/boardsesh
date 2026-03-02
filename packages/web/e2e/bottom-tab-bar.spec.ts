@@ -96,6 +96,29 @@ test.describe('Bottom Tab Bar - Navigation', () => {
     await expect(page).toHaveURL(/\/notifications/, { timeout: 15000 });
     await expect(page.locator(bottomTabBar)).toBeVisible();
   });
+
+  test('Create tab should open drawer with create options without immediate navigation', async ({ page }) => {
+    await page.goto(boardUrl);
+    await waitForPageReady(page);
+
+    const currentUrl = page.url();
+    await bottomTabButton(page, 'Create').click();
+
+    await expect(page).toHaveURL(currentUrl, { timeout: 5000 });
+    await expect(page.getByTestId('create-climb-option')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('create-playlist-option')).toBeVisible({ timeout: 10000 });
+  });
+
+  test('Create drawer climb option should navigate to create climb page', async ({ page }) => {
+    await page.goto(boardUrl);
+    await waitForPageReady(page);
+
+    await bottomTabButton(page, 'Create').click();
+    await page.getByTestId('create-climb-option').click();
+
+    await expect(page).toHaveURL(/\/create$/, { timeout: 15000 });
+    await expect(page.locator(bottomTabBar)).toBeVisible();
+  });
 });
 
 test.describe('Bottom Tab Bar - Active State', () => {
