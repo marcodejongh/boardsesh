@@ -1,0 +1,2 @@
+DROP INDEX "board_session_participants_session_user_idx";--> statement-breakpoint
+ALTER TABLE "board_session_participants" ADD CONSTRAINT "board_session_participants_session_id_user_id_pk" PRIMARY KEY("session_id","user_id");

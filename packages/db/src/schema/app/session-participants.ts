@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, index, primaryKey } from 'drizzle-orm/pg-core';
 import { boardSessions } from './sessions';
 import { users } from '../auth/users';
 
@@ -13,7 +13,7 @@ export const boardSessionParticipants = pgTable('board_session_participants', {
     .notNull(),
   joinedAt: timestamp('joined_at').defaultNow().notNull(),
 }, (table) => ({
-  uniqueSessionUser: uniqueIndex('board_session_participants_session_user_idx').on(table.sessionId, table.userId),
+  pk: primaryKey({ columns: [table.sessionId, table.userId] }),
   sessionIdx: index('board_session_participants_session_idx').on(table.sessionId),
   userIdx: index('board_session_participants_user_idx').on(table.userId),
 }));
