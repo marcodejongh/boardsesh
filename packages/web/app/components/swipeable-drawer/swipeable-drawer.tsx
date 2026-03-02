@@ -212,6 +212,14 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
       sx.width = width;
     }
 
+    // Full-height drawers should blend into the app/page background.
+    // This keeps 100% / 100vh / 100dvh sheets visually consistent on mobile.
+    const normalizedHeight = typeof sx.height === 'string' ? sx.height.trim().toLowerCase() : '';
+    const isFullHeightDrawer = normalizedHeight === '100%' || normalizedHeight === '100vh' || normalizedHeight === '100dvh';
+    if (isFullHeightDrawer && !sx.backgroundColor) {
+      sx.backgroundColor = 'var(--semantic-background)';
+    }
+
     return sx;
   }, [userStyles?.wrapper, height, width]);
 
