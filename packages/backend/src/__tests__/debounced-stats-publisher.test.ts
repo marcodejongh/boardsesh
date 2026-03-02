@@ -144,6 +144,26 @@ describe('publishDebouncedSessionStats', () => {
     expect(publishSessionEventMock).toHaveBeenCalledWith('s1', event);
   });
 
+  it('logs error when buildSessionStatsUpdatedEvent throws', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    buildSessionStatsUpdatedEventMock.mockRejectedValue(new Error('DB connection lost'));
+    redisGetMock.mockImplementation(async () => {
+      const setCall = redisSetMock.mock.calls[0];
+      return setCall?.[1] ?? null;
+    });
+
+    publishDebouncedSessionStats('s1');
+    await vi.advanceTimersByTimeAsync(2100);
+
+    expect(buildSessionStatsUpdatedEventMock).toHaveBeenCalledWith('s1');
+    expect(publishSessionEventMock).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to publish SessionStatsUpdated for session s1'),
+      expect.any(Error),
+    );
+    consoleSpy.mockRestore();
+  });
+
   it('publishes anyway when Redis GET fails (fail-open)', async () => {
     const event = { __typename: 'SessionStatsUpdated', sessionId: 's1' };
     buildSessionStatsUpdatedEventMock.mockResolvedValue(event);
