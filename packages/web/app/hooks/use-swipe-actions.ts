@@ -28,6 +28,8 @@ export interface UseSwipeActionsOptions {
   longSwipeRightThreshold?: number;
   /** Called when swipe zone changes during gesture (e.g. short -> long threshold crossing) */
   onSwipeZoneChange?: (zone: SwipeZone) => void;
+  /** Called with current swipe offset during gesture and reset */
+  onSwipeOffsetChange?: (offset: number) => void;
   /** Maximum swipe distance in pixels (default: 120) */
   maxSwipe?: number;
   /** Whether swipe is disabled (e.g. in edit mode) */
@@ -66,6 +68,7 @@ export function useSwipeActions({
   longSwipeLeftThreshold,
   longSwipeRightThreshold,
   onSwipeZoneChange,
+  onSwipeOffsetChange,
   maxSwipe = DEFAULT_MAX_SWIPE,
   disabled = false,
   completionAnimationMs = 200,
@@ -103,6 +106,7 @@ export function useSwipeActions({
   /** Apply the current offset to the DOM elements directly */
   const applyOffset = useCallback((offset: number) => {
     offsetRef.current = offset;
+    onSwipeOffsetChange?.(offset);
 
     if (contentEl.current) {
       contentEl.current.style.transform = `translateX(${offset}px)`;
@@ -124,7 +128,7 @@ export function useSwipeActions({
       rightActionEl.current.style.opacity = String(offset < 0 ? opacity : 0);
       rightActionEl.current.style.visibility = offset < 0 ? 'visible' : 'hidden';
     }
-  }, [swipeThreshold]);
+  }, [swipeThreshold, onSwipeOffsetChange]);
 
   /** Snap offset back to zero (no action taken) */
   const resetOffset = useCallback(() => {

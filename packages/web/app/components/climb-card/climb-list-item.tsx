@@ -28,6 +28,8 @@ import { getExcludedClimbActions } from '@/app/lib/climb-action-utils';
 // Maximum swipe distance
 const MAX_SWIPE = 120;
 const LONG_SWIPE_ACTION_WIDTH = 176;
+const SHORT_RIGHT_SWIPE_THRESHOLD = 90;
+const LONG_RIGHT_SWIPE_THRESHOLD = 150;
 
 type ClimbListItemProps = {
   climb: Climb;
@@ -45,7 +47,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
   const isDark = useIsDarkMode();
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
-  const [rightSwipeMode, setRightSwipeMode] = useState<'favorite' | 'playlist'>('favorite');
+  const [rightSwipeOffset, setRightSwipeOffset] = useState(0);
   const queueContext = useOptionalQueueContext();
   const addToQueue = queueContext?.addToQueue;
   const { isFavorited, toggleFavorite } = useFavorite({ climbUuid: climb.uuid });
@@ -67,21 +69,13 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     toggleFavorite();
   }, [toggleFavorite]);
 
-  const handleSwipeZoneChange = useCallback((zone: 'none' | 'left-short' | 'left-long' | 'right-short' | 'right-long') => {
-    if (zone === 'right-long') {
-      setRightSwipeMode('playlist');
-      return;
-    }
-    setRightSwipeMode('favorite');
-  }, []);
-
   const { swipeHandlers, contentRef, leftActionRef, rightActionRef } = useSwipeActions({
     onSwipeLeft: handleSwipeLeft,
     onSwipeRight: handleSwipeRight,
     onSwipeRightLong: handleSwipeRightLong,
-    onSwipeZoneChange: handleSwipeZoneChange,
-    swipeThreshold: 90,
-    longSwipeRightThreshold: 150,
+    onSwipeOffsetChange: (offset) => setRightSwipeOffset(offset > 0 ? offset : 0),
+    swipeThreshold: SHORT_RIGHT_SWIPE_THRESHOLD,
+    longSwipeRightThreshold: LONG_RIGHT_SWIPE_THRESHOLD,
     maxSwipe: 180,
     disabled: disableSwipe,
   });
@@ -98,22 +92,74 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
     [unsupported],
   );
 
+  const rightSwipeBaseOpacity = useMemo(
+    () => Math.min(1, rightSwipeOffset / SHORT_RIGHT_SWIPE_THRESHOLD),
+    [rightSwipeOffset],
+  );
+
+  const longSwipeBlend = useMemo(() => {
+    const transitionRange = LONG_RIGHT_SWIPE_THRESHOLD - SHORT_RIGHT_SWIPE_THRESHOLD;
+    if (transitionRange <= 0) return 1;
+    return Math.max(0, Math.min(1, (rightSwipeOffset - SHORT_RIGHT_SWIPE_THRESHOLD) / transitionRange));
+  }, [rightSwipeOffset]);
+
+  const shortSwipeLayerOpacity = useMemo(
+    () => rightSwipeBaseOpacity * (1 - longSwipeBlend),
+    [rightSwipeBaseOpacity, longSwipeBlend],
+  );
+
+  const longSwipeLayerOpacity = useMemo(
+    () => rightSwipeBaseOpacity * longSwipeBlend,
+    [rightSwipeBaseOpacity, longSwipeBlend],
+  );
+
   const leftActionStyle = useMemo(
     () => ({
       position: 'absolute' as const,
       left: 0,
       top: 0,
       bottom: 0,
-      width: rightSwipeMode === 'playlist' ? LONG_SWIPE_ACTION_WIDTH : MAX_SWIPE,
-      backgroundColor: rightSwipeMode === 'playlist' ? themeTokens.colors.primary : themeTokens.colors.error,
+      width: MAX_SWIPE + ((LONG_SWIPE_ACTION_WIDTH - MAX_SWIPE) * longSwipeBlend),
+      display: 'flex' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'flex-start' as const,
+      paddingLeft: themeTokens.spacing[3],
+      opacity: 0,
+      visibility: 'hidden' as const,
+      overflow: 'hidden' as const,
+    }),
+    [longSwipeBlend],
+  );
+
+  const swipeActionLayerBaseStyle = useMemo(
+    () => ({
+      position: 'absolute' as const,
+      inset: 0,
       display: 'flex' as const,
       alignItems: 'center' as const,
       justifyContent: 'flex-start' as const,
       paddingLeft: themeTokens.spacing[4],
-      opacity: 0,
-      visibility: 'hidden' as const,
+      willChange: 'opacity' as const,
     }),
-    [rightSwipeMode],
+    [],
+  );
+
+  const shortSwipeLayerStyle = useMemo(
+    () => ({
+      ...swipeActionLayerBaseStyle,
+      backgroundColor: themeTokens.colors.error,
+      opacity: shortSwipeLayerOpacity,
+    }),
+    [swipeActionLayerBaseStyle, shortSwipeLayerOpacity],
+  );
+
+  const longSwipeLayerStyle = useMemo(
+    () => ({
+      ...swipeActionLayerBaseStyle,
+      backgroundColor: themeTokens.colors.primary,
+      opacity: longSwipeLayerOpacity,
+    }),
+    [swipeActionLayerBaseStyle, longSwipeLayerOpacity],
   );
 
   const rightActionStyle = useMemo(
@@ -189,11 +235,12 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
               ref={leftActionRef}
               style={leftActionStyle}
             >
-              {isFavorited ? (
-                rightSwipeMode === 'playlist' ? <LocalOfferOutlined style={iconStyle} /> : <Favorite style={iconStyle} />
-              ) : (
-                rightSwipeMode === 'playlist' ? <LocalOfferOutlined style={iconStyle} /> : <FavoriteBorderOutlined style={iconStyle} />
-              )}
+              <div style={shortSwipeLayerStyle}>
+                {isFavorited ? <Favorite style={iconStyle} /> : <FavoriteBorderOutlined style={iconStyle} />}
+              </div>
+              <div style={longSwipeLayerStyle}>
+                <LocalOfferOutlined style={iconStyle} />
+              </div>
             </div>
 
             {/* Right action background (add to queue - revealed on swipe left) */}
