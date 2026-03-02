@@ -311,6 +311,8 @@ export function useQueueSession({
                   case 'SessionEnded':
                     console.log('[QueueSession] Session ended:', event.reason);
                     return prev;
+                  case 'SessionStatsUpdated':
+                    return prev;
                   default:
                     return prev;
                 }

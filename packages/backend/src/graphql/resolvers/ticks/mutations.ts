@@ -8,6 +8,8 @@ import { SaveTickInputSchema } from '../../../validation/schemas';
 import { resolveBoardFromPath } from '../social/boards';
 import { publishSocialEvent } from '../../../events';
 import { assignInferredSession } from '../../../jobs/inferred-session-builder';
+import { buildSessionStatsUpdatedEvent } from '../sessions/live-session-stats';
+import { pubsub } from '../../../pubsub';
 
 export const tickMutations = {
   /**
@@ -106,6 +108,19 @@ export const tickMutations = {
       publishAscentEvent(tick, userId, boardId).catch(() => {
         // Final failure already logged inside publishAscentEvent
       });
+    }
+
+    // Publish live session stats updates for active party sessions (non-blocking).
+    if (tick.sessionId) {
+      buildSessionStatsUpdatedEvent(tick.sessionId)
+        .then((event) => {
+          if (event) {
+            pubsub.publishSessionEvent(tick.sessionId!, event);
+          }
+        })
+        .catch((error) => {
+          console.error(`[saveTick] Failed to publish SessionStatsUpdated for session ${tick.sessionId}:`, error);
+        });
     }
 
     return result;

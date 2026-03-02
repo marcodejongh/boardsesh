@@ -34,7 +34,7 @@ import {
   END_SESSION as END_SESSION_GQL,
   type EndSessionResponse,
 } from '@/app/lib/graphql/operations/sessions';
-import type { SessionSummary } from '@boardsesh/shared-schema';
+import type { SessionLiveStats, SessionSummary } from '@boardsesh/shared-schema';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 
@@ -202,6 +202,7 @@ export interface PersistentSessionContextType {
 
   // Session ending with summary (elevated from GraphQLQueueProvider)
   endSessionWithSummary: () => void;
+  liveSessionStats: SessionLiveStats | null;
   sessionSummary: SessionSummary | null;
   dismissSessionSummary: () => void;
 }
@@ -267,6 +268,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     currentClimb: LocalClimbQueueItem | null;
     sessionName?: string;
   } | null>(null);
+  const [liveSessionStats, setLiveSessionStats] = useState<SessionLiveStats | null>(null);
 
   // Refs for cleanup and callbacks
   const queueUnsubscribeRef = useRef<(() => void) | null>(null);
@@ -490,6 +492,24 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
   // Handle session events internally
   const handleSessionEvent = useCallback((event: SessionEvent) => {
+    if (event.__typename === 'SessionStatsUpdated') {
+      setLiveSessionStats({
+        sessionId: event.sessionId,
+        totalSends: event.totalSends,
+        totalFlashes: event.totalFlashes,
+        totalAttempts: event.totalAttempts,
+        tickCount: event.tickCount,
+        participants: event.participants,
+        gradeDistribution: event.gradeDistribution,
+        boardTypes: event.boardTypes,
+        hardestGrade: event.hardestGrade,
+        durationMinutes: event.durationMinutes,
+        goal: event.goal,
+      });
+      notifySessionSubscribers(event);
+      return;
+    }
+
     setSession((prev) => {
       if (!prev) return prev;
 
@@ -515,6 +535,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           };
         case 'SessionEnded':
           if (DEBUG) console.log('[PersistentSession] Session ended:', event.reason);
+          setLiveSessionStats(null);
           // Clear persisted session so it's not auto-restored on next page load
           removePreference(ACTIVE_SESSION_KEY).catch(() => {});
           return prev;
@@ -526,6 +547,14 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     // Notify external subscribers
     notifySessionSubscribers(event);
   }, [notifySessionSubscribers]);
+
+  // Reset live stats when active session changes or clears.
+  useEffect(() => {
+    setLiveSessionStats((prev) => {
+      if (!activeSession) return null;
+      return prev?.sessionId === activeSession.sessionId ? prev : null;
+    });
+  }, [activeSession]);
 
   // Connect to session when activeSession changes
   useEffect(() => {
@@ -925,6 +954,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     setActiveSession(null);
     setQueueState([]);
     setCurrentClimbQueueItem(null);
+    setLiveSessionStats(null);
     // Clear persisted session from IndexedDB
     removePreference(ACTIVE_SESSION_KEY).catch((err) =>
       console.error('[PersistentSession] Failed to clear persisted session:', err),
@@ -1177,6 +1207,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       subscribeToSessionEvents,
       triggerResync,
       endSessionWithSummary,
+      liveSessionStats,
       sessionSummary,
       dismissSessionSummary,
     }),
@@ -1208,6 +1239,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       subscribeToSessionEvents,
       triggerResync,
       endSessionWithSummary,
+      liveSessionStats,
       sessionSummary,
       dismissSessionSummary,
     ],

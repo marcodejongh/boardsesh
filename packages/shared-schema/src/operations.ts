@@ -219,6 +219,31 @@ export const SESSION_UPDATES = `
         reason
         newPath
       }
+      ... on SessionStatsUpdated {
+        sessionId
+        totalSends
+        totalFlashes
+        totalAttempts
+        tickCount
+        participants {
+          userId
+          displayName
+          avatarUrl
+          sends
+          flashes
+          attempts
+        }
+        gradeDistribution {
+          grade
+          flash
+          send
+          attempt
+        }
+        boardTypes
+        hardestGrade
+        durationMinutes
+        goal
+      }
     }
   }
 `;
