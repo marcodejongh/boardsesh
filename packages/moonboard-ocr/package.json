@@ -33,18 +33,18 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "commander": "^12.1.0",
-    "sharp": "^0.33.5",
-    "tesseract.js": "^5.1.1"
+    "commander": "^14.0.3",
+    "sharp": "^0.34.5",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vitest": "^4.0.16"
+    "@types/node": "^25.3.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   },
   "optionalDependencies": {
-    "canvas": "^2.11.2"
+    "canvas": "^3.2.1"
   },
   "engines": {
     "node": ">=18"

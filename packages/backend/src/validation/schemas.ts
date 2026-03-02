@@ -101,7 +101,7 @@ export const ClimbInputSchema = z.object({
   quality_average: z.string().max(20).nullish().transform(v => v ?? ''),
   stars: z.number().min(0).max(15).nullish().transform(v => v ?? 0),
   difficulty_error: z.string().max(50).nullish().transform(v => v ?? ''),
-  litUpHoldsMap: z.record(z.any()).nullish().transform(v => v ?? {}), // JSON object
+  litUpHoldsMap: z.record(z.string(), z.any()).nullish().transform(v => v ?? {}), // JSON object
   mirrored: z.boolean().nullish(),
   benchmark_difficulty: z.string().max(50).nullish(),
   userAscents: z.number().min(0).nullish(),
@@ -161,7 +161,7 @@ export const QueueItemIdSchema = z.string()
 export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown, fieldName?: string): T {
   const result = schema.safeParse(data);
   if (!result.success) {
-    const errors = result.error.errors.map((e) => e.message).join(', ');
+    const errors = result.error.issues.map((e: { message: string }) => e.message).join(', ');
     throw new Error(`Invalid ${fieldName || 'input'}: ${errors}`);
   }
   return result.data;
@@ -175,7 +175,7 @@ export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown, fieldNam
  * Board name validation schema (kilter, tension, moonboard)
  */
 export const BoardNameSchema = z.enum(['kilter', 'tension', 'moonboard'], {
-  errorMap: () => ({ message: 'Board name must be kilter, tension, or moonboard' }),
+  error: 'Board name must be kilter, tension, or moonboard',
 });
 
 // ============================================
@@ -207,7 +207,7 @@ export const ClimbSearchInputSchema = z.object({
   onlyBenchmarks: z.boolean().optional(),
   onlyTallClimbs: z.boolean().optional(),
   // Accept all HoldState values for future UI implementations (currently only 'ANY' and 'NOT' are used)
-  holdsFilter: z.record(z.enum(['OFF', 'STARTING', 'FINISH', 'HAND', 'FOOT', 'ANY', 'NOT'])).optional(),
+  holdsFilter: z.record(z.string(), z.enum(['OFF', 'STARTING', 'FINISH', 'HAND', 'FOOT', 'ANY', 'NOT'])).optional(),
   // Personal progress filters
   hideAttempted: z.boolean().optional(),
   hideCompleted: z.boolean().optional(),
@@ -302,7 +302,7 @@ export const ToggleFavoriteInputSchema = z.object({
  * Tick status validation schema
  */
 export const TickStatusSchema = z.enum(['flash', 'send', 'attempt'], {
-  errorMap: () => ({ message: 'Status must be flash, send, or attempt' }),
+  error: 'Status must be flash, send, or attempt',
 });
 
 /**
