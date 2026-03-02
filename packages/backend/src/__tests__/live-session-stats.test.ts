@@ -119,7 +119,7 @@ describe('buildSessionStatsUpdatedEvent', () => {
     });
   });
 
-  it('caps ticks to the 20 most recent', async () => {
+  it('returns all ticks without capping', async () => {
     const ticks = Array.from({ length: 30 }, (_, i) => ({
       uuid: `tick-${i}`,
       userId: 'user-1',
@@ -148,8 +148,8 @@ describe('buildSessionStatsUpdatedEvent', () => {
     const result = await buildSessionStatsUpdatedEvent('session-1');
 
     expect(result).not.toBeNull();
-    expect(result!.ticks).toHaveLength(20);
+    expect(result!.ticks).toHaveLength(30);
     expect(result!.ticks[0].uuid).toBe('tick-0');
-    expect(result!.ticks[19].uuid).toBe('tick-19');
+    expect(result!.ticks[29].uuid).toBe('tick-29');
   });
 });

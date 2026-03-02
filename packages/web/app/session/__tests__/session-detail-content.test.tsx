@@ -18,22 +18,14 @@ vi.mock('next-auth/react', () => ({
   useSession: () => ({ data: null, status: 'unauthenticated' }),
 }));
 
-vi.mock('@/app/hooks/use-ws-auth-token', () => ({
-  useWsAuthToken: () => ({ token: null, isAuthenticated: false, isLoading: false, error: null }),
-}));
-
-vi.mock('@/app/components/providers/snackbar-provider', () => ({
-  useSnackbar: () => ({ showMessage: vi.fn() }),
-}));
-
-vi.mock('@/app/lib/graphql/client', () => ({
-  createGraphQLHttpClient: () => ({ request: vi.fn() }),
-}));
-
-vi.mock('@/app/lib/graphql/operations/activity-feed', () => ({
-  UPDATE_INFERRED_SESSION: 'mutation UpdateInferredSession',
-  ADD_USER_TO_SESSION: 'mutation AddUserToSession',
-  REMOVE_USER_FROM_SESSION: 'mutation RemoveUserFromSession',
+vi.mock('@/app/hooks/use-session-detail', () => ({
+  useSessionDetail: ({ initialData }: { initialData: unknown }) => ({
+    session: initialData ?? null,
+    isLoading: false,
+    updateSession: { isPending: false, mutateAsync: vi.fn() },
+    addUser: { isPending: false, mutateAsync: vi.fn() },
+    removeUser: { isPending: false, mutateAsync: vi.fn() },
+  }),
 }));
 
 vi.mock('@/app/theme/theme-config', () => ({

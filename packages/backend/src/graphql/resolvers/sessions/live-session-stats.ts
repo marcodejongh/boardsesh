@@ -20,6 +20,6 @@ export async function buildSessionStatsUpdatedEvent(
     hardestGrade: sessionDetail.hardestGrade ?? null,
     durationMinutes: sessionDetail.durationMinutes ?? null,
     goal: sessionDetail.goal ?? null,
-    ticks: sessionDetail.ticks.slice(0, 20),
+    ticks: sessionDetail.ticks,
   };
 }

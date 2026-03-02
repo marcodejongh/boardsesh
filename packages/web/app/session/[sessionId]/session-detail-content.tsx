@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Avatar from '@mui/material/Avatar';
@@ -31,14 +31,7 @@ import { useMyBoards } from '@/app/hooks/use-my-boards';
 import { useBoardDetailsMap } from '@/app/hooks/use-board-details-map';
 import { getDefaultAngleForBoard } from '@/app/lib/board-config-for-playlist';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
-import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
-import {
-  UPDATE_INFERRED_SESSION,
-  ADD_USER_TO_SESSION,
-  REMOVE_USER_FROM_SESSION,
-} from '@/app/lib/graphql/operations/activity-feed';
-import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import { useSessionDetail } from '@/app/hooks/use-session-detail';
 import { themeTokens } from '@/app/theme/theme-config';
 import type { Climb, BoardName, BoardDetails } from '@/app/lib/types';
 import UserSearchDialog from './user-search-dialog';
@@ -46,6 +39,7 @@ import SessionOverviewPanel from '@/app/components/session-details/session-overv
 
 interface SessionDetailContentProps {
   session: SessionDetail | null;
+  sessionId?: string;
   embedded?: boolean;
   fallbackBoardDetails?: BoardDetails | null;
 }
@@ -252,28 +246,36 @@ function SessionTickItem({
 
 export default function SessionDetailContent({
   session: initialSession,
+  sessionId: sessionIdProp,
   embedded = false,
   fallbackBoardDetails = null,
 }: SessionDetailContentProps) {
   const { data: authSession } = useSession();
-  const { token: authToken } = useWsAuthToken();
-  const { showMessage } = useSnackbar();
   const router = useRouter();
 
-  const [session, setSession] = useState(initialSession);
+  const {
+    session: hookSession,
+    updateSession: updateSessionMutation,
+    addUser: addUserMutation,
+    removeUser: removeUserMutation,
+  } = useSessionDetail({
+    sessionId: sessionIdProp ?? initialSession?.sessionId,
+    initialData: initialSession,
+    enabled: !embedded,
+  });
+
+  const session = embedded ? initialSession : hookSession;
+
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
-  const [saving, setSaving] = useState(false);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
   const [sessionCommentsOpen, setSessionCommentsOpen] = useState(false);
 
-  const { boards: myBoards } = useMyBoards(true);
+  const saving = updateSessionMutation.isPending || addUserMutation.isPending;
 
-  useEffect(() => {
-    setSession(initialSession);
-  }, [initialSession]);
+  const { boards: myBoards } = useMyBoards(true);
 
   if (!session) {
     return (
@@ -414,72 +416,26 @@ export default function SessionDetailContent({
   }, []);
 
   const handleSaveEdit = useCallback(async () => {
-    setSaving(true);
-    try {
-      const client = createGraphQLHttpClient(authToken);
-      const result = await client.request<{ updateInferredSession: SessionDetail }>(
-        UPDATE_INFERRED_SESSION,
-        {
-          input: {
-            sessionId,
-            name: editName || null,
-            description: editDescription || null,
-          },
-        },
-      );
-      if (result.updateInferredSession) {
-        setSession(result.updateInferredSession);
-      }
-      setIsEditing(false);
-      showMessage('Session updated', 'success');
-    } catch (err) {
-      console.error('Failed to update session:', err);
-      showMessage('Failed to update session', 'error');
-    } finally {
-      setSaving(false);
-    }
-  }, [authToken, sessionId, editName, editDescription, showMessage]);
+    await updateSessionMutation.mutateAsync({
+      name: editName || null,
+      description: editDescription || null,
+    });
+    setIsEditing(false);
+  }, [updateSessionMutation, editName, editDescription]);
 
   const handleAddUser = useCallback(async (userId: string) => {
     setAddUserDialogOpen(false);
-    setSaving(true);
-    try {
-      const client = createGraphQLHttpClient(authToken);
-      const result = await client.request<{ addUserToSession: SessionDetail }>(
-        ADD_USER_TO_SESSION,
-        { input: { sessionId, userId } },
-      );
-      if (result.addUserToSession) {
-        setSession(result.addUserToSession);
-      }
-      showMessage('User added to session', 'success');
-    } catch (err) {
-      console.error('Failed to add user:', err);
-      showMessage('Failed to add user to session', 'error');
-    } finally {
-      setSaving(false);
-    }
-  }, [authToken, sessionId, showMessage]);
+    await addUserMutation.mutateAsync(userId);
+  }, [addUserMutation]);
 
   const handleRemoveUser = useCallback(async (userId: string) => {
     setRemovingUserId(userId);
     try {
-      const client = createGraphQLHttpClient(authToken);
-      const result = await client.request<{ removeUserFromSession: SessionDetail }>(
-        REMOVE_USER_FROM_SESSION,
-        { input: { sessionId, userId } },
-      );
-      if (result.removeUserFromSession) {
-        setSession(result.removeUserFromSession);
-      }
-      showMessage('User removed from session', 'success');
-    } catch (err) {
-      console.error('Failed to remove user:', err);
-      showMessage('Failed to remove user', 'error');
+      await removeUserMutation.mutateAsync(userId);
     } finally {
       setRemovingUserId(null);
     }
-  }, [authToken, sessionId, showMessage]);
+  }, [removeUserMutation]);
 
   const noopLoadMore = useCallback(() => {}, []);
 

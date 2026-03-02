@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -73,18 +73,26 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
     return liveSessionStats;
   }, [liveSessionStats, sessionId]);
 
+  // Capture a stable timestamp once when the active session first becomes
+  // relevant, so that unrelated dep changes don't regenerate different values.
+  const fallbackTimestampRef = useRef<string | null>(null);
+  if (activeSession && sessionId && !fallbackTimestampRef.current) {
+    fallbackTimestampRef.current = new Date().toISOString();
+  }
+  if (!activeSession || !sessionId) {
+    fallbackTimestampRef.current = null;
+  }
+
   // Build a placeholder SessionDetail from live context when the real
   // sessionDetail hasn't loaded yet (or isn't available at all).
-  // nowIso is an acceptable short-lived fallback: it's only used until
-  // sessionDetail or mergedStats arrive and overwrite these values.
   const fallbackSession = useMemo<SessionDetail | null>(() => {
     if (!activeSession || !sessionId) return null;
     if (sessionDetail) return null; // not needed when we have real data
 
-    const nowIso = new Date().toISOString();
-    const fallbackFirstTick = session?.startedAt ?? nowIso;
+    const stableNow = fallbackTimestampRef.current!;
+    const fallbackFirstTick = session?.startedAt ?? stableNow;
     const fallbackDurationMinutes = session?.startedAt
-      ? Math.max(0, Math.round((Date.now() - new Date(session.startedAt).getTime()) / 60000))
+      ? Math.max(0, Math.round((new Date(stableNow).getTime() - new Date(session.startedAt).getTime()) / 60000))
       : null;
 
     return {
@@ -108,7 +116,7 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
       boardTypes: boardDetails?.board_name ? [boardDetails.board_name] : [],
       hardestGrade: null,
       firstTickAt: fallbackFirstTick,
-      lastTickAt: nowIso,
+      lastTickAt: stableNow,
       durationMinutes: fallbackDurationMinutes,
       goal: session?.goal ?? null,
       ticks: [],
