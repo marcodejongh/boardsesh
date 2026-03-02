@@ -1113,11 +1113,18 @@ export class DistributedStateManager {
    * Update instance heartbeat.
    */
   private async updateHeartbeat(): Promise<void> {
-    await this.redis.setex(
+    const multi = this.redis.multi();
+    multi.setex(
       KEYS.instanceHeartbeat(this.instanceId),
       TTL.instanceHeartbeat,
       Date.now().toString()
     );
+    // Keep instance connection-set alive as long as the instance is running.
+    // Without this, the 2h TTL set at registerConnection() would expire for
+    // long-lived instances with no new connections, making them invisible
+    // to discoverDeadInstances() after a crash.
+    multi.expire(KEYS.instanceConnections(this.instanceId), 2 * 60 * 60); // 2 hours
+    await multi.exec();
   }
 
   /**

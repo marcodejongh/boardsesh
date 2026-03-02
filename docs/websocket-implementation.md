@@ -863,6 +863,19 @@ When Redis is unavailable, RoomManager falls back to **Postgres-only mode**:
 | **Warm** | Redis only | 4 hours | Recently inactive (users left) |
 | **Cold** | PostgreSQL | Indefinite | Historical sessions, dormant restoration |
 
+### Participant Tracking (Postgres)
+
+Session participation is tracked in two layers:
+
+| Layer | Table / Key | Granularity | Lifetime |
+|-------|-------------|-------------|----------|
+| **Real-time** (Redis) | `boardsesh:session:{id}:members` | Per connection ID | Ephemeral (4h TTL) |
+| **Historical** (Postgres) | `board_session_participants` | Per authenticated user | Permanent |
+
+**`board_session_participants`** records one row per (session_id, user_id) with a `joined_at` timestamp. It is upserted (`ON CONFLICT DO NOTHING`) when an authenticated user joins a session. Rows are never deleted on disconnect — they serve as a permanent historical record of who participated.
+
+> **Note:** The legacy `board_session_clients` table (one row per WebSocket connection) is no longer written to. Leader state is managed exclusively in Redis via the `DistributedStateManager`.
+
 ### Key Redis Data Structures
 
 **Session State (RedisSessionStore):**
@@ -877,11 +890,11 @@ boardsesh:lock:session:restore:{id} # String - distributed lock (10s TTL)
 
 **Distributed State (DistributedStateManager):**
 ```
-boardsesh:conn:{connectionId}       # Hash - connection data (instanceId, sessionId, username, etc.)
-boardsesh:session:{id}:members      # Set - connection IDs in session (cross-instance)
-boardsesh:session:{id}:leader       # String - leader connection ID
-boardsesh:instance:{id}:conns       # Set - connections owned by instance
-boardsesh:instance:{id}:heartbeat   # String - instance heartbeat timestamp (60s TTL)
+boardsesh:conn:{connectionId}       # Hash - connection data (1h TTL, refreshed on activity)
+boardsesh:session:{id}:members      # Set - connection IDs in session (4h TTL)
+boardsesh:session:{id}:leader       # String - leader connection ID (4h TTL)
+boardsesh:instance:{id}:conns       # Set - connections owned by instance (2h TTL, refreshed on heartbeat)
+boardsesh:instance:{id}:heartbeat   # String - instance heartbeat timestamp (60s TTL, refreshed every 30s)
 ```
 
 **Pub/Sub Channels:**
@@ -931,63 +944,50 @@ sequenceDiagram
     P->>P: Exit
 ```
 
-### Dead Instance Detection and TTL Cleanup
+### Dead Instance Detection and Active Cleanup
 
-When an instance crashes or terminates without graceful shutdown, the system relies on TTL-based cleanup:
+When an instance crashes or terminates without graceful shutdown, the system uses a combination of active cleanup and TTL-based self-healing:
 
-**1. Instance Heartbeat Expiry (60s TTL)**
+**1. Instance Heartbeat (60s TTL, refreshed every 30s)**
 
-Each instance updates its heartbeat every 30 seconds:
 ```
 boardsesh:instance:{id}:heartbeat = timestamp (60s TTL)
 ```
 
-When an instance dies unexpectedly:
-- The heartbeat key expires after 60 seconds
-- Redis automatically removes the heartbeat key
+When an instance dies unexpectedly, its heartbeat key expires after 60 seconds.
 
-**2. Connection Data Expiry (1 hour TTL)**
+**2. Active Dead Instance Cleanup**
 
-Connection data has its own TTL:
-```
-boardsesh:conn:{connectionId} = {...} (1 hour TTL)
-```
+The `DistributedStateManager` actively discovers and cleans up dead instances:
 
-Connections from dead instances:
-- Continue to exist until their 1-hour TTL expires
-- Are refreshed on client activity (extends TTL)
-- Eventually expire if no activity
+- **On startup**: `cleanupDeadInstanceConnections()` runs asynchronously after the first heartbeat
+- **Periodically**: Piggybacks on the 30s heartbeat cycle, running every 4th heartbeat (~2 minutes)
 
-**3. Session Member Sets (4 hour TTL)**
+The cleanup process:
+1. SCANs for `boardsesh:instance:*:conns` keys
+2. Checks if the corresponding heartbeat key exists (skip current instance)
+3. For each dead instance: fetches its connection IDs, groups by session
+4. Deletes all orphaned connection hashes and instance tracking keys
+5. Runs `PRUNE_STALE_SESSION_MEMBERS_SCRIPT` (Lua) per affected session to atomically remove stale members and re-elect leader if needed
 
-Session member sets track all connection IDs:
-```
-boardsesh:session:{id}:members = Set of connectionIds (4 hour TTL)
-```
+**3. Stale-Filtering at Read Time**
 
-**Limitation: No Active Cleanup for Dead Instances**
+Even between cleanup cycles, stale entries never inflate participant counts:
 
-Currently, there is no background job that actively scans for dead instances and cleans up their orphaned connections. This means:
+- `getSessionMemberCount()` pipelines `EXISTS` checks against each member's connection hash — only live connections are counted
+- `getSessionMembers()` filters out members whose connection data is missing
+- `hasSessionMembers()` delegates to the filtered count
 
-- Session member sets may temporarily contain connection IDs from dead instances
-- `getSessionMembers()` may return connections that no longer exist (gracefully handled by filtering out missing connection data)
-- Leader election may initially select a connection from a dead instance (but will re-elect on next leader action)
-- Connection data remains until TTL expires naturally
+**4. TTL Self-Healing (defense in depth)**
 
-**Implications for Clients**
+| Key | TTL | Refreshed |
+|-----|-----|-----------|
+| `boardsesh:conn:{id}` | 1 hour | On client activity |
+| `boardsesh:instance:{id}:conns` | 2 hours | On every heartbeat (30s) |
+| `boardsesh:instance:{id}:heartbeat` | 60 seconds | Every 30s |
+| `boardsesh:session:{id}:members` | 4 hours | On join/leave/refresh |
 
-- Clients should handle the case where a session "member" is no longer reachable
-- Leader changes may occur when the elected leader from a dead instance is detected as unresponsive
-- User lists may temporarily show stale entries that get filtered out on refresh
-
-**Future Improvement**
-
-A background cleanup job could periodically:
-1. Scan for instances with expired heartbeats
-2. Remove their orphaned connections from session member sets
-3. Trigger leader re-election if the current leader's instance is dead
-
-This would reduce the window of stale data but is not currently implemented.
+Even if active cleanup fails, orphaned data expires naturally via these TTLs.
 
 ---
 
