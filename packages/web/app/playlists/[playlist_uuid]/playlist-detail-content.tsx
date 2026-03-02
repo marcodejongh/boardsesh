@@ -54,6 +54,8 @@ import { PlaylistGeneratorDrawer } from '@/app/components/playlist-generator';
 import PlaylistEditDrawer from '@/app/components/library/playlist-edit-drawer';
 import CommentSection from '@/app/components/social/comment-section';
 import MultiboardClimbList from '@/app/components/climb-list/multiboard-climb-list';
+import { useMyBoards } from '@/app/hooks/use-my-boards';
+import { findMatchingBoard, type BoardConfig } from '@/app/lib/find-matching-board';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import styles from '@/app/components/library/playlist-view.module.css';
 
@@ -77,11 +79,20 @@ type PlaylistDetailContentProps = {
   playlistUuid: string;
   /** Base path for navigating back to the playlists library (e.g. "/b/my-kilter/40/playlists"). Defaults to "/playlists". */
   playlistsBasePath?: string;
+  /** When set from a board slug route, auto-selects the matching board filter. */
+  boardSlug?: string;
+  /** When set from a legacy route, auto-selects the matching board filter by config. */
+  boardConfig?: BoardConfig;
+  /** SSR-fetched user boards for instant board filter selection (avoids flash). */
+  initialMyBoards?: UserBoard[] | null;
 };
 
 export default function PlaylistDetailContent({
   playlistUuid,
   playlistsBasePath = '/playlists',
+  boardSlug,
+  boardConfig,
+  initialMyBoards,
 }: PlaylistDetailContentProps) {
   const router = useRouter();
   const { showMessage } = useSnackbar();
@@ -92,9 +103,28 @@ export default function PlaylistDetailContent({
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [listRefreshKey, setListRefreshKey] = useState(0);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
+  // Initialize selectedBoard from SSR data immediately (avoids flash from "All" to selected board)
+  const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(
+    () => findMatchingBoard(initialMyBoards, boardSlug, boardConfig),
+  );
   const lastAccessedUpdatedRef = useRef(false);
+  const defaultBoardAppliedRef = useRef(!!selectedBoard);
   const { token, isLoading: tokenLoading } = useWsAuthToken();
+
+  // Fetch user's boards (with SSR initial data to avoid loading skeleton)
+  const { boards: myBoards, isLoading: boardsLoading } = useMyBoards(true, 50, initialMyBoards);
+
+  // Auto-select the matching board when boards load (fallback for non-SSR paths)
+  useEffect(() => {
+    if (defaultBoardAppliedRef.current || boardsLoading || myBoards.length === 0) return;
+    if (!boardSlug && !boardConfig) return;
+
+    const match = findMatchingBoard(myBoards, boardSlug, boardConfig);
+    if (match) {
+      setSelectedBoard(match);
+    }
+    defaultBoardAppliedRef.current = true;
+  }, [myBoards, boardsLoading, boardSlug, boardConfig]);
 
   const fetchPlaylist = useCallback(async () => {
     if (tokenLoading) return;

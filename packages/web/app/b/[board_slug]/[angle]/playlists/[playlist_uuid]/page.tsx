@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { resolveBoardBySlug } from '@/app/lib/board-slug-utils';
 import { constructBoardSlugPlaylistsUrl } from '@/app/lib/url-utils';
+import { getServerAuthToken } from '@/app/lib/auth/server-auth';
+import { serverMyBoards } from '@/app/lib/graphql/server-cached-client';
 import PlaylistDetailContent from '@/app/playlists/[playlist_uuid]/playlist-detail-content';
 import styles from '@/app/components/library/playlist-view.module.css';
 
@@ -25,11 +27,17 @@ export default async function BoardSlugPlaylistDetailPage(props: PlaylistDetailP
 
   const playlistsBasePath = constructBoardSlugPlaylistsUrl(params.board_slug, Number(params.angle));
 
+  // Fetch user's boards server-side for instant board filter selection
+  const authToken = await getServerAuthToken();
+  const initialMyBoards = authToken ? await serverMyBoards(authToken) : null;
+
   return (
     <div className={styles.pageContainer}>
       <PlaylistDetailContent
         playlistUuid={params.playlist_uuid}
         playlistsBasePath={playlistsBasePath}
+        boardSlug={params.board_slug}
+        initialMyBoards={initialMyBoards}
       />
     </div>
   );

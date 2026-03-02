@@ -27,6 +27,7 @@ import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useMyBoards } from '@/app/hooks/use-my-boards';
 import { useQueueBridgeBoardInfo } from '@/app/components/queue-control/queue-bridge-context';
 import { constructBoardSlugPlaylistsUrl } from '@/app/lib/url-utils';
+import { findMatchingBoard } from '@/app/lib/find-matching-board';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import AuthModal from '@/app/components/auth/auth-modal';
 import PlaylistCardGrid from '@/app/components/library/playlist-card-grid';
@@ -37,43 +38,49 @@ import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
 import styles from '@/app/components/library/library.module.css';
 import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module.css';
 
-/**
- * Find the UserBoard that best matches a board identified by type + layout + size.
- */
-function findMatchingBoard(
-  boards: UserBoard[],
-  boardName: string | undefined,
-  layoutId: number | undefined,
-  sizeId: number | undefined,
-): UserBoard | null {
-  if (!boardName) return null;
-  return boards.find((b) =>
-    b.boardType === boardName &&
-    b.layoutId === layoutId &&
-    b.sizeId === sizeId,
-  ) ?? null;
-}
-
 type LibraryPageContentProps = {
   /** When set, the page was rendered from a board route and this board is pre-selected. */
   boardSlug?: string;
   /** Base path for playlist detail links (e.g. "/b/my-kilter/40/playlists" or "/kilter/original/12x12/default/45/playlists"). Defaults to "/playlists". */
   playlistsBasePath?: string;
+  /** SSR-fetched user boards for instant rendering. */
+  initialMyBoards?: UserBoard[] | null;
+  /** SSR-fetched user playlists for instant rendering. */
+  initialPlaylists?: Playlist[] | null;
+  /** SSR-fetched discover playlists for instant rendering. */
+  initialDiscoverPlaylists?: { popular: DiscoverablePlaylist[]; recent: DiscoverablePlaylist[] } | null;
 };
 
-export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/playlists' }: LibraryPageContentProps) {
+export default function LibraryPageContent({
+  boardSlug,
+  playlistsBasePath = '/playlists',
+  initialMyBoards,
+  initialPlaylists,
+  initialDiscoverPlaylists,
+}: LibraryPageContentProps) {
   const { data: session, status: sessionStatus } = useSession();
   const { token, isLoading: tokenLoading } = useWsAuthToken();
   const router = useRouter();
   const isAuthenticated = sessionStatus === 'authenticated';
 
-  const [hasMounted, setHasMounted] = useState(false);
-  const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const defaultBoardAppliedRef = useRef(false);
+  const hasInitialBoardData = initialMyBoards != null && initialMyBoards.length > 0;
+  const hasInitialPlaylistData = initialPlaylists != null;
+  const hasInitialDiscoverData = initialDiscoverPlaylists != null;
 
-  // Fetch user's boards for the board selector
-  const { boards: myBoards, isLoading: boardsLoading } = useMyBoards(hasMounted);
+  const [hasMounted, setHasMounted] = useState(false);
+  // Initialize selectedBoard from SSR data immediately when boardSlug is provided
+  const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(
+    () => findMatchingBoard(initialMyBoards, boardSlug),
+  );
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const defaultBoardAppliedRef = useRef(!!selectedBoard);
+
+  // Fetch user's boards for the board selector (with SSR initial data)
+  const { boards: myBoards, isLoading: boardsLoading } = useMyBoards(
+    hasMounted || hasInitialBoardData,
+    50,
+    initialMyBoards,
+  );
 
   // Get current session/queue board info to use as default selection (global route only)
   const { boardDetails: currentBoardDetails, hasActiveQueue } = useQueueBridgeBoardInfo();
@@ -82,7 +89,7 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
     setHasMounted(true);
   }, []);
 
-  // Auto-select the matching board once boards finish loading
+  // Auto-select the matching board once boards finish loading (fallback for non-SSR paths)
   useEffect(() => {
     if (defaultBoardAppliedRef.current || boardsLoading || myBoards.length === 0) return;
 
@@ -98,12 +105,15 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
       // Wait if there's an active queue but board details haven't loaded yet
       if (!currentBoardDetails && hasActiveQueue) return;
 
-      const match = findMatchingBoard(
+      const match = currentBoardDetails ? findMatchingBoard(
         myBoards,
-        currentBoardDetails?.board_name,
-        currentBoardDetails?.layout_id,
-        currentBoardDetails?.size_id,
-      );
+        undefined,
+        {
+          boardType: currentBoardDetails.board_name,
+          layoutId: currentBoardDetails.layout_id,
+          sizeId: currentBoardDetails.size_id,
+        },
+      ) : null;
       if (match) {
         setSelectedBoard(match);
       }
@@ -111,15 +121,23 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
     }
   }, [myBoards, boardsLoading, currentBoardDetails, hasActiveQueue, boardSlug]);
 
-  // Data states
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [popularPlaylists, setPopularPlaylists] = useState<DiscoverablePlaylist[]>([]);
-  const [recentPlaylists, setRecentPlaylists] = useState<DiscoverablePlaylist[]>([]);
+  // Data states — initialized from SSR data when available
+  const [playlists, setPlaylists] = useState<Playlist[]>(initialPlaylists ?? []);
+  const [popularPlaylists, setPopularPlaylists] = useState<DiscoverablePlaylist[]>(
+    initialDiscoverPlaylists?.popular ?? [],
+  );
+  const [recentPlaylists, setRecentPlaylists] = useState<DiscoverablePlaylist[]>(
+    initialDiscoverPlaylists?.recent ?? [],
+  );
 
-  // Loading states
-  const [playlistsLoading, setPlaylistsLoading] = useState(true);
-  const [discoverLoading, setDiscoverLoading] = useState(true);
+  // Loading states — skip loading when SSR data is available
+  const [playlistsLoading, setPlaylistsLoading] = useState(!hasInitialPlaylistData);
+  const [discoverLoading, setDiscoverLoading] = useState(!hasInitialDiscoverData);
   const [error, setError] = useState<string | null>(null);
+
+  // Track whether we already have data to avoid re-showing loading skeleton on refetches
+  const hasPlaylistDataRef = useRef(hasInitialPlaylistData);
+  const hasDiscoverDataRef = useRef(hasInitialDiscoverData);
 
   // Fetch user data
   const fetchUserData = useCallback(async () => {
@@ -129,11 +147,14 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
     }
 
     try {
-      setPlaylistsLoading(true);
+      // Only show loading if we don't already have data
+      if (!hasPlaylistDataRef.current) {
+        setPlaylistsLoading(true);
+      }
       setError(null);
 
       const input: GetAllUserPlaylistsInput = selectedBoard
-        ? { boardType: selectedBoard.boardType }
+        ? { boardType: selectedBoard.boardType, layoutId: selectedBoard.layoutId }
         : {};
 
       const playlistsRes = await executeGraphQL<GetAllUserPlaylistsQueryResponse, { input: GetAllUserPlaylistsInput }>(
@@ -143,6 +164,7 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
       );
 
       setPlaylists(playlistsRes.allUserPlaylists);
+      hasPlaylistDataRef.current = true;
     } catch (err) {
       console.error('Error fetching user data:', err);
       setError('Failed to load your library');
@@ -154,7 +176,10 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
   // Fetch discover playlists (works for both "All" and specific board)
   const fetchDiscoverData = useCallback(async () => {
     try {
-      setDiscoverLoading(true);
+      // Only show loading if we don't already have data
+      if (!hasDiscoverDataRef.current) {
+        setDiscoverLoading(true);
+      }
 
       const baseInput: DiscoverPlaylistsInput = {
         pageSize: 10,
@@ -177,6 +202,7 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
 
       setPopularPlaylists(popularRes.discoverPlaylists.playlists);
       setRecentPlaylists(recentRes.discoverPlaylists.playlists);
+      hasDiscoverDataRef.current = true;
     } catch (err) {
       console.error('Error fetching discover playlists:', err);
     } finally {
@@ -215,6 +241,9 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
 
   const handleBoardSelect = useCallback((board: UserBoard | null) => {
     setSelectedBoard(board);
+    // Reset data refs so loading skeletons show for new board filter
+    hasPlaylistDataRef.current = false;
+    hasDiscoverDataRef.current = false;
 
     // When rendered from a board route, switching boards navigates to the correct URL
     if (boardSlug || playlistsBasePath !== '/playlists') {
@@ -269,13 +298,11 @@ export default function LibraryPageContent({ boardSlug, playlistsBasePath = '/pl
     );
   }
 
-  const isLoading = !hasMounted || playlistsLoading || tokenLoading || sessionStatus === 'loading';
+  const isLoading = (!hasMounted && !hasInitialPlaylistData) || playlistsLoading || tokenLoading || sessionStatus === 'loading';
   const discoverItems = getDiscoverPlaylists();
 
-  // Filter playlists by selected board
-  const filteredPlaylists = selectedBoard
-    ? playlists.filter((p) => p.boardType === selectedBoard.boardType)
-    : playlists;
+  // Server query already filters by boardType + layoutId; no client-side filter needed
+  const filteredPlaylists = playlists;
 
   return (
     <>
