@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import IconButton from '@mui/material/IconButton';
+import { usePathname } from 'next/navigation';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined';
 import FavoriteBorderOutlined from '@mui/icons-material/FavoriteBorderOutlined';
@@ -37,6 +38,7 @@ type ClimbListItemProps = {
 };
 
 const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDetails, selected, unsupported, disableSwipe, onSelect }) => {
+  const pathname = usePathname();
   const isDark = useIsDarkMode();
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const queueContext = useOptionalQueueContext();
@@ -240,6 +242,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({ climb, boardDe
           climb={climb}
           boardDetails={boardDetails}
           angle={climb.angle}
+          currentPathname={pathname}
           viewMode="list"
           exclude={excludeActions}
           onActionComplete={() => setIsActionsOpen(false)}

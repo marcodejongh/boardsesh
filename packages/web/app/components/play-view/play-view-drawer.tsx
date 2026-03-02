@@ -17,6 +17,7 @@ import EditOutlined from '@mui/icons-material/EditOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import dynamic from 'next/dynamic';
+import { usePathname } from 'next/navigation';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite, ClimbActions } from '../climb-actions';
 import { ShareBoardButton } from '../board-page/share-button';
@@ -83,6 +84,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const [showHistory, setShowHistory] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [queueDrawerHeight, setQueueDrawerHeight] = useState<string>('60%');
+  const pathname = usePathname();
   const queueListRef = useRef<QueueListHandle>(null);
   const queueScrollRef = useRef<HTMLDivElement>(null);
   const [queueScrollEl, setQueueScrollEl] = useState<HTMLDivElement | null>(null);
@@ -383,6 +385,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
               climb={currentClimb}
               boardDetails={boardDetails}
               angle={typeof angle === 'string' ? parseInt(angle, 10) : angle}
+              currentPathname={pathname}
               viewMode="list"
               onActionComplete={() => setIsActionsOpen(false)}
             />

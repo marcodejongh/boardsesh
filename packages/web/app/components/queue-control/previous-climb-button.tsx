@@ -5,7 +5,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useQueueContext } from '../graphql-queue';
 import { useParams } from 'next/navigation';
-import { parseBoardRouteParams, constructClimbViewUrlWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
+import { parseBoardRouteParams, constructPlayUrlWithSlugs, getContextAwareClimbViewUrl } from '@/app/lib/url-utils';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { BoardRouteParametersWithUuid, BoardDetails } from '@/app/lib/types';
 import { track } from '@vercel/analytics';
@@ -43,22 +43,33 @@ export default function PreviousClimbButton({ navigate = false, boardDetails }: 
   };
 
   if (!viewOnlyMode && navigate && previousClimb) {
-    const urlConstructor = isPlayPage ? constructPlayUrlWithSlugs : constructClimbViewUrlWithSlugs;
-    const fallbackPath = isPlayPage ? 'play' : 'view';
+    let climbUrl = '';
 
-    let climbUrl =
-      boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
-        ? urlConstructor(
-            boardDetails.board_name,
-            boardDetails.layout_name,
-            boardDetails.size_name,
-            boardDetails.size_description,
-            boardDetails.set_names,
-            angle,
-            previousClimb.climb.uuid,
-            previousClimb.climb.name,
-          )
-        : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/${fallbackPath}/${previousClimb.climb.uuid}`;
+    if (isPlayPage) {
+      climbUrl =
+        boardDetails?.layout_name && boardDetails?.size_name && boardDetails?.set_names
+          ? constructPlayUrlWithSlugs(
+              boardDetails.board_name,
+              boardDetails.layout_name,
+              boardDetails.size_name,
+              boardDetails.size_description,
+              boardDetails.set_names,
+              angle,
+              previousClimb.climb.uuid,
+              previousClimb.climb.name,
+            )
+          : `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/play/${previousClimb.climb.uuid}`;
+    } else if (boardDetails) {
+      climbUrl = getContextAwareClimbViewUrl(
+        pathname,
+        boardDetails,
+        angle,
+        previousClimb.climb.uuid,
+        previousClimb.climb.name,
+      );
+    } else {
+      climbUrl = `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/${previousClimb.climb.uuid}`;
+    }
 
     // Preserve search params in play mode to maintain filter state for back navigation
     if (isPlayPage) {

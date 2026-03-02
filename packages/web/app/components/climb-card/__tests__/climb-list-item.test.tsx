@@ -5,6 +5,10 @@ import type { Climb, BoardDetails } from '@/app/lib/types';
 
 // --- Mocks ---
 
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/kilter/original/12x12/default/40/list',
+}));
+
 vi.mock('@/app/hooks/use-is-dark-mode', () => ({
   useIsDarkMode: () => false,
 }));

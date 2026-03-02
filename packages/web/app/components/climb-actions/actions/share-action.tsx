@@ -6,8 +6,7 @@ import ShareOutlined from '@mui/icons-material/ShareOutlined';
 import { track } from '@vercel/analytics';
 import { ClimbActionProps, ClimbActionResult } from '../types';
 import {
-  constructClimbViewUrl,
-  constructClimbViewUrlWithSlugs,
+  getContextAwareClimbViewUrl,
 } from '@/app/lib/url-utils';
 import { buildActionResult, computeActionDisplay } from '../action-view-renderer';
 
@@ -15,6 +14,7 @@ export function ShareAction({
   climb,
   boardDetails,
   angle,
+  currentPathname,
   viewMode,
   size = 'default',
   showLabel,
@@ -25,28 +25,13 @@ export function ShareAction({
   const { showMessage } = useSnackbar();
   const { iconSize } = computeActionDisplay(viewMode, size, showLabel);
 
-  const viewUrl = boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
-    ? constructClimbViewUrlWithSlugs(
-        boardDetails.board_name,
-        boardDetails.layout_name,
-        boardDetails.size_name,
-        boardDetails.size_description,
-        boardDetails.set_names,
-        angle,
-        climb.uuid,
-        climb.name,
-      )
-    : constructClimbViewUrl(
-        {
-          board_name: boardDetails.board_name,
-          layout_id: boardDetails.layout_id,
-          size_id: boardDetails.size_id,
-          set_ids: boardDetails.set_ids,
-          angle,
-        },
-        climb.uuid,
-        climb.name,
-      );
+  const viewUrl = getContextAwareClimbViewUrl(
+    currentPathname ?? '',
+    boardDetails,
+    angle,
+    climb.uuid,
+    climb.name,
+  );
 
   const handleClick = useCallback(async (e?: React.MouseEvent) => {
     e?.stopPropagation();
