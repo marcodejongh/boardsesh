@@ -210,7 +210,7 @@ export interface PersistentSessionContextType {
 const PersistentSessionContext = createContext<PersistentSessionContextType | undefined>(undefined);
 
 export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { token: wsAuthToken, isLoading: isAuthLoading } = useWsAuthToken();
+  const { token: wsAuthToken } = useWsAuthToken();
   const { username, avatarUrl } = usePartyProfile();
 
   // Use refs for values that shouldn't trigger reconnection
@@ -564,13 +564,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       return;
     }
 
-    // Wait for auth to finish loading before connecting
-    // This prevents creating duplicate connections when token loads async
-    if (isAuthLoading) {
-      if (DEBUG) console.log('[PersistentSession] Waiting for auth to load...');
-      return;
-    }
-
     const { sessionId, boardPath } = activeSession;
     const backendUrl = DEFAULT_BACKEND_URL;
 
@@ -582,6 +575,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     // Use ref for mounted flag so reconnect callback can safely check current state
     mountedRef.current = true;
     let graphqlClient: Client | null = null;
+    let retryConnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     async function joinSession(clientToUse: Client): Promise<Session | null> {
       if (DEBUG) console.log('[PersistentSession] Calling joinSession mutation...');
@@ -768,10 +762,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         }
 
         if (!sessionData) {
-          // Clear persisted session since the server rejected the join
-          removePreference(ACTIVE_SESSION_KEY).catch(() => {});
-          setActiveSession(null);
-          throw new Error('Failed to join session');
+          throw new Error('JoinSession returned no payload');
         }
 
         if (DEBUG) console.log('[PersistentSession] Joined session, clientId:', sessionData.clientId);
@@ -842,13 +833,31 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       } catch (err) {
         console.error('[PersistentSession] Connection failed:', err);
         isConnectingRef.current = false;
+        const message = err instanceof Error ? err.message : String(err);
+        const isTransientJoinFailure =
+          message.includes('JoinSession returned no payload') ||
+          message.includes('completed without data');
+
         if (mountedRef.current) {
           setError(err instanceof Error ? err : new Error(String(err)));
           setIsConnecting(false);
-          // Clear persisted session if connection fails (session may have expired)
-          removePreference(ACTIVE_SESSION_KEY).catch(() => {});
-          // Clear active session so UI falls back to local queue
-          setActiveSession(null);
+          if (isTransientJoinFailure) {
+            // Keep active session and retry shortly; avoids join/leave thrash loops.
+            retryConnectTimeout = setTimeout(() => {
+              if (
+                mountedRef.current &&
+                activeSessionRef.current?.sessionId === sessionId &&
+                !isConnectingRef.current
+              ) {
+                connect();
+              }
+            }, 1000);
+          } else {
+            // Clear persisted session on definitive failures (session may have expired)
+            removePreference(ACTIVE_SESSION_KEY).catch(() => {});
+            // Clear active session so UI falls back to local queue
+            setActiveSession(null);
+          }
         }
         if (graphqlClient) {
           graphqlClient.dispose();
@@ -890,9 +899,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       setSession(null);
       setHasConnected(false);
       setIsConnecting(false);
+      if (retryConnectTimeout) {
+        clearTimeout(retryConnectTimeout);
+      }
     };
   // Note: username, avatarUrl, wsAuthToken are accessed via refs to prevent reconnection on changes
-  }, [activeSession, isAuthLoading, handleQueueEvent, handleSessionEvent]);
+  }, [activeSession, handleQueueEvent, handleSessionEvent]);
 
   // Periodic state hash verification
   // Runs every 60 seconds to detect state drift and auto-resync if needed
