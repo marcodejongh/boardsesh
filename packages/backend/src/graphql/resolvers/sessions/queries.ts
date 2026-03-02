@@ -4,6 +4,7 @@ import { pubsub } from '../../../pubsub/index';
 import { validateInput, requireSessionMember, requireAuthenticated } from '../shared/helpers';
 import { SessionIdSchema, LatitudeSchema, LongitudeSchema, RadiusMetersSchema } from '../../../validation/schemas';
 import { generateSessionSummary } from './session-summary';
+import { getDistributedState } from '../../../services/distributed-state';
 
 export const sessionQueries = {
   /**
@@ -95,22 +96,31 @@ export const sessionQueries = {
     const sessions = await roomManager.getUserSessions(ctx.userId);
 
     // Convert Session to DiscoverableSession format
-    return sessions.map((s) => ({
-      id: s.id,
-      name: s.name,
-      boardPath: s.boardPath,
-      latitude: s.latitude || 0,
-      longitude: s.longitude || 0,
-      createdAt: s.createdAt,
-      createdByUserId: s.createdByUserId,
-      participantCount: roomManager.getSessionClients(s.id).length,
-      distance: 0, // Not applicable for own sessions
-      isActive: true, // User's own sessions are always considered active
-      goal: s.goal || null,
-      isPublic: s.isPublic,
-      isPermanent: s.isPermanent,
-      color: s.color || null,
-    }));
+    const distributedState = getDistributedState();
+    return Promise.all(
+      sessions.map(async (s) => {
+        const participantCount = distributedState
+          ? await distributedState.getSessionMemberCount(s.id)
+          : roomManager.getSessionClients(s.id).length;
+
+        return {
+          id: s.id,
+          name: s.name,
+          boardPath: s.boardPath,
+          latitude: s.latitude || 0,
+          longitude: s.longitude || 0,
+          createdAt: s.createdAt,
+          createdByUserId: s.createdByUserId,
+          participantCount,
+          distance: 0, // Not applicable for own sessions
+          isActive: true, // User's own sessions are always considered active
+          goal: s.goal || null,
+          isPublic: s.isPublic,
+          isPermanent: s.isPermanent,
+          color: s.color || null,
+        };
+      })
+    );
   },
 
   /**

@@ -3,6 +3,7 @@ import type { WebSocketServer } from 'ws';
 import { pubsub } from './pubsub/index';
 import { roomManager } from './services/room-manager';
 import { redisClientManager } from './redis/client';
+import { getDistributedState } from './services/distributed-state';
 import { eventBroker, NotificationWorker } from './events/index';
 import { sql, eq, and, lt, isNull } from 'drizzle-orm';
 import { db } from './db/client';
@@ -286,6 +287,25 @@ export async function startServer(): Promise<{ wss: WebSocketServer; httpServer:
     }
   }, 120000); // 2 minutes
   intervals.push(ttlRefreshInterval);
+
+  // Periodic dead instance cleanup (every 2 minutes)
+  const deadInstanceCleanupInterval = setInterval(async () => {
+    try {
+      const distributedState = getDistributedState();
+      if (distributedState) {
+        const result = await distributedState.cleanupDeadInstanceConnections();
+        if (result.staleConnections.length > 0) {
+          console.log(
+            `[Server] Dead instance cleanup: removed ${result.staleConnections.length} stale connections ` +
+            `from ${result.deadInstances.length} dead instances`
+          );
+        }
+      }
+    } catch (error) {
+      console.error('[Server] Error in dead instance cleanup:', error);
+    }
+  }, 120000); // 2 minutes
+  intervals.push(deadInstanceCleanupInterval);
 
   // Periodic inferred session builder (every 30 minutes)
   const inferredSessionInterval = setInterval(async () => {

@@ -15,3 +15,4 @@ export * from './feed';
 export * from './proposals';
 export * from './new-climb-subscriptions';
 export * from './vote-counts';
+export * from './session-participants';
