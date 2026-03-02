@@ -2682,6 +2682,12 @@ export const typeDefs = /* GraphQL */ `
     lastTickAt: String!
     durationMinutes: Int
     goal: String
+    "Board path for party sessions (used for join links)"
+    boardPath: String
+    "When the underlying session ended (ISO 8601)"
+    endedAt: String
+    "Whether this session is currently in progress"
+    isInProgress: Boolean!
     ticks: [SessionDetailTick!]!
     upvotes: Int!
     downvotes: Int!
@@ -3695,6 +3701,12 @@ export const typeDefs = /* GraphQL */ `
     Subscribe to real-time session events (membership, lifecycle, and live stats).
     """
     sessionUpdates(sessionId: ID!): SessionEvent!
+
+    """
+    Subscribe to public live stats for a session detail page.
+    Intended for read-only viewers with a shared session link.
+    """
+    sessionStats(sessionId: ID!): SessionStatsUpdated!
 
     """
     Subscribe to queue changes (items added/removed/reordered, current climb changes).

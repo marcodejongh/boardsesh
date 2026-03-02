@@ -40,6 +40,13 @@ const SESSION_FEED_ITEM_FIELDS = `
   commentCount
 `;
 
+const SESSION_DETAIL_FIELDS = `
+  ${SESSION_FEED_ITEM_FIELDS}
+  boardPath
+  endedAt
+  isInProgress
+`;
+
 export const GET_SESSION_GROUPED_FEED = gql`
   query GetSessionGroupedFeed($input: ActivityFeedInput) {
     sessionGroupedFeed(input: $input) {
@@ -55,7 +62,59 @@ export const GET_SESSION_GROUPED_FEED = gql`
 export const GET_SESSION_DETAIL = gql`
   query GetSessionDetail($sessionId: ID!) {
     sessionDetail(sessionId: $sessionId) {
-      ${SESSION_FEED_ITEM_FIELDS}
+      ${SESSION_DETAIL_FIELDS}
+      ticks {
+        uuid
+        userId
+        climbUuid
+        climbName
+        boardType
+        layoutId
+        angle
+        status
+        attemptCount
+        difficulty
+        difficultyName
+        quality
+        isMirror
+        isBenchmark
+        comment
+        frames
+        setterUsername
+        climbedAt
+        upvotes
+        totalAttempts
+      }
+    }
+  }
+`;
+
+export const SESSION_STATS_SUBSCRIPTION = `
+  subscription SessionStats($sessionId: ID!) {
+    sessionStats(sessionId: $sessionId) {
+      sessionId
+      totalSends
+      totalFlashes
+      totalAttempts
+      tickCount
+      participants {
+        userId
+        displayName
+        avatarUrl
+        sends
+        flashes
+        attempts
+      }
+      gradeDistribution {
+        grade
+        flash
+        send
+        attempt
+      }
+      boardTypes
+      hardestGrade
+      durationMinutes
+      goal
       ticks {
         uuid
         userId
@@ -89,7 +148,7 @@ export const GET_SESSION_DETAIL = gql`
 export const UPDATE_INFERRED_SESSION = gql`
   mutation UpdateInferredSession($input: UpdateInferredSessionInput!) {
     updateInferredSession(input: $input) {
-      ${SESSION_FEED_ITEM_FIELDS}
+      ${SESSION_DETAIL_FIELDS}
       ticks {
         uuid
         userId
@@ -119,7 +178,7 @@ export const UPDATE_INFERRED_SESSION = gql`
 export const ADD_USER_TO_SESSION = gql`
   mutation AddUserToSession($input: AddUserToSessionInput!) {
     addUserToSession(input: $input) {
-      ${SESSION_FEED_ITEM_FIELDS}
+      ${SESSION_DETAIL_FIELDS}
       ticks {
         uuid
         userId
@@ -149,7 +208,7 @@ export const ADD_USER_TO_SESSION = gql`
 export const REMOVE_USER_FROM_SESSION = gql`
   mutation RemoveUserFromSession($input: RemoveUserFromSessionInput!) {
     removeUserFromSession(input: $input) {
-      ${SESSION_FEED_ITEM_FIELDS}
+      ${SESSION_DETAIL_FIELDS}
       ticks {
         uuid
         userId
@@ -194,4 +253,12 @@ export interface GetSessionDetailQueryVariables {
 
 export interface GetSessionDetailQueryResponse {
   sessionDetail: import('@boardsesh/shared-schema').SessionDetail | null;
+}
+
+export interface SessionStatsSubscriptionVariables {
+  sessionId: string;
+}
+
+export interface SessionStatsSubscriptionResponse {
+  sessionStats: import('@boardsesh/shared-schema').SessionLiveStats;
 }

@@ -40,10 +40,10 @@ vi.mock('@/app/theme/theme-config', () => ({
   themeTokens: {
     transitions: { normal: '200ms ease' },
     shadows: { md: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
-    borderRadius: { full: 9999, sm: 4 },
+    borderRadius: { full: 9999, sm: 4, lg: 12 },
     colors: { amber: '#FBBF24', success: '#6B9080', successBg: '#EFF5F2' },
     typography: { fontSize: { xs: 12 } },
-    neutral: { 100: '#F3F4F6', 200: '#E5E7EB', 300: '#D1D5DB' },
+    neutral: { 50: '#F9FAFB', 100: '#F3F4F6', 200: '#E5E7EB', 300: '#D1D5DB' },
   },
 }));
 
@@ -124,6 +124,10 @@ vi.mock('@/app/lib/board-config-for-playlist', () => ({
 
 vi.mock('@/app/components/board-renderer/util', () => ({
   convertLitUpHoldsStringToMap: () => [{}],
+}));
+
+vi.mock('@/app/components/board-renderer/board-renderer', () => ({
+  default: () => <div data-testid="board-renderer" />,
 }));
 
 import SessionDetailContent from '../[sessionId]/session-detail-content';
@@ -501,5 +505,53 @@ describe('SessionDetailContent', () => {
     });
     render(<SessionDetailContent session={session} />);
     expect(screen.getByText('Great beta!')).toBeTruthy();
+  });
+
+  it('renders session board preview when provided', () => {
+    render(
+      <SessionDetailContent
+        session={makeSession()}
+        sessionBoardPreview={{
+          boardName: 'Moonrise Home Wall',
+          angle: 40,
+          boardDetails: {
+            board_name: 'kilter',
+            layout_id: 1,
+            size_id: 1,
+            set_ids: [1],
+            boardWidth: 100,
+            boardHeight: 200,
+          } as any,
+        }}
+      />,
+    );
+
+    expect(screen.getByText('Session Board')).toBeTruthy();
+    expect(screen.getByText('Moonrise Home Wall')).toBeTruthy();
+    expect(screen.getByTestId('board-renderer')).toBeTruthy();
+  });
+
+  it('renders join session link for in-progress sessions', () => {
+    render(
+      <SessionDetailContent
+        session={makeSession({ isInProgress: true })}
+        joinSessionUrl="/b/my-board/40/list?session=session-1"
+        sessionBoardPreview={{
+          boardName: 'My Board',
+          angle: 40,
+          boardDetails: {
+            board_name: 'kilter',
+            layout_id: 1,
+            size_id: 1,
+            set_ids: [1],
+            boardWidth: 100,
+            boardHeight: 200,
+          } as any,
+        }}
+      />,
+    );
+
+    const joinLink = screen.getByRole('link', { name: 'Join Session' });
+    expect(joinLink.getAttribute('href')).toBe('/b/my-board/40/list?session=session-1');
   });
 });

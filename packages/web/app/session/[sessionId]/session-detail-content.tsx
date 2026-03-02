@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Avatar from '@mui/material/Avatar';
+import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
@@ -31,6 +32,7 @@ import { useMyBoards } from '@/app/hooks/use-my-boards';
 import { useBoardDetailsMap } from '@/app/hooks/use-board-details-map';
 import { getDefaultAngleForBoard } from '@/app/lib/board-config-for-playlist';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
+import BoardRenderer from '@/app/components/board-renderer/board-renderer';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
@@ -44,10 +46,18 @@ import type { Climb, BoardName, BoardDetails } from '@/app/lib/types';
 import UserSearchDialog from './user-search-dialog';
 import SessionOverviewPanel from '@/app/components/session-details/session-overview-panel';
 
+interface SessionBoardPreview {
+  boardName: string;
+  boardDetails: BoardDetails;
+  angle: number;
+}
+
 interface SessionDetailContentProps {
   session: SessionDetail | null;
   embedded?: boolean;
   fallbackBoardDetails?: BoardDetails | null;
+  joinSessionUrl?: string | null;
+  sessionBoardPreview?: SessionBoardPreview | null;
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -254,6 +264,8 @@ export default function SessionDetailContent({
   session: initialSession,
   embedded = false,
   fallbackBoardDetails = null,
+  joinSessionUrl = null,
+  sessionBoardPreview = null,
 }: SessionDetailContentProps) {
   const { data: authSession } = useSession();
   const { token: authToken } = useWsAuthToken();
@@ -568,6 +580,48 @@ export default function SessionDetailContent({
             removingUserId={removingUserId}
             getParticipantHref={(userId) => `/crusher/${userId}`}
           />
+        )}
+
+        {sessionBoardPreview && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1,
+              p: 1.25,
+              border: `1px solid ${themeTokens.neutral[200]}`,
+              borderRadius: themeTokens.borderRadius.lg,
+              bgcolor: themeTokens.neutral[50],
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              Session Board
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 500 }} noWrap>
+                {sessionBoardPreview.boardName}
+              </Typography>
+              <Chip label={`${sessionBoardPreview.angle}°`} size="small" variant="outlined" />
+            </Box>
+            <BoardRenderer
+              litUpHoldsMap={{}}
+              mirrored={false}
+              boardDetails={sessionBoardPreview.boardDetails}
+              thumbnail
+              maxHeight="140px"
+            />
+            {session.isInProgress && joinSessionUrl && (
+              <Button
+                component={Link}
+                href={joinSessionUrl}
+                variant="contained"
+                size="small"
+                fullWidth
+              >
+                Join Session
+              </Button>
+            )}
+          </Box>
         )}
 
         {/* Session-level social */}

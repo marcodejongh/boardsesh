@@ -1,7 +1,9 @@
 import type { ConnectionContext, SessionEvent } from '@boardsesh/shared-schema';
 import { pubsub } from '../../../pubsub/index';
-import { requireSessionMember } from '../shared/helpers';
+import { requireSessionMember, validateInput } from '../shared/helpers';
 import { createAsyncIterator } from '../shared/async-iterators';
+import { SessionIdSchema } from '../../../validation/schemas';
+import { buildSessionStatsUpdatedEvent } from './live-session-stats';
 
 export const sessionSubscriptions = {
   /**
@@ -24,6 +26,33 @@ export const sessionSubscriptions = {
 
       for await (const event of asyncIterator) {
         yield { sessionUpdates: event };
+      }
+    },
+  },
+
+  /**
+   * Subscribe to read-only live session stats by session ID.
+   * This is intentionally public for share-link viewers on /session/:id pages.
+   */
+  sessionStats: {
+    subscribe: async function* (_: unknown, { sessionId }: { sessionId: string }) {
+      validateInput(SessionIdSchema, sessionId, 'sessionId');
+
+      // Send a snapshot immediately so viewers get up-to-date stats on first paint.
+      const initial = await buildSessionStatsUpdatedEvent(sessionId);
+
+      const asyncIterator = await createAsyncIterator<SessionEvent>((push) => {
+        return pubsub.subscribeSession(sessionId, push);
+      });
+
+      if (initial) {
+        yield { sessionStats: initial };
+      }
+
+      for await (const event of asyncIterator) {
+        if (event.__typename === 'SessionStatsUpdated') {
+          yield { sessionStats: event };
+        }
       }
     },
   },
