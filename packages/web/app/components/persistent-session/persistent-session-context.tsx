@@ -795,27 +795,16 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
         setClient(graphqlClient);
 
-        let sessionData: Awaited<ReturnType<typeof joinSession>>;
-        try {
-          sessionData = await joinSession(graphqlClient);
-        } catch (joinErr) {
-          // Convert generic "completed without data" from graphql-client into a typed
-          // TransientJoinError so the outer catch can apply backoff retry logic.
-          if (
-            joinErr instanceof Error &&
-            joinErr.message.includes('completed without data') &&
-            !(joinErr instanceof TransientJoinError)
-          ) {
-            throw new TransientJoinError(joinErr.message);
-          }
-          throw joinErr;
-        }
+        const sessionData = await joinSession(graphqlClient);
 
         if (!mountedRef.current) {
           graphqlClient.dispose();
           return;
         }
 
+        // joinSession() catches its own errors and returns null on failure
+        // (including "completed without data" from the graphql client).
+        // A null result is always a transient condition worth retrying.
         if (!sessionData) {
           throw new TransientJoinError('JoinSession returned no payload');
         }

@@ -62,7 +62,7 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
       const client = createGraphQLHttpClient(authToken);
       return client.request<GetSessionDetailQueryResponse>(GET_SESSION_DETAIL, { sessionId });
     },
-    enabled: open && !!sessionId,
+    enabled: open && !!sessionId && !!authToken,
     staleTime: 5000,
     refetchOnWindowFocus: false,
   });
@@ -73,19 +73,21 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
     return liveSessionStats;
   }, [liveSessionStats, sessionId]);
 
-  const sessionForView = useMemo<SessionDetail | null>(() => {
+  // Build a placeholder SessionDetail from live context when the real
+  // sessionDetail hasn't loaded yet (or isn't available at all).
+  // nowIso is an acceptable short-lived fallback: it's only used until
+  // sessionDetail or mergedStats arrive and overwrite these values.
+  const fallbackSession = useMemo<SessionDetail | null>(() => {
     if (!activeSession || !sessionId) return null;
+    if (sessionDetail) return null; // not needed when we have real data
 
-    // nowIso is an acceptable short-lived fallback: it's only used when
-    // sessionDetail hasn't loaded yet, and is replaced by mergedStats or the
-    // real sessionDetail as soon as either arrives.
     const nowIso = new Date().toISOString();
     const fallbackFirstTick = session?.startedAt ?? nowIso;
     const fallbackDurationMinutes = session?.startedAt
       ? Math.max(0, Math.round((Date.now() - new Date(session.startedAt).getTime()) / 60000))
       : null;
 
-    const base: SessionDetail = sessionDetail ?? {
+    return {
       sessionId,
       sessionType: 'party',
       sessionName: session?.name || activeSession.sessionName || null,
@@ -115,6 +117,11 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
       voteScore: 0,
       commentCount: 0,
     };
+  }, [activeSession, sessionId, sessionDetail, session?.startedAt, session?.name, session?.goal, users, boardDetails?.board_name]);
+
+  const sessionForView = useMemo<SessionDetail | null>(() => {
+    const base = sessionDetail ?? fallbackSession;
+    if (!base) return null;
 
     if (!mergedStats) return base;
 
@@ -142,17 +149,7 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
       lastTickAt,
       ticks: mergedTicks,
     };
-  }, [
-    activeSession,
-    sessionId,
-    sessionDetail,
-    session?.startedAt,
-    session?.name,
-    session?.goal,
-    users,
-    boardDetails?.board_name,
-    mergedStats,
-  ]);
+  }, [sessionDetail, fallbackSession, mergedStats]);
 
   if (!activeSession) return null;
 

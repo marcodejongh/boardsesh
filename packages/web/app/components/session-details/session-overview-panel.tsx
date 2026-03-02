@@ -41,6 +41,27 @@ interface SessionOverviewPanelProps {
   getParticipantHref?: (userId: string) => string;
 }
 
+function ParticipantAvatar({
+  participant,
+  size,
+  href,
+}: {
+  participant: SessionFeedParticipant;
+  size: number;
+  href?: string;
+}) {
+  const avatar = (
+    <Avatar
+      src={participant.avatarUrl ?? undefined}
+      {...(href ? { component: 'a' as const, href } : {})}
+      sx={{ width: size, height: size }}
+    >
+      {!participant.avatarUrl && <PersonOutlined sx={{ fontSize: size * 0.4 }} />}
+    </Avatar>
+  );
+  return avatar;
+}
+
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes}min`;
   const hours = Math.floor(minutes / 60);
@@ -87,43 +108,20 @@ export default function SessionOverviewPanel({
             {isMultiUser ? (
               <AvatarGroup max={5} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: 14 } }}>
                 {uniqueParticipants.map((participant) => (
-                  getParticipantHref ? (
-                    <Avatar
-                      key={participant.userId}
-                      src={participant.avatarUrl ?? undefined}
-                      component="a"
-                      href={getParticipantHref(participant.userId)}
-                    >
-                      {!participant.avatarUrl && <PersonOutlined sx={{ fontSize: 16 }} />}
-                    </Avatar>
-                  ) : (
-                    <Avatar
-                      key={participant.userId}
-                      src={participant.avatarUrl ?? undefined}
-                    >
-                      {!participant.avatarUrl && <PersonOutlined sx={{ fontSize: 16 }} />}
-                    </Avatar>
-                  )
+                  <ParticipantAvatar
+                    key={participant.userId}
+                    participant={participant}
+                    size={32}
+                    href={getParticipantHref?.(participant.userId)}
+                  />
                 ))}
               </AvatarGroup>
             ) : uniqueParticipants[0] ? (
-              getParticipantHref ? (
-                <Avatar
-                  src={uniqueParticipants[0].avatarUrl ?? undefined}
-                  component="a"
-                  href={getParticipantHref(uniqueParticipants[0].userId)}
-                  sx={{ width: 40, height: 40 }}
-                >
-                  {!uniqueParticipants[0].avatarUrl && <PersonOutlined />}
-                </Avatar>
-              ) : (
-                <Avatar
-                  src={uniqueParticipants[0].avatarUrl ?? undefined}
-                  sx={{ width: 40, height: 40 }}
-                >
-                  {!uniqueParticipants[0].avatarUrl && <PersonOutlined />}
-                </Avatar>
-              )
+              <ParticipantAvatar
+                participant={uniqueParticipants[0]}
+                size={40}
+                href={getParticipantHref?.(uniqueParticipants[0].userId)}
+              />
             ) : (
               <Avatar sx={{ width: 40, height: 40 }}>
                 <PersonOutlined />
