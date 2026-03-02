@@ -187,12 +187,13 @@ export const playlistQueries = {
 
     if (input.layoutId != null) {
       // Include playlists with matching layoutId OR null layoutId (Aurora-synced circuits)
-      conditions.push(
-        or(
-          eq(dbSchema.playlists.layoutId, input.layoutId),
-          isNull(dbSchema.playlists.layoutId)
-        )!,
+      const layoutCondition = or(
+        eq(dbSchema.playlists.layoutId, input.layoutId),
+        isNull(dbSchema.playlists.layoutId),
       );
+      if (layoutCondition) {
+        conditions.push(layoutCondition);
+      }
     }
 
     const userPlaylists = await db

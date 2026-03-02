@@ -55,6 +55,7 @@ import PlaylistEditDrawer from '@/app/components/library/playlist-edit-drawer';
 import CommentSection from '@/app/components/social/comment-section';
 import MultiboardClimbList from '@/app/components/climb-list/multiboard-climb-list';
 import { useMyBoards } from '@/app/hooks/use-my-boards';
+import { findMatchingBoard, type BoardConfig } from '@/app/lib/find-matching-board';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import styles from '@/app/components/library/playlist-view.module.css';
 
@@ -81,32 +82,10 @@ type PlaylistDetailContentProps = {
   /** When set from a board slug route, auto-selects the matching board filter. */
   boardSlug?: string;
   /** When set from a legacy route, auto-selects the matching board filter by config. */
-  boardConfig?: { boardType: string; layoutId: number; sizeId: number };
+  boardConfig?: BoardConfig;
   /** SSR-fetched user boards for instant board filter selection (avoids flash). */
   initialMyBoards?: UserBoard[] | null;
 };
-
-/**
- * Find the initial board from SSR-provided boards or return null.
- */
-function findInitialBoard(
-  boards: UserBoard[] | null | undefined,
-  boardSlug?: string,
-  boardConfig?: { boardType: string; layoutId: number; sizeId: number },
-): UserBoard | null {
-  if (!boards || boards.length === 0) return null;
-  if (boardSlug) {
-    return boards.find((b) => b.slug === boardSlug) ?? null;
-  }
-  if (boardConfig) {
-    return boards.find((b) =>
-      b.boardType === boardConfig.boardType &&
-      b.layoutId === boardConfig.layoutId &&
-      b.sizeId === boardConfig.sizeId,
-    ) ?? null;
-  }
-  return null;
-}
 
 export default function PlaylistDetailContent({
   playlistUuid,
@@ -126,7 +105,7 @@ export default function PlaylistDetailContent({
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   // Initialize selectedBoard from SSR data immediately (avoids flash from "All" to selected board)
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(
-    () => findInitialBoard(initialMyBoards, boardSlug, boardConfig),
+    () => findMatchingBoard(initialMyBoards, boardSlug, boardConfig),
   );
   const lastAccessedUpdatedRef = useRef(false);
   const defaultBoardAppliedRef = useRef(!!selectedBoard);
@@ -140,7 +119,7 @@ export default function PlaylistDetailContent({
     if (defaultBoardAppliedRef.current || boardsLoading || myBoards.length === 0) return;
     if (!boardSlug && !boardConfig) return;
 
-    const match = findInitialBoard(myBoards, boardSlug, boardConfig);
+    const match = findMatchingBoard(myBoards, boardSlug, boardConfig);
     if (match) {
       setSelectedBoard(match);
     }

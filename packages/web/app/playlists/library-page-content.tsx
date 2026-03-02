@@ -27,6 +27,7 @@ import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useMyBoards } from '@/app/hooks/use-my-boards';
 import { useQueueBridgeBoardInfo } from '@/app/components/queue-control/queue-bridge-context';
 import { constructBoardSlugPlaylistsUrl } from '@/app/lib/url-utils';
+import { findMatchingBoard } from '@/app/lib/find-matching-board';
 import type { UserBoard } from '@boardsesh/shared-schema';
 import AuthModal from '@/app/components/auth/auth-modal';
 import PlaylistCardGrid from '@/app/components/library/playlist-card-grid';
@@ -36,34 +37,6 @@ import BoardScrollSection from '@/app/components/board-scroll/board-scroll-secti
 import BoardScrollCard from '@/app/components/board-scroll/board-scroll-card';
 import styles from '@/app/components/library/library.module.css';
 import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module.css';
-
-/**
- * Find the UserBoard that best matches a board identified by type + layout + size.
- */
-function findMatchingBoard(
-  boards: UserBoard[],
-  boardName: string | undefined,
-  layoutId: number | undefined,
-  sizeId: number | undefined,
-): UserBoard | null {
-  if (!boardName) return null;
-  return boards.find((b) =>
-    b.boardType === boardName &&
-    b.layoutId === layoutId &&
-    b.sizeId === sizeId,
-  ) ?? null;
-}
-
-/**
- * Find the initial board from SSR-provided boards by slug.
- */
-function findInitialBoardBySlug(
-  boards: UserBoard[] | null | undefined,
-  boardSlug?: string,
-): UserBoard | null {
-  if (!boards || !boardSlug) return null;
-  return boards.find((b) => b.slug === boardSlug) ?? null;
-}
 
 type LibraryPageContentProps = {
   /** When set, the page was rendered from a board route and this board is pre-selected. */
@@ -97,7 +70,7 @@ export default function LibraryPageContent({
   const [hasMounted, setHasMounted] = useState(false);
   // Initialize selectedBoard from SSR data immediately when boardSlug is provided
   const [selectedBoard, setSelectedBoard] = useState<UserBoard | null>(
-    () => findInitialBoardBySlug(initialMyBoards, boardSlug),
+    () => findMatchingBoard(initialMyBoards, boardSlug),
   );
   const [showAuthModal, setShowAuthModal] = useState(false);
   const defaultBoardAppliedRef = useRef(!!selectedBoard);
@@ -132,12 +105,15 @@ export default function LibraryPageContent({
       // Wait if there's an active queue but board details haven't loaded yet
       if (!currentBoardDetails && hasActiveQueue) return;
 
-      const match = findMatchingBoard(
+      const match = currentBoardDetails ? findMatchingBoard(
         myBoards,
-        currentBoardDetails?.board_name,
-        currentBoardDetails?.layout_id,
-        currentBoardDetails?.size_id,
-      );
+        undefined,
+        {
+          boardType: currentBoardDetails.board_name,
+          layoutId: currentBoardDetails.layout_id,
+          sizeId: currentBoardDetails.size_id,
+        },
+      ) : null;
       if (match) {
         setSelectedBoard(match);
       }
@@ -325,13 +301,8 @@ export default function LibraryPageContent({
   const isLoading = (!hasMounted && !hasInitialPlaylistData) || playlistsLoading || tokenLoading || sessionStatus === 'loading';
   const discoverItems = getDiscoverPlaylists();
 
-  // Filter playlists by selected board (boardType + layoutId)
-  const filteredPlaylists = selectedBoard
-    ? playlists.filter((p) =>
-        p.boardType === selectedBoard.boardType &&
-        (p.layoutId == null || p.layoutId === selectedBoard.layoutId)
-      )
-    : playlists;
+  // Server query already filters by boardType + layoutId; no client-side filter needed
+  const filteredPlaylists = playlists;
 
   return (
     <>
@@ -387,7 +358,7 @@ export default function LibraryPageContent({
       )}
 
       {/* Authenticated: Recent Playlists Grid */}
-      {(isAuthenticated || hasInitialPlaylistData) && (
+      {isAuthenticated && (
         <PlaylistCardGrid
           playlists={filteredPlaylists}
           getPlaylistUrl={getPlaylistUrl}
@@ -409,7 +380,7 @@ export default function LibraryPageContent({
       )}
 
       {/* Jump Back In (authenticated only) */}
-      {(isAuthenticated || hasInitialPlaylistData) && (isLoading || filteredPlaylists.length > 0) && (
+      {isAuthenticated && (isLoading || filteredPlaylists.length > 0) && (
         <PlaylistScrollSection title="Jump Back In" loading={isLoading}>
           {filteredPlaylists.slice(0, 10).map((p, i) => (
             <PlaylistCard
