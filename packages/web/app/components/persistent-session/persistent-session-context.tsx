@@ -760,6 +760,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         if (DEBUG) console.log('[PersistentSession] Reconnection complete, clientId:', sessionData.clientId);
       } finally {
         isReconnectingRef.current = false;
+        // Mark WebSocket as connected now that resync is complete (or failed).
+        // This was deferred from the on.connected callback to keep isReconnecting=true
+        // until state is fully recovered, preventing mutations on stale state.
+        if (mountedRef.current && connectionGenerationRef.current === connectionGeneration) {
+          setIsWebSocketConnected(true);
+        }
       }
     }
 
@@ -797,8 +803,14 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           // Use ref for auth token - it's set once auth loading completes
           authToken: wsAuthTokenRef.current,
           onReconnect: handleReconnect,
-          onConnectionStateChange: (connected) => {
+          onConnectionStateChange: (connected, isReconnect) => {
             if (mountedRef.current && connectionGenerationRef.current === connectionGeneration) {
+              if (connected && isReconnect) {
+                // On reconnection, don't set isWebSocketConnected=true yet.
+                // handleReconnect will set it after the async resync completes,
+                // keeping isReconnecting=true until state is fully recovered.
+                return;
+              }
               setIsWebSocketConnected(connected);
             }
           },
