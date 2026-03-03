@@ -815,7 +815,7 @@ sequenceDiagram
     PS->>PS: setIsWebSocketConnected(false)
     PS->>PS: isReconnecting = hasConnected && !isWebSocketConnected
     PS->>UI: isReconnecting = true
-    UI->>U: Show "Reconnecting..." overlay, disable interactions
+    UI->>U: Show "Reconnecting..." Snackbar notification
 
     Note over U,WS: User returns to app
 
@@ -835,7 +835,7 @@ sequenceDiagram
     PS->>PS: setIsWebSocketConnected(true)
     PS->>PS: isReconnecting = false
     PS->>UI: isReconnecting = false
-    UI->>U: Remove overlay, re-enable interactions
+    UI->>U: Snackbar auto-dismisses, mutations re-enabled
 ```
 
 **Key mechanisms:**
@@ -846,7 +846,7 @@ sequenceDiagram
 
 3. **`visibilitychange` handler**: When the page becomes visible during an active session, a debounced (300ms) resync is triggered. This proactively detects dead sockets by attempting to use the connection, rather than waiting for the next keepalive ping.
 
-4. **Reconnecting overlay**: An absolutely-positioned overlay inside the queue control bar's `swipeWrapper` (which has `position: relative; overflow: hidden`) blocks all touch/click interaction with `pointer-events: all`. Uses `--semantic-surface-overlay` for theme-aware semi-transparent background.
+4. **Reconnecting notification**: A MUI `Snackbar` with an `Alert` (severity `info`) renders at the bottom-center of the screen while `isReconnecting` is true. The notification is non-blocking — users can still interact with the UI, but queue mutations are prevented by `viewOnlyMode`. The Snackbar automatically disappears when the connection is re-established (`isReconnecting` becomes false).
 
 **Derivation:**
 ```typescript
