@@ -65,6 +65,8 @@ type ClimbListItemProps = {
   backgroundColor?: string;
   /** Override content opacity (e.g., 0.6 for history items) */
   contentOpacity?: number;
+  /** When true, disables thumbnail click-to-navigate (e.g., in edit mode) */
+  disableThumbnailNavigation?: boolean;
 };
 
 const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({
@@ -81,6 +83,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({
   titleProps,
   backgroundColor,
   contentOpacity,
+  disableThumbnailNavigation,
 }) => {
   const pathname = usePathname();
   const isDark = useIsDarkMode();
@@ -382,7 +385,7 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({
             <ClimbThumbnail
               boardDetails={boardDetails}
               currentClimb={climb}
-              enableNavigation
+              enableNavigation={!disableThumbnailNavigation}
             />
           </div>
 
@@ -475,7 +478,8 @@ const ClimbListItem: React.FC<ClimbListItemProps> = React.memo(({
     && prev.menuSlot === next.menuSlot
     && prev.titleProps === next.titleProps
     && prev.backgroundColor === next.backgroundColor
-    && prev.contentOpacity === next.contentOpacity;
+    && prev.contentOpacity === next.contentOpacity
+    && prev.disableThumbnailNavigation === next.disableThumbnailNavigation;
 });
 
 ClimbListItem.displayName = 'ClimbListItem';

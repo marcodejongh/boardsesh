@@ -217,6 +217,7 @@ const QueueClimbListItem: React.FC<QueueClimbListItemProps> = ({
       boardDetails={boardDetails}
       selected={isCurrent}
       disableSwipe={isEditMode}
+      disableThumbnailNavigation={isEditMode}
       onSelect={isEditMode ? () => onToggleSelect?.(item.uuid) : handleSelect}
       swipeLeftAction={swipeLeftAction}
       swipeRightAction={swipeRightAction}
