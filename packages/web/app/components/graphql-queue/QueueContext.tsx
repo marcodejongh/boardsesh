@@ -18,6 +18,9 @@ import { PlaylistsProvider } from '../climb-actions/playlists-batch-context';
 import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import { useWebSocketConnection } from '../connection-manager/websocket-connection-provider';
+import { useSnackbar } from '../providers/snackbar-provider';
+import type { ConnectionState } from '../connection-manager/websocket-connection-manager';
 import {
   END_SESSION as END_SESSION_GQL,
   type EndSessionResponse,
@@ -39,6 +42,8 @@ export interface GraphQLQueueContextType extends QueueContextType {
   dismissSessionSummary: () => void;
   // Session goal
   sessionGoal: string | null;
+  connectionState: ConnectionState;
+  canMutate: boolean;
 }
 
 type GraphQLQueueContextProps = {
@@ -101,6 +106,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
   // Auth token for GraphQL HTTP requests (used by endSession and playlists)
   const { token: wsAuthToken } = useWsAuthToken();
+
+  // Centralized websocket connection status
+  const { state: connectionState } = useWebSocketConnection();
 
   // Get persistent session (managed at root level)
   const persistentSession = usePersistentSession();
@@ -539,6 +547,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
   // Whether party mode is active
   const isSessionActive = !!sessionId && hasConnected;
 
+  // Session is ready only when connected and socket is healthy
+  const isSessionReady = isSessionActive && connectionState === 'connected';
+
   // Data fetching for search results
   const {
     climbSearchResults,
@@ -614,8 +625,23 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
     if (!sessionId) return false; // No session = local mode, not view-only
     if (!backendUrl) return false; // No backend = no view-only mode
     if (!hasConnected) return true; // Still connecting = view-only
-    return false; // Once connected, everyone can modify the queue
-  }, [sessionId, backendUrl, hasConnected]);
+    return connectionState !== 'connected';
+  }, [sessionId, backendUrl, hasConnected, connectionState]);
+
+  const canMutate = !viewOnlyMode && (sessionId ? isSessionReady : true);
+
+  const { showMessage } = useSnackbar();
+  // Ref to debounce the "blocked" toast so rapid taps don't spam
+  const lastBlockedToastRef = useRef(0);
+  const guardMutation = useCallback((): boolean => {
+    if (!sessionId || canMutate) return false;
+    const now = Date.now();
+    if (now - lastBlockedToastRef.current > 3000) {
+      showMessage('Reconnecting to session — try again in a moment.', 'warning');
+      lastBlockedToastRef.current = now;
+    }
+    return true;
+  }, [sessionId, canMutate, showMessage]);
 
   const contextValue: GraphQLQueueContextType = useMemo(
     () => ({
@@ -642,6 +668,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       sessionSummary,
       dismissSessionSummary,
       sessionGoal: isPersistentSessionActive ? (persistentSession.session?.goal ?? null) : null,
+      connectionState,
+      canMutate,
 
       // Session data for party context
       users,
@@ -654,6 +682,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
       // Actions
       addToQueue: (climb: Climb) => {
+        if (guardMutation()) return;
         const newItem = createClimbQueueItem(climb, clientId, currentUserInfo);
 
         // Optimistic update
@@ -668,6 +697,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       removeFromQueue: (item: ClimbQueueItem) => {
+        if (guardMutation()) return;
         // Optimistic update
         dispatch({ type: 'DELTA_REMOVE_QUEUE_ITEM', payload: { uuid: item.uuid } });
 
@@ -680,6 +710,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       setCurrentClimb: async (climb: Climb) => {
+        if (guardMutation()) return;
         const newItem = createClimbQueueItem(climb, clientId, currentUserInfo);
 
         // Optimistic update
@@ -717,6 +748,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       setQueue: (queue) => {
+        if (guardMutation()) return;
         // Optimistic update
         dispatch({
           type: 'UPDATE_QUEUE',
@@ -735,6 +767,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       setCurrentClimbQueueItem: (item: ClimbQueueItem) => {
+        if (guardMutation()) return;
         // Generate correlation ID OUTSIDE reducer (keeps reducer pure)
         // Format: clientId-counter (e.g., "client-abc123-5")
         const correlationId = clientId ? `${clientId}-${++correlationCounterRef.current}` : undefined;
@@ -784,6 +817,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       mirrorClimb: () => {
+        if (guardMutation()) return;
         if (!state.currentClimbQueueItem?.climb) {
           return;
         }
@@ -860,6 +894,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       sessionSummary,
       dismissSessionSummary,
       isOffBoardMode,
+      connectionState,
+      canMutate,
+      guardMutation,
     ],
   );
 

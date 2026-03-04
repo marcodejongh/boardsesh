@@ -8,6 +8,7 @@ import { getBoardDetailsForBoard, generateBoardTitle } from '@/app/lib/board-uti
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { GraphQLQueueProvider } from '@/app/components/graphql-queue';
 import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';
+import { WebSocketConnectionProvider } from '@/app/components/connection-manager/websocket-connection-provider';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 import { BoardSessionBridge } from '@/app/components/persistent-session';
 import { Metadata } from 'next';
@@ -97,31 +98,33 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
       />
       <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
         <ConnectionSettingsProvider>
-          <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
-            <PartyProvider>
-              <BluetoothProvider boardDetails={boardDetails}>
-                <UISearchParamsProvider>
-                  <QueueBridgeInjector boardDetails={boardDetails} angle={angle} />
+          <WebSocketConnectionProvider>
+            <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
+              <PartyProvider>
+                <BluetoothProvider boardDetails={boardDetails}>
+                  <UISearchParamsProvider>
+                    <QueueBridgeInjector boardDetails={boardDetails} angle={angle} />
 
-                  <main
-                    id="content-for-scrollable"
-                    style={{
-                      flex: 1,
-                      paddingLeft: `${themeTokens.spacing[2]}px`,
-                      paddingRight: `${themeTokens.spacing[2]}px`,
-                      paddingTop: 'var(--global-header-height)',
-                      paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
-                    }}
-                  >
-                    <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
-                    <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
-                      {children}
-                    </Suspense>
-                  </main>
-                </UISearchParamsProvider>
-              </BluetoothProvider>
-            </PartyProvider>
-          </GraphQLQueueProvider>
+                    <main
+                      id="content-for-scrollable"
+                      style={{
+                        flex: 1,
+                        paddingLeft: `${themeTokens.spacing[2]}px`,
+                        paddingRight: `${themeTokens.spacing[2]}px`,
+                        paddingTop: 'var(--global-header-height)',
+                        paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
+                      }}
+                    >
+                      <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
+                      <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
+                        {children}
+                      </Suspense>
+                    </main>
+                  </UISearchParamsProvider>
+                </BluetoothProvider>
+              </PartyProvider>
+            </GraphQLQueueProvider>
+          </WebSocketConnectionProvider>
         </ConnectionSettingsProvider>
       </BoardSessionBridge>
     </div>

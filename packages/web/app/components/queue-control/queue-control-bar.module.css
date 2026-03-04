@@ -4,6 +4,22 @@
   background-color: var(--semantic-surface);
 }
 
+.reconnectRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  color: var(--neutral-900);
+}
+
+:global(html[data-theme="dark"]) .reconnectRow {
+  color: var(--neutral-100);
+}
+
+.confirmText {
+  font-size: var(--font-size-sm, 0.95rem);
+  line-height: 1.4;
+}
+
 .card {
   width: 100%;
   border-radius: 0;

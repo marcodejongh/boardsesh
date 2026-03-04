@@ -209,6 +209,8 @@ function usePersistentSessionQueueAdapter(): {
       isFetchingNextPage: false,
       hasDoneFirstFetch: false,
       viewOnlyMode: false,
+      connectionState: 'connected',
+      canMutate: true,
       parsedParams,
 
       // Session management

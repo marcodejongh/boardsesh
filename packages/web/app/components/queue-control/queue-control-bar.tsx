@@ -27,9 +27,13 @@ import { TOUR_DRAWER_EVENT } from '../onboarding/onboarding-tour';
 import { ShareBoardButton } from '../board-page/share-button';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION, ENTER_ANIMATION_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import PlayViewDrawer from '../play-view/play-view-drawer';
+import CircularProgress from '@mui/material/CircularProgress';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useColorMode } from '@/app/hooks/use-color-mode';
 import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import styles from './queue-control-bar.module.css';
 
 export type ActiveDrawer = 'none' | 'play' | 'queue';
@@ -88,11 +92,29 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
   const isPlayPage = pathname.includes('/play/');
-  const { currentClimb, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
+  const {
+    currentClimb,
+    mirrorClimb,
+    queue,
+    setQueue,
+    getNextClimbQueueItem,
+    getPreviousClimbQueueItem,
+    setCurrentClimbQueueItem,
+    viewOnlyMode,
+    connectionState,
+    sessionId,
+    endSession,
+    disconnect,
+  } = useQueueContext();
+
+  const { showMessage } = useSnackbar();
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const { mode } = useColorMode();
   const isDark = mode === 'dark';
   const gradeTintColor = useMemo(() => getGradeTintColor(currentClimb?.difficulty, 'default', isDark), [currentClimb?.difficulty, isDark]);
+
+  const isReconnecting = !!sessionId && (connectionState === 'reconnecting' || connectionState === 'stale' || connectionState === 'error');
 
   const nextClimb = getNextClimbQueueItem();
   const previousClimb = getPreviousClimbQueueItem();
@@ -257,6 +279,47 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
       : `translateX(min(0px, calc(-100% + ${swipeOffset}px)))`;
   };
 
+  const reconnectMessage = connectionState === 'error' ? 'Connection error – retrying…' : 'Reconnecting…';
+
+  const handleLeaveSession = useCallback(() => {
+    if (endSession) {
+      endSession();
+      return;
+    }
+    if (disconnect) {
+      disconnect();
+    } else {
+      showMessage('Unable to leave session. Please try again.', 'warning');
+    }
+  }, [endSession, disconnect]);
+
+  // Reconnect-only view helpers
+  const renderReconnectingRow = () => (
+    <div className={styles.reconnectRow}>
+      <CircularProgress size={16} thickness={5} />
+      <span>{reconnectMessage}</span>
+      <MuiButton variant="text" size="small" onClick={() => setShowCancelConfirm(true)}>Cancel</MuiButton>
+    </div>
+  );
+
+  const renderConfirmRow = () => (
+    <div className={styles.reconnectRow}>
+      <span className={styles.confirmText}>Cancelling will leave the session. Is that what you want?</span>
+      <IconButton aria-label="Leave session" color="error" onClick={() => { handleLeaveSession(); setShowCancelConfirm(false); }}>
+        <CloseOutlined />
+      </IconButton>
+      <IconButton aria-label="Keep reconnecting" onClick={() => setShowCancelConfirm(false)}>
+        <CheckOutlined />
+      </IconButton>
+    </div>
+  );
+
+  useEffect(() => {
+    if (!isReconnecting) {
+      setShowCancelConfirm(false);
+    }
+  }, [isReconnecting]);
+
   // Clear enterDirection (for thumbnail crossfade) after it plays
   useEffect(() => {
     if (enterDirection) {
@@ -271,6 +334,50 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
       }
     };
   }, [enterDirection, clearEnterAnimation]);
+
+  const reconnectView = (
+    <MuiCard variant="outlined" className={styles.card} sx={{ border: 'none', backgroundColor: 'transparent' }}>
+      <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+        <div className={styles.swipeWrapper}>
+          <div
+            className={styles.swipeContainer}
+            style={{
+              padding: `6px ${themeTokens.spacing[3]}px 6px ${themeTokens.spacing[3]}px`,
+              backgroundColor: gradeTintColor ?? (isDark ? 'transparent' : 'var(--semantic-surface)'),
+            }}
+          >
+            <Box sx={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center' }} className={styles.row}>
+              <Box sx={{ flex: 1 }} className={styles.climbInfoCol}>
+                <div className={styles.climbInfoInner} style={{ gap: themeTokens.spacing[2] }}>
+                  <div className={`${styles.boardPreviewContainer} ${enterDirection ? styles.thumbnailEnter : ''}`}>
+                    <ClimbThumbnail
+                      boardDetails={boardDetails}
+                      currentClimb={currentClimb}
+                      enableNavigation={true}
+                      onNavigate={() => setActiveDrawer('none')}
+                    />
+                  </div>
+
+                  {/* Reconnect UI sits where the title normally lives */}
+                  <div className={styles.textSwipeClip}>
+                    {showCancelConfirm ? renderConfirmRow() : renderReconnectingRow()}
+                  </div>
+                </div>
+              </Box>
+            </Box>
+          </div>
+        </div>
+      </CardContent>
+    </MuiCard>
+  );
+
+  if (isReconnecting) {
+    return (
+      <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar">
+        {reconnectView}
+      </div>
+    );
+  }
 
   return (
     <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar">
