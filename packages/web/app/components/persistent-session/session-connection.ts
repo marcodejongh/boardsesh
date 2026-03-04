@@ -137,6 +137,7 @@ export class SessionConnection {
   private retryTimeout: ReturnType<typeof setTimeout> | null = null;
   private transientRetryCount = 0;
   private disposed = false;
+  private resyncInProgress = false;
 
   // Mutable credentials that can be updated without reconnecting
   private authToken: string | null = null;
@@ -260,6 +261,9 @@ export class SessionConnection {
           this.stateMachine.transition('FAILED');
           callbacks.onSessionCleared();
         } else {
+          // Reset to IDLE so the retry timer's connect() call won't be
+          // blocked by the duplicate-connection guard (state === CONNECTING).
+          this.stateMachine.transition('IDLE');
           this.scheduleRetry();
         }
       } else {
@@ -282,13 +286,14 @@ export class SessionConnection {
   private async handleReconnect(): Promise<void> {
     if (this.disposed || !this.client) return;
 
-    // Prevent concurrent reconnections
-    if (this.stateMachine.state === 'RECONNECTING') {
-      // Already reconnecting from the state machine's perspective;
-      // but if called via onReconnect callback, we need to proceed with resync
+    // Prevent concurrent resyncs (e.g. visibility change + corruption detection firing together)
+    if (this.resyncInProgress) {
+      if (DEBUG) console.log('[SessionConnection] Resync already in progress, skipping');
+      return;
     }
 
-    const { sessionId, callbacks } = this.config;
+    this.resyncInProgress = true;
+    const { callbacks } = this.config;
 
     try {
       if (DEBUG) console.log('[SessionConnection] Reconnecting...');
@@ -296,7 +301,11 @@ export class SessionConnection {
       const lastSeq = callbacks.getLastSequence();
       const sessionData = await this.joinSession();
 
-      if (this.disposed || !sessionData) return;
+      if (this.disposed || !sessionData) {
+        // joinSession failed — don't transition to CONNECTED
+        if (DEBUG) console.log('[SessionConnection] Reconnect joinSession failed, staying in current state');
+        return;
+      }
 
       // Calculate sequence gap
       const currentSeq = sessionData.queueState.sequence;
@@ -317,12 +326,15 @@ export class SessionConnection {
       }
 
       callbacks.onSessionJoined(sessionData);
-      if (DEBUG) console.log('[SessionConnection] Reconnection complete, clientId:', sessionData.clientId);
-    } finally {
-      // Mark as connected now that resync is complete
+
+      // Only transition to CONNECTED after successful resync
       if (!this.disposed) {
         this.stateMachine.transition('CONNECTED');
       }
+
+      if (DEBUG) console.log('[SessionConnection] Reconnection complete, clientId:', sessionData.clientId);
+    } finally {
+      this.resyncInProgress = false;
     }
   }
 
@@ -334,7 +346,10 @@ export class SessionConnection {
     if (this.stateMachine.state !== 'CONNECTED' && this.stateMachine.state !== 'RECONNECTING') return;
 
     if (DEBUG) console.log('[SessionConnection] Manual resync triggered');
-    this.handleReconnect();
+    // handleReconnect has its own resyncInProgress guard to prevent concurrent resyncs
+    this.handleReconnect().catch((err) => {
+      console.error('[SessionConnection] Resync failed:', err);
+    });
   }
 
   /**
@@ -380,6 +395,7 @@ export class SessionConnection {
       });
     }
 
+    this.resyncInProgress = false;
     this.stateMachine.reset();
     this.stateMachine.dispose();
   }
