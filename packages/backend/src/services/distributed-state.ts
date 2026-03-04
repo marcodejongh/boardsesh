@@ -861,12 +861,24 @@ export class DistributedStateManager {
         const [err, data] = results[i] as [Error | null, Record<string, string>];
         if (!err && data && data.connectionId) {
           const connection = this.hashToConnection(data);
-          users.push({
-            id: connection.connectionId,
-            username: connection.username,
-            isLeader: connection.isLeader,
-            avatarUrl: connection.avatarUrl || undefined,
-          });
+          // Validate required fields — username is String! in GraphQL schema.
+          // A missing username would cause null propagation and break the entire response.
+          if (connection.username) {
+            users.push({
+              id: connection.connectionId,
+              username: connection.username,
+              isLeader: connection.isLeader,
+              avatarUrl: connection.avatarUrl || undefined,
+            });
+          } else {
+            console.warn(
+              `[DistributedState] Skipping member ${connection.connectionId.slice(0, 8)} with missing username in session ${sessionId}`
+            );
+            this.redis.srem(KEYS.sessionMembers(sessionId), memberIds[i]).catch(() => {});
+          }
+        } else if (!err) {
+          // Connection hash expired — clean up stale member set entry
+          this.redis.srem(KEYS.sessionMembers(sessionId), memberIds[i]).catch(() => {});
         }
       }
     }
