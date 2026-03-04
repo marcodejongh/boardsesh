@@ -341,10 +341,12 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                       onNavigate={() => setActiveDrawer('none')}
                     />
                   </div>
+
+                  {/* Reconnect UI sits where the title normally lives */}
+                  <div className={styles.textSwipeClip}>
+                    {showCancelConfirm ? renderConfirmRow() : renderReconnectingRow()}
+                  </div>
                 </div>
-              </Box>
-              <Box sx={{ flex: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                {showCancelConfirm ? renderConfirmRow() : renderReconnectingRow()}
               </Box>
             </Box>
           </div>
