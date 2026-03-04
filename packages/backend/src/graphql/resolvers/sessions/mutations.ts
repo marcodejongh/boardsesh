@@ -65,76 +65,81 @@ export const sessionMutations = {
     },
     ctx: ConnectionContext
   ) => {
-    if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}, sessionName: ${sessionName}, initialQueueLength: ${initialQueue?.length || 0}`);
+    console.log(`[joinSession] connectionId: ${ctx.connectionId.slice(0, 8)}, sessionId: ${sessionId.slice(0, 8)}, authenticated: ${ctx.isAuthenticated}`);
 
-    await applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
+    try {
+      await applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
 
-    // Validate inputs
-    validateInput(SessionIdSchema, sessionId, 'sessionId');
-    validateInput(BoardPathSchema, boardPath, 'boardPath');
-    if (username) validateInput(UsernameSchema, username, 'username');
-    if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
-    if (sessionName) validateInput(SessionNameSchema, sessionName, 'sessionName');
-    if (initialQueue) validateInput(QueueArraySchema, initialQueue, 'initialQueue');
-    if (initialCurrentClimb) validateInput(ClimbQueueItemSchema, initialCurrentClimb, 'initialCurrentClimb');
+      // Validate inputs
+      validateInput(SessionIdSchema, sessionId, 'sessionId');
+      validateInput(BoardPathSchema, boardPath, 'boardPath');
+      if (username) validateInput(UsernameSchema, username, 'username');
+      if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
+      if (sessionName) validateInput(SessionNameSchema, sessionName, 'sessionName');
+      if (initialQueue) validateInput(QueueArraySchema, initialQueue, 'initialQueue');
+      if (initialCurrentClimb) validateInput(ClimbQueueItemSchema, initialCurrentClimb, 'initialCurrentClimb');
 
-    const result = await roomManager.joinSession(
-      ctx.connectionId,
-      sessionId,
-      boardPath,
-      username || undefined,
-      avatarUrl || undefined,
-      initialQueue,
-      initialCurrentClimb || null,
-      sessionName || undefined
-    );
-    if (DEBUG) console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
+      const result = await roomManager.joinSession(
+        ctx.connectionId,
+        sessionId,
+        boardPath,
+        username || undefined,
+        avatarUrl || undefined,
+        initialQueue,
+        initialCurrentClimb || null,
+        sessionName || undefined
+      );
+      if (DEBUG) console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
 
-    // Update context with session info
-    if (DEBUG) console.log(`[joinSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
-    updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
-    if (DEBUG) console.log(`[joinSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
+      // Update context with session info
+      updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
 
-    // Auto-authorize user's ESP32 controllers for this session (if authenticated)
-    if (ctx.isAuthenticated && ctx.userId) {
-      authorizeUserControllersForSession(ctx.userId, sessionId);
-    }
+      // Auto-authorize user's ESP32 controllers for this session (if authenticated)
+      if (ctx.isAuthenticated && ctx.userId) {
+        authorizeUserControllersForSession(ctx.userId, sessionId);
+      }
 
-    // Notify session about new user
-    const userJoinedEvent: SessionEvent = {
-      __typename: 'UserJoined',
-      user: {
-        id: result.clientId,
-        username: username || `User-${result.clientId.substring(0, 6)}`,
+      // Notify session about new user
+      const userJoinedEvent: SessionEvent = {
+        __typename: 'UserJoined',
+        user: {
+          id: result.clientId,
+          username: username || `User-${result.clientId.substring(0, 6)}`,
+          isLeader: result.isLeader,
+          avatarUrl: avatarUrl,
+        },
+      };
+      pubsub.publishSessionEvent(sessionId, userJoinedEvent);
+
+      // Fetch session data for new fields
+      const sessionData = await roomManager.getSessionById(sessionId);
+
+      console.log(`[joinSession] completed - connectionId: ${ctx.connectionId.slice(0, 8)}, clientId: ${result.clientId.slice(0, 8)}, users: ${result.users.length}`);
+
+      return {
+        id: sessionId,
+        name: result.sessionName || null,
+        boardPath,
+        users: result.users,
+        queueState: {
+          sequence: result.sequence,
+          stateHash: result.stateHash,
+          queue: result.queue,
+          currentClimbQueueItem: result.currentClimbQueueItem,
+        },
         isLeader: result.isLeader,
-        avatarUrl: avatarUrl,
-      },
-    };
-    pubsub.publishSessionEvent(sessionId, userJoinedEvent);
-
-    // Fetch session data for new fields
-    const sessionData = await roomManager.getSessionById(sessionId);
-
-    return {
-      id: sessionId,
-      name: result.sessionName || null,
-      boardPath,
-      users: result.users,
-      queueState: {
-        sequence: result.sequence,
-        stateHash: result.stateHash,
-        queue: result.queue,
-        currentClimbQueueItem: result.currentClimbQueueItem,
-      },
-      isLeader: result.isLeader,
-      clientId: result.clientId,
-      goal: sessionData?.goal || null,
-      isPublic: sessionData?.isPublic ?? true,
-      startedAt: sessionData?.startedAt?.toISOString() || null,
-      endedAt: sessionData?.endedAt?.toISOString() || null,
-      isPermanent: sessionData?.isPermanent ?? false,
-      color: sessionData?.color || null,
-    };
+        clientId: result.clientId,
+        goal: sessionData?.goal || null,
+        isPublic: sessionData?.isPublic ?? true,
+        startedAt: sessionData?.startedAt?.toISOString() || null,
+        endedAt: sessionData?.endedAt?.toISOString() || null,
+        isPermanent: sessionData?.isPermanent ?? false,
+        color: sessionData?.color || null,
+      };
+    } catch (err) {
+      console.error(`[joinSession] FAILED - connectionId: ${ctx.connectionId.slice(0, 8)}, sessionId: ${sessionId.slice(0, 8)}:`, err);
+      throw err;
+    }
   },
 
   /**

@@ -796,7 +796,74 @@ sequenceDiagram
 - `isFilteringCorruptedItemsRef` prevents useEffect re-trigger loops
 - `lastCorruptionResyncRef` tracks cooldown timing
 
-### 7. Subscription Error / Complete
+### 7. iOS Background Connection Loss
+
+iOS Safari silently kills WebSocket connections when the browser is backgrounded. The `graphql-ws` library's keepalive (10s) eventually detects the dead socket, but during the detection delay the UI would remain interactive while mutations silently fail. This section describes the proactive detection and UI feedback mechanism.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as Queue Control Bar
+    participant PS as PersistentSession
+    participant GC as graphql-ws Client
+    participant WS as WebSocket
+
+    Note over U,WS: User backgrounds iOS Safari
+
+    WS--xGC: OS kills socket silently
+    GC->>PS: on.closed → onConnectionStateChange(false)
+    PS->>PS: setIsWebSocketConnected(false)
+    PS->>PS: isReconnecting = hasConnected && !isWebSocketConnected
+    PS->>UI: isReconnecting = true
+    UI->>U: Show "Reconnecting..." Snackbar notification
+
+    Note over U,WS: User returns to app
+
+    U->>PS: visibilitychange → "visible"
+    PS->>PS: Debounce 300ms
+    PS->>PS: triggerResync()
+
+    Note over GC: graphql-ws detects dead socket, retries
+
+    GC->>WS: Reconnect
+    WS-->>GC: Connected
+    GC->>PS: on.connected → onConnectionStateChange(true, isReconnect=true)
+    PS->>PS: Skip setIsWebSocketConnected(true) — defer to handleReconnect
+    GC->>PS: onReconnect → handleReconnect()
+    PS->>WS: joinSession + delta/full sync
+    WS-->>PS: Synced state
+    PS->>PS: setIsWebSocketConnected(true)
+    PS->>PS: isReconnecting = false
+    PS->>UI: isReconnecting = false
+    UI->>U: Snackbar auto-dismisses, mutations re-enabled
+```
+
+**Key mechanisms:**
+
+1. **Real-time WebSocket state tracking**: The `graphql-ws` client reports `connected`/`closed` events via `onConnectionStateChange`. The `isWebSocketConnected` state tracks the transport layer status.
+
+2. **Reconnect lock**: On reconnection, `onConnectionStateChange(true, isReconnect=true)` is deferred — the persistent session does NOT set `isWebSocketConnected=true` until `handleReconnect` completes its async resync (joinSession + delta/full sync). This prevents the UI from re-enabling mutations while stale state is still being replayed.
+
+3. **`visibilitychange` handler**: When the page becomes visible during an active session, a debounced (300ms) resync is triggered. This proactively detects dead sockets by attempting to use the connection, rather than waiting for the next keepalive ping.
+
+4. **Reconnecting notification**: A MUI `Snackbar` with an `Alert` (severity `info`) renders at the bottom-center of the screen while `isReconnecting` is true. The notification is non-blocking — users can still interact with the UI, but queue mutations are prevented by `viewOnlyMode`. The Snackbar automatically disappears when the connection is re-established (`isReconnecting` becomes false).
+
+**Derivation:**
+```typescript
+const isReconnecting = hasConnected && !isWebSocketConnected;
+```
+
+- `hasConnected` = "session was successfully joined at least once"
+- `isWebSocketConnected` = "transport is currently connected AND resync is complete"
+- During initial connection: `hasConnected=false` → `isReconnecting=false` (handled by existing `viewOnlyMode`)
+- During reconnection resync: `isWebSocketConnected` stays `false` until `handleReconnect` finishes
+
+**Context threading:**
+- `PersistentSessionContextType.isReconnecting` → `GraphQLQueueContextType.isReconnecting` → `QueueContextType.isReconnecting`
+- Also incorporated into `viewOnlyMode`: `if (isReconnecting) return true`
+- Bridge adapter passes `isReconnecting: isParty ? ps.isReconnecting : false` (local queue unaffected)
+
+### 8. Subscription Error / Complete
 
 ```mermaid
 sequenceDiagram
