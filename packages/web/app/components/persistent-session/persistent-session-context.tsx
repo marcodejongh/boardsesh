@@ -212,6 +212,9 @@ export interface PersistentSessionContextType {
   // Trigger a resync with the server (useful when corrupted data is detected)
   triggerResync: () => void;
 
+  // True when we had a working connection but the WebSocket dropped
+  isReconnecting: boolean;
+
   // Session ending with summary (elevated from GraphQLQueueProvider)
   endSessionWithSummary: () => void;
   liveSessionStats: SessionLiveStats | null;
@@ -252,6 +255,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const [session, setSession] = useState<Session | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasConnected, setHasConnected] = useState(false);
+  const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   // Queue state synced from backend
@@ -756,6 +760,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
         if (DEBUG) console.log('[PersistentSession] Reconnection complete, clientId:', sessionData.clientId);
       } finally {
         isReconnectingRef.current = false;
+        // Mark WebSocket as connected now that resync is complete (or failed).
+        // This was deferred from the on.connected callback to keep isReconnecting=true
+        // until state is fully recovered, preventing mutations on stale state.
+        if (mountedRef.current && connectionGenerationRef.current === connectionGeneration) {
+          setIsWebSocketConnected(true);
+        }
       }
     }
 
@@ -793,6 +803,17 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           // Use ref for auth token - it's set once auth loading completes
           authToken: wsAuthTokenRef.current,
           onReconnect: handleReconnect,
+          onConnectionStateChange: (connected, isReconnect) => {
+            if (mountedRef.current && connectionGenerationRef.current === connectionGeneration) {
+              if (connected && isReconnect) {
+                // On reconnection, don't set isWebSocketConnected=true yet.
+                // handleReconnect will set it after the async resync completes,
+                // keeping isReconnecting=true until state is fully recovered.
+                return;
+              }
+              setIsWebSocketConnected(connected);
+            }
+          },
         });
 
         if (!mountedRef.current) {
@@ -971,6 +992,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       setClient(null);
       setSession(null);
       setHasConnected(false);
+      setIsWebSocketConnected(false);
       setIsConnecting(false);
       if (retryConnectTimeout) {
         clearTimeout(retryConnectTimeout);
@@ -978,6 +1000,32 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     };
   // Note: username, avatarUrl, wsAuthToken are accessed via refs to prevent reconnection on changes
   }, [activeSession, isAuthLoading, handleQueueEvent, handleSessionEvent]);
+
+  // Proactive reconnection detection on iOS foreground return
+  // When the browser comes back from background, trigger a resync to detect dead sockets
+  useEffect(() => {
+    if (!activeSession || !hasConnected) return;
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (triggerResyncRef.current) {
+            if (DEBUG) console.log('[PersistentSession] Page became visible, triggering resync');
+            triggerResyncRef.current();
+          }
+        }, 300);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [activeSession, hasConnected]);
 
   // Periodic state hash verification
   // Runs every 60 seconds to detect state drift and auto-resync if needed
@@ -1272,6 +1320,9 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     }
   }, [activeSession, deactivateSession]);
 
+  // Derived: true when we previously had a working connection but the WebSocket dropped
+  const isReconnecting = hasConnected && !isWebSocketConnected;
+
   const value = useMemo<PersistentSessionContextType>(
     () => ({
       activeSession,
@@ -1303,6 +1354,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       subscribeToQueueEvents,
       subscribeToSessionEvents,
       triggerResync,
+      isReconnecting,
       endSessionWithSummary,
       liveSessionStats,
       sessionSummary,
@@ -1335,6 +1387,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       subscribeToQueueEvents,
       subscribeToSessionEvents,
       triggerResync,
+      isReconnecting,
       endSessionWithSummary,
       liveSessionStats,
       sessionSummary,

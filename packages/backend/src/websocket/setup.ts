@@ -185,8 +185,11 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
           }
         }
       },
-      onError: (_ctx: ServerContext, _id: string, _payload, errors) => {
-        console.error('GraphQL error:', errors);
+      onError: (ctx: ServerContext, _id: string, payload, errors) => {
+        const context = (ctx.extra as CustomExtra)?.context;
+        const connectionId = context?.connectionId?.slice(0, 8) || 'unknown';
+        const operationName = payload?.operationName || 'anonymous';
+        console.error(`[GraphQL] Error in operation "${operationName}" for connection ${connectionId}:`, errors);
       },
       onComplete: (_ctx: ServerContext, _id: string, payload) => {
         if (DEBUG) {

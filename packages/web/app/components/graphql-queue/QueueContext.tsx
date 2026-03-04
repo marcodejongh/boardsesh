@@ -414,6 +414,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
   const clientId = isPersistentSessionActive ? persistentSession.clientId : null;
   const isLeader = isPersistentSessionActive ? persistentSession.isLeader : false;
   const hasConnected = isPersistentSessionActive ? persistentSession.hasConnected : false;
+  const isReconnecting = isPersistentSessionActive ? persistentSession.isReconnecting : false;
   // Memoize users array to prevent unnecessary context value recreation
   // Note: persistentSession.users is already stable from the persistent session context
   const users = useMemo(
@@ -614,8 +615,9 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
     if (!sessionId) return false; // No session = local mode, not view-only
     if (!backendUrl) return false; // No backend = no view-only mode
     if (!hasConnected) return true; // Still connecting = view-only
+    if (isReconnecting) return true; // WebSocket dropped, disable until reconnected
     return false; // Once connected, everyone can modify the queue
-  }, [sessionId, backendUrl, hasConnected]);
+  }, [sessionId, backendUrl, hasConnected, isReconnecting]);
 
   const contextValue: GraphQLQueueContextType = useMemo(
     () => ({
@@ -649,6 +651,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       isLeader,
       isBackendMode: !!backendUrl,
       hasConnected,
+      isReconnecting,
       connectionError,
       disconnect: persistentSession.deactivateSession,
 
@@ -843,6 +846,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       isLeader,
       users,
       hasConnected,
+      isReconnecting,
       connectionError,
       backendUrl,
       persistentSession,
