@@ -4,19 +4,20 @@
   background-color: var(--semantic-surface);
 }
 
-.connectionBanner {
-  padding: 8px 12px;
-  display: flex;
+.reconnectRow {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: var(--neutral-900);
-  background: var(--semantic-surface-strong);
-  border-bottom: 1px solid var(--neutral-200);
 }
 
-:global(html[data-theme="dark"]) .connectionBanner {
+:global(html[data-theme="dark"]) .reconnectRow {
   color: var(--neutral-100);
-  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.confirmText {
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .card {
