@@ -439,6 +439,12 @@ export const GetPlaylistsForClimbInputSchema = z.object({
   climbUuid: ExternalUUIDSchema,
 });
 
+export const GetPlaylistsForClimbsInputSchema = z.object({
+  boardType: BoardNameSchema,
+  layoutId: z.number().int().positive(),
+  climbUuids: z.array(ExternalUUIDSchema).min(1).max(500),
+});
+
 export const GetPlaylistClimbsInputSchema = z.object({
   playlistId: z.string().min(1),
   boardName: BoardNameSchema.optional(),

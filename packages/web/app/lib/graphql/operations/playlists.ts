@@ -59,6 +59,16 @@ export const GET_PLAYLISTS_FOR_CLIMB = gql`
   }
 `;
 
+// Get playlist memberships for multiple climbs in a single request
+export const GET_PLAYLISTS_FOR_CLIMBS = gql`
+  query GetPlaylistsForClimbs($input: GetPlaylistsForClimbsInput!) {
+    playlistsForClimbs(input: $input) {
+      climbUuid
+      playlistUuids
+    }
+  }
+`;
+
 // Create new playlist
 export const CREATE_PLAYLIST = gql`
   ${PLAYLIST_FIELDS}
@@ -201,6 +211,25 @@ export interface GetPlaylistsForClimbQueryVariables {
 
 export interface GetPlaylistsForClimbQueryResponse {
   playlistsForClimb: string[];
+}
+
+export interface GetPlaylistsForClimbsInput {
+  boardType: string;
+  layoutId: number;
+  climbUuids: string[];
+}
+
+export interface GetPlaylistsForClimbsQueryVariables {
+  input: GetPlaylistsForClimbsInput;
+}
+
+export interface ClimbPlaylistMembership {
+  climbUuid: string;
+  playlistUuids: string[];
+}
+
+export interface GetPlaylistsForClimbsQueryResponse {
+  playlistsForClimbs: ClimbPlaylistMembership[];
 }
 
 export interface CreatePlaylistInput {
