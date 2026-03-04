@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
@@ -24,6 +24,7 @@ import {
   type CreatePlaylistMutationResponse,
   type Playlist,
 } from '@/app/lib/graphql/operations/playlists';
+import { useIncrementalQuery } from '@/app/hooks/use-incremental-query';
 
 interface UseClimbActionsDataOptions {
   boardName: string;
@@ -31,6 +32,26 @@ interface UseClimbActionsDataOptions {
   angle: number;
   climbUuids: string[];
 }
+
+// Merge helpers (stable references to avoid re-creating on every render)
+const mergeSetFn = (acc: Set<string>, fetched: Set<string>): Set<string> =>
+  new Set([...acc, ...fetched]);
+
+const mergeMapFn = (
+  acc: Map<string, Set<string>>,
+  fetched: Map<string, Set<string>>,
+): Map<string, Set<string>> => new Map([...acc, ...fetched]);
+
+const hasSetChanged = (prev: Set<string>, next: Set<string>): boolean =>
+  prev.size !== next.size;
+
+const hasMapChanged = (
+  prev: Map<string, Set<string>>,
+  next: Map<string, Set<string>>,
+): boolean => prev.size !== next.size;
+
+const EMPTY_SET = new Set<string>();
+const EMPTY_MAP = new Map<string, Set<string>>();
 
 export function useClimbActionsData({
   boardName,
@@ -42,60 +63,57 @@ export function useClimbActionsData({
   const { showMessage } = useSnackbar();
   const queryClient = useQueryClient();
 
-  // Stable sorted UUIDs to prevent unnecessary re-fetches
-  const sortedClimbUuids = useMemo(() => [...climbUuids].sort(), [climbUuids]);
+  // === Favorites (incremental) ===
 
-  // === Favorites ===
-
-  const favoritesQueryKey = useMemo(
-    () => ['favorites', boardName, angle, sortedClimbUuids.join(',')] as const,
-    [boardName, angle, sortedClimbUuids],
+  const favAccKey = useMemo(
+    () => ['favorites', boardName, angle, 'accumulated'] as const,
+    [boardName, angle],
+  );
+  const favFetchKeyPrefix = useMemo(
+    () => ['favorites', boardName, angle, 'fetch'] as const,
+    [boardName, angle],
   );
 
-  const { data: favoritesData, isLoading: isLoadingFavorites } = useQuery({
-    queryKey: favoritesQueryKey,
-    queryFn: async (): Promise<Set<string>> => {
-      if (sortedClimbUuids.length === 0) return new Set();
+  const favFetchChunk = useCallback(
+    async (uuids: string[]): Promise<Set<string>> => {
       const client = createGraphQLHttpClient(token);
-      try {
-        const result = await client.request<FavoritesQueryResponse>(GET_FAVORITES, {
-          boardName,
-          climbUuids: sortedClimbUuids,
-          angle,
-        });
-        return new Set(result.favorites);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`[GraphQL] Favorites query error for ${boardName}:`, error);
-        throw new Error(`Failed to fetch favorites: ${errorMessage}`);
-      }
+      const result = await client.request<FavoritesQueryResponse>(GET_FAVORITES, {
+        boardName,
+        climbUuids: uuids,
+        angle,
+      });
+      return new Set(result.favorites);
     },
-    enabled: isAuthenticated && !isAuthLoading && sortedClimbUuids.length > 0 && !!boardName,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+    [token, boardName, angle],
+  );
 
-  const favorites = favoritesData ?? new Set<string>();
+  const { data: favorites, isLoading: isLoadingFavorites } = useIncrementalQuery<Set<string>>(
+    climbUuids,
+    {
+      accumulatedKey: favAccKey,
+      fetchKeyPrefix: favFetchKeyPrefix,
+      enabled: isAuthenticated && !isAuthLoading && !!boardName,
+      fetchChunk: favFetchChunk,
+      merge: mergeSetFn,
+      initialValue: EMPTY_SET,
+      hasChanged: hasSetChanged,
+    },
+  );
 
+  // Toggle favorite mutation — targets the accumulated cache key
   const toggleFavoriteMutation = useMutation({
     mutationKey: ['toggleFavorite', boardName, angle],
     mutationFn: async (climbUuid: string): Promise<{ uuid: string; favorited: boolean }> => {
       const client = createGraphQLHttpClient(token);
-      try {
-        const result = await client.request<ToggleFavoriteMutationResponse>(TOGGLE_FAVORITE, {
-          input: { boardName, climbUuid, angle },
-        });
-        return { uuid: climbUuid, favorited: result.toggleFavorite.favorited };
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`[GraphQL] Toggle favorite error for climb ${climbUuid}:`, error);
-        throw new Error(`Failed to toggle favorite: ${errorMessage}`);
-      }
+      const result = await client.request<ToggleFavoriteMutationResponse>(TOGGLE_FAVORITE, {
+        input: { boardName, climbUuid, angle },
+      });
+      return { uuid: climbUuid, favorited: result.toggleFavorite.favorited };
     },
     onMutate: async (climbUuid: string) => {
-      await queryClient.cancelQueries({ queryKey: favoritesQueryKey });
-      const previousFavorites = queryClient.getQueryData<Set<string>>(favoritesQueryKey);
-      queryClient.setQueryData<Set<string>>(favoritesQueryKey, (old) => {
+      await queryClient.cancelQueries({ queryKey: favAccKey });
+      const previousFavorites = queryClient.getQueryData<Set<string>>(favAccKey);
+      queryClient.setQueryData<Set<string>>(favAccKey, (old) => {
         const next = new Set(old);
         if (next.has(climbUuid)) {
           next.delete(climbUuid);
@@ -109,7 +127,7 @@ export function useClimbActionsData({
     onError: (err, climbUuid, context) => {
       console.error(`[Favorites] Error toggling favorite for climb ${climbUuid}:`, err);
       if (context?.previousFavorites) {
-        queryClient.setQueryData(favoritesQueryKey, context.previousFavorites);
+        queryClient.setQueryData(favAccKey, context.previousFavorites);
       }
       showMessage('Failed to update favorite. Please try again.', 'error');
     },
@@ -131,11 +149,7 @@ export function useClimbActionsData({
 
   // === Playlists ===
 
-  const [playlistMemberships, setPlaylistMemberships] = useState<Map<string, Set<string>>>(
-    new Map(),
-  );
-
-  // Fetch user's playlists (all boards)
+  // Fetch user's playlists (all boards) — not incremental, just a simple query
   const playlistsQueryKey = useMemo(() => ['userPlaylists', token] as const, [token]);
 
   const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
@@ -151,37 +165,52 @@ export function useClimbActionsData({
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch playlist memberships for visible climbs
-  const climbUuidsKey = useMemo(() => sortedClimbUuids.join(','), [sortedClimbUuids]);
+  // === Playlist Memberships (incremental) ===
 
-  const { data: membershipsData } = useQuery({
-    queryKey: ['playlistMemberships', boardName, layoutId, climbUuidsKey],
-    queryFn: async (): Promise<Map<string, Set<string>>> => {
-      if (sortedClimbUuids.length === 0) return new Map();
+  const memAccKey = useMemo(
+    () => ['playlistMemberships', boardName, layoutId, 'accumulated'] as const,
+    [boardName, layoutId],
+  );
+  const memFetchKeyPrefix = useMemo(
+    () => ['playlistMemberships', boardName, layoutId, 'fetch'] as const,
+    [boardName, layoutId],
+  );
+
+  const memFetchChunk = useCallback(
+    async (uuids: string[]): Promise<Map<string, Set<string>>> => {
       const client = createGraphQLHttpClient(token);
-
       const response = await client.request<GetPlaylistsForClimbsQueryResponse>(
         GET_PLAYLISTS_FOR_CLIMBS,
-        { input: { boardType: boardName, layoutId, climbUuids: sortedClimbUuids } },
+        { input: { boardType: boardName, layoutId, climbUuids: uuids } },
       );
-
       const memberships = new Map<string, Set<string>>();
       for (const entry of response.playlistsForClimbs) {
         memberships.set(entry.climbUuid, new Set(entry.playlistUuids));
       }
       return memberships;
     },
-    enabled:
-      isAuthenticated && !isAuthLoading && sortedClimbUuids.length > 0 && !!boardName && layoutId > 0 && boardName !== 'moonboard',
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+    [token, boardName, layoutId],
+  );
 
-  // Merge query data with local optimistic state
-  const effectiveMemberships = membershipsData
-    ? new Map([...membershipsData, ...playlistMemberships])
-    : playlistMemberships;
+  const { data: membershipsData } = useIncrementalQuery<Map<string, Set<string>>>(
+    climbUuids,
+    {
+      accumulatedKey: memAccKey,
+      fetchKeyPrefix: memFetchKeyPrefix,
+      enabled:
+        isAuthenticated &&
+        !isAuthLoading &&
+        !!boardName &&
+        layoutId > 0 &&
+        boardName !== 'moonboard',
+      fetchChunk: memFetchChunk,
+      merge: mergeMapFn,
+      initialValue: EMPTY_MAP,
+      hasChanged: hasMapChanged,
+    },
+  );
 
+  // Playlist mutations — update the accumulated membership cache
   const addToPlaylist = useCallback(
     async (playlistId: string, climbUuid: string, climbAngle: number) => {
       if (!token) throw new Error('Not authenticated');
@@ -189,18 +218,18 @@ export function useClimbActionsData({
       await client.request<AddClimbToPlaylistMutationResponse>(ADD_CLIMB_TO_PLAYLIST, {
         input: { playlistId, climbUuid, angle: climbAngle },
       });
-      setPlaylistMemberships((prev) => {
-        const updated = new Map(prev);
-        const current = updated.get(climbUuid) || new Set<string>();
-        current.add(playlistId);
-        updated.set(climbUuid, current);
-        return updated;
-      });
+      // Update accumulated membership cache (triggers cache subscription in useIncrementalQuery)
+      const prevMem = queryClient.getQueryData<Map<string, Set<string>>>(memAccKey) ?? new Map();
+      const updatedMem = new Map(prevMem);
+      const currentSet = new Set(updatedMem.get(climbUuid) || []);
+      currentSet.add(playlistId);
+      updatedMem.set(climbUuid, currentSet);
+      queryClient.setQueryData(memAccKey, updatedMem);
       queryClient.setQueryData<Playlist[]>(playlistsQueryKey, (prev) =>
         prev?.map((p) => (p.uuid === playlistId ? { ...p, climbCount: p.climbCount + 1 } : p)),
       );
     },
-    [token, playlistsQueryKey, queryClient],
+    [token, memAccKey, playlistsQueryKey, queryClient],
   );
 
   const removeFromPlaylist = useCallback(
@@ -210,22 +239,23 @@ export function useClimbActionsData({
       await client.request<RemoveClimbFromPlaylistMutationResponse>(REMOVE_CLIMB_FROM_PLAYLIST, {
         input: { playlistId, climbUuid },
       });
-      setPlaylistMemberships((prev) => {
-        const updated = new Map(prev);
-        const current = updated.get(climbUuid);
-        if (current) {
-          current.delete(playlistId);
-          updated.set(climbUuid, current);
-        }
-        return updated;
-      });
+      // Update accumulated membership cache (triggers cache subscription in useIncrementalQuery)
+      const prevMem = queryClient.getQueryData<Map<string, Set<string>>>(memAccKey) ?? new Map();
+      const updatedMem = new Map(prevMem);
+      const currentPlaylists = updatedMem.get(climbUuid);
+      if (currentPlaylists) {
+        const next = new Set(currentPlaylists);
+        next.delete(playlistId);
+        updatedMem.set(climbUuid, next);
+      }
+      queryClient.setQueryData(memAccKey, updatedMem);
       queryClient.setQueryData<Playlist[]>(playlistsQueryKey, (prev) =>
         prev?.map((p) =>
           p.uuid === playlistId ? { ...p, climbCount: Math.max(0, p.climbCount - 1) } : p,
         ),
       );
     },
-    [token, playlistsQueryKey, queryClient],
+    [token, memAccKey, playlistsQueryKey, queryClient],
   );
 
   const createPlaylist = useCallback(
@@ -262,7 +292,7 @@ export function useClimbActionsData({
     },
     playlistsProviderProps: {
       playlists,
-      playlistMemberships: effectiveMemberships,
+      playlistMemberships: membershipsData,
       addToPlaylist,
       removeFromPlaylist,
       createPlaylist,

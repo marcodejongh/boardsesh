@@ -294,6 +294,11 @@ export const ToggleFavoriteInputSchema = z.object({
   angle: z.number().int(),
 });
 
+/**
+ * Favorites query climbUuids validation schema (matches playlistsForClimbs limit)
+ */
+export const FavoritesQueryClimbUuidsSchema = z.array(ExternalUUIDSchema).min(1).max(500);
+
 // ============================================
 // Ticks Schemas
 // ============================================
