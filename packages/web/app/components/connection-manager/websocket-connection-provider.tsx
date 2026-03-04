@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { connectionManager, ConnectionState } from './websocket-connection-manager';
 
 interface ConnectionContextValue {
@@ -35,18 +35,37 @@ export const WebSocketConnectionProvider: React.FC<{ children: React.ReactNode }
   );
 };
 
+const IDLE_FALLBACK: ConnectionContextValue = {
+  state: 'idle',
+  lastActivity: null,
+  name: null,
+  error: null,
+  forceReconnect: () => {},
+};
+
 export function useWebSocketConnection(): ConnectionContextValue {
   const ctx = useContext(WebSocketConnectionContext);
+  const fallbackRef = useRef(IDLE_FALLBACK);
+
   if (!ctx) {
-    // Fallback to direct manager access so hook works even without the provider
+    // Stable fallback — only rebuild when snapshot actually changes
     const snapshot = connectionManager.getSnapshot();
-    return {
-      state: snapshot.state,
-      lastActivity: snapshot.lastActivity,
-      name: snapshot.name,
-      error: snapshot.error,
-      forceReconnect: () => connectionManager.forceReconnect(snapshot.name ?? undefined),
-    };
+    const prev = fallbackRef.current;
+    if (
+      prev.state !== snapshot.state ||
+      prev.lastActivity !== snapshot.lastActivity ||
+      prev.name !== snapshot.name ||
+      prev.error !== snapshot.error
+    ) {
+      fallbackRef.current = {
+        state: snapshot.state,
+        lastActivity: snapshot.lastActivity,
+        name: snapshot.name,
+        error: snapshot.error,
+        forceReconnect: () => connectionManager.forceReconnect(snapshot.name ?? undefined),
+      };
+    }
+    return fallbackRef.current;
   }
   return ctx;
 }

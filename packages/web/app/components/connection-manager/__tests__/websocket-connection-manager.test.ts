@@ -18,13 +18,22 @@ class FakeClient {
 }
 
 describe('WebSocketConnectionManager', () => {
+  let originalVisibilityState: PropertyDescriptor | undefined;
+
   beforeEach(() => {
     vi.useFakeTimers();
     connectionManager.__resetForTests();
+    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState');
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    // Restore original visibilityState property to avoid leaking between tests
+    if (originalVisibilityState) {
+      Object.defineProperty(document, 'visibilityState', originalVisibilityState);
+    } else {
+      delete (document as any).visibilityState;
+    }
   });
 
   it('terminates a stale connection and marks reconnecting', () => {

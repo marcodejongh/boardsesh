@@ -11,7 +11,8 @@ This document describes the WebSocket implementation used for real-time party se
 5. [Queue State Synchronization](#queue-state-synchronization)
 6. [Multi-Instance Support](#multi-instance-support)
 7. [Failure States and Recovery](#failure-states-and-recovery)
-8. [Data Persistence Strategy](#data-persistence-strategy)
+8. [Client-Side Connection Supervisor](#client-side-connection-supervisor)
+9. [Data Persistence Strategy](#data-persistence-strategy)
 
 ---
 
@@ -616,7 +617,7 @@ sequenceDiagram
 - On reconnection: re-join session and sync state
 - Delta sync attempted if gap ≤ 100 events
 - Falls back to full sync if gap too large
-- Client-side supervisor (WebSocketConnectionManager) watches incoming pong/message activity, triggers reconnect on staleness/visibility return, and surfaces reconnect/error state to the UI.
+- Client-side supervisor detects stale connections and triggers reconnect (see [Client-Side Connection Supervisor](#client-side-connection-supervisor))
 
 ### 2. Redis Connection Failure
 
@@ -816,6 +817,88 @@ sequenceDiagram
     PS->>PS: Re-join session
     PS->>PS: Re-establish subscriptions
 ```
+
+---
+
+## Client-Side Connection Supervisor
+
+The `WebSocketConnectionManager` (`packages/web/app/components/connection-manager/websocket-connection-manager.ts`) is a singleton that sits between the raw `graphql-ws` clients and the React UI. It provides health monitoring, staleness detection, and a unified connection state for the reconnect UX.
+
+### Architecture
+
+```
+graphql-ws Client(s)
+        │
+        │  on('connected' | 'closed' | 'ping' | 'pong' | 'error' | ...)
+        ▼
+┌──────────────────────────────┐
+│  WebSocketConnectionManager  │  (singleton)
+│                              │
+│  - Registered clients map    │
+│  - Primary name selection    │
+│  - Health check interval     │
+│  - Visibility change handler │
+└──────────┬───────────────────┘
+           │  subscribe(snapshot)
+           ▼
+┌──────────────────────────────┐
+│  WebSocketConnectionProvider │  (React context)
+│                              │
+│  - Exposes state, error,     │
+│    lastActivity, name        │
+│  - forceReconnect() action   │
+└──────────────────────────────┘
+```
+
+### Connection States
+
+| State | Meaning |
+|-------|---------|
+| `idle` | No clients registered |
+| `connecting` | Client is establishing a WebSocket connection |
+| `connected` | Client connected and receiving keep-alive pongs |
+| `reconnecting` | Connection lost — `graphql-ws` is retrying |
+| `stale` | No activity received within `STALE_GRACE_MS` |
+| `error` | Client reported an error event |
+
+### Health Check
+
+A 1-second interval (`HEALTH_CHECK_INTERVAL_MS`) monitors each registered client:
+
+1. If `document.visibilityState !== 'visible'`, skip (avoid terminating background tabs).
+2. If `Date.now() - lastActivity > STALE_GRACE_MS` (10s, or 2x the server keep-alive interval), mark the client as `reconnecting` and call `client.terminate()` to force a fresh connection.
+
+This catches silent connection deaths that are common on iOS Safari when the app is backgrounded and the OS kills the socket without a close frame.
+
+### Visibility Change Handler
+
+When the page returns to the foreground (`visibilitychange` → `visible`):
+
+- If the primary client's `lastActivity` exceeds `STALE_GRACE_MS`, or its state is `error`/`reconnecting`, immediately call `forceReconnect()`.
+
+This provides instant recovery when users switch back to the Boardsesh tab.
+
+### Multi-Client Support
+
+Multiple `graphql-ws` clients can be registered simultaneously (e.g., one for queue subscriptions, one for session control). Each is tracked independently with its own state and activity timestamp. The `primaryName` determines which client's state is surfaced to the UI — it auto-promotes to `'session'` on registration and can be switched via `setPrimaryName()`.
+
+### Lifecycle
+
+- **Registration**: `registerClient(client, name)` attaches event listeners and returns an `unregister` function.
+- **Unregister**: Removes all event listeners and deletes the client from the map. When the last client is removed, state returns to `idle`.
+- **Dispose**: `dispose()` removes the `visibilitychange` listener and clears the health check interval. Used during HMR teardown.
+
+### SSR Shim
+
+On the server (`typeof window === 'undefined'`), the exported `connectionManager` is a no-op shim with the same interface, returning `idle` state. This allows importing in server components without conditional guards.
+
+### Reconnect UX
+
+The `QueueControlBar` reads connection state from the provider. When `state` is `reconnecting`, `stale`, or `error`:
+
+1. The normal climb info is replaced with a spinner and "Reconnecting..." / "Connection error – retrying..." message.
+2. A "Cancel" button reveals a confirmation row: "Leave session" (calls `endSession` or `disconnect`) vs "Keep reconnecting".
+3. When the connection recovers, the bar automatically returns to normal.
 
 ---
 
