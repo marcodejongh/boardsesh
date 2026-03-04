@@ -25,6 +25,8 @@ import ClimbTitle from '../climb-card/climb-title';
 import { themeTokens } from '@/app/theme/theme-config';
 import { TOUR_DRAWER_EVENT } from '../onboarding/onboarding-tour';
 import { ShareBoardButton } from '../board-page/share-button';
+import { BluetoothFallbackButton } from '../board-bluetooth-control/bluetooth-fallback-button';
+import { useBluetoothContext } from '../board-bluetooth-control/bluetooth-context';
 import { useCardSwipeNavigation, EXIT_DURATION, SNAP_BACK_DURATION, ENTER_ANIMATION_DURATION } from '@/app/hooks/use-card-swipe-navigation';
 import PlayViewDrawer from '../play-view/play-view-drawer';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
@@ -89,6 +91,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const isListPage = pathname.includes('/list');
   const isPlayPage = pathname.includes('/play/');
   const { currentClimb, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
+  const { isBluetoothSupported } = useBluetoothContext();
 
   const { mode } = useColorMode();
   const isDark = mode === 'dark';
@@ -388,8 +391,8 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
                       <NextClimbButton navigate={isViewPage || isPlayPage} boardDetails={boardDetails} />
                     </Stack>
                   </span>
-                  {/* Party button */}
-                  <ShareBoardButton />
+                  {/* Party button or Bluetooth fallback */}
+                  {isBluetoothSupported ? <ShareBoardButton /> : <BluetoothFallbackButton />}
                   {/* Tick button */}
                   <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />
                 </Stack>
