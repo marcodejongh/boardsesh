@@ -8,6 +8,7 @@ import {
   GetUserPlaylistsInputSchema,
   GetAllUserPlaylistsInputSchema,
   GetPlaylistsForClimbInputSchema,
+  GetPlaylistsForClimbsInputSchema,
   GetPlaylistClimbsInputSchema,
   DiscoverPlaylistsInputSchema,
   GetPlaylistCreatorsInputSchema,
@@ -397,6 +398,63 @@ export const playlistQueries = {
       );
 
     return results.map(r => r.playlistUuid);
+  },
+
+  /**
+   * Get playlist memberships for multiple climbs in a single query.
+   * Returns a list of { climbUuid, playlistUuids } for each climb that has memberships.
+   */
+  playlistsForClimbs: async (
+    _: unknown,
+    { input }: { input: { boardType: string; layoutId: number; climbUuids: string[] } },
+    ctx: ConnectionContext
+  ): Promise<Array<{ climbUuid: string; playlistUuids: string[] }>> => {
+    requireAuthenticated(ctx);
+    validateInput(GetPlaylistsForClimbsInputSchema, input, 'input');
+
+    const userId = ctx.userId!;
+
+    const results = await db
+      .select({
+        climbUuid: dbSchema.playlistClimbs.climbUuid,
+        playlistUuid: dbSchema.playlists.uuid,
+      })
+      .from(dbSchema.playlistClimbs)
+      .innerJoin(
+        dbSchema.playlists,
+        eq(dbSchema.playlists.id, dbSchema.playlistClimbs.playlistId)
+      )
+      .innerJoin(
+        dbSchema.playlistOwnership,
+        eq(dbSchema.playlistOwnership.playlistId, dbSchema.playlists.id)
+      )
+      .where(
+        and(
+          inArray(dbSchema.playlistClimbs.climbUuid, input.climbUuids),
+          eq(dbSchema.playlists.boardType, input.boardType),
+          or(
+            eq(dbSchema.playlists.layoutId, input.layoutId),
+            isNull(dbSchema.playlists.layoutId)
+          ),
+          eq(dbSchema.playlistOwnership.userId, userId)
+        )
+      );
+
+    // Group results by climbUuid
+    const grouped = new Map<string, string[]>();
+    for (const row of results) {
+      const existing = grouped.get(row.climbUuid);
+      if (existing) {
+        existing.push(row.playlistUuid);
+      } else {
+        grouped.set(row.climbUuid, [row.playlistUuid]);
+      }
+    }
+
+    return Array.from(grouped.entries()).map(([climbUuid, playlistUuids]) => ({
+      climbUuid,
+      playlistUuids,
+    }));
   },
 
   /**

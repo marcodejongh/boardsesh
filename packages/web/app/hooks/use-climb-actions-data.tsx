@@ -13,12 +13,12 @@ import {
 } from '@/app/lib/graphql/operations/favorites';
 import {
   GET_ALL_USER_PLAYLISTS,
-  GET_PLAYLISTS_FOR_CLIMB,
+  GET_PLAYLISTS_FOR_CLIMBS,
   ADD_CLIMB_TO_PLAYLIST,
   REMOVE_CLIMB_FROM_PLAYLIST,
   CREATE_PLAYLIST,
   type GetAllUserPlaylistsQueryResponse,
-  type GetPlaylistsForClimbQueryResponse,
+  type GetPlaylistsForClimbsQueryResponse,
   type AddClimbToPlaylistMutationResponse,
   type RemoveClimbFromPlaylistMutationResponse,
   type CreatePlaylistMutationResponse,
@@ -159,18 +159,16 @@ export function useClimbActionsData({
     queryFn: async (): Promise<Map<string, Set<string>>> => {
       if (sortedClimbUuids.length === 0) return new Map();
       const client = createGraphQLHttpClient(token);
-      const memberships = new Map<string, Set<string>>();
 
-      await Promise.all(
-        sortedClimbUuids.map(async (uuid) => {
-          const response = await client.request<GetPlaylistsForClimbQueryResponse>(
-            GET_PLAYLISTS_FOR_CLIMB,
-            { input: { boardType: boardName, layoutId, climbUuid: uuid } },
-          );
-          memberships.set(uuid, new Set(response.playlistsForClimb));
-        }),
+      const response = await client.request<GetPlaylistsForClimbsQueryResponse>(
+        GET_PLAYLISTS_FOR_CLIMBS,
+        { input: { boardType: boardName, layoutId, climbUuids: sortedClimbUuids } },
       );
 
+      const memberships = new Map<string, Set<string>>();
+      for (const entry of response.playlistsForClimbs) {
+        memberships.set(entry.climbUuid, new Set(entry.playlistUuids));
+      }
       return memberships;
     },
     enabled:

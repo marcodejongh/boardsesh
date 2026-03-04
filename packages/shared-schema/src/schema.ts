@@ -940,6 +940,28 @@ export const typeDefs = /* GraphQL */ `
   }
 
   """
+  Input for getting playlists containing multiple climbs (batch).
+  """
+  input GetPlaylistsForClimbsInput {
+    "Board type"
+    boardType: String!
+    "Layout ID"
+    layoutId: Int!
+    "Climb UUIDs to search for"
+    climbUuids: [String!]!
+  }
+
+  """
+  Playlist membership for a single climb in a batch query.
+  """
+  type ClimbPlaylistMembership {
+    "Climb UUID"
+    climbUuid: String!
+    "UUIDs of playlists containing this climb"
+    playlistUuids: [ID!]!
+  }
+
+  """
   Input for getting climbs in a playlist with full data.
   """
   input GetPlaylistClimbsInput {
@@ -2977,6 +2999,11 @@ export const typeDefs = /* GraphQL */ `
     Get IDs of playlists that contain a specific climb.
     """
     playlistsForClimb(input: GetPlaylistsForClimbInput!): [ID!]!
+
+    """
+    Get playlist memberships for multiple climbs in a single request.
+    """
+    playlistsForClimbs(input: GetPlaylistsForClimbsInput!): [ClimbPlaylistMembership!]!
 
     """
     Get climbs in a playlist with full climb data.
