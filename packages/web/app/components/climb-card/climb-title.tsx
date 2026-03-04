@@ -19,7 +19,7 @@ export type ClimbTitleData = {
   communityGrade?: string | null;
 };
 
-type ClimbTitleProps = {
+export type ClimbTitleProps = {
   climb?: ClimbTitleData | null;
   /** Show angle after difficulty/quality */
   showAngle?: boolean;

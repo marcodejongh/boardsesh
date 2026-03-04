@@ -14,7 +14,7 @@ import { Climb, BoardDetails } from '@/app/lib/types';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
-import QueueListItem from './queue-list-item';
+import QueueClimbListItem from './queue-climb-list-item';
 import ClimbThumbnail from '../climb-card/climb-thumbnail';
 import ClimbTitle from '../climb-card/climb-title';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -230,12 +230,11 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
 
               return (
                 <div key={climbQueueItem.uuid} ref={isScrollTarget ? scrollTargetRef : undefined}>
-                  <QueueListItem
+                  <QueueClimbListItem
                     item={climbQueueItem}
                     index={originalIndex}
                     isCurrent={false}
                     isHistory={true}
-                    viewOnlyMode={viewOnlyMode}
                     boardDetails={boardDetails}
                     setCurrentClimbQueueItem={setCurrentClimbQueueItem}
                     removeFromQueue={removeFromQueue}
@@ -255,12 +254,11 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
         {/* Current climb item */}
         {currentClimbQueueItem && (
           <div key={currentClimbQueueItem.uuid} ref={!showHistory || historyItems.length <= 2 ? scrollTargetRef : undefined}>
-            <QueueListItem
+            <QueueClimbListItem
               item={currentClimbQueueItem}
               index={currentIndex}
               isCurrent={true}
               isHistory={false}
-              viewOnlyMode={viewOnlyMode}
               boardDetails={boardDetails}
               setCurrentClimbQueueItem={setCurrentClimbQueueItem}
               removeFromQueue={removeFromQueue}
@@ -283,12 +281,11 @@ const QueueList = forwardRef<QueueListHandle, QueueListProps>(({ boardDetails, o
 
           return (
             <div key={climbQueueItem.uuid} ref={isScrollTarget ? scrollTargetRef : undefined}>
-              <QueueListItem
+              <QueueClimbListItem
                 item={climbQueueItem}
                 index={originalIndex}
                 isCurrent={false}
                 isHistory={false}
-                viewOnlyMode={viewOnlyMode}
                 boardDetails={boardDetails}
                 setCurrentClimbQueueItem={setCurrentClimbQueueItem}
                 removeFromQueue={removeFromQueue}
