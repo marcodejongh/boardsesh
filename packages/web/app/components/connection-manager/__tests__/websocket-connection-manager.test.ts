@@ -67,4 +67,143 @@ describe('WebSocketConnectionManager', () => {
 
     unregister();
   });
+
+  it('sets state to reconnecting on closed event', () => {
+    const client = new FakeClient();
+    const unregister = connectionManager.registerClient(client as any, 'session');
+    client.emit('connected');
+
+    expect(connectionManager.getSnapshot().state).toBe('connected');
+
+    client.emit('closed');
+
+    expect(connectionManager.getSnapshot().state).toBe('reconnecting');
+
+    unregister();
+  });
+
+  it('ping with received=true marks activity, received=false does not', () => {
+    const client = new FakeClient();
+    const unregister = connectionManager.registerClient(client as any, 'session');
+    client.emit('connected');
+
+    const activityAfterConnect = connectionManager.getSnapshot().lastActivity!;
+
+    // Advance time and send ping with received=false — should NOT update activity
+    vi.advanceTimersByTime(100);
+    client.emit('ping', false);
+    expect(connectionManager.getSnapshot().lastActivity).toBe(activityAfterConnect);
+
+    // Send ping with received=true — should update activity
+    vi.advanceTimersByTime(100);
+    client.emit('ping', true);
+    expect(connectionManager.getSnapshot().lastActivity).toBeGreaterThan(activityAfterConnect);
+
+    unregister();
+  });
+
+  it('pong with received=true resets state to connected', () => {
+    const client = new FakeClient();
+    const unregister = connectionManager.registerClient(client as any, 'session');
+
+    // Start in connecting state
+    expect(connectionManager.getSnapshot().state).toBe('connecting');
+
+    // Pong with received=true should set state to connected
+    client.emit('pong', true);
+    expect(connectionManager.getSnapshot().state).toBe('connected');
+
+    unregister();
+  });
+
+  it('switches primary with setPrimaryName()', () => {
+    const clientA = new FakeClient();
+    const clientB = new FakeClient();
+    const unregA = connectionManager.registerClient(clientA as any, 'queue');
+    const unregB = connectionManager.registerClient(clientB as any, 'session');
+
+    clientA.emit('connected');
+    clientB.emit('connecting');
+
+    // session is primary by default (auto-promoted because name === 'session')
+    expect(connectionManager.getSnapshot().name).toBe('session');
+    expect(connectionManager.getSnapshot().state).toBe('connecting');
+
+    // Switch primary to queue
+    connectionManager.setPrimaryName('queue');
+    expect(connectionManager.getSnapshot().name).toBe('queue');
+    expect(connectionManager.getSnapshot().state).toBe('connected');
+
+    unregA();
+    unregB();
+  });
+
+  it('unregister cleans up listeners and resets state to idle when last client removed', () => {
+    const client = new FakeClient();
+    const unregister = connectionManager.registerClient(client as any, 'session');
+    client.emit('connected');
+
+    expect(connectionManager.getSnapshot().state).toBe('connected');
+
+    unregister();
+
+    expect(connectionManager.getSnapshot().state).toBe('idle');
+    expect(connectionManager.getSnapshot().name).toBeNull();
+
+    // Emitting after unregister should not throw or change state
+    client.emit('connected');
+    expect(connectionManager.getSnapshot().state).toBe('idle');
+  });
+
+  it('full reconnection cycle', () => {
+    const client = new FakeClient();
+    const states: string[] = [];
+    connectionManager.subscribe((snapshot) => states.push(snapshot.state));
+
+    const unregister = connectionManager.registerClient(client as any, 'session');
+
+    // connecting → connected
+    client.emit('connected');
+    expect(connectionManager.getSnapshot().state).toBe('connected');
+
+    // connected → reconnecting (via closed)
+    client.emit('closed');
+    expect(connectionManager.getSnapshot().state).toBe('reconnecting');
+
+    // reconnecting → connecting
+    client.emit('connecting');
+    expect(connectionManager.getSnapshot().state).toBe('connecting');
+
+    // connecting → connected
+    client.emit('connected');
+    expect(connectionManager.getSnapshot().state).toBe('connected');
+
+    expect(states).toEqual([
+      'idle',       // initial snapshot from subscribe
+      'connecting', // registerClient
+      'connected',  // connected event
+      'reconnecting', // closed event
+      'connecting', // connecting event
+      'connected',  // connected event again
+    ]);
+
+    unregister();
+  });
+
+  it('subscribe delivers initial snapshot immediately', () => {
+    const client = new FakeClient();
+    const unregister = connectionManager.registerClient(client as any, 'session');
+    client.emit('connected');
+
+    const snapshots: any[] = [];
+    const unsub = connectionManager.subscribe((snapshot) => snapshots.push(snapshot));
+
+    // Should have received exactly one snapshot immediately
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].state).toBe('connected');
+    expect(snapshots[0].name).toBe('session');
+
+    unsub();
+    unregister();
+  });
 });

@@ -1,4 +1,4 @@
-import { Client } from 'graphql-ws';
+import { Client, Event as WsEvent, EventListener as WsEventListener } from 'graphql-ws';
 
 export type ConnectionState = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'stale' | 'error';
 
@@ -20,7 +20,7 @@ type RegisteredClient = {
 };
 
 const KEEP_ALIVE_MS = 5000;
-const STALE_GRACE_MS = 6000;
+const STALE_GRACE_MS = 10_000;
 const HEALTH_CHECK_INTERVAL_MS = 1000;
 
 class WebSocketConnectionManager {
@@ -57,9 +57,8 @@ class WebSocketConnectionManager {
     this.clients.set(id, record);
     this.notify();
 
-    const attach = <E extends string>(event: E, handler: (...args: any[]) => void) => {
-      // graphql-ws returns an unsubscribe function
-      const off = (client as any).on?.(event as any, handler) || (() => {});
+    const attach = <E extends WsEvent>(event: E, handler: WsEventListener<E>) => {
+      const off = client.on(event, handler);
       record.cleanup.push(off);
     };
 
@@ -154,6 +153,14 @@ class WebSocketConnectionManager {
     this.notify();
   }
 
+  dispose() {
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+  }
+
   // Health check to proactively terminate stale sockets on iOS Safari background kills
   private startHealthCheck() {
     if (this.intervalId) return;
@@ -213,6 +220,8 @@ class WebSocketConnectionManager {
     }
 
     if (typeof window !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+      document.addEventListener('visibilitychange', this.handleVisibilityChange);
       this.startHealthCheck();
     }
   }
@@ -224,9 +233,10 @@ export const connectionManager = typeof window !== 'undefined'
     {
       registerClient: () => () => {},
       subscribe: () => () => {},
-      getSnapshot: (): ConnectionSnapshot => ({ name: null, state: 'idle', lastActivity: null }),
+      getSnapshot: (): ConnectionSnapshot => ({ name: null, state: 'idle', lastActivity: null, error: null }),
       forceReconnect: () => {},
       setPrimaryName: () => {},
+      dispose: () => {},
       __resetForTests: () => {},
     } as unknown as WebSocketConnectionManager;
 

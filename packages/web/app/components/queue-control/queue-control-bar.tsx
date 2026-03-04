@@ -33,6 +33,7 @@ import CheckOutlined from '@mui/icons-material/CheckOutlined';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useColorMode } from '@/app/hooks/use-color-mode';
 import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
+import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import styles from './queue-control-bar.module.css';
 
 export type ActiveDrawer = 'none' | 'play' | 'queue';
@@ -106,6 +107,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     disconnect,
   } = useQueueContext();
 
+  const { showMessage } = useSnackbar();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const { mode } = useColorMode();
@@ -287,7 +289,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     if (disconnect) {
       disconnect();
     } else {
-      console.warn('[QueueControlBar] No disconnect handler available while leaving session');
+      showMessage('Unable to leave session. Please try again.', 'warning');
     }
   }, [endSession, disconnect]);
 
@@ -304,10 +306,10 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
     <div className={styles.reconnectRow}>
       <span className={styles.confirmText}>Cancelling will leave the session. Is that what you want?</span>
       <IconButton aria-label="Leave session" color="error" onClick={() => { handleLeaveSession(); setShowCancelConfirm(false); }}>
-        <CheckOutlined />
+        <CloseOutlined />
       </IconButton>
       <IconButton aria-label="Keep reconnecting" onClick={() => setShowCancelConfirm(false)}>
-        <CloseOutlined />
+        <CheckOutlined />
       </IconButton>
     </div>
   );
