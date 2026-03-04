@@ -41,5 +41,19 @@ services:
       timeout: 3s
       retries: 5
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.58
+    ports:
+      - '16686:16686'  # Web UI
+      - '4317:4317'    # OTLP gRPC
+      - '4318:4318'    # OTLP HTTP
+    environment:
+      - LOG_LEVEL=warn
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', 'http://localhost:16686']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
 volumes:
   db_data:

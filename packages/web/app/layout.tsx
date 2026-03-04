@@ -13,6 +13,7 @@ import { NotificationSubscriptionManager } from './components/providers/notifica
 import { getAllBoardConfigs } from './lib/server-board-configs';
 import './components/index.css';
 import type { Viewport } from 'next';
+import OtelProvider from './components/providers/otel-provider';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -27,6 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" data-theme="dark">
       <body>
+        <OtelProvider />
         <Analytics />
         <QueryClientProvider>
           <SessionProviderWrapper>
