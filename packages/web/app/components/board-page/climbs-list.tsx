@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useCallback, useState, useMemo } from 'react';
+import React, { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
 import AppsOutlined from '@mui/icons-material/AppsOutlined';
@@ -69,6 +69,11 @@ const ClimbsList = ({
 }: ClimbsListProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
+  // Keep a ref to onClimbSelect so handleClimbDoubleClick stays stable
+  // while always calling the latest callback (avoids stale closure from ClimbListItem's custom memo)
+  const onClimbSelectRef = useRef(onClimbSelect);
+  onClimbSelectRef.current = onClimbSelect;
+
   // Read stored view mode preference after mount to avoid hydration mismatch
   useEffect(() => {
     getPreference<ViewMode>(VIEW_MODE_PREFERENCE_KEY).then((stored) => {
@@ -99,14 +104,16 @@ const ClimbsList = ({
   });
 
   // Memoized handler for climb card double-click
+  // Uses ref so this callback is stable and never stale, even when
+  // ClimbListItem's custom memo skips re-renders on onSelect changes
   const handleClimbDoubleClick = useCallback(
     (climb: Climb) => {
-      onClimbSelect?.(climb);
+      onClimbSelectRef.current?.(climb);
       track('Climb List Card Clicked', {
         climbUuid: climb.uuid,
       });
     },
-    [onClimbSelect],
+    [],
   );
 
   // Memoize climb-specific handlers to prevent unnecessary re-renders
