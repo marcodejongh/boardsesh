@@ -6,6 +6,9 @@ import MuiCard from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
 import SwipeableDrawer from '../swipeable-drawer/swipeable-drawer';
 import SyncOutlined from '@mui/icons-material/SyncOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
@@ -88,7 +91,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const isViewPage = pathname.includes('/view/');
   const isListPage = pathname.includes('/list');
   const isPlayPage = pathname.includes('/play/');
-  const { currentClimb, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode } = useQueueContext();
+  const { currentClimb, mirrorClimb, queue, setQueue, getNextClimbQueueItem, getPreviousClimbQueueItem, setCurrentClimbQueueItem, viewOnlyMode, isReconnecting } = useQueueContext();
 
   const { mode } = useColorMode();
   const isDark = mode === 'dark';
@@ -433,6 +436,20 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
         boardDetails={boardDetails}
         angle={angle}
       />
+
+      {/* Non-blocking notification while WebSocket reconnects */}
+      <Snackbar
+        open={!!isReconnecting}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity="info"
+          variant="filled"
+          icon={<CircularProgress size={16} sx={{ color: 'inherit' }} />}
+        >
+          Reconnecting...
+        </Alert>
+      </Snackbar>
     </div>
   );
 };

@@ -38,6 +38,43 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
   boardDetailsRef.current = boardDetails;
   parsedParamsRef.current = parsedParams;
 
+  // Track session IDs that recently failed to connect, with timestamps.
+  // Prevents infinite reactivation loop: when PersistentSessionContext clears activeSession
+  // after exhausting retries, the bridge would otherwise see the URL still has ?session=xxx
+  // and call activateSession() again, restarting the entire failing cycle.
+  // Uses a cooldown (30s) instead of permanent blocking so that transient backend outages
+  // become retryable once the cooldown expires.
+  const FAILED_SESSION_COOLDOWN_MS = 30_000;
+  const failedSessionTimestampsRef = React.useRef<Map<string, number>>(new Map());
+  const prevSessionIdFromUrlRef = React.useRef<string | null>(null);
+  const hadActiveSessionRef = React.useRef(false);
+
+  // Clear failed tracking when URL session param changes (user navigated to a different session)
+  useEffect(() => {
+    if (sessionIdFromUrl !== prevSessionIdFromUrlRef.current) {
+      if (prevSessionIdFromUrlRef.current) {
+        failedSessionTimestampsRef.current.delete(prevSessionIdFromUrlRef.current);
+      }
+      prevSessionIdFromUrlRef.current = sessionIdFromUrl;
+    }
+  }, [sessionIdFromUrl]);
+
+  // Track when we've had an active session
+  useEffect(() => {
+    if (activeSession) {
+      hadActiveSessionRef.current = true;
+    }
+  }, [activeSession]);
+
+  // Detect when activeSession is cleared while URL still has session param — mark as failed with timestamp.
+  // Only triggers after activeSession was previously set (not on initial mount when it starts null).
+  useEffect(() => {
+    if (!activeSession && sessionIdFromUrl && hadActiveSessionRef.current) {
+      failedSessionTimestampsRef.current.set(sessionIdFromUrl, Date.now());
+      hadActiveSessionRef.current = false;
+    }
+  }, [activeSession, sessionIdFromUrl]);
+
   // Activate or update session when we have a session param and board details
   // This effect handles:
   // 1. Initial session activation when joining via shared link
@@ -45,6 +82,17 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
   // Note: Navigation within the same board (e.g., swiping between climbs) should NOT trigger reconnection
   useEffect(() => {
     if (sessionIdFromUrl && boardDetailsRef.current) {
+      // Don't reactivate a session that recently failed — prevents infinite retry loop.
+      // After the cooldown expires, allow re-attempting so transient outages are recoverable.
+      const failedAt = failedSessionTimestampsRef.current.get(sessionIdFromUrl);
+      if (failedAt) {
+        if (Date.now() - failedAt < FAILED_SESSION_COOLDOWN_MS) {
+          return;
+        }
+        // Cooldown expired — allow retry
+        failedSessionTimestampsRef.current.delete(sessionIdFromUrl);
+      }
+
       // Activate session when URL has session param and either:
       // - Session ID changed
       // - Board configuration path changed (e.g., navigating to different board/layout/size/sets)
