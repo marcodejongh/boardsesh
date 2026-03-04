@@ -44,6 +44,7 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
   // and call activateSession() again, restarting the entire failing cycle.
   const failedSessionIdsRef = React.useRef<Set<string>>(new Set());
   const prevSessionIdFromUrlRef = React.useRef<string | null>(null);
+  const hadActiveSessionRef = React.useRef(false);
 
   // Clear failed tracking when URL session param changes (user navigated to a different session)
   useEffect(() => {
@@ -55,10 +56,19 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
     }
   }, [sessionIdFromUrl]);
 
-  // Detect when activeSession is cleared while URL still has session param — mark as failed
+  // Track when we've had an active session
   useEffect(() => {
-    if (!activeSession && sessionIdFromUrl) {
+    if (activeSession) {
+      hadActiveSessionRef.current = true;
+    }
+  }, [activeSession]);
+
+  // Detect when activeSession is cleared while URL still has session param — mark as failed.
+  // Only triggers after activeSession was previously set (not on initial mount when it starts null).
+  useEffect(() => {
+    if (!activeSession && sessionIdFromUrl && hadActiveSessionRef.current) {
       failedSessionIdsRef.current.add(sessionIdFromUrl);
+      hadActiveSessionRef.current = false;
     }
   }, [activeSession, sessionIdFromUrl]);
 
