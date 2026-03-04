@@ -24,7 +24,6 @@ import type { Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/types';
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import BluetoothIcon from './bluetooth-icon';
 import { ClimbQueueItem } from './types';
-import { AscentStatus } from '../climb-card/ascent-status';
 import ClimbListItem, { type SwipeActionOverride } from '../climb-card/climb-list-item';
 import { useColorMode } from '@/app/hooks/use-color-mode';
 import { themeTokens } from '@/app/theme/theme-config';
@@ -141,16 +140,6 @@ const QueueClimbListItem: React.FC<QueueClimbListItemProps> = ({
     );
   }, [item.addedByUser]);
 
-  // ClimbTitle props for queue display
-  const titleProps = useMemo(
-    () => ({
-      showAngle: true as const,
-      centered: true as const,
-      nameAddon: <AscentStatus climbUuid={item.climb?.uuid} />,
-    }),
-    [item.climb?.uuid],
-  );
-
   // Menu slot
   const menuSlot = useMemo(() => {
     if (isEditMode) return null;
@@ -237,7 +226,6 @@ const QueueClimbListItem: React.FC<QueueClimbListItemProps> = ({
       swipeRightAction={swipeRightAction}
       afterTitleSlot={afterTitleSlot}
       menuSlot={menuSlot}
-      titleProps={titleProps}
       backgroundColor={backgroundColor}
       contentOpacity={isHistory ? 0.6 : 1}
     />
