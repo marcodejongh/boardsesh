@@ -69,7 +69,6 @@ const QueueClimbListItem: React.FC<QueueClimbListItemProps> = ({
 
   // Navigation handlers
   const handleViewClimb = useCallback(() => {
-    if (!item.climb) return;
     const climbViewUrl = getContextAwareClimbViewUrl(
       pathname,
       boardDetails,
@@ -82,7 +81,6 @@ const QueueClimbListItem: React.FC<QueueClimbListItemProps> = ({
   }, [item.climb, pathname, boardDetails, onClimbNavigate, router]);
 
   const handleOpenInApp = useCallback(() => {
-    if (!item.climb) return;
     const url = constructClimbInfoUrl(boardDetails, item.climb.uuid);
     window.open(url, '_blank', 'noopener');
   }, [item.climb, boardDetails]);
@@ -92,9 +90,7 @@ const QueueClimbListItem: React.FC<QueueClimbListItemProps> = ({
     () => ({
       icon: <CheckOutlined style={{ color: 'white', fontSize: 20 }} />,
       color: themeTokens.colors.success,
-      onAction: () => {
-        if (item.climb) onTickClick(item.climb);
-      },
+      onAction: () => onTickClick(item.climb),
     }),
     [item.climb, onTickClick],
   );
@@ -111,11 +107,11 @@ const QueueClimbListItem: React.FC<QueueClimbListItemProps> = ({
   // Background color based on current/history state
   const backgroundColor = useMemo(() => {
     if (isCurrent) {
-      return getGradeTintColor(item.climb?.difficulty, 'light', isDark) ?? 'var(--semantic-selected)';
+      return getGradeTintColor(item.climb.difficulty, 'light', isDark) ?? 'var(--semantic-selected)';
     }
     if (isHistory) return 'var(--neutral-100)';
     return 'var(--semantic-surface)';
-  }, [isCurrent, isHistory, item.climb?.difficulty, isDark]);
+  }, [isCurrent, isHistory, item.climb.difficulty, isDark]);
 
   // "Added by" avatar slot
   const afterTitleSlot = useMemo(() => {
@@ -265,7 +261,7 @@ const QueueClimbListItem: React.FC<QueueClimbListItemProps> = ({
             <ListItemIcon><InfoOutlined /></ListItemIcon>
             <ListItemText>View Climb</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => { setMenuAnchorEl(null); if (item.climb) onTickClick(item.climb); }}>
+          <MenuItem onClick={() => { setMenuAnchorEl(null); onTickClick(item.climb); }}>
             <ListItemIcon><CheckOutlined /></ListItemIcon>
             <ListItemText>Tick Climb</ListItemText>
           </MenuItem>
