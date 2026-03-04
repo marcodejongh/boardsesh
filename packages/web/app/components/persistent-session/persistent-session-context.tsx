@@ -593,9 +593,10 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       setIsWebSocketConnected(false);
       setIsConnecting(false);
     };
-  // Note: username, avatarUrl, wsAuthToken are accessed via updateCredentials
-  // to prevent reconnection on changes. handleQueueEvent and handleSessionEvent
-  // are stable callbacks.
+  // Intentionally omitted deps to prevent unnecessary WebSocket reconnections:
+  // - username, avatarUrl, wsAuthToken: synced via updateCredentials() in a separate effect
+  // - handleQueueEvent, handleSessionEvent: stable callbacks (deps are refs/other stable callbacks),
+  //   but including them would risk reconnection if React ever recreates them
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession, isAuthLoading]);
 

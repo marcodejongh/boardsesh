@@ -141,7 +141,7 @@ export class SessionConnection {
 
   // Mutable credentials that can be updated without reconnecting
   private authToken: string | null = null;
-  private username: string | undefined = '';
+  private username: string | undefined;
   private avatarUrl: string | undefined;
 
   constructor(config: SessionConnectionConfig) {
@@ -301,9 +301,14 @@ export class SessionConnection {
       const lastSeq = callbacks.getLastSequence();
       const sessionData = await this.joinSession();
 
-      if (this.disposed || !sessionData) {
-        // joinSession failed — don't transition to CONNECTED
-        if (DEBUG) console.log('[SessionConnection] Reconnect joinSession failed, staying in current state');
+      if (this.disposed) return;
+
+      if (!sessionData) {
+        // joinSession failed (e.g., session ended while offline) —
+        // transition to FAILED and clear so the UI can recover
+        if (DEBUG) console.log('[SessionConnection] Reconnect joinSession failed, transitioning to FAILED');
+        this.stateMachine.transition('FAILED');
+        callbacks.onSessionCleared();
         return;
       }
 

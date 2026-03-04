@@ -38,11 +38,14 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
   boardDetailsRef.current = boardDetails;
   parsedParamsRef.current = parsedParams;
 
-  // Track session IDs that failed to connect (exhausted retries or definitive error).
+  // Track session IDs that recently failed to connect, with timestamps.
   // Prevents infinite reactivation loop: when PersistentSessionContext clears activeSession
   // after exhausting retries, the bridge would otherwise see the URL still has ?session=xxx
   // and call activateSession() again, restarting the entire failing cycle.
-  const failedSessionIdsRef = React.useRef<Set<string>>(new Set());
+  // Uses a cooldown (30s) instead of permanent blocking so that transient backend outages
+  // become retryable once the cooldown expires.
+  const FAILED_SESSION_COOLDOWN_MS = 30_000;
+  const failedSessionTimestampsRef = React.useRef<Map<string, number>>(new Map());
   const prevSessionIdFromUrlRef = React.useRef<string | null>(null);
   const hadActiveSessionRef = React.useRef(false);
 
@@ -50,7 +53,7 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
   useEffect(() => {
     if (sessionIdFromUrl !== prevSessionIdFromUrlRef.current) {
       if (prevSessionIdFromUrlRef.current) {
-        failedSessionIdsRef.current.delete(prevSessionIdFromUrlRef.current);
+        failedSessionTimestampsRef.current.delete(prevSessionIdFromUrlRef.current);
       }
       prevSessionIdFromUrlRef.current = sessionIdFromUrl;
     }
@@ -63,11 +66,11 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
     }
   }, [activeSession]);
 
-  // Detect when activeSession is cleared while URL still has session param — mark as failed.
+  // Detect when activeSession is cleared while URL still has session param — mark as failed with timestamp.
   // Only triggers after activeSession was previously set (not on initial mount when it starts null).
   useEffect(() => {
     if (!activeSession && sessionIdFromUrl && hadActiveSessionRef.current) {
-      failedSessionIdsRef.current.add(sessionIdFromUrl);
+      failedSessionTimestampsRef.current.set(sessionIdFromUrl, Date.now());
       hadActiveSessionRef.current = false;
     }
   }, [activeSession, sessionIdFromUrl]);
@@ -79,9 +82,15 @@ const BoardSessionBridge: React.FC<BoardSessionBridgeProps> = ({
   // Note: Navigation within the same board (e.g., swiping between climbs) should NOT trigger reconnection
   useEffect(() => {
     if (sessionIdFromUrl && boardDetailsRef.current) {
-      // Don't reactivate a session that just failed — prevents infinite retry loop
-      if (failedSessionIdsRef.current.has(sessionIdFromUrl)) {
-        return;
+      // Don't reactivate a session that recently failed — prevents infinite retry loop.
+      // After the cooldown expires, allow re-attempting so transient outages are recoverable.
+      const failedAt = failedSessionTimestampsRef.current.get(sessionIdFromUrl);
+      if (failedAt) {
+        if (Date.now() - failedAt < FAILED_SESSION_COOLDOWN_MS) {
+          return;
+        }
+        // Cooldown expired — allow retry
+        failedSessionTimestampsRef.current.delete(sessionIdFromUrl);
       }
 
       // Activate session when URL has session param and either:
