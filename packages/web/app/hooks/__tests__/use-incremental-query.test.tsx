@@ -272,6 +272,48 @@ describe('useIncrementalQuery', () => {
     });
   });
 
+  it('resets fetched tracking when accumulatedKey changes (context switch)', async () => {
+    // First context: fetch with key ['ctx1', 'accumulated']
+    mockFetchChunk.mockResolvedValueOnce(new Set(['a']));
+    const { wrapper } = createWrapper();
+
+    const { result, rerender } = renderHook(
+      ({ accKey, fetchPrefix }) =>
+        useIncrementalQuery(['a', 'b'], defaultOptions({
+          accumulatedKey: accKey,
+          fetchKeyPrefix: fetchPrefix,
+        })),
+      {
+        wrapper,
+        initialProps: {
+          accKey: ['ctx1', 'accumulated'] as const,
+          fetchPrefix: ['ctx1', 'fetch'] as const,
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.data.has('a')).toBe(true);
+    });
+
+    // Switch context — same UUIDs, different key. Should re-fetch all UUIDs
+    // because the old fetchedUuidsRef is stale for the new context.
+    mockFetchChunk.mockResolvedValueOnce(new Set(['a', 'b']));
+    rerender({
+      accKey: ['ctx2', 'accumulated'] as const,
+      fetchPrefix: ['ctx2', 'fetch'] as const,
+    });
+
+    await waitFor(() => {
+      expect(result.current.data.has('b')).toBe(true);
+    });
+    // Should have fetched again with all UUIDs (not skipped 'a' and 'b')
+    expect(mockFetchChunk).toHaveBeenCalledTimes(2);
+    const lastCall = mockFetchChunk.mock.calls[1][0];
+    expect(lastCall).toContain('a');
+    expect(lastCall).toContain('b');
+  });
+
   it('resets and re-fetches after cache invalidation (removal)', async () => {
     mockFetchChunk.mockResolvedValueOnce(new Set(['a']));
     const { wrapper, queryClient } = createWrapper();

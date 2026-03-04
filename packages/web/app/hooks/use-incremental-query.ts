@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useEffect, useMemo, useState } from 'react';
+import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 
 const DEFAULT_CHUNK_SIZE = 500;
 
@@ -20,8 +20,23 @@ interface UseIncrementalQueryOptions<T> {
   merge: (accumulated: T, fetched: T) => T;
   /** Empty/initial value for T */
   initialValue: T;
-  /** Whether accumulated state has changed after merge (to avoid unnecessary re-renders) */
+  /**
+   * Size-based comparison to detect whether merge produced new data.
+   * Intentionally compares sizes rather than deep equality for performance —
+   * merge always grows the collection, so a size change is a reliable signal.
+   */
   hasChanged: (prev: T, next: T) => boolean;
+}
+
+interface UseIncrementalQueryResult<T> {
+  data: T;
+  isLoading: boolean;
+  /**
+   * Cancel all in-flight fetch queries for this incremental query.
+   * Useful for optimistic mutations that need to prevent stale fetch results
+   * from overwriting the optimistic state.
+   */
+  cancelFetches: () => Promise<void>;
 }
 
 function chunkArray<U>(arr: U[], size: number): U[][] {
@@ -45,7 +60,7 @@ function chunkArray<U>(arr: U[], size: number): U[][] {
 export function useIncrementalQuery<T>(
   uuids: string[],
   options: UseIncrementalQueryOptions<T>,
-): { data: T; isLoading: boolean } {
+): UseIncrementalQueryResult<T> {
   const {
     accumulatedKey,
     fetchKeyPrefix,
@@ -61,12 +76,26 @@ export function useIncrementalQuery<T>(
   const fetchedUuidsRef = useRef<Set<string>>(new Set());
   const [invalidationCount, setInvalidationCount] = useState(0);
 
+  // Track the previous key identity so we can reset when context changes
+  // (e.g., boardName or angle changes but the same UUID list is passed).
+  const prevKeyRef = useRef<string>(JSON.stringify(accumulatedKey));
+  const currentKeyStr = JSON.stringify(accumulatedKey);
+  if (prevKeyRef.current !== currentKeyStr) {
+    prevKeyRef.current = currentKeyStr;
+    // Key identity changed — reset fetched tracking and accumulated state.
+    // This is synchronous (during render) to ensure the first fetch after the
+    // change uses a clean fetchedUuidsRef, rather than deferring to an effect
+    // which would cause one render cycle with stale data.
+    fetchedUuidsRef.current = new Set();
+  }
+
   // Determine which UUIDs haven't been fetched yet.
   // invalidationCount forces recomputation after cache invalidation clears
   // fetchedUuidsRef, since uuids/enabled may not have changed.
   const newUuids = useMemo(
     () => (enabled ? uuids.filter((uuid) => !fetchedUuidsRef.current.has(uuid)) : []),
-    [uuids, enabled, invalidationCount],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [uuids, enabled, invalidationCount, currentKeyStr],
   );
 
   // Dynamic fetch key includes only the new UUIDs
@@ -100,8 +129,38 @@ export function useIncrementalQuery<T>(
     staleTime: Infinity,
   });
 
+  // Cancel all in-flight fetch queries — exposed for optimistic mutations
+  // to prevent stale fetch responses from overwriting optimistic state.
+  const cancelFetches = useCallback(async () => {
+    await queryClient.cancelQueries({ queryKey: fetchKeyPrefix });
+    await queryClient.cancelQueries({ queryKey: accumulatedKey });
+  }, [queryClient, fetchKeyPrefix, accumulatedKey]);
+
   // Accumulated state — direct useState for guaranteed re-renders
   const [accumulated, setAccumulated] = useState<T>(initialValue);
+
+  // Reset accumulated state when key identity changes (deferred cleanup for
+  // cache entries; the synchronous reset above handles fetchedUuidsRef).
+  useEffect(() => {
+    // On mount this runs once; on key change it clears old cache entries.
+    return () => {
+      // Cleanup old cache when key identity changes or component unmounts
+      queryClient.removeQueries({ queryKey: fetchKeyPrefix });
+      queryClient.removeQueries({ queryKey: accumulatedKey });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentKeyStr]);
+
+  // When key identity changes, reset accumulated state
+  const prevAccKeyRef = useRef<string>(currentKeyStr);
+  useEffect(() => {
+    if (prevAccKeyRef.current !== currentKeyStr) {
+      prevAccKeyRef.current = currentKeyStr;
+      lastMergedRef.current = undefined;
+      lastCacheWriteRef.current = undefined;
+      setAccumulated(initialValue);
+    }
+  }, [currentKeyStr, initialValue]);
 
   // When fetch completes, merge new entries into state and cache.
   // IMPORTANT: Mark UUIDs as fetched here (not in queryFn) so the query key
@@ -179,5 +238,6 @@ export function useIncrementalQuery<T>(
   return {
     data: accumulated,
     isLoading: fetchQuery.isLoading && !hasChanged(initialValue, accumulated),
+    cancelFetches,
   };
 }

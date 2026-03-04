@@ -42,10 +42,12 @@ const mergeMapFn = (
   fetched: Map<string, Set<string>>,
 ): Map<string, Set<string>> => new Map([...acc, ...fetched]);
 
-const hasSetChanged = (prev: Set<string>, next: Set<string>): boolean =>
+// Size-only comparison is intentional: merge always grows (union/append),
+// so a size change reliably signals new data without expensive deep equality.
+const hasSetSizeChanged = (prev: Set<string>, next: Set<string>): boolean =>
   prev.size !== next.size;
 
-const hasMapChanged = (
+const hasMapSizeChanged = (
   prev: Map<string, Set<string>>,
   next: Map<string, Set<string>>,
 ): boolean => prev.size !== next.size;
@@ -92,7 +94,11 @@ export function useClimbActionsData({
     [token, boardName, angle],
   );
 
-  const { data: favorites, isLoading: isLoadingFavorites } = useIncrementalQuery<Set<string>>(
+  const {
+    data: favorites,
+    isLoading: isLoadingFavorites,
+    cancelFetches: cancelFavFetches,
+  } = useIncrementalQuery<Set<string>>(
     climbUuids,
     {
       accumulatedKey: favAccKey,
@@ -101,7 +107,7 @@ export function useClimbActionsData({
       fetchChunk: favFetchChunk,
       merge: mergeSetFn,
       initialValue: EMPTY_SET,
-      hasChanged: hasSetChanged,
+      hasChanged: hasSetSizeChanged,
     },
   );
 
@@ -116,7 +122,9 @@ export function useClimbActionsData({
       return { uuid: climbUuid, favorited: result.toggleFavorite.favorited };
     },
     onMutate: async (climbUuid: string) => {
-      await queryClient.cancelQueries({ queryKey: favAccKey });
+      // Cancel both the accumulated key AND in-flight fetch queries to prevent
+      // a stale fetch response from overwriting the optimistic update.
+      await cancelFavFetches();
       const previousFavorites = queryClient.getQueryData<Set<string>>(favAccKey);
       queryClient.setQueryData<Set<string>>(favAccKey, (old) => {
         const next = new Set(old);
@@ -216,7 +224,7 @@ export function useClimbActionsData({
       fetchChunk: memFetchChunk,
       merge: mergeMapFn,
       initialValue: EMPTY_MAP,
-      hasChanged: hasMapChanged,
+      hasChanged: hasMapSizeChanged,
     },
   );
 
