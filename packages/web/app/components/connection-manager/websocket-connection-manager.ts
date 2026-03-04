@@ -79,14 +79,16 @@ class WebSocketConnectionManager {
       this.notify();
     });
 
-    attach('ping', () => {
-      markActivity();
+    attach('ping', (received: boolean) => {
+      if (received) markActivity();
     });
 
-    attach('pong', () => {
-      record.state = 'connected';
-      markActivity();
-      this.notify();
+    attach('pong', (received: boolean) => {
+      if (received) {
+        record.state = 'connected';
+        markActivity();
+        this.notify();
+      }
     });
 
     attach('message', () => {
@@ -172,8 +174,15 @@ class WebSocketConnectionManager {
 
   private handleVisibilityChange = () => {
     if (document.visibilityState !== 'visible') return;
-    // Terminate the primary connection to force a clean reconnect
-    this.forceReconnect();
+    const primary = this.getPrimary();
+    if (!primary) return;
+
+    const now = Date.now();
+    const isStale = now - primary.lastActivity > STALE_GRACE_MS;
+    const isUnhealthy = primary.state === 'error' || primary.state === 'reconnecting';
+    if (isStale || isUnhealthy) {
+      this.forceReconnect(primary.name);
+    }
   };
 
   private getPrimary(targetName?: string): RegisteredClient | undefined {

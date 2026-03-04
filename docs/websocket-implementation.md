@@ -616,6 +616,7 @@ sequenceDiagram
 - On reconnection: re-join session and sync state
 - Delta sync attempted if gap ≤ 100 events
 - Falls back to full sync if gap too large
+- Client-side supervisor (WebSocketConnectionManager) watches incoming pong/message activity, triggers reconnect on staleness/visibility return, and surfaces reconnect/error state to the UI.
 
 ### 2. Redis Connection Failure
 

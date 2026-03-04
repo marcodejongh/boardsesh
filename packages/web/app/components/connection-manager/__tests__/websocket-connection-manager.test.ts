@@ -48,10 +48,22 @@ describe('WebSocketConnectionManager', () => {
 
     // Ensure document reports visible
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    vi.setSystemTime(Date.now() + STALE_GRACE_MS + 500);
     document.dispatchEvent(new Event('visibilitychange'));
 
     expect(client.terminate).toHaveBeenCalled();
     expect(connectionManager.getSnapshot().state).toBe('reconnecting');
+
+    unregister();
+  });
+
+  it('exposes error state when client errors', () => {
+    const client = new FakeClient();
+    const unregister = connectionManager.registerClient(client as any, 'session');
+
+    client.emit('error', new Error('boom'));
+
+    expect(connectionManager.getSnapshot().state).toBe('error');
 
     unregister();
   });

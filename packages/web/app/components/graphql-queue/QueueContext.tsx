@@ -882,6 +882,8 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       sessionSummary,
       dismissSessionSummary,
       isOffBoardMode,
+      connectionState,
+      canMutate,
     ],
   );
 

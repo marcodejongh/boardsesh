@@ -112,7 +112,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const isDark = mode === 'dark';
   const gradeTintColor = useMemo(() => getGradeTintColor(currentClimb?.difficulty, 'default', isDark), [currentClimb?.difficulty, isDark]);
 
-  const isReconnecting = !!sessionId && (connectionState === 'reconnecting' || connectionState === 'stale');
+  const isReconnecting = !!sessionId && (connectionState === 'reconnecting' || connectionState === 'stale' || connectionState === 'error');
 
   const nextClimb = getNextClimbQueueItem();
   const previousClimb = getPreviousClimbQueueItem();
@@ -277,19 +277,33 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
       : `translateX(min(0px, calc(-100% + ${swipeOffset}px)))`;
   };
 
+  const reconnectMessage = connectionState === 'error' ? 'Connection error – retrying…' : 'Reconnecting…';
+
+  const handleLeaveSession = useCallback(() => {
+    if (endSession) {
+      endSession();
+      return;
+    }
+    if (disconnect) {
+      disconnect();
+    } else {
+      console.warn('[QueueControlBar] No disconnect handler available while leaving session');
+    }
+  }, [endSession, disconnect]);
+
   // Reconnect-only view helpers
   const renderReconnectingRow = () => (
     <div className={styles.reconnectRow}>
       <CircularProgress size={16} thickness={5} />
-      <span>Reconnecting…</span>
+      <span>{reconnectMessage}</span>
       <MuiButton variant="text" size="small" onClick={() => setShowCancelConfirm(true)}>Cancel</MuiButton>
     </div>
   );
 
   const renderConfirmRow = () => (
     <div className={styles.reconnectRow}>
-      <span className={styles.confirmText}>Cancelling will leave the session is that what you want?</span>
-      <IconButton aria-label="Leave session" color="error" onClick={() => { (endSession || disconnect || (() => {}))(); setShowCancelConfirm(false); }}>
+      <span className={styles.confirmText}>Cancelling will leave the session. Is that what you want?</span>
+      <IconButton aria-label="Leave session" color="error" onClick={() => { handleLeaveSession(); setShowCancelConfirm(false); }}>
         <CheckOutlined />
       </IconButton>
       <IconButton aria-label="Keep reconnecting" onClick={() => setShowCancelConfirm(false)}>
