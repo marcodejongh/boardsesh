@@ -72,7 +72,7 @@ vi.mock('../../swipeable-drawer/swipeable-drawer', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div data-testid="swipeable-drawer">{children}</div>,
 }));
 
-vi.mock('../../queue-control/queue-list-item', () => ({
+vi.mock('../ascent-status', () => ({
   AscentStatus: () => <span data-testid="ascent-status" />,
 }));
 
