@@ -109,6 +109,9 @@ export function useIncrementalQuery<T>(
   // queryFn, useMemo would recompute newUuids on the re-render triggered by
   // the resolved query, changing the query key before the data could be read.
   const lastMergedRef = useRef<T | undefined>(undefined);
+  // Tracks the value we last wrote to the cache ourselves, so the subscription
+  // can skip the self-triggered 'updated' event (avoids redundant setAccumulated calls).
+  const lastCacheWriteRef = useRef<T | undefined>(undefined);
   useEffect(() => {
     if (!fetchQuery.data || fetchQuery.data === lastMergedRef.current) return;
     lastMergedRef.current = fetchQuery.data;
@@ -119,6 +122,7 @@ export function useIncrementalQuery<T>(
     const merged = merge(accumulated, fetchQuery.data);
     if (hasChanged(accumulated, merged)) {
       setAccumulated(merged);
+      lastCacheWriteRef.current = merged;
       queryClient.setQueryData(accumulatedKey, merged);
     }
   }, [fetchQuery.data, newUuids, accumulated, merge, hasChanged, accumulatedKey, queryClient]);
@@ -140,11 +144,18 @@ export function useIncrementalQuery<T>(
         // Cache was cleared — reset tracking so all current UUIDs are re-fetched
         fetchedUuidsRef.current = new Set();
         lastMergedRef.current = undefined;
+        lastCacheWriteRef.current = undefined;
         setAccumulated(initialValue);
         setInvalidationCount((c) => c + 1);
       } else if (event.type === 'updated') {
         const cached = queryClient.getQueryData<T>(key);
         if (cached !== undefined) {
+          // Skip the self-triggered event from our own merge effect (same reference
+          // we just wrote), but clear the ref so subsequent writes are not filtered.
+          if (cached === lastCacheWriteRef.current) {
+            lastCacheWriteRef.current = undefined;
+            return;
+          }
           setAccumulated(cached);
         }
       }
@@ -158,6 +169,7 @@ export function useIncrementalQuery<T>(
     if (!enabled) {
       fetchedUuidsRef.current = new Set();
       lastMergedRef.current = undefined;
+      lastCacheWriteRef.current = undefined;
       setAccumulated(initialValue);
       queryClient.removeQueries({ queryKey: fetchKeyPrefix });
       queryClient.removeQueries({ queryKey: accumulatedKey });

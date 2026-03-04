@@ -77,12 +77,17 @@ export function useClimbActionsData({
   const favFetchChunk = useCallback(
     async (uuids: string[]): Promise<Set<string>> => {
       const client = createGraphQLHttpClient(token);
-      const result = await client.request<FavoritesQueryResponse>(GET_FAVORITES, {
-        boardName,
-        climbUuids: uuids,
-        angle,
-      });
-      return new Set(result.favorites);
+      try {
+        const result = await client.request<FavoritesQueryResponse>(GET_FAVORITES, {
+          boardName,
+          climbUuids: uuids,
+          angle,
+        });
+        return new Set(result.favorites);
+      } catch (error) {
+        console.error(`[GraphQL] Favorites query error for ${boardName} (${uuids.length} uuids):`, error);
+        throw error;
+      }
     },
     [token, boardName, angle],
   );
@@ -179,15 +184,20 @@ export function useClimbActionsData({
   const memFetchChunk = useCallback(
     async (uuids: string[]): Promise<Map<string, Set<string>>> => {
       const client = createGraphQLHttpClient(token);
-      const response = await client.request<GetPlaylistsForClimbsQueryResponse>(
-        GET_PLAYLISTS_FOR_CLIMBS,
-        { input: { boardType: boardName, layoutId, climbUuids: uuids } },
-      );
-      const memberships = new Map<string, Set<string>>();
-      for (const entry of response.playlistsForClimbs) {
-        memberships.set(entry.climbUuid, new Set(entry.playlistUuids));
+      try {
+        const response = await client.request<GetPlaylistsForClimbsQueryResponse>(
+          GET_PLAYLISTS_FOR_CLIMBS,
+          { input: { boardType: boardName, layoutId, climbUuids: uuids } },
+        );
+        const memberships = new Map<string, Set<string>>();
+        for (const entry of response.playlistsForClimbs) {
+          memberships.set(entry.climbUuid, new Set(entry.playlistUuids));
+        }
+        return memberships;
+      } catch (error) {
+        console.error(`[GraphQL] Playlist memberships query error for ${boardName} (${uuids.length} uuids):`, error);
+        throw error;
       }
-      return memberships;
     },
     [token, boardName, layoutId],
   );
