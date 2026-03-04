@@ -37,6 +37,9 @@ interface UseClimbActionsDataOptions {
 const mergeSetFn = (acc: Set<string>, fetched: Set<string>): Set<string> =>
   new Set([...acc, ...fetched]);
 
+// Shallow merge (overwrites per-key) is safe here because the incremental fetch
+// pattern guarantees no key overlap between accumulated and fetched batches —
+// each UUID is only fetched once and never re-fetched unless the cache is reset.
 const mergeMapFn = (
   acc: Map<string, Set<string>>,
   fetched: Map<string, Set<string>>,
@@ -210,7 +213,10 @@ export function useClimbActionsData({
     [token, boardName, layoutId],
   );
 
-  const { data: membershipsData } = useIncrementalQuery<Map<string, Set<string>>>(
+  const {
+    data: membershipsData,
+    cancelFetches: cancelMemFetches,
+  } = useIncrementalQuery<Map<string, Set<string>>>(
     climbUuids,
     {
       accumulatedKey: memAccKey,
@@ -236,7 +242,8 @@ export function useClimbActionsData({
       await client.request<AddClimbToPlaylistMutationResponse>(ADD_CLIMB_TO_PLAYLIST, {
         input: { playlistId, climbUuid, angle: climbAngle },
       });
-      // Update accumulated membership cache (triggers cache subscription in useIncrementalQuery)
+      // Cancel in-flight fetches and update accumulated membership cache
+      await cancelMemFetches();
       const prevMem = queryClient.getQueryData<Map<string, Set<string>>>(memAccKey) ?? new Map();
       const updatedMem = new Map(prevMem);
       const currentSet = new Set(updatedMem.get(climbUuid) || []);
@@ -247,7 +254,7 @@ export function useClimbActionsData({
         prev?.map((p) => (p.uuid === playlistId ? { ...p, climbCount: p.climbCount + 1 } : p)),
       );
     },
-    [token, memAccKey, playlistsQueryKey, queryClient],
+    [token, memAccKey, playlistsQueryKey, queryClient, cancelMemFetches],
   );
 
   const removeFromPlaylist = useCallback(
@@ -257,7 +264,8 @@ export function useClimbActionsData({
       await client.request<RemoveClimbFromPlaylistMutationResponse>(REMOVE_CLIMB_FROM_PLAYLIST, {
         input: { playlistId, climbUuid },
       });
-      // Update accumulated membership cache (triggers cache subscription in useIncrementalQuery)
+      // Cancel in-flight fetches and update accumulated membership cache
+      await cancelMemFetches();
       const prevMem = queryClient.getQueryData<Map<string, Set<string>>>(memAccKey) ?? new Map();
       const updatedMem = new Map(prevMem);
       const currentPlaylists = updatedMem.get(climbUuid);
@@ -273,7 +281,7 @@ export function useClimbActionsData({
         ),
       );
     },
-    [token, memAccKey, playlistsQueryKey, queryClient],
+    [token, memAccKey, playlistsQueryKey, queryClient, cancelMemFetches],
   );
 
   const createPlaylist = useCallback(

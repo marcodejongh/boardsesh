@@ -28,15 +28,15 @@ const hasSetChanged = (a: Set<string>, b: Set<string>) => a.size !== b.size;
 const EMPTY_SET = new Set<string>();
 
 describe('useIncrementalQuery', () => {
-  let mockFetchChunk: ReturnType<typeof vi.fn>;
+  let mockFetchChunk: ReturnType<typeof vi.fn<(uuids: string[]) => Promise<Set<string>>>>;
 
   beforeEach(() => {
-    mockFetchChunk = vi.fn();
+    mockFetchChunk = vi.fn<(uuids: string[]) => Promise<Set<string>>>();
   });
 
-  const defaultOptions = (overrides = {}) => ({
-    accumulatedKey: ['test', 'accumulated'] as const,
-    fetchKeyPrefix: ['test', 'fetch'] as const,
+  const defaultOptions = (overrides: Record<string, unknown> = {}) => ({
+    accumulatedKey: ['test', 'accumulated'] as readonly unknown[],
+    fetchKeyPrefix: ['test', 'fetch'] as readonly unknown[],
     enabled: true,
     fetchChunk: mockFetchChunk,
     merge: mergeSet,
@@ -278,7 +278,7 @@ describe('useIncrementalQuery', () => {
     const { wrapper } = createWrapper();
 
     const { result, rerender } = renderHook(
-      ({ accKey, fetchPrefix }) =>
+      ({ accKey, fetchPrefix }: { accKey: readonly unknown[]; fetchPrefix: readonly unknown[] }) =>
         useIncrementalQuery(['a', 'b'], defaultOptions({
           accumulatedKey: accKey,
           fetchKeyPrefix: fetchPrefix,
@@ -286,8 +286,8 @@ describe('useIncrementalQuery', () => {
       {
         wrapper,
         initialProps: {
-          accKey: ['ctx1', 'accumulated'] as const,
-          fetchPrefix: ['ctx1', 'fetch'] as const,
+          accKey: ['ctx1', 'accumulated'] as readonly unknown[],
+          fetchPrefix: ['ctx1', 'fetch'] as readonly unknown[],
         },
       },
     );
@@ -300,8 +300,8 @@ describe('useIncrementalQuery', () => {
     // because the old fetchedUuidsRef is stale for the new context.
     mockFetchChunk.mockResolvedValueOnce(new Set(['a', 'b']));
     rerender({
-      accKey: ['ctx2', 'accumulated'] as const,
-      fetchPrefix: ['ctx2', 'fetch'] as const,
+      accKey: ['ctx2', 'accumulated'] as readonly unknown[],
+      fetchPrefix: ['ctx2', 'fetch'] as readonly unknown[],
     });
 
     await waitFor(() => {

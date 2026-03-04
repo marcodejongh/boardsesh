@@ -76,26 +76,36 @@ export function useIncrementalQuery<T>(
   const fetchedUuidsRef = useRef<Set<string>>(new Set());
   const [invalidationCount, setInvalidationCount] = useState(0);
 
-  // Track the previous key identity so we can reset when context changes
-  // (e.g., boardName or angle changes but the same UUID list is passed).
-  const prevKeyRef = useRef<string>(JSON.stringify(accumulatedKey));
-  const currentKeyStr = JSON.stringify(accumulatedKey);
-  if (prevKeyRef.current !== currentKeyStr) {
-    prevKeyRef.current = currentKeyStr;
-    // Key identity changed — reset fetched tracking and accumulated state.
-    // This is synchronous (during render) to ensure the first fetch after the
-    // change uses a clean fetchedUuidsRef, rather than deferring to an effect
-    // which would cause one render cycle with stale data.
-    fetchedUuidsRef.current = new Set();
-  }
+  // Track key identity changes so we can reset fetched UUIDs when context
+  // changes (e.g., boardName or angle changes but the same UUID list is passed).
+  // Uses a state counter instead of render-time ref mutation to be safe under
+  // React concurrent mode (discarded renders won't leave stale refs).
+  const currentKeyStr = useMemo(() => JSON.stringify(accumulatedKey), [accumulatedKey]);
+  const prevKeyRef = useRef<string>(currentKeyStr);
+  const [keyChangeCount, setKeyChangeCount] = useState(0);
+
+  useEffect(() => {
+    if (prevKeyRef.current !== currentKeyStr) {
+      prevKeyRef.current = currentKeyStr;
+      // Key identity changed — reset all tracking so UUIDs are re-fetched
+      // for the new context. Bumping keyChangeCount triggers newUuids
+      // recomputation via useMemo dependency.
+      fetchedUuidsRef.current = new Set();
+      lastMergedRef.current = undefined;
+      lastCacheWriteRef.current = undefined;
+      setAccumulated(initialValue);
+      setKeyChangeCount((c) => c + 1);
+    }
+  }, [currentKeyStr, initialValue]);
 
   // Determine which UUIDs haven't been fetched yet.
   // invalidationCount forces recomputation after cache invalidation clears
   // fetchedUuidsRef, since uuids/enabled may not have changed.
+  // keyChangeCount forces recomputation after context key changes.
   const newUuids = useMemo(
     () => (enabled ? uuids.filter((uuid) => !fetchedUuidsRef.current.has(uuid)) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [uuids, enabled, invalidationCount, currentKeyStr],
+    [uuids, enabled, invalidationCount, keyChangeCount],
   );
 
   // Dynamic fetch key includes only the new UUIDs
@@ -151,17 +161,6 @@ export function useIncrementalQuery<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentKeyStr]);
 
-  // When key identity changes, reset accumulated state
-  const prevAccKeyRef = useRef<string>(currentKeyStr);
-  useEffect(() => {
-    if (prevAccKeyRef.current !== currentKeyStr) {
-      prevAccKeyRef.current = currentKeyStr;
-      lastMergedRef.current = undefined;
-      lastCacheWriteRef.current = undefined;
-      setAccumulated(initialValue);
-    }
-  }, [currentKeyStr, initialValue]);
-
   // When fetch completes, merge new entries into state and cache.
   // IMPORTANT: Mark UUIDs as fetched here (not in queryFn) so the query key
   // remains stable until the data is consumed. If we mutated the ref inside
@@ -197,7 +196,7 @@ export function useIncrementalQuery<T>(
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
       // Only react to events for our accumulated key
       const qk = event.query.queryKey;
-      if (qk.length !== key.length || qk.some((v, i) => v !== key[i])) return;
+      if (qk.length !== key.length || qk.some((v: unknown, i: number) => v !== key[i])) return;
 
       if (event.type === 'removed') {
         // Cache was cleared — reset tracking so all current UUIDs are re-fetched
