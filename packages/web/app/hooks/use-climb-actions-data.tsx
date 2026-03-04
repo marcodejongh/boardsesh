@@ -221,6 +221,7 @@ export function useClimbActionsData({
     {
       accumulatedKey: memAccKey,
       fetchKeyPrefix: memFetchKeyPrefix,
+      // MoonBoard doesn't support playlists (no playlist API in Aurora for MoonBoard)
       enabled:
         isAuthenticated &&
         !isAuthLoading &&

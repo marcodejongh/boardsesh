@@ -6,9 +6,9 @@ import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 const DEFAULT_CHUNK_SIZE = 500;
 
 interface UseIncrementalQueryOptions<T> {
-  /** Stable cache key for accumulated results (no UUIDs in key) */
+  /** Stable cache key for accumulated results (no UUIDs in key). Values must be primitives. */
   accumulatedKey: readonly unknown[];
-  /** Prefix for dynamic fetch keys — UUIDs are appended automatically */
+  /** Prefix for dynamic fetch keys — UUIDs are appended automatically. Values must be primitives. */
   fetchKeyPrefix: readonly unknown[];
   /** Whether the query is enabled (auth check, etc.) */
   enabled: boolean;
@@ -194,7 +194,8 @@ export function useIncrementalQuery<T>(
     const key = accumulatedKey;
 
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-      // Only react to events for our accumulated key
+      // Only react to events for our accumulated key.
+      // Uses reference equality (===) — keys must contain only primitives (strings, numbers).
       const qk = event.query.queryKey;
       if (qk.length !== key.length || qk.some((v: unknown, i: number) => v !== key[i])) return;
 
