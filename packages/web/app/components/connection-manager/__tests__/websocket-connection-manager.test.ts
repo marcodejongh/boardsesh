@@ -199,6 +199,32 @@ describe('WebSocketConnectionManager', () => {
     unregister();
   });
 
+  it('pauses health check when tab is hidden and resumes when visible', () => {
+    const client = new FakeClient();
+    const unregister = connectionManager.registerClient(client as any, 'session');
+    client.emit('connected');
+
+    // Hide the tab
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    // Advance well past the stale threshold — should NOT trigger terminate
+    // because the interval was paused
+    vi.advanceTimersByTime(STALE_GRACE_MS + 5000);
+    expect(client.terminate).not.toHaveBeenCalled();
+
+    // Make the tab visible again — should restart interval and check staleness
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    vi.setSystemTime(Date.now() + STALE_GRACE_MS + 500);
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    // The visibility handler itself triggers forceReconnect for stale connections
+    expect(client.terminate).toHaveBeenCalled();
+    expect(connectionManager.getSnapshot().state).toBe('reconnecting');
+
+    unregister();
+  });
+
   it('subscribe delivers initial snapshot immediately', () => {
     const client = new FakeClient();
     const unregister = connectionManager.registerClient(client as any, 'session');

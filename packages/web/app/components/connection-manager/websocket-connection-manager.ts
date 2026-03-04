@@ -155,19 +155,16 @@ class WebSocketConnectionManager {
 
   dispose() {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
+    this.stopHealthCheck();
   }
 
-  // Health check to proactively terminate stale sockets on iOS Safari background kills
+  // Health check to proactively terminate stale sockets on iOS Safari background kills.
+  // Only runs while the tab is visible — paused on hide, resumed on visibility return.
   private startHealthCheck() {
     if (this.intervalId) return;
     this.intervalId = setInterval(() => {
       const now = Date.now();
       this.clients.forEach((record) => {
-        if (document.visibilityState !== 'visible') return;
         if (now - record.lastActivity > STALE_GRACE_MS && record.state !== 'reconnecting') {
           record.state = 'reconnecting';
           this.notify();
@@ -179,8 +176,24 @@ class WebSocketConnectionManager {
     }, HEALTH_CHECK_INTERVAL_MS);
   }
 
+  private stopHealthCheck() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+  }
+
   private handleVisibilityChange = () => {
-    if (document.visibilityState !== 'visible') return;
+    if (document.visibilityState !== 'visible') {
+      // Tab hidden — pause the interval to avoid unnecessary CPU cycles
+      this.stopHealthCheck();
+      return;
+    }
+
+    // Tab visible — restart the health check interval
+    this.startHealthCheck();
+
+    // Immediately check if the primary connection went stale while hidden
     const primary = this.getPrimary();
     if (!primary) return;
 
@@ -214,10 +227,7 @@ class WebSocketConnectionManager {
     this.clients.clear();
     this.primaryName = null;
     this.listeners.clear();
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
+    this.stopHealthCheck();
 
     if (typeof window !== 'undefined') {
       document.removeEventListener('visibilitychange', this.handleVisibilityChange);
