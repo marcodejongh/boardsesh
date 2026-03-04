@@ -1,5 +1,7 @@
 import { createClient, Client, Sink } from 'graphql-ws';
 import { connectionManager, KEEP_ALIVE_MS } from '../connection-manager/websocket-connection-manager';
+import { context as otelContext, trace, SpanStatusCode } from '@opentelemetry/api';
+import { injectTraceContext, extractTraceContext, mergeExtensions, type TraceCarrier } from '@boardsesh/shared-schema';
 
 export type { Client };
 
@@ -12,6 +14,7 @@ let clientCounter = 0;
 
 // Cache for parsed operation names to avoid regex on every call
 const operationNameCache = new WeakMap<{ query: string }, string>();
+const tracer = trace.getTracer('boardsesh-web/graphql-ws');
 
 function getOperationName(operation: { query: string }, type: 'mutation' | 'query' | 'subscription'): string {
   const cached = operationNameCache.get(operation);
@@ -114,25 +117,50 @@ export function createGraphQLClient(
   return client;
 }
 
+type OperationInput<TVariables> = {
+  query: string;
+  variables?: TVariables;
+  extensions?: Record<string, unknown>;
+};
+
+function pickTraceCarrier(obj: unknown): TraceCarrier | undefined {
+  if (!obj || typeof obj !== 'object') return undefined;
+  const record = obj as Record<string, unknown>;
+  const traceparent = typeof record.traceparent === 'string' ? record.traceparent : undefined;
+  const tracestate = typeof record.tracestate === 'string' ? record.tracestate : undefined;
+  const baggage = typeof record.baggage === 'string' ? record.baggage : undefined;
+  if (!traceparent && !tracestate && !baggage) return undefined;
+  return { traceparent, tracestate, baggage };
+}
+
 /**
  * Execute a GraphQL mutation and return the result as a promise
  * Includes automatic cleanup and timeout handling
  */
 export function execute<TData = unknown, TVariables = Record<string, unknown>>(
   client: Client,
-  operation: { query: string; variables?: TVariables },
+  operation: OperationInput<TVariables>,
   timeoutMs: number = MUTATION_TIMEOUT_MS,
 ): Promise<TData> {
   const opName = getOperationName(operation, 'mutation');
 
   if (DEBUG) console.log(`[GraphQL] execute START: ${opName}`);
 
-  const executionPromise = new Promise<TData>((resolve, reject) => {
+  const span = tracer.startSpan('graphql.ws.mutation', {
+    attributes: { operation: opName },
+  });
+  const ctxWithSpan = trace.setSpan(otelContext.active(), span);
+
+  const executionPromise = otelContext.with(ctxWithSpan, () => new Promise<TData>((resolve, reject) => {
     let result: TData | undefined;
     let hasResolved = false;
 
     const unsubscribe = client.subscribe<TData>(
-      { query: operation.query, variables: operation.variables as Record<string, unknown> },
+      {
+        query: operation.query,
+        variables: operation.variables as Record<string, unknown>,
+        extensions: mergeExtensions(operation.extensions, injectTraceContext(ctxWithSpan)),
+      },
       {
         next: (data) => {
           if (DEBUG) console.log(`[GraphQL] execute NEXT: ${opName}`, data.data ? 'has data' : 'no data', data.errors ? 'has errors' : 'no errors');
@@ -144,6 +172,8 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
             if (!hasResolved) {
               hasResolved = true;
               unsubscribe();
+              span.recordException(new Error(data.errors.map((e) => e.message).join(', ')));
+              span.setStatus({ code: SpanStatusCode.ERROR });
               reject(new Error(data.errors.map((e) => e.message).join(', ')));
             }
           }
@@ -153,6 +183,8 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
           if (!hasResolved) {
             hasResolved = true;
             unsubscribe();
+            span.recordException(err as Error);
+            span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
             reject(err);
           }
         },
@@ -162,6 +194,7 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
             hasResolved = true;
             unsubscribe();
             if (result === undefined) {
+              span.setStatus({ code: SpanStatusCode.ERROR, message: 'completed without data' });
               reject(new Error(`GraphQL operation '${opName}' completed without data`));
               return;
             }
@@ -170,16 +203,17 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
         },
       },
     );
-  });
+  }));
 
   // Add timeout to prevent mutations from hanging forever
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: 'timeout' });
       reject(new Error(`GraphQL mutation '${opName}' timed out after ${timeoutMs}ms`));
     }, timeoutMs);
   });
 
-  return Promise.race([executionPromise, timeoutPromise]);
+  return Promise.race([executionPromise, timeoutPromise]).finally(() => span.end());
 }
 
 /**
@@ -188,7 +222,7 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
  */
 export function subscribe<TData = unknown, TVariables = Record<string, unknown>>(
   client: Client,
-  operation: { query: string; variables?: TVariables },
+  operation: OperationInput<TVariables>,
   sink: Sink<TData>,
 ): () => void {
   const opName = getOperationName(operation, 'subscription');
@@ -196,16 +230,45 @@ export function subscribe<TData = unknown, TVariables = Record<string, unknown>>
   if (DEBUG) console.log(`[GraphQL] subscribe START: ${opName}`);
 
   return client.subscribe<TData>(
-    { query: operation.query, variables: operation.variables as Record<string, unknown> },
+    {
+      query: operation.query,
+      variables: operation.variables as Record<string, unknown>,
+      extensions: mergeExtensions(operation.extensions, injectTraceContext()),
+    },
     {
       next: (data) => {
-        if (DEBUG) console.log(`[GraphQL] subscribe NEXT: ${opName}`);
-        if (data.data) {
-          sink.next?.(data.data);
-        }
-        if (data.errors) {
-          sink.error?.(new Error(data.errors.map((e) => e.message).join(', ')));
-        }
+        const payload = data as Record<string, unknown>;
+        const carrier =
+          pickTraceCarrier(payload.extensions) ||
+          pickTraceCarrier(
+            typeof payload.data === 'object' && payload.data !== null
+              ? Object.values(payload.data as Record<string, unknown>)[0] as Record<string, unknown>
+              : undefined
+          );
+        const parentCtx = carrier ? extractTraceContext(carrier) : otelContext.active();
+        const span = tracer.startSpan(
+          'graphql.ws.message',
+          {
+            attributes: {
+              operation: opName,
+              typename: (data as { data?: { [key: string]: { __typename?: string } } }).data
+                ? Object.values((data as { data: Record<string, { __typename?: string }> }).data)[0]?.__typename
+                : undefined,
+            },
+          },
+          parentCtx
+        );
+
+        otelContext.with(trace.setSpan(parentCtx, span), () => {
+          if (DEBUG) console.log(`[GraphQL] subscribe NEXT: ${opName}`);
+          if ((data as { data?: TData }).data) {
+            sink.next?.((data as { data?: TData }).data!);
+          }
+          if ((data as { errors?: Error[] }).errors) {
+            sink.error?.(new Error((data as { errors?: { message: string }[] }).errors!.map((e) => e.message).join(', ')));
+          }
+        });
+        span.end();
       },
       error: (error) => {
         if (DEBUG) console.log(`[GraphQL] subscribe ERROR: ${opName}`, error);

@@ -21,6 +21,8 @@ import { esp32Controllers, userBoards } from '@boardsesh/db/schema/app';
 import { sessionBoards, sessions } from '../../../db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { generateSessionSummary } from './session-summary';
+import { injectTraceContext } from '@boardsesh/shared-schema';
+import { context as otelContext, trace, SpanStatusCode } from '@opentelemetry/api';
 
 /**
  * Auto-authorize all controllers owned by a user for a session.
@@ -43,6 +45,29 @@ async function authorizeUserControllersForSession(userId: string, sessionId: str
 
 // Debug logging flag - only log in development
 const DEBUG = process.env.NODE_ENV === 'development';
+const tracer = trace.getTracer('boardsesh-backend/graphql');
+
+async function runWithSpan<T>(
+  name: string,
+  attributes: Record<string, unknown>,
+  fn: (span: ReturnType<typeof tracer.startSpan>) => Promise<T>
+): Promise<T> {
+  const span = tracer.startSpan(name, { attributes });
+  try {
+    return await fn(span);
+  } catch (error) {
+    span.recordException(error as Error);
+    span.setStatus({ code: SpanStatusCode.ERROR, message: (error as Error).message });
+    throw error;
+  } finally {
+    span.end();
+  }
+}
+
+function attachTrace(event: unknown, span: ReturnType<typeof tracer.startSpan>): void {
+  const ctxWithSpan = trace.setSpan(otelContext.active(), span);
+  (event as Record<string, unknown>).__trace = injectTraceContext(ctxWithSpan);
+}
 
 export const sessionMutations = {
   /**
@@ -65,76 +90,83 @@ export const sessionMutations = {
     },
     ctx: ConnectionContext
   ) => {
-    if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}, sessionName: ${sessionName}, initialQueueLength: ${initialQueue?.length || 0}`);
+    return runWithSpan(
+      'session.joinSession',
+      { sessionId, connectionId: ctx.connectionId },
+      async (span) => {
+        if (DEBUG) console.log(`[joinSession] START - connectionId: ${ctx.connectionId}, sessionId: ${sessionId}, username: ${username}, sessionName: ${sessionName}, initialQueueLength: ${initialQueue?.length || 0}`);
 
-    await applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
+        await applyRateLimit(ctx, 10); // Limit session joins to prevent abuse
 
-    // Validate inputs
-    validateInput(SessionIdSchema, sessionId, 'sessionId');
-    validateInput(BoardPathSchema, boardPath, 'boardPath');
-    if (username) validateInput(UsernameSchema, username, 'username');
-    if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
-    if (sessionName) validateInput(SessionNameSchema, sessionName, 'sessionName');
-    if (initialQueue) validateInput(QueueArraySchema, initialQueue, 'initialQueue');
-    if (initialCurrentClimb) validateInput(ClimbQueueItemSchema, initialCurrentClimb, 'initialCurrentClimb');
+        // Validate inputs
+        validateInput(SessionIdSchema, sessionId, 'sessionId');
+        validateInput(BoardPathSchema, boardPath, 'boardPath');
+        if (username) validateInput(UsernameSchema, username, 'username');
+        if (avatarUrl) validateInput(AvatarUrlSchema, avatarUrl, 'avatarUrl');
+        if (sessionName) validateInput(SessionNameSchema, sessionName, 'sessionName');
+        if (initialQueue) validateInput(QueueArraySchema, initialQueue, 'initialQueue');
+        if (initialCurrentClimb) validateInput(ClimbQueueItemSchema, initialCurrentClimb, 'initialCurrentClimb');
 
-    const result = await roomManager.joinSession(
-      ctx.connectionId,
-      sessionId,
-      boardPath,
-      username || undefined,
-      avatarUrl || undefined,
-      initialQueue,
-      initialCurrentClimb || null,
-      sessionName || undefined
+        const result = await roomManager.joinSession(
+          ctx.connectionId,
+          sessionId,
+          boardPath,
+          username || undefined,
+          avatarUrl || undefined,
+          initialQueue,
+          initialCurrentClimb || null,
+          sessionName || undefined
+        );
+        if (DEBUG) console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
+
+        // Update context with session info
+        if (DEBUG) console.log(`[joinSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
+        updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
+        if (DEBUG) console.log(`[joinSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
+
+        // Auto-authorize user's ESP32 controllers for this session (if authenticated)
+        if (ctx.isAuthenticated && ctx.userId) {
+          authorizeUserControllersForSession(ctx.userId, sessionId);
+        }
+
+        // Notify session about new user
+        const userJoinedEvent: SessionEvent = {
+          __typename: 'UserJoined',
+          user: {
+            id: result.clientId,
+            username: username || `User-${result.clientId.substring(0, 6)}`,
+            isLeader: result.isLeader,
+            avatarUrl: avatarUrl,
+          },
+        };
+        attachTrace(userJoinedEvent, span);
+        pubsub.publishSessionEvent(sessionId, userJoinedEvent);
+
+        // Fetch session data for new fields
+        const sessionData = await roomManager.getSessionById(sessionId);
+
+        return {
+          id: sessionId,
+          name: result.sessionName || null,
+          boardPath,
+          users: result.users,
+          queueState: {
+            sequence: result.sequence,
+            stateHash: result.stateHash,
+            queue: result.queue,
+            currentClimbQueueItem: result.currentClimbQueueItem,
+          },
+          isLeader: result.isLeader,
+          clientId: result.clientId,
+          goal: sessionData?.goal || null,
+          isPublic: sessionData?.isPublic ?? true,
+          startedAt: sessionData?.startedAt?.toISOString() || null,
+          endedAt: sessionData?.endedAt?.toISOString() || null,
+          isPermanent: sessionData?.isPermanent ?? false,
+          color: sessionData?.color || null,
+        };
+      }
     );
-    if (DEBUG) console.log(`[joinSession] roomManager.joinSession completed - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
-
-    // Update context with session info
-    if (DEBUG) console.log(`[joinSession] Before updateContext - ctx.sessionId: ${ctx.sessionId}`);
-    updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
-    if (DEBUG) console.log(`[joinSession] After updateContext - ctx.sessionId: ${ctx.sessionId}`);
-
-    // Auto-authorize user's ESP32 controllers for this session (if authenticated)
-    if (ctx.isAuthenticated && ctx.userId) {
-      authorizeUserControllersForSession(ctx.userId, sessionId);
-    }
-
-    // Notify session about new user
-    const userJoinedEvent: SessionEvent = {
-      __typename: 'UserJoined',
-      user: {
-        id: result.clientId,
-        username: username || `User-${result.clientId.substring(0, 6)}`,
-        isLeader: result.isLeader,
-        avatarUrl: avatarUrl,
-      },
-    };
-    pubsub.publishSessionEvent(sessionId, userJoinedEvent);
-
-    // Fetch session data for new fields
-    const sessionData = await roomManager.getSessionById(sessionId);
-
-    return {
-      id: sessionId,
-      name: result.sessionName || null,
-      boardPath,
-      users: result.users,
-      queueState: {
-        sequence: result.sequence,
-        stateHash: result.stateHash,
-        queue: result.queue,
-        currentClimbQueueItem: result.currentClimbQueueItem,
-      },
-      isLeader: result.isLeader,
-      clientId: result.clientId,
-      goal: sessionData?.goal || null,
-      isPublic: sessionData?.isPublic ?? true,
-      startedAt: sessionData?.startedAt?.toISOString() || null,
-      endedAt: sessionData?.endedAt?.toISOString() || null,
-      isPermanent: sessionData?.isPermanent ?? false,
-      color: sessionData?.color || null,
-    };
   },
 
   /**
@@ -147,123 +179,129 @@ export const sessionMutations = {
     { input }: { input: CreateSessionInput },
     ctx: ConnectionContext
   ) => {
-    if (DEBUG) console.log(`[createSession] START - connectionId: ${ctx.connectionId}, boardPath: ${input.boardPath}`);
+    return runWithSpan(
+      'session.createSession',
+      { connectionId: ctx.connectionId },
+      async (span) => {
+        if (DEBUG) console.log(`[createSession] START - connectionId: ${ctx.connectionId}, boardPath: ${input.boardPath}`);
 
-    await applyRateLimit(ctx, 5); // Limit session creation to prevent abuse
-    // Only authenticated users can create sessions
-    requireAuthenticated(ctx);
+        await applyRateLimit(ctx, 5); // Limit session creation to prevent abuse
+        // Only authenticated users can create sessions
+        requireAuthenticated(ctx);
 
-    // Validate input
-    validateInput(CreateSessionInputSchema, input, 'createSession input');
+        // Validate input
+        validateInput(CreateSessionInputSchema, input, 'createSession input');
 
-    // Generate a unique session ID
-    const sessionId = uuidv4();
-    if (DEBUG) console.log(`[createSession] Generated sessionId: ${sessionId}`);
+        // Generate a unique session ID
+        const sessionId = uuidv4();
+        if (DEBUG) console.log(`[createSession] Generated sessionId: ${sessionId}`);
 
-    if (input.discoverable) {
-      // Create a discoverable session with GPS coordinates
-      // Use authenticated userId from context
-      const userId = ctx.userId || ctx.connectionId;
-      await roomManager.createDiscoverableSession(
-        sessionId,
-        input.boardPath,
-        userId,
-        input.latitude,
-        input.longitude,
-        input.name,
-        input.goal,
-        input.isPermanent,
-        input.color
-      );
-
-      // If boardIds provided, create sessionBoards junction rows
-      if (input.boardIds && input.boardIds.length > 0) {
-        // Verify boards exist
-        const boards = await db
-          .select({ id: userBoards.id, gymId: userBoards.gymId })
-          .from(userBoards)
-          .where(inArray(userBoards.id, input.boardIds));
-
-        if (boards.length !== input.boardIds.length) {
-          throw new Error('One or more board IDs do not exist');
-        }
-
-        // Validate all boards share the same gym (multi-board requires same gym)
-        const gymIds = new Set(boards.map((b) => b.gymId).filter(Boolean));
-        if (gymIds.size > 1) {
-          throw new Error('All boards must belong to the same gym for multi-board sessions');
-        }
-
-        // Insert junction rows
-        await db.insert(sessionBoards).values(
-          input.boardIds.map((boardId) => ({
+        if (input.discoverable) {
+          // Create a discoverable session with GPS coordinates
+          // Use authenticated userId from context
+          const userId = ctx.userId || ctx.connectionId;
+          await roomManager.createDiscoverableSession(
             sessionId,
-            boardId,
-          }))
-        );
+            input.boardPath,
+            userId,
+            input.latitude,
+            input.longitude,
+            input.name,
+            input.goal,
+            input.isPermanent,
+            input.color
+          );
+
+          // If boardIds provided, create sessionBoards junction rows
+          if (input.boardIds && input.boardIds.length > 0) {
+            // Verify boards exist
+            const boards = await db
+              .select({ id: userBoards.id, gymId: userBoards.gymId })
+              .from(userBoards)
+              .where(inArray(userBoards.id, input.boardIds));
+
+            if (boards.length !== input.boardIds.length) {
+              throw new Error('One or more board IDs do not exist');
+            }
+
+            // Validate all boards share the same gym (multi-board requires same gym)
+            const gymIds = new Set(boards.map((b) => b.gymId).filter(Boolean));
+            if (gymIds.size > 1) {
+              throw new Error('All boards must belong to the same gym for multi-board sessions');
+            }
+
+            // Insert junction rows
+            await db.insert(sessionBoards).values(
+              input.boardIds.map((boardId) => ({
+                sessionId,
+                boardId,
+              }))
+            );
+          }
+        }
+
+        // For HTTP requests (stateless), skip joining the session in-memory.
+        // The creator will join via WebSocket when they navigate to the board page.
+        const isHttpRequest = ctx.connectionId.startsWith('http-');
+
+        if (!isHttpRequest) {
+          // WebSocket path: join the session as the creator
+          const result = await roomManager.joinSession(
+            ctx.connectionId,
+            sessionId,
+            input.boardPath,
+            undefined, // username will be set later
+            undefined, // avatarUrl will be set later
+            undefined, // initialQueue
+            null,      // initialCurrentClimb
+            input.discoverable ? undefined : input.name
+          );
+          if (DEBUG) console.log(`[createSession] Joined session - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
+
+          updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
+
+          return {
+            id: sessionId,
+            name: input.name || null,
+            boardPath: input.boardPath,
+            users: result.users,
+            queueState: {
+              sequence: result.sequence,
+              stateHash: result.stateHash,
+              queue: result.queue,
+              currentClimbQueueItem: result.currentClimbQueueItem,
+            },
+            isLeader: result.isLeader,
+            clientId: result.clientId,
+            goal: input.goal || null,
+            isPublic: true,
+            startedAt: new Date().toISOString(),
+            endedAt: null,
+            isPermanent: input.isPermanent || false,
+            color: input.color || null,
+          };
+        }
+
+        // HTTP path: return session metadata only; client joins via WebSocket later
+        if (DEBUG) console.log(`[createSession] HTTP request - returning session metadata without joining`);
+
+        return {
+          id: sessionId,
+          name: input.name || null,
+          boardPath: input.boardPath,
+          users: [],
+          queueState: null,
+          isLeader: false,
+          clientId: null,
+          goal: input.goal || null,
+          isPublic: true,
+          startedAt: new Date().toISOString(),
+          endedAt: null,
+          isPermanent: input.isPermanent || false,
+          color: input.color || null,
+        };
       }
-    }
-
-    // For HTTP requests (stateless), skip joining the session in-memory.
-    // The creator will join via WebSocket when they navigate to the board page.
-    const isHttpRequest = ctx.connectionId.startsWith('http-');
-
-    if (!isHttpRequest) {
-      // WebSocket path: join the session as the creator
-      const result = await roomManager.joinSession(
-        ctx.connectionId,
-        sessionId,
-        input.boardPath,
-        undefined, // username will be set later
-        undefined, // avatarUrl will be set later
-        undefined, // initialQueue
-        null,      // initialCurrentClimb
-        input.discoverable ? undefined : input.name
-      );
-      if (DEBUG) console.log(`[createSession] Joined session - clientId: ${result.clientId}, isLeader: ${result.isLeader}`);
-
-      updateContext(ctx.connectionId, { sessionId, userId: result.clientId });
-
-      return {
-        id: sessionId,
-        name: input.name || null,
-        boardPath: input.boardPath,
-        users: result.users,
-        queueState: {
-          sequence: result.sequence,
-          stateHash: result.stateHash,
-          queue: result.queue,
-          currentClimbQueueItem: result.currentClimbQueueItem,
-        },
-        isLeader: result.isLeader,
-        clientId: result.clientId,
-        goal: input.goal || null,
-        isPublic: true,
-        startedAt: new Date().toISOString(),
-        endedAt: null,
-        isPermanent: input.isPermanent || false,
-        color: input.color || null,
-      };
-    }
-
-    // HTTP path: return session metadata only; client joins via WebSocket later
-    if (DEBUG) console.log(`[createSession] HTTP request - returning session metadata without joining`);
-
-    return {
-      id: sessionId,
-      name: input.name || null,
-      boardPath: input.boardPath,
-      users: [],
-      queueState: null,
-      isLeader: false,
-      clientId: null,
-      goal: input.goal || null,
-      isPublic: true,
-      startedAt: new Date().toISOString(),
-      endedAt: null,
-      isPermanent: input.isPermanent || false,
-      color: input.color || null,
-    };
+    );
   },
 
   /**

@@ -3,6 +3,7 @@ import type { Server as HttpServer, IncomingMessage } from 'http';
 import { useServer, type Extra as WsExtra } from 'graphql-ws/use/ws';
 import type { Context as GqlWsContext } from 'graphql-ws';
 import { GraphQLError, parse } from 'graphql';
+import { context as otelContext, trace, type Span, type Context as OtelContext } from '@opentelemetry/api';
 import { schema } from '../graphql/index';
 import { createContext, removeContext, getContext } from '../graphql/context';
 import { validateQueryDepth } from '../graphql/query-depth';
@@ -11,17 +12,37 @@ import { pubsub } from '../pubsub/index';
 import { validateNextAuthToken, extractAuthToken, extractControllerApiKey, validateControllerApiKey } from '../middleware/auth';
 import { isOriginAllowed } from '../handlers/cors';
 import type { ConnectionContext } from '@boardsesh/shared-schema';
+import { extractTraceContext, injectTraceContext, type TraceCarrier } from '@boardsesh/shared-schema';
 
 const DEBUG = process.env.NODE_ENV === 'development';
+const tracer = trace.getTracer('boardsesh-backend/ws');
 
 // Extend Extra type with our custom context
 interface CustomExtra extends WsExtra {
   context?: ConnectionContext;
+  traceContext?: OtelContext;
+  operationSpans?: Map<string, Span>;
+  connectSpan?: Span;
   [key: PropertyKey]: unknown;
 }
 
 // Type alias for convenience
 type ServerContext = GqlWsContext<Record<string, unknown>, CustomExtra>;
+
+function pickTraceCarrier(obj: unknown): TraceCarrier | undefined {
+  if (!obj || typeof obj !== 'object') return undefined;
+  const record = obj as Record<string, unknown>;
+  const traceparent = typeof record.traceparent === 'string' ? record.traceparent : undefined;
+  const tracestate = typeof record.tracestate === 'string' ? record.tracestate : undefined;
+  const baggage = typeof record.baggage === 'string' ? record.baggage : undefined;
+
+  if (!traceparent && !tracestate && !baggage) return undefined;
+  return { traceparent, tracestate, baggage };
+}
+
+function startSpan(name: string, attrs: Record<string, unknown>, parent?: OtelContext): Span {
+  return tracer.startSpan(name, { attributes: attrs }, parent);
+}
 
 /**
  * Setup WebSocket server with graphql-ws for GraphQL subscriptions
@@ -63,6 +84,10 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
       schema,
       // onConnect is called ONCE when client connects and sends ConnectionInit
       onConnect: async (ctx: ServerContext) => {
+        const connectionTrace = pickTraceCarrier(ctx.connectionParams);
+        const parentTraceCtx = extractTraceContext(connectionTrace);
+        const connectSpan = startSpan('ws.connect', { path: ctx.extra.request?.url }, parentTraceCtx);
+
         // Extract and validate auth token
         const token = extractAuthToken(
           ctx.connectionParams as Record<string, unknown> | undefined,
@@ -110,6 +135,9 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
 
         // Store context in ctx.extra for access in other hooks
         (ctx.extra as CustomExtra).context = context;
+        (ctx.extra as CustomExtra).traceContext = trace.setSpan(parentTraceCtx, connectSpan);
+        (ctx.extra as CustomExtra).operationSpans = new Map();
+        (ctx.extra as CustomExtra).connectSpan = connectSpan;
 
         return true; // Allow connection (both authenticated and unauthenticated)
       },
@@ -137,6 +165,11 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
         return latestContext;
       },
       onDisconnect: async (ctx: ServerContext, code?: number) => {
+        const extra = ctx.extra as CustomExtra;
+        extra.operationSpans?.forEach(span => span.end());
+        extra.operationSpans?.clear();
+        extra.connectSpan?.end();
+
         const context = (ctx.extra as CustomExtra)?.context;
         if (context) {
           console.log(`Client disconnected: ${context.connectionId} (code: ${code})`);
@@ -172,6 +205,17 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
         }
       },
       onSubscribe: (_ctx: ServerContext, _id: string, payload) => {
+        const extra = _ctx.extra as CustomExtra;
+        const incomingTrace = pickTraceCarrier((payload as Record<string, unknown>)?.extensions);
+        const parentCtx = incomingTrace ? extractTraceContext(incomingTrace) : extra.traceContext;
+        const opSpan = startSpan(
+          'graphql.subscribe',
+          { operationName: payload.operationName ?? 'anonymous' },
+          parentCtx
+        );
+        extra.traceContext = trace.setSpan(parentCtx ?? otelContext.active(), opSpan);
+        extra.operationSpans?.set(_id, opSpan);
+
         if (DEBUG) {
           console.log(`Subscription started: ${payload.operationName || 'anonymous'}`);
         }
@@ -186,9 +230,16 @@ export function setupWebSocketServer(httpServer: HttpServer): WebSocketServer {
         }
       },
       onError: (_ctx: ServerContext, _id: string, _payload, errors) => {
+        const span = (_ctx.extra as CustomExtra).operationSpans?.get(_id);
+        span?.recordException(errors);
+        span?.end();
+        (_ctx.extra as CustomExtra).operationSpans?.delete(_id);
         console.error('GraphQL error:', errors);
       },
       onComplete: (_ctx: ServerContext, _id: string, payload) => {
+        const span = (_ctx.extra as CustomExtra).operationSpans?.get(_id);
+        span?.end();
+        (_ctx.extra as CustomExtra).operationSpans?.delete(_id);
         if (DEBUG) {
           console.log(`Subscription completed: ${payload.operationName || 'anonymous'}`);
         }

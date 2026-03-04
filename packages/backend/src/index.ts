@@ -1,8 +1,11 @@
 import 'dotenv/config';
+import { setupTracing } from './observability/tracing';
 import { startServer } from './server';
 import { redisClientManager } from './redis/client';
 
 async function main() {
+  setupTracing();
+
   // Start the server (initializes PubSub/Redis)
   const { wss, httpServer } = await startServer();
 
