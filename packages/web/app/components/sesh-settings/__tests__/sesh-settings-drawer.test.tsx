@@ -19,28 +19,26 @@ const mockEndSessionWithSummary = vi.fn();
 let mockAngle: number | undefined = 40;
 let mockBoardDetails: Record<string, unknown> | null = { board_name: 'kilter' };
 let mockSessionDetail: Record<string, unknown> | null = {
-  sessionDetail: {
-    sessionId: 'session-123',
-    sessionType: 'party',
-    sessionName: 'Morning Sesh',
-    participants: [],
-    totalSends: 0,
-    totalFlashes: 0,
-    totalAttempts: 0,
-    tickCount: 0,
-    gradeDistribution: [],
-    boardTypes: [],
-    hardestGrade: null,
-    durationMinutes: 30,
-    goal: 'Send V5',
-    ticks: [],
-    upvotes: 0,
-    downvotes: 0,
-    voteScore: 0,
-    commentCount: 0,
-    firstTickAt: new Date().toISOString(),
-    lastTickAt: new Date().toISOString(),
-  },
+  sessionId: 'session-123',
+  sessionType: 'party',
+  sessionName: 'Morning Sesh',
+  participants: [],
+  totalSends: 0,
+  totalFlashes: 0,
+  totalAttempts: 0,
+  tickCount: 0,
+  gradeDistribution: [],
+  boardTypes: [],
+  hardestGrade: null,
+  durationMinutes: 30,
+  goal: 'Send V5',
+  ticks: [],
+  upvotes: 0,
+  downvotes: 0,
+  voteScore: 0,
+  commentCount: 0,
+  firstTickAt: new Date().toISOString(),
+  lastTickAt: new Date().toISOString(),
 };
 
 vi.mock('next/navigation', () => ({
@@ -57,7 +55,6 @@ vi.mock('@/app/components/persistent-session/persistent-session-context', () => 
     session: mockSession,
     users: [],
     endSessionWithSummary: mockEndSessionWithSummary,
-    liveSessionStats: null,
   }),
 }));
 
@@ -68,16 +65,16 @@ vi.mock('@/app/components/queue-control/queue-bridge-context', () => ({
   }),
 }));
 
-vi.mock('@/app/hooks/use-ws-auth-token', () => ({
-  useWsAuthToken: () => ({ token: null }),
-}));
-
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({
-    data: mockSessionDetail,
+vi.mock('@/app/hooks/use-session-detail', () => ({
+  useSessionDetail: () => ({
+    session: mockSessionDetail,
     isLoading: false,
     isError: false,
+    updateSession: { mutateAsync: vi.fn() },
+    addUser: { mutateAsync: vi.fn() },
+    removeUser: { mutateAsync: vi.fn() },
   }),
+  SESSION_DETAIL_QUERY_KEY: (id: string) => ['sessionDetail', id],
 }));
 
 vi.mock('@/app/components/swipeable-drawer/swipeable-drawer', () => ({
@@ -135,28 +132,26 @@ describe('SeshSettingsDrawer', () => {
     mockAngle = 40;
     mockBoardDetails = { board_name: 'kilter' };
     mockSessionDetail = {
-      sessionDetail: {
-        sessionId: 'session-123',
-        sessionType: 'party',
-        sessionName: 'Morning Sesh',
-        participants: [],
-        totalSends: 0,
-        totalFlashes: 0,
-        totalAttempts: 0,
-        tickCount: 0,
-        gradeDistribution: [],
-        boardTypes: [],
-        hardestGrade: null,
-        durationMinutes: 30,
-        goal: 'Send V5',
-        ticks: [],
-        upvotes: 0,
-        downvotes: 0,
-        voteScore: 0,
-        commentCount: 0,
-        firstTickAt: new Date().toISOString(),
-        lastTickAt: new Date().toISOString(),
-      },
+      sessionId: 'session-123',
+      sessionType: 'party',
+      sessionName: 'Morning Sesh',
+      participants: [],
+      totalSends: 0,
+      totalFlashes: 0,
+      totalAttempts: 0,
+      tickCount: 0,
+      gradeDistribution: [],
+      boardTypes: [],
+      hardestGrade: null,
+      durationMinutes: 30,
+      goal: 'Send V5',
+      ticks: [],
+      upvotes: 0,
+      downvotes: 0,
+      voteScore: 0,
+      commentCount: 0,
+      firstTickAt: new Date().toISOString(),
+      lastTickAt: new Date().toISOString(),
     };
   });
 
