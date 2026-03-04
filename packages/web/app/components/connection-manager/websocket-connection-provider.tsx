@@ -48,7 +48,11 @@ export function useWebSocketConnection(): ConnectionContextValue {
   const fallbackRef = useRef(IDLE_FALLBACK);
 
   if (!ctx) {
-    // Stable fallback — only rebuild when snapshot actually changes
+    // Fallback for usage outside the provider (e.g. SSR or unmounted trees).
+    // Reads a point-in-time snapshot but does NOT subscribe — state changes
+    // won't trigger re-renders. This is intentional: without a provider the
+    // component tree has no subscription lifecycle. Consumers that need live
+    // updates must be wrapped in <WebSocketConnectionProvider>.
     const snapshot = connectionManager.getSnapshot();
     const prev = fallbackRef.current;
     if (

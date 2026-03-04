@@ -19,6 +19,7 @@ import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import { useWebSocketConnection } from '../connection-manager/websocket-connection-provider';
+import { useSnackbar } from '../providers/snackbar-provider';
 import type { ConnectionState } from '../connection-manager/websocket-connection-manager';
 import {
   END_SESSION as END_SESSION_GQL,
@@ -629,6 +630,19 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
   const canMutate = !viewOnlyMode && (sessionId ? isSessionReady : true);
 
+  const { showMessage } = useSnackbar();
+  // Ref to debounce the "blocked" toast so rapid taps don't spam
+  const lastBlockedToastRef = useRef(0);
+  const guardMutation = useCallback((): boolean => {
+    if (!sessionId || canMutate) return false;
+    const now = Date.now();
+    if (now - lastBlockedToastRef.current > 3000) {
+      showMessage('Reconnecting to session — try again in a moment.', 'warning');
+      lastBlockedToastRef.current = now;
+    }
+    return true;
+  }, [sessionId, canMutate, showMessage]);
+
   const contextValue: GraphQLQueueContextType = useMemo(
     () => ({
       queue: state.queue,
@@ -668,7 +682,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
 
       // Actions
       addToQueue: (climb: Climb) => {
-        if (sessionId && !canMutate) return;
+        if (guardMutation()) return;
         const newItem = createClimbQueueItem(climb, clientId, currentUserInfo);
 
         // Optimistic update
@@ -683,7 +697,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       removeFromQueue: (item: ClimbQueueItem) => {
-        if (sessionId && !canMutate) return;
+        if (guardMutation()) return;
         // Optimistic update
         dispatch({ type: 'DELTA_REMOVE_QUEUE_ITEM', payload: { uuid: item.uuid } });
 
@@ -696,7 +710,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       setCurrentClimb: async (climb: Climb) => {
-        if (sessionId && !canMutate) return;
+        if (guardMutation()) return;
         const newItem = createClimbQueueItem(climb, clientId, currentUserInfo);
 
         // Optimistic update
@@ -734,7 +748,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       setQueue: (queue) => {
-        if (sessionId && !canMutate) return;
+        if (guardMutation()) return;
         // Optimistic update
         dispatch({
           type: 'UPDATE_QUEUE',
@@ -753,7 +767,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       setCurrentClimbQueueItem: (item: ClimbQueueItem) => {
-        if (sessionId && !canMutate) return;
+        if (guardMutation()) return;
         // Generate correlation ID OUTSIDE reducer (keeps reducer pure)
         // Format: clientId-counter (e.g., "client-abc123-5")
         const correlationId = clientId ? `${clientId}-${++correlationCounterRef.current}` : undefined;
@@ -803,9 +817,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       },
 
       mirrorClimb: () => {
-        if (sessionId && !canMutate) {
-          return;
-        }
+        if (guardMutation()) return;
         if (!state.currentClimbQueueItem?.climb) {
           return;
         }
@@ -884,6 +896,7 @@ export const GraphQLQueueProvider = ({ parsedParams, boardDetails, children, bas
       isOffBoardMode,
       connectionState,
       canMutate,
+      guardMutation,
     ],
   );
 
