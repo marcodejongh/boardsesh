@@ -31,6 +31,7 @@ import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useColorMode } from '@/app/hooks/use-color-mode';
 import { ConfirmPopover } from '@/app/components/ui/confirm-popover';
 import styles from './queue-control-bar.module.css';
+import { ConnectionBanner } from './connection-banner';
 
 export type ActiveDrawer = 'none' | 'play' | 'queue';
 
@@ -274,6 +275,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
 
   return (
     <div id="onboarding-queue-bar" className={`queue-bar-shadow ${styles.queueBar}`} data-testid="queue-control-bar">
+      <ConnectionBanner />
       {/* Main Control Bar */}
       <MuiCard variant="outlined" className={styles.card} sx={{ border: 'none', backgroundColor: 'transparent' }}>
         <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>

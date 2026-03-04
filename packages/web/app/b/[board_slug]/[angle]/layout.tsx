@@ -7,6 +7,7 @@ import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { GraphQLQueueProvider } from '@/app/components/graphql-queue';
 import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';
+import { WebSocketConnectionProvider } from '@/app/components/connection-manager/websocket-connection-provider';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 import { BoardSessionBridge } from '@/app/components/persistent-session';
 import BoardPageSkeleton from '@/app/components/board-page/board-page-skeleton';
@@ -72,7 +73,8 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
       <BoardProvider boardName={parsedParams.board_name}>
         <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
           <ConnectionSettingsProvider>
-            <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
+            <WebSocketConnectionProvider>
+              <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
               <PartyProvider>
                 <BluetoothProvider boardDetails={boardDetails}>
                   <UISearchParamsProvider>
@@ -96,7 +98,8 @@ export default async function BoardSlugLayout(props: PropsWithChildren<{ params:
                   </UISearchParamsProvider>
                 </BluetoothProvider>
               </PartyProvider>
-            </GraphQLQueueProvider>
+              </GraphQLQueueProvider>
+            </WebSocketConnectionProvider>
           </ConnectionSettingsProvider>
         </BoardSessionBridge>
       </BoardProvider>

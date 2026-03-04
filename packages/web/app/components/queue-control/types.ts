@@ -1,5 +1,6 @@
 import { Climb, SearchRequestPagination, ParsedBoardRouteParameters } from '@/app/lib/types';
 import { SessionUser } from '@boardsesh/shared-schema';
+import type { ConnectionState } from '../connection-manager/websocket-connection-manager';
 
 export type PeerId = string | null;
 export type UserName = PeerId;
@@ -72,6 +73,8 @@ export interface QueueContextType {
   hasDoneFirstFetch: boolean;
   viewOnlyMode: boolean;
   parsedParams: ParsedBoardRouteParameters;
+  connectionState?: ConnectionState;
+  canMutate?: boolean;
   // Session-related fields (from GraphQL queue)
   users?: SessionUser[];
   clientId?: string | null;

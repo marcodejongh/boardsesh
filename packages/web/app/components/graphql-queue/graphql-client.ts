@@ -1,4 +1,5 @@
 import { createClient, Client, Sink } from 'graphql-ws';
+import { connectionManager, KEEP_ALIVE_MS } from '../connection-manager/websocket-connection-manager';
 
 export type { Client };
 
@@ -33,6 +34,7 @@ export interface GraphQLClientOptions {
   url: string;
   authToken?: string | null;
   onReconnect?: () => void;
+  connectionName?: string;
 }
 
 /**
@@ -53,7 +55,8 @@ export function createGraphQLClient(
     ? { url: urlOrOptions, onReconnect }
     : urlOrOptions;
 
-  const { url, authToken, onReconnect: onReconnectCallback } = options;
+  const { url, authToken, onReconnect: onReconnectCallback, connectionName } = options;
+  const managerConnectionName = connectionName ?? 'primary';
 
   const clientId = ++clientCounter;
 
@@ -77,7 +80,7 @@ export function createGraphQLClient(
     // Lazy connection - only connects when first subscription/mutation is made
     lazy: true,
     // Keep alive to detect disconnections
-    keepAlive: 10_000,
+    keepAlive: KEEP_ALIVE_MS,
     // Pass auth token in connection params for backend validation
     connectionParams: authToken ? { authToken } : undefined,
     on: {
@@ -97,6 +100,16 @@ export function createGraphQLClient(
       },
     },
   }) as ExtendedClient;
+
+  // Register with the centralized connection manager for proactive reconnection/health checks
+  if (typeof window !== 'undefined') {
+    const unregister = connectionManager.registerClient(client, managerConnectionName);
+    const originalDispose = client.dispose.bind(client);
+    client.dispose = () => {
+      unregister();
+      originalDispose();
+    };
+  }
 
   return client;
 }

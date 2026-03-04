@@ -793,6 +793,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           // Use ref for auth token - it's set once auth loading completes
           authToken: wsAuthTokenRef.current,
           onReconnect: handleReconnect,
+          connectionName: 'session',
         });
 
         if (!mountedRef.current) {

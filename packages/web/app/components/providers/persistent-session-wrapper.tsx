@@ -9,6 +9,7 @@ import QueueControlBar from '../queue-control/queue-control-bar';
 import BottomTabBar from '../bottom-tab-bar/bottom-tab-bar';
 import { BoardProvider } from '../board-provider/board-provider-context';
 import { ConnectionSettingsProvider } from '../connection-manager/connection-settings-context';
+import { WebSocketConnectionProvider } from '../connection-manager/websocket-connection-provider';
 import { BluetoothProvider } from '../board-bluetooth-control/bluetooth-context';
 import { FavoritesProvider } from '../climb-actions/favorites-batch-context';
 import { PlaylistsProvider } from '../climb-actions/playlists-batch-context';
@@ -73,9 +74,11 @@ function RootBottomBar({ boardConfigs }: { boardConfigs: BoardConfigData }) {
         <ErrorBoundary>
           <BoardProvider boardName={boardDetails.board_name}>
             <ConnectionSettingsProvider>
-              <BluetoothProvider boardDetails={boardDetails}>
-                <RootQueueControlBarWithProviders boardDetails={boardDetails} angle={angle} />
-              </BluetoothProvider>
+              <WebSocketConnectionProvider>
+                <BluetoothProvider boardDetails={boardDetails}>
+                  <RootQueueControlBarWithProviders boardDetails={boardDetails} angle={angle} />
+                </BluetoothProvider>
+              </WebSocketConnectionProvider>
             </ConnectionSettingsProvider>
           </BoardProvider>
         </ErrorBoundary>
