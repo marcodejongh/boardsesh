@@ -114,7 +114,7 @@ const QueueControlBar: React.FC<QueueControlBarProps> = ({ boardDetails, angle }
   const isDark = mode === 'dark';
   const gradeTintColor = useMemo(() => getGradeTintColor(currentClimb?.difficulty, 'default', isDark), [currentClimb?.difficulty, isDark]);
 
-  const isReconnecting = !!sessionId && (connectionState === 'reconnecting' || connectionState === 'stale' || connectionState === 'error');
+  const isReconnecting = !!sessionId && (connectionState === 'reconnecting' || connectionState === 'error');
 
   const nextClimb = getNextClimbQueueItem();
   const previousClimb = getPreviousClimbQueueItem();

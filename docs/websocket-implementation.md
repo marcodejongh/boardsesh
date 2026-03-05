@@ -857,8 +857,7 @@ graphql-ws Client(s)
 | `idle` | No clients registered |
 | `connecting` | Client is establishing a WebSocket connection |
 | `connected` | Client connected and receiving keep-alive pongs |
-| `reconnecting` | Connection lost — `graphql-ws` is retrying |
-| `stale` | No activity received within `STALE_GRACE_MS` |
+| `reconnecting` | Connection lost or stale — `graphql-ws` is retrying |
 | `error` | Client reported an error event |
 
 ### Health Check
@@ -894,7 +893,7 @@ On the server (`typeof window === 'undefined'`), the exported `connectionManager
 
 ### Reconnect UX
 
-The `QueueControlBar` reads connection state from the provider. When `state` is `reconnecting`, `stale`, or `error`:
+The `QueueControlBar` reads connection state from the provider. When `state` is `reconnecting` or `error`:
 
 1. The normal climb info is replaced with a spinner and "Reconnecting..." / "Connection error – retrying..." message.
 2. A "Cancel" button reveals a confirmation row: "Leave session" (calls `endSession` or `disconnect`) vs "Keep reconnecting".
