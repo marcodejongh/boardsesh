@@ -7,10 +7,8 @@ import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
 import type { ClimbQueueItem as LocalClimbQueueItem } from '../queue-control/types';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '../party-manager/party-profile-context';
-import { computeQueueStateHash } from '@/app/utils/hash';
 
 import type { PersistentSessionContextType, Session, ActiveSessionInfo, SharedRefs } from './types';
-import { DEBUG } from './types';
 import { useEventProcessor } from './hooks/use-event-processor';
 import { useQueueStorage } from './hooks/use-queue-storage';
 import { useQueueMutations } from './hooks/use-queue-mutations';
@@ -47,7 +45,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const isFilteringCorruptedItemsRef = useRef(false);
   const queueUnsubscribeRef = useRef<(() => void) | null>(null);
   const sessionUnsubscribeRef = useRef<(() => void) | null>(null);
-  const saveQueueTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveQueueTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queueEventSubscribersRef = useRef<Set<(event: SubscriptionQueueEvent) => void>>(new Set());
   const sessionEventSubscribersRef = useRef<Set<(event: SessionEvent) => void>>(new Set());
 
@@ -74,13 +72,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   useEffect(() => { queueRef.current = eventProcessor.queue; }, [eventProcessor.queue]);
   useEffect(() => { currentClimbQueueItemRef.current = eventProcessor.currentClimbQueueItem; }, [eventProcessor.currentClimbQueueItem]);
 
-  // Update state hash when queue changes (only when connected)
-  useEffect(() => {
-    if (!sessionRef.current) return;
-    if (isFilteringCorruptedItemsRef.current) return;
-    // Hash update is handled by use-session-subscriptions corruption check
-  }, [eventProcessor.queue, eventProcessor.currentClimbQueueItem]);
-
   // 2. Session lifecycle: connect/disconnect, join/leave
   const lifecycle = useSessionLifecycle({
     isAuthLoading,
@@ -94,8 +85,8 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   const queueStorage = useQueueStorage({
     activeSession: lifecycle.activeSession,
     setActiveSession: (val) => {
-      // The queue storage restore needs to activate sessions it finds
-      if (typeof val === 'function') return; // Should not happen
+      // The queue storage restore needs to activate sessions it finds in IndexedDB
+      if (typeof val === 'function') return;
       if (val) lifecycle.activateSession(val);
     },
   });

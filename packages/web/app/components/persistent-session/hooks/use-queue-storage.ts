@@ -38,7 +38,7 @@ export function useQueueStorage({ activeSession, setActiveSession }: UseQueueSto
   const [isLocalQueueLoaded, setIsLocalQueueLoaded] = useState(false);
 
   // Ref for debounced IndexedDB save timer
-  const saveQueueTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveQueueTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clean up old queues from IndexedDB on mount
   useEffect(() => {
