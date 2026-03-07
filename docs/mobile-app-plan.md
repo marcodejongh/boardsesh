@@ -1,113 +1,86 @@
-# Boardsesh Mobile App Development Plan
+# Boardsesh Mobile App Distribution Plan (Capacitor)
 
 ## Executive Summary
 
-This document outlines the implementation plan for building native Android and iOS apps using **React Native with Expo**. The plan prioritizes early validation of high-risk technical components and positions Party Mode (real-time collaboration) as a core differentiating feature.
+This document outlines the implementation plan for distributing Boardsesh as native Android and iOS apps using **Capacitor**. Rather than rebuilding the UI in React Native, Capacitor wraps the existing Next.js web app in a native WebView and provides native plugin access for features like Bluetooth Low Energy (BLE). This approach maximizes code reuse — the existing web app runs as-is inside the native shell, with the hosted URL pointing at `boardsesh.com`.
+
+**Key advantage over React Native:** Zero UI rewrite. The web app is the app. Native plugins bridge the gap for hardware features (BLE) that WebView doesn't support.
 
 ---
 
 ## Table of Contents
 
-1. [Technology Stack](#technology-stack)
-2. [Reusable Assets](#reusable-assets)
-3. [Components Requiring Rebuild](#components-requiring-rebuild)
-4. [Package Structure](#package-structure)
+1. [Architecture Overview](#architecture-overview)
+2. [Why Capacitor Over React Native](#why-capacitor-over-react-native)
+3. [Package Structure](#package-structure)
+4. [Web App Adaptations](#web-app-adaptations)
 5. [Implementation Milestones](#implementation-milestones)
-6. [Validation Strategy](#validation-strategy)
-7. [Risk Assessment](#risk-assessment)
-8. [Success Criteria](#success-criteria)
+6. [Bluetooth Strategy](#bluetooth-strategy)
+7. [App Store Distribution](#app-store-distribution)
+8. [Risk Assessment](#risk-assessment)
+9. [Success Criteria](#success-criteria)
 
 ---
 
-## Technology Stack
-
-| Concern | Library | Rationale |
-|---------|---------|-----------|
-| Framework | Expo SDK 52+ | Simplified native module management, OTA updates |
-| Navigation | Expo Router | File-based routing, deep linking built-in |
-| UI Library | Tamagui | Performance-focused, great theming, cross-platform |
-| Bluetooth | react-native-ble-plx | Mature, well-documented, handles iOS/Android differences |
-| SVG Rendering | react-native-svg | Direct port path from web SVG components |
-| Gestures | react-native-gesture-handler | Smooth drag-drop, pinch-zoom |
-| Animations | react-native-reanimated | 60fps animations, worklet-based |
-| State | React Context + useReducer | Same pattern as web, easy code sharing |
-| GraphQL HTTP | graphql-request | Lightweight, TypeScript-first |
-| GraphQL WS | graphql-ws | Same library as web, proven compatibility |
-| Data Fetching | @tanstack/react-query | Caching, background sync, same as web |
-| Offline Storage | expo-sqlite | Relational queries, better than AsyncStorage |
-| Secure Storage | expo-secure-store | Keychain/Keystore for tokens |
-| Forms | React Hook Form + Zod | Validation, same schemas as web |
-
----
-
-## Reusable Assets
-
-### Direct Reuse (No Changes)
-
-| Package | What's Reusable |
-|---------|-----------------|
-| `packages/backend` | Entire package - GraphQL API, WebSocket subscriptions |
-| `packages/shared-schema` | GraphQL schema, TypeScript types, operations |
-| `packages/db` | Server-side only, unchanged |
-
-### Reuse with Extraction
-
-Create `packages/shared-logic` to share:
+## Architecture Overview
 
 ```
-packages/shared-logic/
-├── src/
-│   ├── queue/
-│   │   ├── reducer.ts       # Queue state reducer (from web)
-│   │   ├── actions.ts       # Action creators
-│   │   └── types.ts         # Queue types
-│   ├── board/
-│   │   ├── hold-states.ts   # HOLD_STATE_MAP constants
-│   │   ├── colors.ts        # Color encoding utilities
-│   │   └── config.ts        # Board configurations
-│   ├── bluetooth/
-│   │   └── protocol.ts      # Packet framing, encoding (platform-agnostic)
-│   ├── climb/
-│   │   ├── transformers.ts  # Climb data utilities
-│   │   └── validators.ts    # Zod schemas
-│   └── index.ts
-└── package.json
+┌─────────────────────────────────────────────┐
+│                Native Shell                  │
+│  ┌───────────────────────────────────────┐   │
+│  │          Capacitor WebView            │   │
+│  │                                       │   │
+│  │   loads https://boardsesh.com         │   │
+│  │   (existing Next.js app, unchanged)   │   │
+│  │                                       │   │
+│  │   ┌─────────────────────────────┐     │   │
+│  │   │  Capacitor JS Bridge        │     │   │
+│  │   │  - BLE plugin               │     │   │
+│  │   │  - StatusBar                 │     │   │
+│  │   │  - Keyboard                  │     │   │
+│  │   │  - App (deep links)          │     │   │
+│  │   │  - KeepAwake                 │     │   │
+│  │   │  - PushNotifications         │     │   │
+│  │   │  - Haptics                   │     │   │
+│  │   └─────────────────────────────┘     │   │
+│  └───────────────────────────────────────┘   │
+│                                              │
+│  Native Layer (Swift / Kotlin)               │
+│  - BLE Central Manager                       │
+│  - Push notification handling                │
+│  - Deep link routing                         │
+│  - Status bar / safe area                    │
+└─────────────────────────────────────────────┘
 ```
 
-### Adapt from Web
+### Hosted Mode
 
-| Source | Adaptation Needed |
-|--------|-------------------|
-| `theme-config.ts` | Convert to Tamagui token format |
-| `graphql/operations.ts` | Already portable, just import |
-| URL slug encoding | Adapt for deep linking |
+The app operates in **hosted mode**: the Capacitor WebView loads the production URL (`https://boardsesh.com`). This means:
+
+- **Instant updates:** Web deployments to Vercel automatically update the app for all users — no app store review needed for UI/logic changes.
+- **Server-side rendering works:** Next.js SSR, API routes, and server components function normally.
+- **Requires internet:** The app needs a network connection. Offline support is handled by existing IndexedDB caching and a future service worker.
+- **Native plugins available:** Capacitor's JS bridge gives the web code access to native BLE, push notifications, haptics, etc. when running inside the native shell.
 
 ---
 
-## Components Requiring Rebuild
+## Why Capacitor Over React Native
 
-### UI Layer (Complete Rewrite)
+| Factor | Capacitor | React Native |
+|--------|-----------|--------------|
+| UI rewrite needed | **None** — existing web app runs as-is | Full rewrite of every screen/component |
+| Time to MVP | **2-4 weeks** | 4-6 months |
+| Code reuse | **~95%** — same codebase | ~30% (shared-logic, types, schemas) |
+| MUI components | **Keep all** | Replace with Tamagui/NativeBase |
+| SSR / API routes | **Work normally** (hosted mode) | Need separate API client layer |
+| Update speed | **Instant** via web deploy | App store review (1-7 days) |
+| BLE support | Via `@capacitor-community/bluetooth-le` | Via `react-native-ble-plx` |
+| Native feel | Good with proper meta tags/CSS | Excellent |
+| App store presence | Yes | Yes |
+| Bundle size | Small shell (~5MB) + web loads remotely | Larger (~30-50MB) |
+| Maintenance burden | **Low** — one codebase | High — two codebases diverge over time |
 
-| Web (Ant Design) | Mobile (Tamagui) |
-|------------------|------------------|
-| `<Drawer>` search | `<Sheet>` bottom sheet |
-| `<List>` queue | `<FlatList>` with drag handles |
-| `<Card>` climb | Custom `<ClimbCard>` |
-| `<Modal>` dialogs | `<Dialog>` or `<Sheet>` |
-| `<Form>` inputs | Tamagui `<Input>`, `<Select>` |
-| `<Tabs>` navigation | Expo Router tab layout |
-
-### Platform Features
-
-| Feature | Implementation |
-|---------|----------------|
-| Bluetooth | `react-native-ble-plx` with custom hooks |
-| Local storage | `expo-sqlite` with Drizzle ORM |
-| Deep linking | Expo Router linking config |
-| Push notifications | `expo-notifications` |
-| Haptics | `expo-haptics` on actions |
-| Wake lock | `expo-keep-awake` during climbing |
-| Background fetch | `expo-background-fetch` for sync |
+**Bottom line:** The web app already works well on mobile browsers. The primary reason for native apps is BLE on iOS (Safari doesn't support Web Bluetooth) and app store discoverability. Capacitor delivers both without rewriting the app.
 
 ---
 
@@ -116,380 +89,502 @@ packages/shared-logic/
 ```
 boardsesh/
 ├── packages/
-│   ├── web/                    # Existing (unchanged)
+│   ├── web/                    # Existing (minor adaptations)
 │   ├── backend/                # Existing (unchanged)
 │   ├── shared-schema/          # Existing (unchanged)
 │   ├── db/                     # Existing (unchanged)
 │   │
-│   ├── shared-logic/           # NEW: Extracted business logic
-│   │   ├── src/
-│   │   │   ├── queue/
-│   │   │   ├── board/
-│   │   │   ├── bluetooth/
-│   │   │   └── climb/
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   │
-│   └── mobile/                 # NEW: React Native app
-│       ├── app/                # Expo Router screens
-│       │   ├── (tabs)/
-│       │   │   ├── index.tsx           # Home/Board
-│       │   │   ├── search.tsx          # Search climbs
-│       │   │   ├── queue.tsx           # Queue management
-│       │   │   └── profile.tsx         # User profile
-│       │   ├── (auth)/
-│       │   │   ├── login.tsx
-│       │   │   └── register.tsx
-│       │   ├── party/
-│       │   │   ├── [sessionId].tsx     # Party session
-│       │   │   └── create.tsx          # Create session
-│       │   ├── climb/
-│       │   │   └── [uuid].tsx          # Climb detail
-│       │   └── _layout.tsx
-│       │
-│       ├── components/
-│       │   ├── board/
-│       │   │   ├── BoardRenderer.tsx   # SVG board display
-│       │   │   ├── HoldOverlay.tsx     # Interactive holds
-│       │   │   └── BoardControls.tsx   # Zoom, mirror
-│       │   ├── bluetooth/
-│       │   │   ├── ScanModal.tsx
-│       │   │   ├── ConnectionStatus.tsx
-│       │   │   └── SendButton.tsx
-│       │   ├── party/
-│       │   │   ├── UserList.tsx
-│       │   │   ├── SessionControls.tsx
-│       │   │   └── JoinSheet.tsx
-│       │   ├── queue/
-│       │   │   ├── QueueList.tsx
-│       │   │   ├── QueueItem.tsx
-│       │   │   └── CurrentClimb.tsx
-│       │   ├── search/
-│       │   │   ├── SearchSheet.tsx
-│       │   │   ├── FilterControls.tsx
-│       │   │   └── ResultsList.tsx
-│       │   └── common/
-│       │       ├── ClimbCard.tsx
-│       │       ├── GradeDisplay.tsx
-│       │       └── LoadingState.tsx
-│       │
-│       ├── contexts/
-│       │   ├── AuthContext.tsx
-│       │   ├── BluetoothContext.tsx
-│       │   ├── QueueContext.tsx
-│       │   └── PartyContext.tsx
-│       │
-│       ├── hooks/
-│       │   ├── useBluetooth.ts
-│       │   ├── usePartySession.ts
-│       │   ├── useClimbSearch.ts
-│       │   └── useQueue.ts
-│       │
-│       ├── services/
-│       │   ├── bluetooth/
-│       │   │   ├── BleManager.ts
-│       │   │   └── BoardProtocol.ts
-│       │   ├── graphql/
-│       │   │   ├── client.ts
-│       │   │   └── wsClient.ts
-│       │   └── storage/
-│       │       ├── database.ts
-│       │       └── secureStore.ts
-│       │
-│       ├── theme/
-│       │   └── tamagui.config.ts
-│       │
-│       ├── app.json
-│       ├── eas.json
+│   └── mobile/                 # NEW: Capacitor native shell
+│       ├── android/            # Android project (generated by Capacitor)
+│       │   ├── app/
+│       │   │   ├── src/main/
+│       │   │   │   ├── AndroidManifest.xml
+│       │   │   │   ├── java/.../MainActivity.java
+│       │   │   │   └── res/
+│       │   │   └── build.gradle
+│       │   └── build.gradle
+│       ├── ios/                # iOS project (generated by Capacitor)
+│       │   └── App/
+│       │       ├── App/
+│       │       │   ├── AppDelegate.swift
+│       │       │   ├── Info.plist
+│       │       │   └── capacitor.config.json
+│       │       └── App.xcworkspace
+│       ├── capacitor.config.ts # Capacitor configuration
 │       ├── package.json
 │       └── tsconfig.json
+```
+
+### capacitor.config.ts
+
+```typescript
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.boardsesh.app',
+  appName: 'Boardsesh',
+  // Hosted mode: load from production URL
+  server: {
+    url: 'https://boardsesh.com',
+    // Allow navigation within the app's domain
+    allowNavigation: ['boardsesh.com', '*.boardsesh.com'],
+  },
+  ios: {
+    // Use WKWebView (default, supports modern JS)
+    contentInset: 'automatic',
+    backgroundColor: '#121212', // Match dark theme
+    preferredContentMode: 'mobile',
+  },
+  android: {
+    // Allow mixed content for dev
+    allowMixedContent: true,
+    backgroundColor: '#121212',
+  },
+  plugins: {
+    StatusBar: {
+      style: 'dark',
+      backgroundColor: '#121212',
+    },
+    Keyboard: {
+      resize: 'body',
+      resizeOnFullScreen: true,
+    },
+    SplashScreen: {
+      launchAutoHide: true,
+      androidScaleType: 'CENTER_CROP',
+      splashFullScreen: true,
+      splashImmersive: true,
+      backgroundColor: '#121212',
+    },
+  },
+};
+
+export default config;
+```
+
+---
+
+## Web App Adaptations
+
+The web app needs minimal changes to work well inside the Capacitor shell. All changes are backward-compatible — the app continues to work in regular browsers.
+
+### 1. Detect Capacitor Environment
+
+```typescript
+// packages/web/app/lib/capacitor.ts
+export const isCapacitor = (): boolean =>
+  typeof window !== 'undefined' &&
+  window.Capacitor !== undefined;
+
+export const isNativeApp = (): boolean =>
+  isCapacitor() && window.Capacitor?.isNativePlatform();
+
+export const getPlatform = (): 'ios' | 'android' | 'web' =>
+  isCapacitor() ? window.Capacitor?.getPlatform() as 'ios' | 'android' : 'web';
+```
+
+### 2. BLE Abstraction Layer
+
+The existing `bluetooth.ts` uses Web Bluetooth API directly. We need an abstraction that uses the native BLE plugin when running in Capacitor and falls back to Web Bluetooth in regular browsers.
+
+See [Bluetooth Strategy](#bluetooth-strategy) for details.
+
+### 3. Remove X-Frame-Options for Capacitor
+
+The Capacitor WebView loads the site in a frame-like context. The current `X-Frame-Options: SAMEORIGIN` header in `next.config.mjs` needs to be relaxed for Capacitor requests. This can be done by checking the User-Agent or using a custom header:
+
+```typescript
+// In next.config.mjs headers()
+{
+  source: '/:path*',
+  headers: [
+    // Only set X-Frame-Options for non-Capacitor requests
+    // Capacitor WebView doesn't actually use iframes, so SAMEORIGIN
+    // usually works fine. Test and adjust if needed.
+    { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+    { key: 'X-Content-Type-Options', value: 'nosniff' },
+    { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+    { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  ],
+},
+```
+
+> Note: Capacitor's WKWebView on iOS and Android WebView don't load pages via iframes — they load the URL directly in the WebView. So `X-Frame-Options: SAMEORIGIN` should not cause issues. Verify during Milestone 0.
+
+### 4. Safe Area Insets
+
+Add CSS for device safe areas (notch, rounded corners):
+
+```css
+/* Already in the web app's global styles or MUI theme */
+:root {
+  --safe-area-top: env(safe-area-inset-top);
+  --safe-area-bottom: env(safe-area-inset-bottom);
+  --safe-area-left: env(safe-area-inset-left);
+  --safe-area-right: env(safe-area-inset-right);
+}
+```
+
+The app layout's top app bar and bottom navigation need to respect these insets. MUI's `AppBar` and `BottomNavigation` should add padding using these CSS variables when `isNativeApp()` is true.
+
+### 5. Deep Link Handling
+
+Configure Capacitor's App plugin to handle deep links:
+
+```typescript
+import { App } from '@capacitor/app';
+
+// Listen for deep links (boardsesh://climb/xxx, universal links)
+App.addListener('appUrlOpen', ({ url }) => {
+  const path = new URL(url).pathname;
+  router.push(path);
+});
+```
+
+### 6. Hide Web-Only Elements
+
+Some elements should be hidden in the native app:
+- Browser install prompts / PWA banners
+- "Use Bluefy for iOS Bluetooth" messages (native BLE works)
+- Any browser-specific instructions
+
+```typescript
+// Use isNativeApp() to conditionally render
+{!isNativeApp() && <BluefyBanner />}
 ```
 
 ---
 
 ## Implementation Milestones
 
-### Milestone 0: Technical Validation (2-3 weeks)
+### Milestone 0: Proof of Concept (1 week)
 
-> **Goal:** Prove feasibility of high-risk components before committing to full build
+> **Goal:** Verify that the existing web app loads correctly in Capacitor WebView on both platforms, and that native BLE plugin can connect to a board.
 
-**Validation Targets:**
+**Tasks:**
+- [ ] Initialize Capacitor project in `packages/mobile/`
+- [ ] Configure `capacitor.config.ts` with hosted URL (use staging/dev URL initially)
+- [ ] Add iOS and Android platforms
+- [ ] Build and run on iOS simulator (verify web app loads)
+- [ ] Build and run on Android emulator (verify web app loads)
+- [ ] Test on physical iOS device (verify web app loads, navigation works)
+- [ ] Test on physical Android device
+- [ ] Install `@capacitor-community/bluetooth-le` plugin
+- [ ] Write a minimal test: scan for Aurora boards, connect, send one LED command
+- [ ] Verify that Web Bluetooth still works in Android Chrome (no regressions)
+- [ ] Verify `X-Frame-Options` doesn't block Capacitor WebView
 
-| Component | Validation Criteria | Risk Level |
-|-----------|---------------------|------------|
-| Bluetooth | Connect to real board, send LED command | 🔴 High |
-| WebSocket | Establish graphql-ws connection, receive subscription | 🟡 Medium |
-| SVG Rendering | Render full board with 200+ holds, smooth zoom | 🟡 Medium |
-| Monorepo | shared-logic imports work in Expo | 🟢 Low |
-
-**Deliverables:**
-- [ ] Minimal Expo app with dev build
-- [ ] Connect to Kilter/Tension board via BLE
-- [ ] Send one climb's LED data successfully
-- [ ] WebSocket subscription receives queue updates
-- [ ] Board SVG renders with pinch-zoom
-- [ ] Shared-logic package imports work
-
-**Exit Criteria:** All validation targets pass on both iOS and Android physical devices
+**Exit Criteria:**
+- Web app loads and is fully functional in Capacitor on both platforms
+- Native BLE successfully connects to a Kilter or Tension board and lights LEDs on iOS
+- No regressions to the web app in regular browsers
 
 ---
 
-### Milestone 1: Foundation + Real-time Core (3-4 weeks)
+### Milestone 1: BLE Integration (1-2 weeks)
 
-> **Goal:** Establish app foundation with WebSocket infrastructure as first-class citizen
+> **Goal:** Replace Web Bluetooth with native BLE when running inside Capacitor, while maintaining Web Bluetooth for regular browser usage.
 
 **Tasks:**
-- [ ] Initialize Expo project with TypeScript
-- [ ] Configure monorepo integration (npm workspaces)
-- [ ] Set up Tamagui with design tokens from web
-- [ ] Create `shared-logic` package, extract queue reducer
-- [ ] Implement authentication flow
-  - [ ] Aurora login form
-  - [ ] Secure token storage (expo-secure-store)
-  - [ ] Auth context provider
-- [ ] Build GraphQL infrastructure
-  - [ ] HTTP client for queries/mutations
-  - [ ] WebSocket client for subscriptions
-  - [ ] Connection state management
-  - [ ] Automatic reconnection with backoff
-- [ ] Create tab navigation structure
-- [ ] Build placeholder screens
+- [ ] Create BLE abstraction layer (`packages/web/app/lib/ble/`)
+  - [ ] Define common interface (`BluetoothAdapter`)
+  - [ ] Implement `WebBluetoothAdapter` (wraps existing `navigator.bluetooth` code)
+  - [ ] Implement `CapacitorBleAdapter` (wraps `@capacitor-community/bluetooth-le`)
+  - [ ] Factory function that returns the right adapter based on environment
+- [ ] Port protocol logic (packet framing, encoding) to work with both adapters
+- [ ] Update `use-board-bluetooth.ts` to use the abstraction
+- [ ] Update `bluetooth-context.tsx`:
+  - [ ] Remove iOS/Bluefy-specific warnings when in Capacitor
+  - [ ] `isBluetoothSupported` returns `true` when in Capacitor on iOS
+- [ ] Handle BLE permissions on both platforms
+  - [ ] iOS: Request Bluetooth permission
+  - [ ] Android: Request location + Bluetooth permissions (Android 12+ vs older)
+- [ ] Test connect/disconnect/reconnect cycles
+- [ ] Test sending multiple climbs in sequence
+- [ ] Test BLE when app is backgrounded and foregrounded
 
-**Validation Checkpoint:**
-- [ ] User can log in with Aurora credentials
-- [ ] WebSocket connects and stays connected
-- [ ] Subscription receives test events
-- [ ] App handles network loss gracefully
+**Exit Criteria:**
+- BLE works reliably on iOS and Android via native plugin
+- Web Bluetooth continues to work in Chrome/Bluefy
+- Switching climbs auto-sends correct LEDs
+- Wake lock keeps screen on during session
 
 ---
 
-### Milestone 2: Party Mode - The Differentiator (3-4 weeks)
+### Milestone 2: Native Polish (1 week)
 
-> **Goal:** Deliver real-time collaboration early as key feature validation
+> **Goal:** Make the app feel native — proper status bar, splash screen, safe areas, deep links.
 
 **Tasks:**
-- [ ] Implement party session management
-  - [ ] Create session with board configuration
-  - [ ] Join via session ID or deep link
-  - [ ] Leave session cleanup
-- [ ] Build real-time queue sync
-  - [ ] Port queue reducer to shared-logic
-  - [ ] Subscribe to `queueUpdates`
-  - [ ] Handle all delta event types
-  - [ ] Optimistic updates with correlation tracking
-- [ ] Create party UI components
-  - [ ] User presence list with avatars
-  - [ ] Leader indicator
-  - [ ] Session controls (end, transfer leadership)
-  - [ ] Connection status indicator
-- [ ] Implement session events
-  - [ ] Subscribe to `sessionUpdates`
-  - [ ] User joined/left notifications
-  - [ ] Leader change handling
-- [ ] Deep linking for session invites
-  - [ ] `boardsesh://party/join/{sessionId}`
-  - [ ] Universal links for web fallback
+- [ ] Configure splash screen (icon, colors matching brand)
+- [ ] Configure app icons for all required sizes (iOS + Android)
+- [ ] Implement safe area inset handling in CSS
+- [ ] Configure status bar (dark/light based on theme)
+- [ ] Set up deep link handling
+  - [ ] `boardsesh://` custom scheme
+  - [ ] Universal links (iOS) / App links (Android) for `boardsesh.com`
+  - [ ] Handle party session join links
+  - [ ] Handle climb detail links
+- [ ] Add haptic feedback for key actions (via `@capacitor/haptics`)
+  - [ ] Climb sent to board
+  - [ ] Queue item added
+  - [ ] Bluetooth connected
+- [ ] Add `@capacitor/keyboard` for proper keyboard behavior
+- [ ] Add `@capacitor/app` for back button handling (Android)
+- [ ] Test pull-to-refresh behavior
+- [ ] Add loading state / offline fallback screen for when network is unavailable
 
-**Validation Checkpoint:**
-- [ ] Two devices can join same session
-- [ ] Queue changes sync in <500ms
-- [ ] User presence updates in real-time
-- [ ] Session survives app backgrounding
-- [ ] Deep link opens correct session
+**Exit Criteria:**
+- App looks and feels native (no web artifacts visible)
+- Deep links open correct screens
+- Status bar, safe areas, and keyboard behavior are correct
+- Haptic feedback on key interactions
 
 ---
 
-### Milestone 3: Board Visualization (3-4 weeks)
+### Milestone 3: Push Notifications (1 week)
 
-> **Goal:** Interactive board display with full touch support
+> **Goal:** Native push notifications for party invites, session events, and social interactions.
 
 **Tasks:**
-- [ ] Port SVG board renderer
-  - [ ] Convert web SVG to react-native-svg
-  - [ ] Render board background image
-  - [ ] Render hold overlays with state colors
-- [ ] Implement touch interactions
-  - [ ] Pinch-to-zoom with react-native-gesture-handler
-  - [ ] Pan/scroll when zoomed
-  - [ ] Hold tap detection
-  - [ ] Double-tap to reset zoom
-- [ ] Build climb display
-  - [ ] Current climb visualization
-  - [ ] Hold state colors (start, hand, foot, finish)
-  - [ ] Mirroring support
-- [ ] Create climb info components
-  - [ ] Climb card (name, grade, setter, stats)
-  - [ ] Climb detail modal
-  - [ ] Grade display with accuracy
+- [ ] Install `@capacitor/push-notifications`
+- [ ] Set up Firebase Cloud Messaging (Android)
+- [ ] Set up Apple Push Notification service (iOS)
+- [ ] Create backend endpoint to register device tokens
+- [ ] Implement push notification types:
+  - [ ] Party session invite
+  - [ ] Climb comment/reply
+  - [ ] New follower
+  - [ ] Session activity (someone joined/left)
+- [ ] Handle notification tap → deep link to relevant screen
+- [ ] Handle foreground notifications (in-app banner)
+- [ ] Implement notification permissions request flow
 
-**Validation Checkpoint:**
-- [ ] Board renders all holds correctly
-- [ ] Zoom/pan is smooth (60fps)
-- [ ] Hold colors match web exactly
-- [ ] Mirrored climbs display correctly
+**Exit Criteria:**
+- Push notifications arrive on both platforms
+- Tapping notification opens correct screen
+- Foreground notifications show as in-app banners
+- User can control notification preferences
 
 ---
 
-### Milestone 4: Bluetooth Integration (3-4 weeks)
+### Milestone 4: App Store Submission (1 week)
 
-> **Goal:** Connect to hardware and control LEDs
-
-**Tasks:**
-- [ ] Set up react-native-ble-plx
-  - [ ] Configure Expo dev build with native modules
-  - [ ] Request permissions (iOS/Android differences)
-  - [ ] Handle permission denied states
-- [ ] Implement device discovery
-  - [ ] Scan with Aurora service UUID filter
-  - [ ] Display discovered devices
-  - [ ] Remember last connected device
-- [ ] Build connection management
-  - [ ] Connect with timeout handling
-  - [ ] Monitor connection state
-  - [ ] Auto-reconnect on disconnect
-  - [ ] Background connection maintenance
-- [ ] Port Bluetooth protocol
-  - [ ] Extract to shared-logic (platform-agnostic)
-  - [ ] Packet framing (FIRST/MIDDLE/LAST)
-  - [ ] Color encoding (RGB to 8-bit)
-  - [ ] Position encoding
-- [ ] Create Bluetooth UI
-  - [ ] Scan modal with device list
-  - [ ] Connection status in header
-  - [ ] Send to board button
-  - [ ] Clear board action
-- [ ] Screen wake lock during session
-
-**Validation Checkpoint:**
-- [ ] Discovers Kilter and Tension boards
-- [ ] Connects reliably on iOS and Android
-- [ ] Sending climb lights correct holds
-- [ ] Reconnects after Bluetooth toggle
-- [ ] Works with screen locked (wake lock)
-
----
-
-### Milestone 5: Search & Queue Management (3-4 weeks)
-
-> **Goal:** Find climbs and manage local queue
+> **Goal:** Prepare and submit to both app stores.
 
 **Tasks:**
-- [ ] Build search interface
-  - [ ] Bottom sheet with filters
-  - [ ] Grade range slider
-  - [ ] Quality/stars filter
-  - [ ] Ascents minimum filter
-  - [ ] Setter name autocomplete
-  - [ ] Sort options
-- [ ] Implement search API integration
-  - [ ] Infinite scroll with React Query
-  - [ ] Debounced search input
-  - [ ] Result caching
-- [ ] Create queue management
-  - [ ] Queue list with drag-to-reorder
-  - [ ] Add from search results
-  - [ ] Remove with swipe
-  - [ ] Set as current climb
-  - [ ] Clear queue action
-- [ ] Local persistence
-  - [ ] Store queue in SQLite
-  - [ ] Restore on app launch
-  - [ ] Sync with party session
-
-**Validation Checkpoint:**
-- [ ] Search returns correct results
-- [ ] Filters work as expected
-- [ ] Drag reorder is smooth
-- [ ] Queue persists across app restarts
-- [ ] Queue syncs with party when connected
-
----
-
-### Milestone 6: Logbook & Progress (2-3 weeks)
-
-> **Goal:** Track climbing achievements
-
-**Tasks:**
-- [ ] Implement tick tracking
-  - [ ] Log ascent from climb view
-  - [ ] Log attempt
-  - [ ] Sync with server
-- [ ] Build logbook UI
-  - [ ] History list by date
-  - [ ] Filter by board/grade
-  - [ ] Climb detail from history
-- [ ] Add progress statistics
-  - [ ] Grades climbed chart
-  - [ ] Attempts vs sends ratio
-  - [ ] Streak tracking
-
-**Validation Checkpoint:**
-- [ ] Ticks save and sync
-- [ ] History displays correctly
-- [ ] Stats calculate accurately
-
----
-
-### Milestone 7: Polish & Launch (2-3 weeks)
-
-> **Goal:** Production readiness and app store submission
-
-**Tasks:**
-- [ ] Performance optimization
-  - [ ] Profile and fix slow renders
-  - [ ] Optimize SVG rendering
-  - [ ] Reduce bundle size
-- [ ] Error handling
-  - [ ] Sentry integration
-  - [ ] User-friendly error messages
-  - [ ] Crash recovery
-- [ ] Offline improvements
-  - [ ] Graceful degradation
-  - [ ] Offline queue edits
-  - [ ] Sync on reconnect
-- [ ] App store preparation
-  - [ ] App icons (all sizes)
-  - [ ] Splash screen
-  - [ ] Screenshots for store listings
-  - [ ] App descriptions
-  - [ ] Privacy policy
+- [ ] Create app store listings
+  - [ ] App description
+  - [ ] Screenshots (iPhone, iPad, Android phone, Android tablet)
+  - [ ] Feature graphic (Play Store)
+  - [ ] Keywords / categories
+- [ ] Prepare legal documents
+  - [ ] Privacy policy (what data is collected, BLE usage)
   - [ ] Terms of service
+- [ ] Configure app signing
+  - [ ] iOS: Certificates, provisioning profiles, App Store Connect
+  - [ ] Android: Keystore, Play Console setup
+- [ ] Set up CI/CD for app builds
+  - [ ] GitHub Actions workflow for building iOS (via Xcode Cloud or Fastlane)
+  - [ ] GitHub Actions workflow for building Android
+  - [ ] Automated version bumping
 - [ ] Beta testing
-  - [ ] TestFlight distribution
-  - [ ] Play Store internal testing
-  - [ ] Gather feedback
-- [ ] App store submission
+  - [ ] iOS TestFlight distribution
+  - [ ] Android Play Store internal testing track
+  - [ ] Gather feedback from 5-10 beta users
+- [ ] Submit to app stores
+  - [ ] Address any review feedback
+  - [ ] Plan for App Store review guidelines compliance
 
-**Validation Checkpoint:**
-- [ ] No crashes in beta testing
-- [ ] Performance targets met
-- [ ] App store review passed
+**Exit Criteria:**
+- Apps accepted and published on both stores
+- CI/CD pipeline builds and signs apps automatically
+- Beta feedback addressed
 
 ---
 
-## Validation Strategy
+## Bluetooth Strategy
 
-### Continuous Validation Practices
+### Current Architecture (Web Bluetooth)
 
-| Practice | Frequency | Purpose |
-|----------|-----------|---------|
-| Physical device testing | Daily | Catch platform-specific issues early |
-| Bluetooth hardware tests | Weekly | Verify protocol compatibility |
-| Party mode multi-device | Per milestone | Ensure real-time sync works |
-| Performance profiling | Per milestone | Catch regressions |
-| Beta user feedback | Milestones 5-7 | Real-world validation |
+```
+bluetooth.ts          → Packet encoding, framing (platform-agnostic)
+use-board-bluetooth.ts → React hook using navigator.bluetooth
+bluetooth-context.tsx  → React context providing BLE to the component tree
+```
 
-### Device Test Matrix
+### Target Architecture (Abstracted)
 
-| Platform | Devices | Priority |
-|----------|---------|----------|
-| iOS | iPhone 12+, iPhone SE | High |
-| Android | Pixel 6+, Samsung Galaxy S21+ | High |
-| Android | Budget Android (Redmi, etc.) | Medium |
+```
+packages/web/app/lib/ble/
+├── types.ts              # Common BluetoothAdapter interface
+├── web-adapter.ts        # Web Bluetooth implementation (existing logic)
+├── capacitor-adapter.ts  # Capacitor BLE plugin implementation
+├── adapter-factory.ts    # Returns correct adapter based on environment
+└── index.ts
 
-### Validation Gates
+packages/web/app/components/board-bluetooth-control/
+├── bluetooth.ts          # Protocol encoding (unchanged, platform-agnostic)
+├── use-board-bluetooth.ts # Updated to use BluetoothAdapter interface
+└── bluetooth-context.tsx  # Updated, removes Bluefy warnings in native
+```
 
-Each milestone has explicit validation checkpoints. **Do not proceed to next milestone until all checkpoints pass.**
+### BluetoothAdapter Interface
+
+```typescript
+// packages/web/app/lib/ble/types.ts
+export interface BluetoothAdapter {
+  /** Whether this adapter is available in the current environment */
+  isSupported(): boolean;
+
+  /** Scan for and connect to a board. Returns a connection handle. */
+  requestAndConnect(): Promise<BleConnection>;
+
+  /** Disconnect from the current device */
+  disconnect(): Promise<void>;
+
+  /** Write data to the board's UART characteristic */
+  write(data: Uint8Array): Promise<void>;
+
+  /** Register a callback for disconnection events */
+  onDisconnect(callback: () => void): void;
+}
+
+export interface BleConnection {
+  deviceId: string;
+  deviceName?: string;
+}
+```
+
+### Capacitor BLE Plugin Usage
+
+```typescript
+// packages/web/app/lib/ble/capacitor-adapter.ts
+import { BleClient, numberToUUID } from '@capacitor-community/bluetooth-le';
+
+const AURORA_SERVICE_UUID = '4488b571-7806-4df6-bcff-a2897e4953ff';
+const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const UART_WRITE_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+
+export class CapacitorBleAdapter implements BluetoothAdapter {
+  private deviceId: string | null = null;
+  private disconnectCallback: (() => void) | null = null;
+
+  isSupported(): boolean {
+    return true; // Always supported in native app
+  }
+
+  async requestAndConnect(): Promise<BleConnection> {
+    await BleClient.initialize();
+
+    // Request device (shows native scan dialog)
+    const device = await BleClient.requestDevice({
+      services: [AURORA_SERVICE_UUID],
+      optionalServices: [UART_SERVICE_UUID],
+    });
+
+    // Connect
+    await BleClient.connect(device.deviceId, () => {
+      this.disconnectCallback?.();
+    });
+
+    this.deviceId = device.deviceId;
+    return {
+      deviceId: device.deviceId,
+      deviceName: device.name,
+    };
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.deviceId) {
+      await BleClient.disconnect(this.deviceId);
+      this.deviceId = null;
+    }
+  }
+
+  async write(data: Uint8Array): Promise<void> {
+    if (!this.deviceId) throw new Error('Not connected');
+
+    // Split into 20-byte chunks (same as web implementation)
+    const chunkSize = 20;
+    for (let i = 0; i < data.length; i += chunkSize) {
+      const chunk = data.slice(i, i + chunkSize);
+      await BleClient.write(
+        this.deviceId,
+        UART_SERVICE_UUID,
+        UART_WRITE_UUID,
+        chunk,
+      );
+    }
+  }
+
+  onDisconnect(callback: () => void): void {
+    this.disconnectCallback = callback;
+  }
+}
+```
+
+### Protocol Layer (Unchanged)
+
+The existing `getBluetoothPacket()`, `splitMessages()`, and encoding functions in `bluetooth.ts` are already platform-agnostic — they work with `Uint8Array` and don't touch any browser APIs. They remain unchanged.
+
+---
+
+## App Store Distribution
+
+### App Store Review Considerations
+
+**Apple App Store:**
+- Apps that are primarily web wrappers may be rejected under guideline 4.2 (Minimum Functionality). Mitigation: The native BLE integration provides genuine native functionality that isn't available in Safari. The app is not a "thin client" — it enables hardware control that is impossible via the browser.
+- BLE usage description must clearly explain why the app needs Bluetooth access.
+- Privacy nutrition labels must accurately describe data collection.
+
+**Google Play Store:**
+- WebView apps are generally accepted if they provide value.
+- BLE permissions must be justified in the app listing.
+- Target API level requirements must be met (currently API 34+).
+
+### Version Strategy
+
+Since the web app updates independently of the native shell:
+- **Native shell version** (e.g., 1.0.0, 1.1.0): Bumped when native plugins, configs, or platform code changes. Requires app store review.
+- **Web app version**: Deploys via Vercel as usual. No app store review needed. Updates are instant for all users.
+
+In practice, the native shell should rarely need updates after initial launch — most changes happen in the web layer.
+
+### CI/CD Pipeline
+
+```yaml
+# .github/workflows/mobile-build.yml (simplified)
+name: Mobile Build
+on:
+  push:
+    paths:
+      - 'packages/mobile/**'
+    branches: [main]
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd packages/mobile && npm install
+      - run: npx cap sync android
+      - run: cd android && ./gradlew assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: packages/mobile/android/app/build/outputs/apk/release/
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd packages/mobile && npm install
+      - run: npx cap sync ios
+      - run: xcodebuild -workspace ios/App/App.xcworkspace -scheme App -archivePath build/App.xcarchive archive
+      # ... signing and export steps
+```
 
 ---
 
@@ -499,18 +594,19 @@ Each milestone has explicit validation checkpoints. **Do not proceed to next mil
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| BLE differences iOS vs Android | High | High | Milestone 0 validates both platforms |
-| WebSocket reliability on mobile | Medium | High | Robust reconnection in Milestone 1 |
-| SVG performance with many holds | Medium | Medium | Profile in Milestone 3, fallback to Skia |
-| Background Bluetooth on iOS | Medium | Medium | Test extensively, document limitations |
+| Apple rejects as "web wrapper" | Medium | High | BLE plugin provides genuine native functionality. Prepare appeal showing hardware integration. Document native features clearly in submission notes. |
+| Capacitor BLE plugin incompatibility with Aurora protocol | Low | High | Milestone 0 validates end-to-end BLE. Plugin uses CoreBluetooth (iOS) / Android BLE APIs directly. |
+| WebView performance on older devices | Low | Medium | Capacitor uses WKWebView (iOS) and modern Chromium WebView (Android). The web app already runs well in mobile browsers. |
+| Network dependency (hosted mode) | Medium | Low | Users are typically at their climbing gym with WiFi. Add offline fallback screen. Future: service worker for basic offline support. |
+| Deep link conflicts with other apps | Low | Low | Use unique `boardsesh://` scheme. Universal links / app links for `boardsesh.com`. |
 
 ### Schedule Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Milestone 0 fails validation | Low | Critical | Early validation prevents wasted effort |
-| BLE debugging takes longer | High | Medium | Buffer time built into Milestone 4 |
-| App store rejection | Medium | Low | Follow guidelines, submit early |
+| App store review delays | Medium | Low | Submit early, have contingency time. |
+| BLE edge cases on specific devices | Medium | Medium | Budget extra time in Milestone 1. Test on multiple physical devices. |
+| Safe area / CSS issues on specific devices | Low | Low | Test on notched and non-notched devices. |
 
 ---
 
@@ -518,32 +614,30 @@ Each milestone has explicit validation checkpoints. **Do not proceed to next mil
 
 ### MVP Definition
 
-The MVP includes Milestones 0-5:
-- ✅ Bluetooth board connection
-- ✅ Real-time party mode
-- ✅ Board visualization
-- ✅ Climb search
-- ✅ Queue management
+The MVP includes Milestones 0-2:
+- Native app shell loading the web app
+- BLE working on iOS (primary motivation) and Android
+- Native look and feel (safe areas, status bar, splash screen)
+- Deep linking for party sessions
 
-Logbook (Milestone 6) and polish (Milestone 7) complete the v1.0 release.
+Push notifications (Milestone 3) and app store submission (Milestone 4) complete the v1.0 release.
 
 ### Performance Targets
 
 | Metric | Target |
 |--------|--------|
-| App cold start | < 2 seconds |
-| Board render | < 500ms |
+| App launch to interactive | < 3 seconds (depends on network + web app load) |
 | BLE connection | < 5 seconds |
-| Search response | < 1 second |
-| Queue sync latency | < 500ms |
-| Frame rate | 60fps during interactions |
+| BLE LED send | < 1 second |
+| Native shell size | < 10 MB |
+| Memory usage | < 200 MB |
 
 ### Platform Requirements
 
 | Platform | Minimum Version |
 |----------|-----------------|
-| iOS | 15.0+ |
-| Android | API 29 (Android 10)+ |
+| iOS | 16.0+ (Capacitor 6 requirement) |
+| Android | API 22 (Android 5.1)+ / Target API 34+ |
 
 ---
 
@@ -554,33 +648,18 @@ Logbook (Milestone 6) and polish (Milestone 7) complete the v1.0 release.
 ```json
 {
   "dependencies": {
-    "expo": "~52.0.0",
-    "expo-router": "~4.0.0",
-    "react-native": "0.76.x",
-    "react": "18.3.x",
-
-    "tamagui": "^1.100.0",
-    "@tamagui/config": "^1.100.0",
-
-    "react-native-ble-plx": "^3.2.0",
-    "react-native-svg": "^15.0.0",
-    "react-native-gesture-handler": "~2.20.0",
-    "react-native-reanimated": "~3.16.0",
-
-    "graphql": "^16.8.0",
-    "graphql-request": "^7.0.0",
-    "graphql-ws": "^6.0.0",
-
-    "expo-secure-store": "~14.0.0",
-    "expo-sqlite": "~15.0.0",
-    "expo-keep-awake": "~14.0.0",
-    "expo-haptics": "~14.0.0",
-    "expo-notifications": "~0.29.0",
-
-    "@tanstack/react-query": "^5.0.0",
-    "zod": "^3.22.0",
-    "react-hook-form": "^7.50.0",
-    "@hookform/resolvers": "^3.3.0"
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/keyboard": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "@capacitor-community/bluetooth-le": "^6.0.0",
+    "@capacitor-community/keep-awake": "^5.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
   }
 }
 ```
@@ -590,49 +669,48 @@ Logbook (Milestone 6) and polish (Milestone 7) complete the v1.0 release.
 **iOS (Info.plist):**
 ```xml
 <key>NSBluetoothAlwaysUsageDescription</key>
-<string>Connect to your climbing board to control LED holds</string>
+<string>Boardsesh needs Bluetooth to connect to your climbing board and control LED holds</string>
 <key>NSBluetoothPeripheralUsageDescription</key>
-<string>Connect to your climbing board</string>
-<key>UIBackgroundModes</key>
-<array>
-  <string>bluetooth-central</string>
-</array>
+<string>Connect to your climbing board to control LED holds</string>
 ```
 
 **Android (AndroidManifest.xml):**
 ```xml
 <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+    android:usesPermissionFlags="neverForLocation" />
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<!-- For Android 11 and below -->
+<uses-permission android:name="android.permission.BLUETOOTH" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 ```
 
 ### Deep Linking Configuration
 
-```json
-{
-  "expo": {
-    "scheme": "boardsesh",
-    "web": {
-      "bundler": "metro"
-    },
-    "plugins": [
-      [
-        "expo-router",
-        {
-          "origin": "https://boardsesh.com"
-        }
-      ]
-    ]
-  }
-}
-```
+**Custom URL Scheme:**
+- `boardsesh://party/join/{sessionId}` — Join party session
+- `boardsesh://climb/{uuid}` — Open climb detail
+- `boardsesh://board/{boardName}/{layoutId}/{sizeId}/{setIds}/{angle}` — Open board config
 
-Supported deep links:
-- `boardsesh://party/join/{sessionId}` - Join party session
-- `boardsesh://climb/{uuid}` - Open climb detail
-- `boardsesh://board/{boardName}/{layoutId}/{sizeId}/{setIds}/{angle}` - Open board config
+**Universal Links (iOS) / App Links (Android):**
+- `https://boardsesh.com/party/{sessionId}` → opens app if installed
+- `https://boardsesh.com/{board}/{layout}/{size}/{set}/{angle}/climb/{uuid}` → opens app if installed
+- Requires `apple-app-site-association` file on `boardsesh.com` (iOS)
+- Requires `assetlinks.json` on `boardsesh.com` (Android)
+
+### Capacitor vs Web Feature Matrix
+
+| Feature | Web (Chrome) | Web (Safari iOS) | Capacitor iOS | Capacitor Android |
+|---------|-------------|------------------|---------------|-------------------|
+| BLE | Web Bluetooth | Not supported | Native plugin | Native plugin |
+| Push Notifications | Web Push | Limited | APNs | FCM |
+| Haptics | Not available | Not available | Native | Native |
+| Deep Links | N/A | N/A | Universal links | App links |
+| Wake Lock | Screen Wake Lock API | Not supported | KeepAwake plugin | KeepAwake plugin |
+| App Store Presence | N/A | N/A | App Store | Play Store |
 
 ---
 
-*Document version: 2.0*
-*Last updated: January 2026*
+*Document version: 3.0*
+*Last updated: March 2026*
+*Replaces: React Native / Expo plan (v2.0, January 2026)*
