@@ -10,7 +10,7 @@ import { getSizeEdges } from '../../../../db/queries/util/product-sizes-data';
 import { convertLitUpHoldsStringToMap } from '../../../../db/queries/util/hold-state';
 import { verifyPlaylistAccess } from '../helpers/enrichment';
 
-interface PlaylistClimbsInput {
+export interface PlaylistClimbsInput {
   playlistId: string;
   boardName?: string;
   layoutId?: number;
@@ -230,7 +230,7 @@ export const playlistClimbs = async (
   const pageSize = input.pageSize ?? 20;
 
   // Verify access (throws if denied)
-  const playlistId = await verifyPlaylistAccess(input.playlistId, ctx.userId);
+  const playlistId = await verifyPlaylistAccess(input.playlistId, ctx.userId ?? null);
 
   // Get total count
   const countResult = await db
