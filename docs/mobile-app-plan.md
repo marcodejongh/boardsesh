@@ -12,13 +12,17 @@ This document outlines the implementation plan for distributing Boardsesh as nat
 
 1. [Architecture Overview](#architecture-overview)
 2. [Why Capacitor Over React Native](#why-capacitor-over-react-native)
-3. [Package Structure](#package-structure)
-4. [Web App Adaptations](#web-app-adaptations)
-5. [Implementation Milestones](#implementation-milestones)
-6. [Bluetooth Strategy](#bluetooth-strategy)
-7. [App Store Distribution](#app-store-distribution)
-8. [Risk Assessment](#risk-assessment)
-9. [Success Criteria](#success-criteria)
+3. [Why Not Local/Bundled Mode](#why-not-localbundled-mode)
+4. [Package Structure](#package-structure)
+5. [Capacitor Bridge Injection Strategy](#capacitor-bridge-injection-strategy)
+6. [Web App Adaptations](#web-app-adaptations)
+7. [Authentication in WebView](#authentication-in-webview)
+8. [Implementation Milestones](#implementation-milestones)
+9. [Bluetooth Strategy](#bluetooth-strategy)
+10. [Development Workflow](#development-workflow)
+11. [App Store Distribution](#app-store-distribution)
+12. [Risk Assessment](#risk-assessment)
+13. [Success Criteria](#success-criteria)
 
 ---
 
@@ -81,6 +85,37 @@ The app operates in **hosted mode**: the Capacitor WebView loads the production 
 | Maintenance burden | **Low** — one codebase | High — two codebases diverge over time |
 
 **Bottom line:** The web app already works well on mobile browsers. The primary reason for native apps is BLE on iOS (Safari doesn't support Web Bluetooth) and app store discoverability. Capacitor delivers both without rewriting the app.
+
+---
+
+## Why Not Local/Bundled Mode
+
+An alternative to hosted mode would be bundling the Next.js app locally inside the Capacitor shell (Capacitor's default "local" mode with `output: 'export'`). This was evaluated and rejected because the Boardsesh app is **deeply server-dependent**:
+
+- **33 API routes** under `packages/web/app/api/` — auth, climb search, favorites, logbook, Aurora API proxying, data sync, WebSocket auth
+- **Server components with direct database queries** — e.g., `list/page.tsx` uses `cachedSearchClimbs()` which imports `'server-only'` and uses `unstable_cache` from Next.js
+- **GraphQL server-cached client** — uses `import 'server-only'`, `unstable_cache`, and `GraphQLClient` to query the backend from the server
+- **Middleware** (`middleware.ts`) for route validation
+- **Aurora API proxy routes** — proxies requests server-side to avoid CORS and protect credentials
+
+Next.js `output: 'export'` (static export) **does not support**: API routes, server components, middleware, `unstable_cache`, `cookies()`, `headers()`, or dynamic server-side rendering. Nearly every page uses at least one of these.
+
+Switching to local/bundled mode would require:
+1. Rewriting all 33 API routes as client-side service calls
+2. Converting all server components to client components
+3. Replicating the entire climb database (~1GB+ across Kilter, Tension, MoonBoard) into IndexedDB
+4. Rewriting authentication (can't use NextAuth server-side sessions)
+5. Rewriting data sync (Aurora API proxy routes can't run client-side)
+
+**Effort estimate: 3-6 months of rewrite** — far exceeding the scope of a mobile distribution strategy.
+
+### Hybrid Offline Strategy (Recommended)
+
+Instead of going fully local, keep hosted mode but add targeted offline resilience:
+1. **Add a service worker** for caching key pages and API responses
+2. **Use IndexedDB** (already in use) to cache the **current queue, recent climbs, and user preferences** — not the entire database
+3. **Add a native splash/offline screen** via Capacitor — shows branded screen while loading, with a cached queue view when offline
+4. Use the **Capacitor `Network` plugin** to detect connectivity and show a "reconnecting..." banner
 
 ---
 
@@ -161,6 +196,55 @@ const config: CapacitorConfig = {
 
 export default config;
 ```
+
+---
+
+## Capacitor Bridge Injection Strategy
+
+**Critical architectural decision:** In hosted mode, the Capacitor WebView loads `https://boardsesh.com` — a regular web app that doesn't bundle `@capacitor/core` or any Capacitor plugins. The Capacitor native bridge is injected into the WebView by the native shell, making `window.Capacitor` available. However, **plugin JS code** (e.g., `@capacitor-community/bluetooth-le`) also needs to be available in the page context.
+
+### How Plugin JS Gets Loaded
+
+In hosted mode, Capacitor automatically injects the core bridge and registered plugin JS into the WebView before the page loads. This means:
+
+1. **`window.Capacitor`** is available — the core bridge is injected by the native shell
+2. **Registered plugin classes** are available on `window.Capacitor.Plugins` — each native plugin registers its JS interface during injection
+3. **The web app does NOT need `@capacitor/core` or plugin packages as dependencies** — the JS bridge is injected, not bundled
+
+### Web Package Strategy
+
+The BLE abstraction layer in `packages/web/app/lib/ble/` should:
+
+- **Use `window.Capacitor.Plugins.BluetoothLe`** directly (or dynamic import) instead of importing from `@capacitor-community/bluetooth-le`
+- **Guard all Capacitor plugin access** with `isCapacitor()` checks
+- **Never add Capacitor packages to the web package's `dependencies`** — they add unnecessary bundle size for browser users and their JS isn't needed (the bridge injects it)
+
+```typescript
+// packages/web/app/lib/ble/capacitor-adapter.ts
+// Access the plugin via the injected bridge, not via npm import
+async function getBleClient() {
+  if (!isCapacitor()) throw new Error('Not in Capacitor');
+  // The plugin JS is injected by the native shell
+  const { BleClient } = await import('@capacitor-community/bluetooth-le');
+  return BleClient;
+}
+```
+
+> **Note:** If the dynamic import approach doesn't work in hosted mode (since the package isn't in node_modules on the web server), fall back to accessing `window.Capacitor.Plugins.BluetoothLe` directly and wrapping it with a typed interface. Validate this in Milestone 0.
+
+### Type Safety
+
+Install Capacitor plugin packages as **devDependencies** in the web package for TypeScript types only:
+
+```json
+{
+  "devDependencies": {
+    "@capacitor-community/bluetooth-le": "^6.0.0"
+  }
+}
+```
+
+This gives TypeScript type checking without adding anything to the production bundle.
 
 ---
 
@@ -255,11 +339,56 @@ Some elements should be hidden in the native app:
 
 ---
 
+## Authentication in WebView
+
+**This is a critical concern the plan must address.** The app uses NextAuth with JWT strategy, storing sessions in cookies (`__Secure-next-auth.session-token` and `next-auth.session-token`).
+
+### Cookie Behavior in WebViews
+
+| Platform | Cookie Jar | Persistence | Shared with Browser? |
+|----------|-----------|-------------|---------------------|
+| iOS WKWebView | Separate from Safari | May be cleared on app termination | No |
+| Android WebView | Separate from Chrome | Generally persistent | No |
+
+**Key implications:**
+- Users logged in via Safari/Chrome will **not** be logged in when they open the Capacitor app — they must log in again
+- WKWebView on iOS can lose cookies when the OS terminates the app process (memory pressure, user force-quit)
+- The `__Secure-` cookie prefix requires HTTPS, which works for production but complicates local development
+
+### WebSocket Auth Chain
+
+The real-time queue/party features use this auth flow:
+1. Web app calls `GET /api/internal/ws-auth` which reads the NextAuth session cookie via `getToken()`
+2. If the cookie is missing or expired, `getToken()` returns `null` → WebSocket connects without auth
+3. Backend receives `null` token → mutations and subscriptions that require auth fail silently
+
+**If cookies don't persist, users appear logged in (cached UI state in IndexedDB) but real-time features break.**
+
+### Mitigation Strategy
+
+1. **Milestone 0: Validate cookie persistence** — Test login → force-quit app → relaunch → verify session on both platforms
+2. **If cookies are unreliable, implement a fallback:**
+   - On successful login, store the JWT token in `@capacitor/preferences` (secure storage)
+   - On app launch, check if session cookie exists; if not, restore from secure storage
+   - Pass the stored token to WebSocket connection params as a backup
+3. **Session refresh:** Add logic to detect expired sessions and prompt re-login with a native-feeling sheet, not a full page redirect
+
+### CORS Considerations
+
+The backend CORS handler (`packages/backend/src/handlers/cors.ts`) whitelists specific origins:
+- iOS WKWebView loading `https://boardsesh.com` sends `Origin: https://boardsesh.com` — should work
+- Android WebView may send `Origin: null` for certain requests
+- The backend currently allows connections without an origin header (for native app support), which helps but should be combined with auth token validation for defense in depth
+
+**Action:** Verify Android WebView origin behavior in Milestone 0.
+
+---
+
 ## Implementation Milestones
 
-### Milestone 0: Proof of Concept (1 week)
+### Milestone 0: Proof of Concept + Auth Validation (2 weeks)
 
-> **Goal:** Verify that the existing web app loads correctly in Capacitor WebView on both platforms, and that native BLE plugin can connect to a board.
+> **Goal:** Verify the web app loads correctly in Capacitor WebView, native BLE plugin can connect, auth works end-to-end, and the Capacitor bridge injection strategy works in hosted mode.
 
 **Tasks:**
 - [ ] Initialize Capacitor project in `packages/mobile/`
@@ -269,62 +398,79 @@ Some elements should be hidden in the native app:
 - [ ] Build and run on Android emulator (verify web app loads)
 - [ ] Test on physical iOS device (verify web app loads, navigation works)
 - [ ] Test on physical Android device
+- [ ] **Auth validation:** Log in → force-quit app → relaunch → verify session persists (both platforms)
+- [ ] **Auth validation:** Verify WebSocket connection authenticates correctly in the WebView
+- [ ] **Auth validation:** If cookies are unreliable, prototype `@capacitor/preferences` token backup
+- [ ] **Bridge injection:** Verify `window.Capacitor` is available on page load in hosted mode
+- [ ] **Bridge injection:** Verify plugin classes are accessible via `window.Capacitor.Plugins`
+- [ ] **Bridge injection:** Test dynamic import vs direct `window.Capacitor.Plugins.BluetoothLe` access
 - [ ] Install `@capacitor-community/bluetooth-le` plugin
 - [ ] Write a minimal test: scan for Aurora boards, connect, send one LED command
 - [ ] Verify that Web Bluetooth still works in Android Chrome (no regressions)
 - [ ] Verify `X-Frame-Options` doesn't block Capacitor WebView
+- [ ] **CORS:** Verify Android WebView origin header behavior with the backend
+- [ ] **Bluefy banner:** Verify iOS detection behavior in WebView (confirm `isIOS` is true, `isBluetoothSupported` is false — must fix in Milestone 1)
 
 **Exit Criteria:**
 - Web app loads and is fully functional in Capacitor on both platforms
+- Auth works end-to-end: login, session persistence across app restarts, WebSocket auth
+- Bridge injection strategy validated (dynamic import or window.Capacitor.Plugins approach chosen)
 - Native BLE successfully connects to a Kilter or Tension board and lights LEDs on iOS
+- Android CORS behavior documented, no blockers
 - No regressions to the web app in regular browsers
 
 ---
 
-### Milestone 1: BLE Integration (1-2 weeks)
+### Milestone 1: BLE Integration (2-3 weeks)
 
 > **Goal:** Replace Web Bluetooth with native BLE when running inside Capacitor, while maintaining Web Bluetooth for regular browser usage.
 
 **Tasks:**
 - [ ] Create BLE abstraction layer (`packages/web/app/lib/ble/`)
-  - [ ] Define common interface (`BluetoothAdapter`)
+  - [ ] Define common interface (`BluetoothAdapter`) — see expanded interface below
   - [ ] Implement `WebBluetoothAdapter` (wraps existing `navigator.bluetooth` code)
-  - [ ] Implement `CapacitorBleAdapter` (wraps `@capacitor-community/bluetooth-le`)
+  - [ ] Implement `CapacitorBleAdapter` (wraps native BLE plugin via bridge injection strategy from Milestone 0)
   - [ ] Factory function that returns the right adapter based on environment
+- [ ] **Fix chunking responsibility:** The adapter's `write()` must handle all transport-level chunking internally. Remove `splitMessages()` from the call site in `use-board-bluetooth.ts`. Callers pass the full packet (`getBluetoothPacket()` output); the adapter splits it for transport.
 - [ ] Port protocol logic (packet framing, encoding) to work with both adapters
 - [ ] Update `use-board-bluetooth.ts` to use the abstraction
 - [ ] Update `bluetooth-context.tsx`:
-  - [ ] Remove iOS/Bluefy-specific warnings when in Capacitor
-  - [ ] `isBluetoothSupported` returns `true` when in Capacitor on iOS
+  - [ ] Remove iOS/Bluefy-specific warnings when `isNativeApp()` is true
+  - [ ] `isBluetoothSupported` returns `true` when `isCapacitor()` is true
+  - [ ] Hide Bluefy download banner in native app context
 - [ ] Handle BLE permissions on both platforms
   - [ ] iOS: Request Bluetooth permission
   - [ ] Android: Request location + Bluetooth permissions (Android 12+ vs older)
 - [ ] Test connect/disconnect/reconnect cycles
 - [ ] Test sending multiple climbs in sequence
 - [ ] Test BLE when app is backgrounded and foregrounded
+- [ ] Test on multiple physical devices (at least 2 iOS, 2 Android)
 
 **Exit Criteria:**
 - BLE works reliably on iOS and Android via native plugin
 - Web Bluetooth continues to work in Chrome/Bluefy
+- No double-chunking — verified by inspecting BLE traffic on a physical board
 - Switching climbs auto-sends correct LEDs
 - Wake lock keeps screen on during session
+- Bluefy banner hidden in Capacitor on iOS
 
 ---
 
-### Milestone 2: Native Polish (1 week)
+### Milestone 2: Native Polish (1.5 weeks)
 
-> **Goal:** Make the app feel native — proper status bar, splash screen, safe areas, deep links.
+> **Goal:** Make the app feel native — proper status bar, splash screen, safe areas, deep links, offline handling.
 
 **Tasks:**
-- [ ] Configure splash screen (icon, colors matching brand)
+- [ ] Configure splash screen (icon, colors matching brand) — dedicated native screen, not just WebView spinner
 - [ ] Configure app icons for all required sizes (iOS + Android)
 - [ ] Implement safe area inset handling in CSS
 - [ ] Configure status bar (dark/light based on theme)
 - [ ] Set up deep link handling
   - [ ] `boardsesh://` custom scheme
-  - [ ] Universal links (iOS) / App links (Android) for `boardsesh.com`
+  - [ ] Universal links (iOS) / App links (Android) for **specific paths only** (`/party/*`, `/invite/*`) — not the entire domain, to avoid hijacking all boardsesh.com links from users who prefer the browser
   - [ ] Handle party session join links
   - [ ] Handle climb detail links
+  - [ ] Add "Open in browser" option in the app
 - [ ] Add haptic feedback for key actions (via `@capacitor/haptics`)
   - [ ] Climb sent to board
   - [ ] Queue item added
@@ -332,49 +478,30 @@ Some elements should be hidden in the native app:
 - [ ] Add `@capacitor/keyboard` for proper keyboard behavior
 - [ ] Add `@capacitor/app` for back button handling (Android)
 - [ ] Test pull-to-refresh behavior
-- [ ] Add loading state / offline fallback screen for when network is unavailable
+- [ ] **Offline handling:**
+  - [ ] Install `@capacitor/network` plugin
+  - [ ] Add offline detection screen showing cached queue from IndexedDB
+  - [ ] Show "reconnecting..." banner when connectivity is lost mid-session
+  - [ ] Ensure app has *some* functionality without internet (cached queue view, BLE connection to board)
+- [ ] **Native crash reporting:** Add Sentry iOS/Android SDKs for crashes outside the WebView (BLE plugin crashes, WebView crashes)
 
 **Exit Criteria:**
 - App looks and feels native (no web artifacts visible)
-- Deep links open correct screens
+- Deep links open correct screens (scoped paths only)
 - Status bar, safe areas, and keyboard behavior are correct
 - Haptic feedback on key interactions
+- Offline screen shows cached content instead of blank page
+- Native crashes are reported to Sentry
 
 ---
 
-### Milestone 3: Push Notifications (1 week)
+### Milestone 3: App Store Submission (2 weeks)
 
-> **Goal:** Native push notifications for party invites, session events, and social interactions.
-
-**Tasks:**
-- [ ] Install `@capacitor/push-notifications`
-- [ ] Set up Firebase Cloud Messaging (Android)
-- [ ] Set up Apple Push Notification service (iOS)
-- [ ] Create backend endpoint to register device tokens
-- [ ] Implement push notification types:
-  - [ ] Party session invite
-  - [ ] Climb comment/reply
-  - [ ] New follower
-  - [ ] Session activity (someone joined/left)
-- [ ] Handle notification tap → deep link to relevant screen
-- [ ] Handle foreground notifications (in-app banner)
-- [ ] Implement notification permissions request flow
-
-**Exit Criteria:**
-- Push notifications arrive on both platforms
-- Tapping notification opens correct screen
-- Foreground notifications show as in-app banners
-- User can control notification preferences
-
----
-
-### Milestone 4: App Store Submission (1 week)
-
-> **Goal:** Prepare and submit to both app stores.
+> **Goal:** Prepare and submit to both app stores. Moved before push notifications — the app can ship without push for v1.0.
 
 **Tasks:**
 - [ ] Create app store listings
-  - [ ] App description
+  - [ ] App description emphasizing BLE board control (not "web wrapper")
   - [ ] Screenshots (iPhone, iPad, Android phone, Android tablet)
   - [ ] Feature graphic (Play Store)
   - [ ] Keywords / categories
@@ -388,18 +515,52 @@ Some elements should be hidden in the native app:
   - [ ] GitHub Actions workflow for building iOS (via Xcode Cloud or Fastlane)
   - [ ] GitHub Actions workflow for building Android
   - [ ] Automated version bumping
+- [ ] **Version handshake:** Add `NATIVE_SHELL_MIN_VERSION` to web app config. On launch, web app checks native shell version via `window.Capacitor` and shows "update your app" prompt if too old.
 - [ ] Beta testing
   - [ ] iOS TestFlight distribution
   - [ ] Android Play Store internal testing track
   - [ ] Gather feedback from 5-10 beta users
-- [ ] Submit to app stores
+- [ ] **App Store review preparation:**
+  - [ ] In review notes, guide Apple reviewers to BLE connection feature with video demo
+  - [ ] Highlight native features: BLE, haptics, offline mode, native splash screen
+  - [ ] Ensure the offline screen demonstrates the app isn't just a web wrapper
   - [ ] Address any review feedback
-  - [ ] Plan for App Store review guidelines compliance
+- [ ] Submit to app stores
 
 **Exit Criteria:**
 - Apps accepted and published on both stores
 - CI/CD pipeline builds and signs apps automatically
 - Beta feedback addressed
+- Version handshake works (old native shells prompt for update)
+
+---
+
+### Milestone 4: Push Notifications (2-3 weeks, post-launch)
+
+> **Goal:** Native push notifications for party invites, session events, and social interactions. This is a significant backend + frontend effort and can ship as a v1.1 update.
+
+**Tasks:**
+- [ ] Install `@capacitor/push-notifications`
+- [ ] **Backend: device token storage** — new database table for device tokens, user association, platform type
+- [ ] **Backend: push sending service** — Firebase Admin SDK (Android) + APNs (iOS)
+- [ ] Set up Firebase Cloud Messaging project (Android)
+- [ ] Set up Apple Push Notification service certificates/keys (iOS)
+- [ ] Create backend endpoints to register/unregister device tokens
+- [ ] Implement push notification types:
+  - [ ] Party session invite
+  - [ ] Climb comment/reply
+  - [ ] New follower
+  - [ ] Session activity (someone joined/left)
+- [ ] Handle notification tap → deep link to relevant screen
+- [ ] Handle foreground notifications (in-app banner)
+- [ ] Implement notification permissions request flow
+- [ ] Test both platforms in foreground, background, and killed states
+
+**Exit Criteria:**
+- Push notifications arrive on both platforms
+- Tapping notification opens correct screen
+- Foreground notifications show as in-app banners
+- User can control notification preferences
 
 ---
 
@@ -434,20 +595,36 @@ packages/web/app/components/board-bluetooth-control/
 ```typescript
 // packages/web/app/lib/ble/types.ts
 export interface BluetoothAdapter {
-  /** Whether this adapter is available in the current environment */
-  isSupported(): boolean;
+  /**
+   * Whether BLE is actually available and enabled (not just supported).
+   * On native: checks BleClient.isEnabled() — BLE can be disabled in device settings.
+   * On web: checks navigator.bluetooth existence.
+   */
+  isAvailable(): Promise<boolean>;
 
-  /** Scan for and connect to a board. Returns a connection handle. */
-  requestAndConnect(): Promise<BleConnection>;
+  /**
+   * Scan for and connect to a board. Returns a connection handle.
+   * Shows platform-appropriate device picker (Web Bluetooth dialog or native scan sheet).
+   */
+  requestAndConnect(serviceUUIDs: string[]): Promise<BleConnection>;
 
   /** Disconnect from the current device */
   disconnect(): Promise<void>;
 
-  /** Write data to the board's UART characteristic */
+  /**
+   * Write the COMPLETE packet to the board's UART characteristic.
+   * The adapter handles transport-level chunking internally (20-byte for default MTU,
+   * or larger if MTU negotiation succeeded).
+   *
+   * IMPORTANT: Callers pass the full output of getBluetoothPacket() — do NOT pre-chunk
+   * with splitMessages(). The adapter owns fragmentation.
+   */
   write(data: Uint8Array): Promise<void>;
 
-  /** Register a callback for disconnection events */
-  onDisconnect(callback: () => void): void;
+  /**
+   * Register a callback for disconnection events. Returns an unsubscribe function.
+   */
+  onDisconnect(callback: () => void): () => void;
 }
 
 export interface BleConnection {
@@ -469,24 +646,38 @@ const UART_WRITE_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 export class CapacitorBleAdapter implements BluetoothAdapter {
   private deviceId: string | null = null;
   private disconnectCallback: (() => void) | null = null;
+  private mtu = 20; // Default conservative MTU; updated after negotiation
 
-  isSupported(): boolean {
-    return true; // Always supported in native app
+  async isAvailable(): Promise<boolean> {
+    try {
+      await BleClient.initialize();
+      return await BleClient.isEnabled();
+    } catch {
+      return false;
+    }
   }
 
-  async requestAndConnect(): Promise<BleConnection> {
+  async requestAndConnect(serviceUUIDs: string[]): Promise<BleConnection> {
     await BleClient.initialize();
 
     // Request device (shows native scan dialog)
     const device = await BleClient.requestDevice({
-      services: [AURORA_SERVICE_UUID],
-      optionalServices: [UART_SERVICE_UUID],
+      services: [serviceUUIDs[0]],
+      optionalServices: serviceUUIDs.slice(1),
     });
 
     // Connect
     await BleClient.connect(device.deviceId, () => {
       this.disconnectCallback?.();
     });
+
+    // Negotiate larger MTU on Android (iOS negotiates automatically)
+    try {
+      const negotiatedMtu = await BleClient.requestMtu(device.deviceId, 512);
+      this.mtu = negotiatedMtu - 3; // MTU minus ATT header
+    } catch {
+      // MTU negotiation failed, use default 20
+    }
 
     this.deviceId = device.deviceId;
     return {
@@ -505,8 +696,9 @@ export class CapacitorBleAdapter implements BluetoothAdapter {
   async write(data: Uint8Array): Promise<void> {
     if (!this.deviceId) throw new Error('Not connected');
 
-    // Split into 20-byte chunks (same as web implementation)
-    const chunkSize = 20;
+    // Adapter owns chunking — callers pass the full packet from getBluetoothPacket().
+    // Chunk size based on negotiated MTU (default 20 bytes).
+    const chunkSize = this.mtu;
     for (let i = 0; i < data.length; i += chunkSize) {
       const chunk = data.slice(i, i + chunkSize);
       await BleClient.write(
@@ -518,15 +710,74 @@ export class CapacitorBleAdapter implements BluetoothAdapter {
     }
   }
 
-  onDisconnect(callback: () => void): void {
+  onDisconnect(callback: () => void): () => void {
     this.disconnectCallback = callback;
+    return () => { this.disconnectCallback = null; };
   }
 }
 ```
 
-### Protocol Layer (Unchanged)
+### Protocol Layer
 
-The existing `getBluetoothPacket()`, `splitMessages()`, and encoding functions in `bluetooth.ts` are already platform-agnostic — they work with `Uint8Array` and don't touch any browser APIs. They remain unchanged.
+The existing `getBluetoothPacket()` and encoding functions in `bluetooth.ts` are already platform-agnostic — they work with `Uint8Array` and don't touch any browser APIs. They remain unchanged.
+
+**Important change:** `splitMessages()` (which splits into 20-byte chunks) must be **moved into the adapters**, not called by the hook. The hook currently calls `splitMessages(bluetoothPacket)` then `writeCharacteristicSeries()`. After refactoring, the hook calls `adapter.write(fullPacket)` and the adapter handles chunking internally. This prevents double-chunking when the Capacitor adapter also splits, and allows the Capacitor adapter to use a larger chunk size via MTU negotiation.
+
+---
+
+## Development Workflow
+
+### Local Development Setup
+
+For day-to-day development, the Capacitor app points at the local dev server instead of production:
+
+```typescript
+// capacitor.config.dev.ts (not committed — or use environment variable)
+const config: CapacitorConfig = {
+  ...baseConfig,
+  server: {
+    url: 'http://LOCAL_IP:3000', // Use machine's LAN IP, not localhost
+    cleartext: true, // Allow HTTP for local dev
+  },
+};
+```
+
+Run with live reload:
+```bash
+# Start web dev server
+npm run dev
+
+# Run on iOS with live reload
+cd packages/mobile
+npx cap run ios --livereload --external
+
+# Run on Android with live reload
+npx cap run android --livereload --external
+```
+
+### BLE Testing
+
+BLE requires **physical devices** — simulators/emulators do not support Bluetooth:
+- **iOS:** Requires an Apple Developer account, provisioning profile, and a physical iPhone/iPad
+- **Android:** Enable USB debugging, connect via ADB
+- Test with at least one Kilter board and one Tension board if possible
+
+### Debugging
+
+- **iOS WebView:** Safari → Develop menu → select device → inspect WebView
+- **Android WebView:** Chrome → `chrome://inspect` → select device → inspect WebView
+- **Native logs:** Xcode console (iOS), Logcat (Android) — useful for BLE plugin debugging
+- **Network:** WebView network requests appear in Safari/Chrome DevTools just like regular browser requests
+
+### Device Testing Matrix
+
+| Device | OS Version | Screen | Purpose |
+|--------|-----------|--------|---------|
+| iPhone 13+ | iOS 16+ | Notched | Safe areas, primary iOS testing |
+| iPhone SE | iOS 16+ | Non-notched | Small screen, no safe area top |
+| iPad | iPadOS 16+ | Large | Tablet layout |
+| Pixel 6+ | Android 12+ | Standard | Primary Android testing |
+| Samsung Galaxy | Android 11 | Variable | Older Android, Samsung WebView quirks |
 
 ---
 
@@ -594,18 +845,24 @@ jobs:
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Apple rejects as "web wrapper" | Medium | High | BLE plugin provides genuine native functionality. Prepare appeal showing hardware integration. Document native features clearly in submission notes. |
+| Apple rejects as "web wrapper" | **High** | High | BLE provides native functionality, but reviewers may not encounter it. Mitigate with: native splash screen, offline mode, haptics, guided review notes with BLE video demo. |
+| WebView cookie/auth persistence issues | **High** | High | Milestone 0 validates auth end-to-end. Fallback: store JWT in `@capacitor/preferences` and restore on launch. |
+| Capacitor bridge injection in hosted mode | **Medium** | High | Milestone 0 validates plugin JS availability. Test both dynamic import and `window.Capacitor.Plugins` approaches. |
+| BLE double-chunking in adapter layer | **Medium** | High | Adapter owns all chunking. Verify with physical board that LED patterns are correct. |
 | Capacitor BLE plugin incompatibility with Aurora protocol | Low | High | Milestone 0 validates end-to-end BLE. Plugin uses CoreBluetooth (iOS) / Android BLE APIs directly. |
 | WebView performance on older devices | Low | Medium | Capacitor uses WKWebView (iOS) and modern Chromium WebView (Android). The web app already runs well in mobile browsers. |
-| Network dependency (hosted mode) | Medium | Low | Users are typically at their climbing gym with WiFi. Add offline fallback screen. Future: service worker for basic offline support. |
-| Deep link conflicts with other apps | Low | Low | Use unique `boardsesh://` scheme. Universal links / app links for `boardsesh.com`. |
+| Network dependency (hosted mode) | Medium | Medium | Offline detection screen with cached queue. Service worker for API response caching. |
+| Android WebView CORS origin issues | Medium | Medium | Verify in Milestone 0. Backend allows null origin but should validate auth token. |
+| Version mismatch between web and native shell | Medium | Medium | Version handshake on launch; "update your app" prompt for old shells. |
 
 ### Schedule Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| App store review delays | Medium | Low | Submit early, have contingency time. |
-| BLE edge cases on specific devices | Medium | Medium | Budget extra time in Milestone 1. Test on multiple physical devices. |
+| App store review delays | Medium | Medium | Submit early, have contingency time. Budget 2 weeks for review cycles. |
+| BLE edge cases on specific devices | **High** | Medium | Budget extra time in Milestone 1. Test on multiple physical devices (see device matrix). |
+| Auth/cookie debugging in WebView | **High** | Medium | Budget extra time in Milestone 0. Cookie persistence varies by OS version. |
+| Push notification backend scope creep | Medium | Medium | Defer to v1.1 post-launch. Ship MVP without push. |
 | Safe area / CSS issues on specific devices | Low | Low | Test on notched and non-notched devices. |
 
 ---
@@ -614,13 +871,17 @@ jobs:
 
 ### MVP Definition
 
-The MVP includes Milestones 0-2:
-- Native app shell loading the web app
-- BLE working on iOS (primary motivation) and Android
-- Native look and feel (safe areas, status bar, splash screen)
-- Deep linking for party sessions
+The MVP includes Milestones 0-2 (~6.5 weeks):
+- Native app shell loading the web app with validated auth persistence
+- BLE working on iOS (primary motivation) and Android via abstraction layer
+- Native look and feel (safe areas, status bar, splash screen, haptics)
+- Deep linking for party sessions (scoped paths, not entire domain)
+- Offline fallback screen with cached queue
 
-Push notifications (Milestone 3) and app store submission (Milestone 4) complete the v1.0 release.
+Milestone 3 (App Store submission, ~2 weeks) completes the v1.0 release.
+Push notifications (Milestone 4) ship as a v1.1 update post-launch.
+
+**Realistic total timeline: 10-13 weeks** (including app store review cycles and device-specific debugging).
 
 ### Performance Targets
 
@@ -656,7 +917,8 @@ Push notifications (Milestone 3) and app store submission (Milestone 4) complete
     "@capacitor/splash-screen": "^6.0.0",
     "@capacitor/status-bar": "^6.0.0",
     "@capacitor-community/bluetooth-le": "^6.0.0",
-    "@capacitor-community/keep-awake": "^5.0.0"
+    "@capacitor-community/keep-awake": "^6.0.0",
+    "@capacitor/network": "^6.0.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.0.0"
@@ -693,10 +955,12 @@ Push notifications (Milestone 3) and app store submission (Milestone 4) complete
 - `boardsesh://board/{boardName}/{layoutId}/{sizeId}/{setIds}/{angle}` — Open board config
 
 **Universal Links (iOS) / App Links (Android):**
-- `https://boardsesh.com/party/{sessionId}` → opens app if installed
-- `https://boardsesh.com/{board}/{layout}/{size}/{set}/{angle}/climb/{uuid}` → opens app if installed
+- `https://boardsesh.com/party/*` → opens app if installed (party session links only)
+- `https://boardsesh.com/invite/*` → opens app if installed (invite links only)
+- **Do NOT register the entire `boardsesh.com` domain** — this would hijack all links and prevent users from using the website in their browser
 - Requires `apple-app-site-association` file on `boardsesh.com` (iOS)
 - Requires `assetlinks.json` on `boardsesh.com` (Android)
+- Include "Open in browser" option in the app for users who prefer the web
 
 ### Capacitor vs Web Feature Matrix
 
@@ -711,6 +975,31 @@ Push notifications (Milestone 3) and app store submission (Milestone 4) complete
 
 ---
 
-*Document version: 3.0*
+*Document version: 4.0*
 *Last updated: March 2026*
-*Replaces: React Native / Expo plan (v2.0, January 2026)*
+*Replaces: v3.0 (March 2026) — updated after adversarial review*
+
+### Changelog (v3.0 → v4.0)
+
+**Critical fixes:**
+- Added "Capacitor Bridge Injection Strategy" section — explains how plugin JS loads in hosted mode
+- Added "Authentication in WebView" section — cookie persistence, WebSocket auth chain, CORS
+- Fixed BLE double-chunking bug — adapter's `write()` now owns all transport-level chunking
+- Expanded `BluetoothAdapter` interface — `isAvailable()`, `serviceUUIDs` param, MTU negotiation, unsubscribe pattern
+- Added "Why Not Local/Bundled Mode" section — documents why static export is infeasible
+
+**High severity fixes:**
+- Milestone 0 expanded to 2 weeks — includes auth validation, bridge injection testing, CORS verification, Bluefy banner check
+- Milestone 1 expanded to 2-3 weeks — includes chunking fix, device matrix testing
+- Added "Development Workflow" section — local dev, BLE testing, debugging, device matrix
+- Deep links scoped to specific paths (`/party/*`, `/invite/*`) — not entire domain
+- App Store risk upgraded from Medium to High with concrete mitigations
+
+**Medium fixes:**
+- Added offline fallback screen and `@capacitor/network` plugin to Milestone 2
+- Reordered milestones: App Store submission (M3) before Push Notifications (M4)
+- Push notifications expanded to 2-3 weeks and deferred to post-launch v1.1
+- Fixed `@capacitor-community/keep-awake` version from ^5.0.0 to ^6.0.0
+- Added native Sentry SDKs for crash reporting outside WebView
+- Added version handshake between web and native shell
+- Timeline updated from 5-6 weeks to 10-13 weeks realistic estimate
