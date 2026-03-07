@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation'; // Used by useIsOnBoardRoute
+import { useQueryClient } from '@tanstack/react-query';
 import { createGraphQLClient, execute, subscribe, Client } from '../graphql-queue/graphql-client';
 import {
   INITIAL_RETRY_DELAY_MS,
@@ -40,7 +41,8 @@ import {
   END_SESSION as END_SESSION_GQL,
   type EndSessionResponse,
 } from '@/app/lib/graphql/operations/sessions';
-import type { SessionLiveStats, SessionSummary } from '@boardsesh/shared-schema';
+import type { SessionDetail, SessionSummary } from '@boardsesh/shared-schema';
+import { SESSION_DETAIL_QUERY_KEY } from '@/app/hooks/use-session-detail';
 import {
   evaluateQueueEventSequence,
   insertQueueItemIdempotent,
@@ -214,7 +216,6 @@ export interface PersistentSessionContextType {
 
   // Session ending with summary (elevated from GraphQLQueueProvider)
   endSessionWithSummary: () => void;
-  liveSessionStats: SessionLiveStats | null;
   sessionSummary: SessionSummary | null;
   dismissSessionSummary: () => void;
 }
@@ -224,6 +225,7 @@ const PersistentSessionContext = createContext<PersistentSessionContextType | un
 export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token: wsAuthToken, isLoading: isAuthLoading } = useWsAuthToken();
   const { username, avatarUrl } = usePartyProfile();
+  const queryClient = useQueryClient();
 
   // Use refs for values that shouldn't trigger reconnection
   // These values are used during connection but changes shouldn't cause reconnect
@@ -280,7 +282,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     currentClimb: LocalClimbQueueItem | null;
     sessionName?: string;
   } | null>(null);
-  const [liveSessionStats, setLiveSessionStats] = useState<SessionLiveStats | null>(null);
 
   // Refs for cleanup and callbacks
   const queueUnsubscribeRef = useRef<(() => void) | null>(null);
@@ -530,20 +531,62 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   // Handle session events internally
   const handleSessionEvent = useCallback((event: SessionEvent) => {
     if (event.__typename === 'SessionStatsUpdated') {
-      setLiveSessionStats({
-        sessionId: event.sessionId,
-        totalSends: event.totalSends,
-        totalFlashes: event.totalFlashes,
-        totalAttempts: event.totalAttempts,
-        tickCount: event.tickCount,
-        participants: event.participants,
-        gradeDistribution: event.gradeDistribution,
-        boardTypes: event.boardTypes,
-        hardestGrade: event.hardestGrade,
-        durationMinutes: event.durationMinutes,
-        goal: event.goal,
-        ticks: event.ticks,
+      const queryKey = SESSION_DETAIL_QUERY_KEY(event.sessionId);
+
+      queryClient.setQueryData<SessionDetail | null>(queryKey, (prev) => {
+        const ticks = event.ticks;
+        const firstTickAt = ticks.length > 0
+          ? ticks[ticks.length - 1].climbedAt
+          : (prev?.firstTickAt ?? new Date().toISOString());
+        const lastTickAt = ticks.length > 0
+          ? ticks[0].climbedAt
+          : (prev?.lastTickAt ?? new Date().toISOString());
+
+        if (!prev) {
+          // Seed cache when no HTTP fetch has completed yet
+          return {
+            sessionId: event.sessionId,
+            sessionType: 'party',
+            sessionName: null,
+            ownerUserId: null,
+            participants: event.participants,
+            totalSends: event.totalSends,
+            totalFlashes: event.totalFlashes,
+            totalAttempts: event.totalAttempts,
+            tickCount: event.tickCount,
+            gradeDistribution: event.gradeDistribution,
+            boardTypes: event.boardTypes,
+            hardestGrade: event.hardestGrade,
+            firstTickAt,
+            lastTickAt,
+            durationMinutes: event.durationMinutes,
+            goal: event.goal,
+            ticks,
+            upvotes: 0,
+            downvotes: 0,
+            voteScore: 0,
+            commentCount: 0,
+          };
+        }
+
+        return {
+          ...prev,
+          participants: event.participants,
+          totalSends: event.totalSends,
+          totalFlashes: event.totalFlashes,
+          totalAttempts: event.totalAttempts,
+          tickCount: event.tickCount,
+          gradeDistribution: event.gradeDistribution,
+          boardTypes: event.boardTypes,
+          hardestGrade: event.hardestGrade,
+          durationMinutes: event.durationMinutes,
+          goal: event.goal,
+          ticks,
+          firstTickAt,
+          lastTickAt,
+        };
       });
+
       notifySessionSubscribers(event);
       return;
     }
@@ -573,7 +616,12 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
           };
         case 'SessionEnded':
           if (DEBUG) console.log('[PersistentSession] Session ended:', event.reason);
-          setLiveSessionStats(null);
+          // Invalidate session detail cache
+          if (activeSessionRef.current?.sessionId) {
+            queryClient.removeQueries({
+              queryKey: SESSION_DETAIL_QUERY_KEY(activeSessionRef.current.sessionId),
+            });
+          }
           // Clear persisted session so it's not auto-restored on next page load
           removePreference(ACTIVE_SESSION_KEY).catch(() => {});
           return prev;
@@ -584,15 +632,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
 
     // Notify external subscribers
     notifySessionSubscribers(event);
-  }, [notifySessionSubscribers]);
-
-  // Reset live stats when active session changes or clears.
-  useEffect(() => {
-    setLiveSessionStats((prev) => {
-      if (!activeSession) return null;
-      return prev?.sessionId === activeSession.sessionId ? prev : null;
-    });
-  }, [activeSession]);
+  }, [notifySessionSubscribers, queryClient]);
 
   // Connect to session when activeSession changes
   useEffect(() => {
@@ -1052,7 +1092,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     setActiveSession(null);
     setQueueState([]);
     setCurrentClimbQueueItem(null);
-    setLiveSessionStats(null);
     // Clear persisted session from IndexedDB
     removePreference(ACTIVE_SESSION_KEY).catch((err) =>
       console.error('[PersistentSession] Failed to clear persisted session:', err),
@@ -1305,7 +1344,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       subscribeToSessionEvents,
       triggerResync,
       endSessionWithSummary,
-      liveSessionStats,
       sessionSummary,
       dismissSessionSummary,
     }),
@@ -1337,7 +1375,6 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
       subscribeToSessionEvents,
       triggerResync,
       endSessionWithSummary,
-      liveSessionStats,
       sessionSummary,
       dismissSessionSummary,
     ],

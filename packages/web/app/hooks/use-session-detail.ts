@@ -113,6 +113,7 @@ export function useSessionDetail({
   return {
     session: enabled ? (query.data ?? null) : (initialData ?? null),
     isLoading: query.isLoading,
+    isError: query.isError,
     updateSession,
     addUser,
     removeUser,

@@ -8,19 +8,13 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import StopCircleOutlined from '@mui/icons-material/StopCircleOutlined';
 import Divider from '@mui/material/Divider';
-import { useQuery } from '@tanstack/react-query';
 import SwipeableDrawer from '@/app/components/swipeable-drawer/swipeable-drawer';
 import AngleSelector from '@/app/components/board-page/angle-selector';
 import { usePersistentSession } from '@/app/components/persistent-session/persistent-session-context';
 import { useQueueBridgeBoardInfo } from '@/app/components/queue-control/queue-bridge-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { themeTokens } from '@/app/theme/theme-config';
-import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
-import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
-import {
-  GET_SESSION_DETAIL,
-  type GetSessionDetailQueryResponse,
-} from '@/app/lib/graphql/operations/activity-feed';
+import { useSessionDetail } from '@/app/hooks/use-session-detail';
 import type { SessionDetail } from '@boardsesh/shared-schema';
 import SessionDetailContent from '@/app/session/[sessionId]/session-detail-content';
 
@@ -30,9 +24,8 @@ interface SeshSettingsDrawerProps {
 }
 
 export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawerProps) {
-  const { activeSession, session, users, endSessionWithSummary, liveSessionStats } = usePersistentSession();
+  const { activeSession, session, users, endSessionWithSummary } = usePersistentSession();
   const { boardDetails, angle } = useQueueBridgeBoardInfo();
-  const { token: authToken } = useWsAuthToken();
   const router = useRouter();
   const pathname = usePathname();
   const sessionId = activeSession?.sessionId ?? null;
@@ -56,22 +49,12 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
     onClose();
   }, [endSessionWithSummary, onClose]);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['activeSessionDetail', sessionId],
-    queryFn: async () => {
-      const client = createGraphQLHttpClient(authToken);
-      return client.request<GetSessionDetailQueryResponse>(GET_SESSION_DETAIL, { sessionId });
-    },
-    enabled: open && !!sessionId && !!authToken,
-    staleTime: 5000,
-    refetchOnWindowFocus: false,
+  // Use the canonical useSessionDetail hook — its React Query cache is kept
+  // up-to-date by WebSocket SessionStatsUpdated events in persistent-session-context.
+  const { session: sessionDetail, isLoading, isError } = useSessionDetail({
+    sessionId: sessionId ?? undefined,
+    enabled: open && !!sessionId,
   });
-
-  const sessionDetail = data?.sessionDetail ?? null;
-  const mergedStats = useMemo(() => {
-    if (liveSessionStats?.sessionId !== sessionId) return null;
-    return liveSessionStats;
-  }, [liveSessionStats, sessionId]);
 
   // Capture a stable timestamp once when the active session first becomes
   // relevant, so that unrelated dep changes don't regenerate different values.
@@ -127,37 +110,7 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
     };
   }, [activeSession, sessionId, sessionDetail, session?.startedAt, session?.name, session?.goal, users, boardDetails?.board_name]);
 
-  const sessionForView = useMemo<SessionDetail | null>(() => {
-    const base = sessionDetail ?? fallbackSession;
-    if (!base) return null;
-
-    if (!mergedStats) return base;
-
-    const mergedTicks = mergedStats.ticks;
-    const firstTickAt = mergedTicks.length > 0
-      ? mergedTicks[mergedTicks.length - 1].climbedAt
-      : base.firstTickAt;
-    const lastTickAt = mergedTicks.length > 0
-      ? mergedTicks[0].climbedAt
-      : base.lastTickAt;
-
-    return {
-      ...base,
-      participants: mergedStats.participants,
-      totalSends: mergedStats.totalSends,
-      totalFlashes: mergedStats.totalFlashes,
-      totalAttempts: mergedStats.totalAttempts,
-      tickCount: mergedStats.tickCount,
-      gradeDistribution: mergedStats.gradeDistribution,
-      boardTypes: mergedStats.boardTypes,
-      hardestGrade: mergedStats.hardestGrade,
-      durationMinutes: mergedStats.durationMinutes,
-      goal: mergedStats.goal,
-      firstTickAt,
-      lastTickAt,
-      ticks: mergedTicks,
-    };
-  }, [sessionDetail, fallbackSession, mergedStats]);
+  const displaySession = sessionDetail ?? fallbackSession;
 
   if (!activeSession) return null;
 
@@ -193,7 +146,7 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
       )}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pb: 2 }}>
-        {isLoading && !sessionForView && (
+        {isLoading && !displaySession && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress size={28} />
           </Box>
@@ -205,10 +158,10 @@ export default function SeshSettingsDrawer({ open, onClose }: SeshSettingsDrawer
           </Alert>
         )}
 
-        {sessionForView && (
+        {displaySession && (
           <SessionDetailContent
-            key={`${sessionForView.sessionId}:${sessionForView.ticks.length}:${sessionForView.ticks[0]?.uuid ?? ''}`}
-            session={sessionForView}
+            key={`${displaySession.sessionId}:${displaySession.ticks.length}:${displaySession.ticks[0]?.uuid ?? ''}`}
+            session={displaySession}
             embedded
             fallbackBoardDetails={boardDetails}
           />
