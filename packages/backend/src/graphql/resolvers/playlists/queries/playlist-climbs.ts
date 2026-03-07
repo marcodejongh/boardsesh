@@ -30,7 +30,7 @@ function paginateResults<T>(results: T[], pageSize: number) {
  * Specific-board mode: fetch climbs filtered by board type, layout, and size edges.
  */
 async function fetchSpecificBoardClimbs(
-  playlistId: number,
+  playlistId: bigint,
   input: PlaylistClimbsInput,
   page: number,
   pageSize: number,
@@ -132,7 +132,7 @@ async function fetchSpecificBoardClimbs(
  * All-boards mode: fetch climbs across all board types.
  */
 async function fetchAllBoardsClimbs(
-  playlistId: number,
+  playlistId: bigint,
   page: number,
   pageSize: number,
 ): Promise<{ climbs: Climb[]; hasMore: boolean }> {

@@ -4,7 +4,7 @@ import * as dbSchema from '@boardsesh/db/schema';
 
 /** Raw playlist row shape from owned-playlist queries (userPlaylists, allUserPlaylists). */
 export interface OwnedPlaylistRow {
-  id: number;
+  id: bigint;
   uuid: string;
   boardType: string;
   layoutId: number | null;
@@ -21,7 +21,7 @@ export interface OwnedPlaylistRow {
 
 /** Fetch climb counts for a list of playlist numeric IDs. Returns Map<stringId, count>. */
 export async function getClimbCounts(
-  playlistIds: number[],
+  playlistIds: bigint[],
 ): Promise<Map<string, number>> {
   if (playlistIds.length === 0) return new Map();
 
@@ -66,7 +66,7 @@ export function formatOwnedPlaylist(
 
 /** Raw row shape from discover / search playlist queries. */
 export interface PublicPlaylistRow {
-  id: number;
+  id: bigint;
   uuid: string;
   boardType: string;
   layoutId: number | null;
@@ -107,7 +107,7 @@ export function formatPublicPlaylist(p: PublicPlaylistRow) {
 export async function verifyPlaylistAccess(
   playlistUuid: string,
   userId: string | null,
-): Promise<number> {
+): Promise<bigint> {
   const playlistResult = await db
     .select({
       id: dbSchema.playlists.id,

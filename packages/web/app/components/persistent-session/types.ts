@@ -144,8 +144,8 @@ export function toClimbQueueItemInput(item: LocalClimbQueueItem) {
 // Shared refs type used across hooks
 export interface SharedRefs {
   wsAuthTokenRef: MutableRefObject<string | null>;
-  usernameRef: MutableRefObject<string>;
-  avatarUrlRef: MutableRefObject<string | null>;
+  usernameRef: MutableRefObject<string | undefined>;
+  avatarUrlRef: MutableRefObject<string | undefined>;
   sessionRef: MutableRefObject<Session | null>;
   activeSessionRef: MutableRefObject<ActiveSessionInfo | null>;
   queueRef: MutableRefObject<LocalClimbQueueItem[]>;
