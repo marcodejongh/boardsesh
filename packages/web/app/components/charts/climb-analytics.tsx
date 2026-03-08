@@ -13,17 +13,18 @@ import {
   type ClimbStatsHistoryEntry,
   type ClimbStatsHistoryResponse,
 } from '@/app/lib/graphql/operations/climb-stats-history';
+import { themeTokens } from '@/app/theme/theme-config';
 
-// Consistent color palette for angle lines
+// Consistent color palette for angle lines, using design tokens
 const ANGLE_COLORS = [
-  '#8C4A52', // primary/dusty rose
-  '#6B9080', // sage green
-  '#C4943C', // amber
-  '#569cd6', // blue
-  '#7C3AED', // purple
-  '#EC4899', // pink
-  '#4ec9b0', // teal
-  '#ce9178', // orange
+  themeTokens.colors.primary,
+  themeTokens.colors.success,
+  themeTokens.colors.warning,
+  themeTokens.syntax.keyword,
+  themeTokens.colors.purple,
+  themeTokens.colors.pink,
+  themeTokens.syntax.type,
+  themeTokens.syntax.string,
 ];
 
 function getAngleColor(index: number): string {
@@ -71,6 +72,7 @@ function groupByAngleAndMonth(
     for (const month of labels) {
       const values = monthMap.get(month);
       if (values && values.length > 0) {
+        // Take the last snapshot per month (most recent sync captures the latest stats)
         points.push({ date: month, value: values[values.length - 1] });
       }
     }
@@ -299,8 +301,8 @@ export default function ClimbAnalytics({ climbUuid, boardType }: ClimbAnalyticsP
                 {
                   label: 'Total Ascents',
                   data: totalAscentsData.totals,
-                  borderColor: '#8C4A52',
-                  backgroundColor: 'rgba(140, 74, 82, 0.1)',
+                  borderColor: themeTokens.colors.primary,
+                  backgroundColor: `${themeTokens.colors.primary}1a`,
                   fill: true,
                   tension: 0.3,
                   pointRadius: 3,
