@@ -48,6 +48,7 @@ interface TrendingRow {
   frames: string | null;
   quality_average: number | null;
   difficulty_name: string | null;
+  total_count: number;
 }
 
 async function queryTrendingOrHot(
@@ -126,7 +127,8 @@ async function queryTrendingOrHot(
       c.layout_id,
       c.frames,
       s.quality_average,
-      g.boulder_name AS difficulty_name
+      g.boulder_name AS difficulty_name,
+      COUNT(*) OVER() AS total_count
     FROM deltas d
     JOIN board_climbs c
       ON c.uuid = d.climb_uuid AND c.board_type = d.board_type
@@ -143,7 +145,9 @@ async function queryTrendingOrHot(
 
   const rows = extractRows<TrendingRow>(result);
   const hasMore = rows.length > limit;
-  const items: TrendingClimbItem[] = rows.slice(0, limit).map((row) => ({
+  const pagedRows = rows.slice(0, limit);
+  const totalCount = Number(pagedRows[0]?.total_count ?? 0);
+  const items: TrendingClimbItem[] = pagedRows.map((row) => ({
     climbUuid: row.climb_uuid,
     climbName: row.climb_name || 'Unknown',
     setterUsername: row.setter_username,
@@ -157,46 +161,6 @@ async function queryTrendingOrHot(
     ascentDelta: Number(row.ascent_delta),
     ascentPctChange: row.ascent_pct_change != null ? Number(row.ascent_pct_change) : null,
   }));
-
-  // Get total count (separate query for efficiency)
-  const countResult = await db.execute(sql`
-    WITH stats_window AS (
-      SELECT
-        h.climb_uuid,
-        h.angle,
-        h.ascensionist_count,
-        h.board_type,
-        ROW_NUMBER() OVER (PARTITION BY h.climb_uuid, h.angle ORDER BY h.created_at ASC) as rn_first,
-        ROW_NUMBER() OVER (PARTITION BY h.climb_uuid, h.angle ORDER BY h.created_at DESC) as rn_last
-      FROM board_climb_stats_history h
-      WHERE h.created_at >= NOW() - (${days} || ' days')::interval
-        ${boardFilterSql}
-    ),
-    deltas AS (
-      SELECT
-        f.climb_uuid,
-        f.angle,
-        f.board_type,
-        (l.ascensionist_count - f.ascensionist_count) AS ascent_delta,
-        f.ascensionist_count AS f_ascensionist_count
-      FROM
-        (SELECT * FROM stats_window WHERE rn_first = 1) f
-        JOIN (SELECT * FROM stats_window WHERE rn_last = 1) l
-          ON f.climb_uuid = l.climb_uuid AND f.angle = l.angle
-      WHERE l.ascensionist_count > f.ascensionist_count
-        AND (l.ascensionist_count - f.ascensionist_count) >= 2
-        ${trendingFilter}
-    )
-    SELECT COUNT(*) as total
-    FROM deltas d
-    JOIN board_climbs c
-      ON c.uuid = d.climb_uuid AND c.board_type = d.board_type
-    WHERE 1=1
-      ${layoutFilterSql}
-  `);
-
-  const countRows = extractRows<{ total: number }>(countResult);
-  const totalCount = Number(countRows[0]?.total ?? 0);
 
   return { items, totalCount, hasMore };
 }
