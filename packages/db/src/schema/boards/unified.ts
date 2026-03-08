@@ -323,6 +323,10 @@ export const boardClimbStatsHistory = pgTable('board_climb_stats_history', {
     table.climbUuid,
     table.angle,
   ),
+  trendingIdx: index('board_climb_stats_history_trending_idx').on(
+    table.boardType,
+    table.createdAt,
+  ),
 }));
 
 export const boardBetaLinks = pgTable('board_beta_links', {

@@ -165,6 +165,8 @@ const AccordionSearchForm: React.FC<AccordionSearchFormProps> = ({
                 >
                   <MenuItem value="ascents">Ascents</MenuItem>
                   <MenuItem value="popular">Popular</MenuItem>
+                  <MenuItem value="trending">Trending</MenuItem>
+                  <MenuItem value="hot">Hot</MenuItem>
                   <MenuItem value="difficulty">Difficulty</MenuItem>
                   <MenuItem value="name">Name</MenuItem>
                   <MenuItem value="quality">Quality</MenuItem>
