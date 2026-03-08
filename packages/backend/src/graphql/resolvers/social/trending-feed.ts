@@ -5,6 +5,20 @@ import { validateInput } from '../shared/helpers';
 import { TrendingClimbFeedInputSchema } from '../../../validation/schemas';
 import type { TrendingClimbItem, TrendingClimbFeedResult } from '@boardsesh/shared-schema';
 
+/**
+ * Extract typed rows from db.execute() result.
+ * db.execute() returns RowList (neon-serverless) or QueryResult (postgres-js),
+ * both of which expose a .rows property. This helper centralizes the cast
+ * so there's a single point to update if the driver return type changes.
+ */
+function extractRows<T>(result: unknown): T[] {
+  const resultObj = result as { rows?: T[] };
+  if (!resultObj || !Array.isArray(resultObj.rows)) {
+    return [];
+  }
+  return resultObj.rows;
+}
+
 async function resolveBoardFilter(boardUuid: string | null | undefined) {
   if (!boardUuid) return { boardTypeFilter: null, layoutIdFilter: null };
 
@@ -19,6 +33,21 @@ async function resolveBoardFilter(boardUuid: string | null | undefined) {
     boardTypeFilter: board?.boardType ?? null,
     layoutIdFilter: board?.layoutId ?? null,
   };
+}
+
+interface TrendingRow {
+  climb_uuid: string;
+  angle: number;
+  board_type: string;
+  current_ascents: number;
+  ascent_delta: number;
+  ascent_pct_change: number | null;
+  climb_name: string | null;
+  setter_username: string | null;
+  layout_id: number;
+  frames: string | null;
+  quality_average: number | null;
+  difficulty_name: string | null;
 }
 
 async function queryTrendingOrHot(
@@ -49,21 +78,6 @@ async function queryTrendingOrHot(
   const orderBy = mode === 'trending'
     ? sql`ascent_pct_change DESC NULLS LAST`
     : sql`ascent_delta DESC`;
-
-  type TrendingRow = {
-    climb_uuid: string;
-    angle: number;
-    board_type: string;
-    current_ascents: number;
-    ascent_delta: number;
-    ascent_pct_change: number | null;
-    climb_name: string | null;
-    setter_username: string | null;
-    layout_id: number;
-    frames: string | null;
-    quality_average: number | null;
-    difficulty_name: string | null;
-  };
 
   // db.execute() returns QueryResult (neon-serverless) with .rows property
   const result = await db.execute(sql`
@@ -127,7 +141,7 @@ async function queryTrendingOrHot(
     OFFSET ${offset}
   `);
 
-  const rows = (result as unknown as { rows: TrendingRow[] }).rows;
+  const rows = extractRows<TrendingRow>(result);
   const hasMore = rows.length > limit;
   const items: TrendingClimbItem[] = rows.slice(0, limit).map((row) => ({
     climbUuid: row.climb_uuid,
@@ -181,7 +195,7 @@ async function queryTrendingOrHot(
       ${layoutFilterSql}
   `);
 
-  const countRows = (countResult as unknown as { rows: Array<{ total: number }> }).rows;
+  const countRows = extractRows<{ total: number }>(countResult);
   const totalCount = Number(countRows[0]?.total ?? 0);
 
   return { items, totalCount, hasMore };
