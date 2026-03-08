@@ -248,10 +248,10 @@ export default function ClimbAnalytics({ climbUuid, boardType }: ClimbAnalyticsP
     return {
       labels: grouped.labels.map(formatMonthLabel),
       datasets: filteredAngles
+        .filter((angle: number) => grouped.byAngle.has(angle))
         .map((angle: number) => {
           const colorIndex = allAngles.indexOf(angle);
-          const points = grouped.byAngle.get(angle);
-          if (!points) return null;
+          const points = grouped.byAngle.get(angle)!;
 
           return {
             label: `${angle}°`,
@@ -265,8 +265,7 @@ export default function ClimbAnalytics({ climbUuid, boardType }: ClimbAnalyticsP
             pointRadius: 3,
             spanGaps: true,
           };
-        })
-        .filter(Boolean),
+        }),
     };
   }
 
