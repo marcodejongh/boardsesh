@@ -26,7 +26,9 @@ import MuiCard from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
-import { typeDefs } from '@boardsesh/shared-schema/schema';
+import { typeDefs as typeDefsArray } from '@boardsesh/shared-schema/schema';
+
+const typeDefs = typeDefsArray.join('\n');
 import { TabPanel } from '@/app/components/ui/tab-panel';
 import { themeTokens } from '@/app/theme/theme-config';
 import { tokenizeLine } from './graphql-tokenizer';

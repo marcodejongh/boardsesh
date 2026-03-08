@@ -1,0 +1,181 @@
+import { eq, and, sql, desc } from 'drizzle-orm';
+import { db } from '../../../../db/client';
+import * as dbSchema from '@boardsesh/db/schema';
+
+/**
+ * Apply the effect of an approved proposal to the climb community/classic status.
+ */
+export async function applyProposalEffect(proposal: typeof dbSchema.climbProposals.$inferSelect): Promise<void> {
+  if (proposal.type === 'grade' || proposal.type === 'benchmark') {
+    // UPSERT climb_community_status
+    const [existing] = await db
+      .select()
+      .from(dbSchema.climbCommunityStatus)
+      .where(
+        and(
+          eq(dbSchema.climbCommunityStatus.climbUuid, proposal.climbUuid),
+          eq(dbSchema.climbCommunityStatus.boardType, proposal.boardType),
+          eq(dbSchema.climbCommunityStatus.angle, proposal.angle!),
+        ),
+      )
+      .limit(1);
+
+    const updates: Record<string, unknown> = {
+      updatedAt: new Date(),
+      lastProposalId: proposal.id,
+    };
+
+    if (proposal.type === 'grade') {
+      updates.communityGrade = proposal.proposedValue;
+    } else if (proposal.type === 'benchmark') {
+      updates.isBenchmark = proposal.proposedValue === 'true';
+    }
+
+    if (existing) {
+      await db
+        .update(dbSchema.climbCommunityStatus)
+        .set(updates)
+        .where(eq(dbSchema.climbCommunityStatus.id, existing.id));
+    } else {
+      await db
+        .insert(dbSchema.climbCommunityStatus)
+        .values({
+          climbUuid: proposal.climbUuid,
+          boardType: proposal.boardType,
+          angle: proposal.angle!,
+          communityGrade: proposal.type === 'grade' ? proposal.proposedValue : null,
+          isBenchmark: proposal.type === 'benchmark' ? proposal.proposedValue === 'true' : false,
+          lastProposalId: proposal.id,
+        });
+    }
+  } else if (proposal.type === 'classic') {
+    // UPSERT climb_classic_status
+    const [existing] = await db
+      .select()
+      .from(dbSchema.climbClassicStatus)
+      .where(
+        and(
+          eq(dbSchema.climbClassicStatus.climbUuid, proposal.climbUuid),
+          eq(dbSchema.climbClassicStatus.boardType, proposal.boardType),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(dbSchema.climbClassicStatus)
+        .set({
+          isClassic: proposal.proposedValue === 'true',
+          updatedAt: new Date(),
+          lastProposalId: proposal.id,
+        })
+        .where(eq(dbSchema.climbClassicStatus.id, existing.id));
+    } else {
+      await db
+        .insert(dbSchema.climbClassicStatus)
+        .values({
+          climbUuid: proposal.climbUuid,
+          boardType: proposal.boardType,
+          isClassic: proposal.proposedValue === 'true',
+          lastProposalId: proposal.id,
+        });
+    }
+  }
+}
+
+/**
+ * Revert the effect of a previously-approved proposal.
+ * Finds the most recent OTHER approved proposal of the same type for the same climb+angle
+ * and reverts to that value (or to the default if none exists).
+ */
+export async function revertProposalEffect(proposal: typeof dbSchema.climbProposals.$inferSelect): Promise<void> {
+  if (proposal.type === 'grade' || proposal.type === 'benchmark') {
+    // Find the most recent other approved proposal of the same type for this climb+angle
+    const conditions = [
+      eq(dbSchema.climbProposals.climbUuid, proposal.climbUuid),
+      eq(dbSchema.climbProposals.boardType, proposal.boardType),
+      eq(dbSchema.climbProposals.type, proposal.type),
+      eq(dbSchema.climbProposals.status, 'approved'),
+      sql`${dbSchema.climbProposals.id} != ${proposal.id}`,
+    ];
+    if (proposal.angle != null) {
+      conditions.push(eq(dbSchema.climbProposals.angle, proposal.angle));
+    }
+
+    const [previousProposal] = await db
+      .select()
+      .from(dbSchema.climbProposals)
+      .where(and(...conditions))
+      .orderBy(desc(dbSchema.climbProposals.resolvedAt))
+      .limit(1);
+
+    const [existing] = await db
+      .select()
+      .from(dbSchema.climbCommunityStatus)
+      .where(
+        and(
+          eq(dbSchema.climbCommunityStatus.climbUuid, proposal.climbUuid),
+          eq(dbSchema.climbCommunityStatus.boardType, proposal.boardType),
+          eq(dbSchema.climbCommunityStatus.angle, proposal.angle!),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      const updates: Record<string, unknown> = {
+        updatedAt: new Date(),
+        lastProposalId: previousProposal?.id || null,
+      };
+
+      if (proposal.type === 'grade') {
+        updates.communityGrade = previousProposal?.proposedValue || null;
+      } else if (proposal.type === 'benchmark') {
+        updates.isBenchmark = previousProposal ? previousProposal.proposedValue === 'true' : false;
+      }
+
+      await db
+        .update(dbSchema.climbCommunityStatus)
+        .set(updates)
+        .where(eq(dbSchema.climbCommunityStatus.id, existing.id));
+    }
+  } else if (proposal.type === 'classic') {
+    // Find the most recent other approved classic proposal for this climb
+    const [previousProposal] = await db
+      .select()
+      .from(dbSchema.climbProposals)
+      .where(
+        and(
+          eq(dbSchema.climbProposals.climbUuid, proposal.climbUuid),
+          eq(dbSchema.climbProposals.boardType, proposal.boardType),
+          eq(dbSchema.climbProposals.type, 'classic'),
+          eq(dbSchema.climbProposals.status, 'approved'),
+          sql`${dbSchema.climbProposals.id} != ${proposal.id}`,
+        ),
+      )
+      .orderBy(desc(dbSchema.climbProposals.resolvedAt))
+      .limit(1);
+
+    const [existing] = await db
+      .select()
+      .from(dbSchema.climbClassicStatus)
+      .where(
+        and(
+          eq(dbSchema.climbClassicStatus.climbUuid, proposal.climbUuid),
+          eq(dbSchema.climbClassicStatus.boardType, proposal.boardType),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      const classicUpdates: Record<string, unknown> = {
+        isClassic: previousProposal ? previousProposal.proposedValue === 'true' : false,
+        updatedAt: new Date(),
+        lastProposalId: previousProposal?.id || null,
+      };
+      await db
+        .update(dbSchema.climbClassicStatus)
+        .set(classicUpdates)
+        .where(eq(dbSchema.climbClassicStatus.id, existing.id));
+    }
+  }
+}

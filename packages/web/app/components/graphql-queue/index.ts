@@ -4,3 +4,4 @@ export type { Client } from './graphql-client';
 
 
 export { GraphQLQueueProvider, useGraphQLQueueContext, useQueueContext, useOptionalQueueContext, QueueContext } from './QueueContext';
+export type { GraphQLQueueContextType } from './types';

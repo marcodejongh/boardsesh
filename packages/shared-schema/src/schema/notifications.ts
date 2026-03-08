@@ -1,0 +1,169 @@
+export const notificationsTypeDefs = /* GraphQL */ `
+  # ============================================
+  # Notification Types
+  # ============================================
+
+  enum NotificationType {
+    new_follower
+    comment_reply
+    comment_on_tick
+    comment_on_climb
+    vote_on_tick
+    vote_on_comment
+    new_climb
+    new_climb_global
+    proposal_approved
+    proposal_rejected
+    proposal_vote
+    proposal_created
+  }
+
+  """
+  A notification for a user about social activity.
+  """
+  type Notification {
+    "Public unique identifier"
+    uuid: ID!
+    "Type of notification"
+    type: NotificationType!
+    "User ID of the actor who caused the notification"
+    actorId: String
+    "Display name of the actor"
+    actorDisplayName: String
+    "Avatar URL of the actor"
+    actorAvatarUrl: String
+    "Entity type this notification relates to"
+    entityType: SocialEntityType
+    "Entity ID this notification relates to"
+    entityId: String
+    "Preview of comment body (for comment notifications)"
+    commentBody: String
+    "Name of the climb (for climb-related notifications)"
+    climbName: String
+    "UUID of the climb (for navigation)"
+    climbUuid: String
+    "Board type (for navigation)"
+    boardType: String
+    "Proposal UUID (for proposal notifications, to deep-link to the specific proposal)"
+    proposalUuid: String
+    "Whether the notification has been read"
+    isRead: Boolean!
+    "When the notification was created (ISO 8601)"
+    createdAt: String!
+  }
+
+  """
+  Paginated list of notifications with counts.
+  """
+  type NotificationConnection {
+    "List of notifications"
+    notifications: [Notification!]!
+    "Total number of notifications"
+    totalCount: Int!
+    "Number of unread notifications"
+    unreadCount: Int!
+    "Whether more notifications are available"
+    hasMore: Boolean!
+  }
+
+  """
+  An actor in a grouped notification.
+  """
+  type GroupedNotificationActor {
+    "User ID"
+    id: ID!
+    "Display name"
+    displayName: String
+    "Avatar URL"
+    avatarUrl: String
+  }
+
+  """
+  A grouped notification combining multiple notifications of the same type on the same entity.
+  """
+  type GroupedNotification {
+    "UUID of the most recent notification in the group"
+    uuid: ID!
+    "Type of notification"
+    type: NotificationType!
+    "Entity type"
+    entityType: SocialEntityType
+    "Entity ID"
+    entityId: String
+    "Number of distinct actors"
+    actorCount: Int!
+    "First few actors (up to 3)"
+    actors: [GroupedNotificationActor!]!
+    "Preview of comment body"
+    commentBody: String
+    "Climb name"
+    climbName: String
+    "Climb UUID"
+    climbUuid: String
+    "Board type"
+    boardType: String
+    "Proposal UUID (for deep-linking to a specific proposal)"
+    proposalUuid: String
+    "Setter username (for new_climbs_synced notifications)"
+    setterUsername: String
+    "Whether all notifications in the group are read"
+    isRead: Boolean!
+    "When the most recent notification was created"
+    createdAt: String!
+  }
+
+  """
+  Paginated grouped notification list.
+  """
+  type GroupedNotificationConnection {
+    "List of grouped notifications"
+    groups: [GroupedNotification!]!
+    "Total number of groups"
+    totalCount: Int!
+    "Number of unread notifications"
+    unreadCount: Int!
+    "Whether more groups are available"
+    hasMore: Boolean!
+  }
+
+  """
+  Subscription payload for real-time notification delivery.
+  """
+  type NotificationEvent {
+    "The notification that was received"
+    notification: Notification!
+  }
+
+  """
+  Event when a new comment is added.
+  """
+  type CommentAdded {
+    "The comment that was added"
+    comment: Comment!
+  }
+
+  """
+  Event when a comment is updated.
+  """
+  type CommentUpdated {
+    "The comment that was updated"
+    comment: Comment!
+  }
+
+  """
+  Event when a comment is deleted.
+  """
+  type CommentDeleted {
+    "UUID of the deleted comment"
+    commentUuid: ID!
+    "Entity type the comment belonged to"
+    entityType: SocialEntityType!
+    "Entity ID the comment belonged to"
+    entityId: String!
+  }
+
+  """
+  Union of possible comment update events.
+  """
+  union CommentEvent = CommentAdded | CommentUpdated | CommentDeleted
+`;
