@@ -6,6 +6,7 @@ import type { CollapsibleSectionConfig } from '@/app/components/collapsible-sect
 import BetaVideos from '@/app/components/beta-videos/beta-videos';
 import { LogbookSection, useLogbookSummary } from '@/app/components/logbook/logbook-section';
 import ClimbSocialSection from '@/app/components/social/climb-social-section';
+import ClimbAnalytics from '@/app/components/charts/climb-analytics';
 import type { BetaLink } from '@/app/lib/api-wrappers/sync-api-types';
 import type { Climb } from '@/app/lib/types';
 
@@ -127,6 +128,20 @@ export function useBuildClimbDetailSections({
           currentClimbDifficulty={currentClimbDifficulty}
           boardName={boardName}
           highlightProposalUuid={highlightProposalUuid}
+        />
+      ),
+    },
+    {
+      key: 'analytics',
+      label: 'Analytics',
+      title: 'Analytics',
+      defaultSummary: 'Ascents, quality trends',
+      getSummary: () => ['Ascents', 'Quality', 'Trends'],
+      lazy: true,
+      content: (
+        <ClimbAnalytics
+          climbUuid={climbUuid}
+          boardType={boardType}
         />
       ),
     },
