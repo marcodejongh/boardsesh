@@ -151,6 +151,7 @@ async function queryTrendingOrHot(
         h.climb_uuid,
         h.angle,
         h.ascensionist_count,
+        h.board_type,
         ROW_NUMBER() OVER (PARTITION BY h.climb_uuid, h.angle ORDER BY h.created_at ASC) as rn_first,
         ROW_NUMBER() OVER (PARTITION BY h.climb_uuid, h.angle ORDER BY h.created_at DESC) as rn_last
       FROM board_climb_stats_history h
@@ -161,6 +162,7 @@ async function queryTrendingOrHot(
       SELECT
         f.climb_uuid,
         f.angle,
+        f.board_type,
         (l.ascensionist_count - f.ascensionist_count) AS ascent_delta,
         f.ascensionist_count AS f_ascensionist_count
       FROM
@@ -171,7 +173,12 @@ async function queryTrendingOrHot(
         AND (l.ascensionist_count - f.ascensionist_count) >= 2
         ${trendingFilter}
     )
-    SELECT COUNT(*) as total FROM deltas
+    SELECT COUNT(*) as total
+    FROM deltas d
+    JOIN board_climbs c
+      ON c.uuid = d.climb_uuid AND c.board_type = d.board_type
+    WHERE 1=1
+      ${layoutFilterSql}
   `);
 
   const countRows = (countResult as unknown as { rows: Array<{ total: number }> }).rows;
