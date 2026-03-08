@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useMemo, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useCallback, useMemo, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import type { SubscriptionQueueEvent, SessionEvent } from '@boardsesh/shared-schema';
 import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
@@ -54,6 +54,11 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
   useEffect(() => { usernameRef.current = username; }, [username]);
   useEffect(() => { avatarUrlRef.current = avatarUrl; }, [avatarUrl]);
 
+  // Stable no-op: session is managed internally by lifecycle hook.
+  // MUST be useCallback to avoid recreating on every render, which would
+  // destabilize the lifecycle effect's dependency array and cause infinite reconnects.
+  const noopSetSession = useCallback(() => {}, []);
+
   const refs: SharedRefs = {
     wsAuthTokenRef, usernameRef, avatarUrlRef,
     sessionRef, activeSessionRef,
@@ -77,7 +82,7 @@ export const PersistentSessionProvider: React.FC<{ children: React.ReactNode }> 
     isAuthLoading,
     handleQueueEvent: eventProcessor.handleQueueEvent,
     handleSessionEvent: eventProcessor.handleSessionEvent,
-    setSession: () => {}, // Session is managed internally by lifecycle
+    setSession: noopSetSession, // Session is managed internally by lifecycle
     refs,
   });
 
