@@ -69,6 +69,12 @@ export const queriesTypeDefs = /* GraphQL */ `
       climbUuid: ID!
     ): Climb
 
+    """
+    Get climb stats history for a climb over the last 12 months.
+    Returns snapshots captured during shared sync for trend analysis.
+    """
+    climbStatsHistory(boardName: String!, climbUuid: ID!): [ClimbStatsHistoryEntry!]!
+
     # ============================================
     # User Management Queries (require auth)
     # ============================================

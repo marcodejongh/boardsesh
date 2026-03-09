@@ -11,3 +11,4 @@ export * from './activity-feed';
 export * from './new-climb-feed';
 export * from './sessions';
 export * from './create-session';
+export * from './climb-stats-history';
