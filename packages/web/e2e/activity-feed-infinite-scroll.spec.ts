@@ -152,48 +152,5 @@ test.describe('Tab Navigation', () => {
   });
 });
 
-test.describe('Sessions Feed - Authenticated', () => {
-  test.beforeEach(async ({ page }) => {
-    // Log in via the auth login form
-    await page.goto('/auth/login');
-    await page.getByLabel('Email').fill('test@boardsesh.com');
-    await page.getByLabel('Password').fill('test');
-    await page.getByRole('button', { name: 'Login' }).click();
-
-    // Wait for redirect to home page after login
-    await page.waitForURL('/', { timeout: 15000 });
-  });
-
-  test('renders personalized feed without sign-in alert', async ({ page }) => {
-    // The Sessions tab should be active by default
-    const sessionsTab = page.getByRole('tab', { name: 'Sessions' });
-    await expect(sessionsTab).toBeVisible({ timeout: 15000 });
-    await expect(sessionsTab).toHaveAttribute('aria-selected', 'true');
-
-    // Wait for feed items to render
-    const feedItems = page.locator('[data-testid="activity-feed-item"]');
-    await expect(feedItems.first()).toBeVisible({ timeout: 30000 });
-
-    // Should NOT show the "Sign in" alert
-    await expect(page.getByText('Sign in to see a personalized feed')).not.toBeVisible();
-  });
-
-  test('infinite scroll pagination works with authenticated feed', async ({ page }) => {
-    // Wait for initial items to render
-    const feedItems = page.locator('[data-testid="activity-feed-item"]');
-    await expect(feedItems.first()).toBeVisible({ timeout: 30000 });
-
-    const initialCount = await feedItems.count();
-    expect(initialCount).toBeGreaterThan(0);
-
-    // Scroll the sentinel element into view to trigger loading more
-    const sentinel = page.locator('[data-testid="activity-feed-sentinel"]');
-    await sentinel.scrollIntoViewIfNeeded();
-
-    // Wait for more items to appear
-    await expect(async () => {
-      const newCount = await feedItems.count();
-      expect(newCount).toBeGreaterThan(initialCount);
-    }).toPass({ timeout: 15000 });
-  });
-});
+// Authenticated tests moved to activity-feed-authenticated.authenticated.spec.ts
+// They use Playwright's storageState for pre-authenticated sessions.
