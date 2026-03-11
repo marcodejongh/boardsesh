@@ -1,4 +1,4 @@
-import { eq, and, gte, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import type { ClimbSearchInput, ConnectionContext, BoardName } from '@boardsesh/shared-schema';
 import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
 import type { ClimbSearchParams, ParsedBoardRouteParameters } from '../../../db/queries/climbs/index';
@@ -116,7 +116,7 @@ export const climbQueries = {
   },
 
   /**
-   * Get climb stats history for the last 12 months
+   * Get climb stats history for a climb
    */
   climbStatsHistory: async (
     _: unknown,
@@ -128,9 +128,6 @@ export const climbQueries = {
     if (!isValidBoardName(boardName)) {
       throw new Error(`Invalid board name: ${boardName}. Must be one of: ${SUPPORTED_BOARDS.join(', ')}`);
     }
-
-    const twelveMonthsAgo = new Date();
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
     const rows = await db
       .select({
@@ -146,10 +143,11 @@ export const climbQueries = {
         and(
           eq(dbSchema.boardClimbStatsHistory.boardType, boardName),
           eq(dbSchema.boardClimbStatsHistory.climbUuid, climbUuid),
-          gte(dbSchema.boardClimbStatsHistory.createdAt, twelveMonthsAgo.toISOString()),
         ),
       )
       .orderBy(desc(dbSchema.boardClimbStatsHistory.createdAt));
+
+    if (DEBUG) console.log(`[climbStatsHistory] ${boardName}/${climbUuid}: ${rows.length} rows`);
 
     return rows;
   },

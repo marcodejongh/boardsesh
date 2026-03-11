@@ -7,7 +7,12 @@ import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
-import type { ClimbStatsHistoryEntry } from '@/app/lib/graphql/operations/climb-stats-history';
+import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import {
+  CLIMB_STATS_HISTORY,
+  type ClimbStatsHistoryEntry,
+  type ClimbStatsHistoryResponse,
+} from '@/app/lib/graphql/operations/climb-stats-history';
 import { themeTokens } from '@/app/theme/theme-config';
 
 // Consistent color palette for angle lines, using design tokens
@@ -132,15 +137,18 @@ export default function ClimbAnalytics({ climbUuid, boardType }: ClimbAnalyticsP
 
     async function fetchHistory() {
       try {
-        const res = await fetch(`/api/v1/${boardType}/climb-stats-history/${climbUuid}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: ClimbStatsHistoryEntry[] = await res.json();
+        const client = createGraphQLHttpClient();
+        const data = await client.request<ClimbStatsHistoryResponse>(
+          CLIMB_STATS_HISTORY,
+          { boardName: boardType, climbUuid },
+        );
         if (!cancelled) {
-          setRows(data);
-          const angles = new Set(data.map((r: ClimbStatsHistoryEntry) => r.angle));
+          setRows(data.climbStatsHistory);
+          const angles = new Set(data.climbStatsHistory.map((r: ClimbStatsHistoryEntry) => r.angle));
           setSelectedAngles(angles);
         }
-      } catch {
+      } catch (err) {
+        console.error('[ClimbAnalytics] Failed to fetch stats history:', err);
         if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
