@@ -280,24 +280,88 @@ async function syncClimbDatabase(boardName: BoardName) {
 
 ### Build Pipeline
 
-The SQLite databases must be generated from the PostgreSQL production data:
+**Key insight:** The Kilter and Tension data originally comes from **Aurora's own SQLite databases** extracted from their APKs (see `packages/db/docker/Dockerfile.dev-db`). The dev database pipeline already extracts these SQLite files, converts them, and imports into PostgreSQL via pgloader. For the mobile app, we can **reverse this pipeline** — export from PostgreSQL back to SQLite, but only the tables/columns needed for mobile search.
+
+The database uses a **unified table design** with a `board_type` discriminator column (not separate `kilter_*`/`tension_*` tables), so per-board export is a simple `WHERE board_type = ?` filter.
 
 ```bash
-# packages/db/scripts/export-sqlite.sh
-# Run periodically (e.g., weekly) to generate fresh SQLite snapshots
+# packages/db/scripts/export-mobile-sqlite.sh
+# Run periodically (e.g., weekly via GitHub Action) to generate fresh SQLite snapshots
 
 for BOARD in kilter tension moonboard; do
-  pg_dump --data-only --table="board_climbs" --where="board_type='$BOARD'" \
-    | sqlite3 "$BOARD.db"  # Simplified — actual script would handle schema differences
-done
+  echo "Exporting $BOARD..."
 
-# Compress for bundling
-for BOARD in kilter tension moonboard; do
+  # Create SQLite database with schema
+  sqlite3 "$BOARD.db" < packages/db/scripts/mobile-sqlite-schema.sql
+
+  # Export from PostgreSQL → SQLite using the unified tables
+  # Only export listed, non-draft climbs with their stats
+  psql $DATABASE_URL -c "\COPY (
+    SELECT uuid, board_type, layout_id, setter_username, name, description,
+           frames, frames_count, edge_left, edge_right, edge_bottom, edge_top,
+           is_listed, is_draft, created_at
+    FROM board_climbs
+    WHERE board_type = '$BOARD' AND is_listed = true AND is_draft = false
+  ) TO STDOUT WITH CSV HEADER" | sqlite3 "$BOARD.db" ".import --csv /dev/stdin board_climbs"
+
+  # Export climb stats (per angle)
+  psql $DATABASE_URL -c "\COPY (
+    SELECT climb_uuid, board_type, angle, display_difficulty, benchmark_difficulty,
+           ascensionist_count, difficulty_average, quality_average
+    FROM board_climb_stats
+    WHERE board_type = '$BOARD'
+  ) TO STDOUT WITH CSV HEADER" | sqlite3 "$BOARD.db" ".import --csv /dev/stdin board_climb_stats"
+
+  # Export reference tables (small, export all rows for this board)
+  # board_holes, board_layouts, board_product_sizes, board_sets,
+  # board_products, board_difficulty_grades, board_product_sizes_layouts_sets
+
+  # Create indexes for search performance
+  sqlite3 "$BOARD.db" < packages/db/scripts/mobile-sqlite-indexes.sql
+
+  # Vacuum and compress
+  sqlite3 "$BOARD.db" "VACUUM;"
   zip "$BOARD.db.zip" "$BOARD.db"
+
+  echo "$BOARD: $(du -h $BOARD.db.zip | cut -f1) compressed"
 done
 ```
 
-A GitHub Action runs this weekly and publishes the SQLite snapshots as release assets or to a CDN for the app to download.
+A GitHub Action runs this weekly and publishes the SQLite snapshots as release assets or to a CDN for On-Demand Resources / Play Asset Delivery.
+
+### SQLite Indexes for Mobile Search
+
+The search query needs these indexes for good performance:
+
+```sql
+-- packages/db/scripts/mobile-sqlite-indexes.sql
+
+-- Primary search index (matches the main WHERE clause)
+CREATE INDEX idx_climbs_search ON board_climbs(
+  board_type, layout_id, is_listed, is_draft, frames_count
+);
+
+-- Edge filtering (size-specific boundary checks)
+CREATE INDEX idx_climbs_edges ON board_climbs(
+  board_type, layout_id, edge_left, edge_right, edge_bottom, edge_top
+);
+
+-- Stats lookup (JOIN condition + sort columns)
+CREATE INDEX idx_stats_lookup ON board_climb_stats(
+  board_type, climb_uuid, angle
+);
+
+-- Difficulty range filtering
+CREATE INDEX idx_stats_difficulty ON board_climb_stats(
+  board_type, angle, display_difficulty
+);
+
+-- Name search (SQLite's LIKE is case-insensitive for ASCII by default)
+CREATE INDEX idx_climbs_name ON board_climbs(name COLLATE NOCASE);
+
+-- Setter filtering
+CREATE INDEX idx_climbs_setter ON board_climbs(setter_username);
+```
 
 ### Impact on Milestones
 
@@ -1067,7 +1131,7 @@ jobs:
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Apple rejects as "web wrapper" | **High** | High | BLE provides native functionality, but reviewers may not encounter it. Mitigate with: native splash screen, offline mode, haptics, guided review notes with BLE video demo. |
+| Apple rejects as "web wrapper" | **Medium** | High | Strong mitigations: embedded SQLite climb database with offline search, native BLE board control, haptics, On-Demand Resources for per-board data. Reviewers see genuine native functionality even without a board. Include guided review notes with video demo. |
 | WebView cookie/auth persistence issues | **High** | High | Milestone 0 validates auth end-to-end. Fallback: store JWT in `@capacitor/preferences` and restore on launch. |
 | Capacitor bridge injection in hosted mode | **Medium** | High | Milestone 0 validates plugin JS availability. Test both dynamic import and `window.Capacitor.Plugins` approaches. |
 | BLE double-chunking in adapter layer | **Medium** | High | Adapter owns all chunking. Verify with physical board that LED patterns are correct. |
