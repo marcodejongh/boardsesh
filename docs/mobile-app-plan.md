@@ -88,9 +88,9 @@ The app operates in **hosted mode**: the Capacitor WebView loads the production 
 
 ---
 
-## Why Not Local/Bundled Mode
+## Why Not Fully Local Mode
 
-An alternative to hosted mode would be bundling the Next.js app locally inside the Capacitor shell (Capacitor's default "local" mode with `output: 'export'`). This was evaluated and rejected because the Boardsesh app is **deeply server-dependent**:
+An alternative to hosted mode would be bundling the **entire** Next.js app locally inside the Capacitor shell (Capacitor's default "local" mode with `output: 'export'`). This was evaluated and rejected because the Boardsesh app is **deeply server-dependent**:
 
 - **33 API routes** under `packages/web/app/api/` — auth, climb search, favorites, logbook, Aurora API proxying, data sync, WebSocket auth
 - **Server components with direct database queries** — e.g., `list/page.tsx` uses `cachedSearchClimbs()` which imports `'server-only'` and uses `unstable_cache` from Next.js
@@ -98,24 +98,246 @@ An alternative to hosted mode would be bundling the Next.js app locally inside t
 - **Middleware** (`middleware.ts`) for route validation
 - **Aurora API proxy routes** — proxies requests server-side to avoid CORS and protect credentials
 
-Next.js `output: 'export'` (static export) **does not support**: API routes, server components, middleware, `unstable_cache`, `cookies()`, `headers()`, or dynamic server-side rendering. Nearly every page uses at least one of these.
+Switching to fully local mode would require rewriting the entire data and auth layer (**3-6 month effort**). However, we **can** embed the read-only climb database locally for offline search — see the next section.
 
-Switching to local/bundled mode would require:
-1. Rewriting all 33 API routes as client-side service calls
-2. Converting all server components to client components
-3. Replicating the entire climb database (~1GB+ across Kilter, Tension, MoonBoard) into IndexedDB
-4. Rewriting authentication (can't use NextAuth server-side sessions)
-5. Rewriting data sync (Aurora API proxy routes can't run client-side)
+---
 
-**Effort estimate: 3-6 months of rewrite** — far exceeding the scope of a mobile distribution strategy.
+## Embedded Climb Database (SQLite)
 
-### Hybrid Offline Strategy (Recommended)
+### Motivation
 
-Instead of going fully local, keep hosted mode but add targeted offline resilience:
-1. **Add a service worker** for caching key pages and API responses
-2. **Use IndexedDB** (already in use) to cache the **current queue, recent climbs, and user preferences** — not the entire database
-3. **Add a native splash/offline screen** via Capacitor — shows branded screen while loading, with a cached queue view when offline
-4. Use the **Capacitor `Network` plugin** to detect connectivity and show a "reconnecting..." banner
+Embedding a local copy of the climb database solves three critical problems simultaneously:
+
+1. **App Store approval:** The app has genuine native value beyond a WebView — a searchable offline climb database with BLE board control. This is clearly not "just a web wrapper."
+2. **Offline functionality:** Users can browse and search climbs, build a queue, and send climbs to their board via BLE — all without internet. Only social features (comments, follows, party mode) require connectivity.
+3. **Performance:** Climb search queries hit a local SQLite database instead of making network requests. No latency, no loading spinners for search results.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                Native Shell                      │
+│                                                  │
+│  ┌──────────────────────┐  ┌──────────────────┐  │
+│  │   Capacitor WebView  │  │  SQLite Database  │  │
+│  │   (hosted mode)      │  │  (bundled asset)  │  │
+│  │                      │  │                   │  │
+│  │  boardsesh.com ──────┼──┤  board_climbs     │  │
+│  │  (auth, social,      │  │  board_climb_stats│  │
+│  │   party, queue sync) │  │  board_holes      │  │
+│  │                      │  │  board_layouts    │  │
+│  │  BLE Adapter ────────┼──┤  board_sets       │  │
+│  │  (native bridge)     │  │  board_grades     │  │
+│  │                      │  │  ...              │  │
+│  └──────────────────────┘  └──────────────────┘  │
+│                                                  │
+│  Server (boardsesh.com) provides:                │
+│  - Auth (NextAuth cookies)                       │
+│  - Real-time queue sync (GraphQL WS)             │
+│  - Social features (comments, follows)           │
+│  - Aurora API proxy (data sync)                  │
+│  - User ticks/logbook                            │
+└─────────────────────────────────────────────────┘
+```
+
+### What Gets Embedded
+
+**Read-only reference data** (bundled as SQLite per board):
+
+| Table | Est. Rows (per board) | Purpose |
+|-------|----------------------|---------|
+| `board_climbs` | 30,000-50,000 | Climb name, description, frames, setter, edges |
+| `board_climb_stats` | 30,000-50,000 | Difficulty, ascensionist count, quality rating (per angle) |
+| `board_difficulty_grades` | ~30 | Grade name translations (V0, V1, etc.) |
+| `board_holes` | ~2,000 | Hold position grid (x, y coords for rendering) |
+| `board_layouts` | ~80 | Layout definitions |
+| `board_product_sizes` | ~150 | Size/edge data (for edge filtering) |
+| `board_products` | ~5 | Product metadata |
+| `board_sets` | ~50 | Set definitions |
+| `board_product_sizes_layouts_sets` | ~500 | Configuration junction table |
+
+**NOT embedded** (stays server-side):
+
+| Data | Reason |
+|------|--------|
+| User accounts & auth | NextAuth server-side sessions |
+| User ticks / logbook | Synced via GraphQL, user-specific |
+| Queue state | Real-time sync via WebSocket |
+| Comments, follows, social | Server-side features |
+| Aurora API sync state | Server-side sync tracking |
+
+### Database Size Estimates
+
+| Board | Uncompressed | Compressed (ZIP/SQLite) |
+|-------|-------------|------------------------|
+| Kilter | ~400-500 MB | ~120-150 MB |
+| Tension | ~300-400 MB | ~90-120 MB |
+| MoonBoard | ~100-150 MB | ~30-50 MB |
+
+The `frames` column (hold positions as text like `p1234r12p5678r13`) dominates the size and compresses well.
+
+### Delivery Strategy
+
+To avoid bloating the initial app download:
+
+- **iOS:** Use **On-Demand Resources (ODR)** — each board's SQLite database is a separate ODR tag. Downloaded when the user first selects that board. App Store hosts up to 20 GB of ODR.
+- **Android:** Use **Play Asset Delivery** (asset packs) — similar concept, each board is a separate asset pack downloaded on demand.
+- **Initial app size:** ~10-15 MB (native shell + BLE plugin, no board data)
+- **Per-board download:** ~100-150 MB (one-time, on first board selection)
+
+```
+First launch flow:
+1. User opens app → sees board selection screen (no download needed)
+2. User selects "Kilter" → "Downloading Kilter climb data (120 MB)..."
+3. SQLite database is copied to app documents directory
+4. User can now search and browse Kilter climbs offline
+5. Periodic sync updates the local database with new climbs
+```
+
+### Query Layer
+
+The web app's climb search currently goes through the GraphQL backend → PostgreSQL. In Capacitor, we add a **local search path**:
+
+```typescript
+// packages/web/app/lib/ble/climb-search-adapter.ts
+export async function searchClimbsLocal(
+  params: ParsedBoardRouteParameters,
+  searchParams: ClimbSearchParams,
+): Promise<ClimbSearchResult> {
+  if (!isNativeApp()) {
+    // Fall through to server-side search
+    return searchClimbsRemote(params, searchParams);
+  }
+
+  const db = await getLocalDatabase(params.board_name);
+
+  // The search query is equivalent to the PostgreSQL version but in SQLite SQL
+  const results = await db.query(`
+    SELECT c.uuid, c.name, c.description, c.frames, c.setter_username,
+           cs.ascensionist_count, cs.quality_average, cs.display_difficulty,
+           dg.boulder_name as difficulty
+    FROM board_climbs c
+    LEFT JOIN board_climb_stats cs
+      ON cs.climb_uuid = c.uuid AND cs.board_type = ? AND cs.angle = ?
+    LEFT JOIN board_difficulty_grades dg
+      ON dg.difficulty = ROUND(cs.display_difficulty) AND dg.board_type = ?
+    WHERE c.board_type = ? AND c.layout_id = ? AND c.is_listed = 1
+      AND c.is_draft = 0 AND c.frames_count = 1
+      AND c.edge_left > ? AND c.edge_right < ?
+      AND c.edge_bottom > ? AND c.edge_top < ?
+    ORDER BY cs.ascensionist_count DESC
+    LIMIT ? OFFSET ?
+  `, [params.board_name, params.angle, params.board_name,
+      params.board_name, params.layout_id,
+      sizeEdges.edgeLeft, sizeEdges.edgeRight,
+      sizeEdges.edgeBottom, sizeEdges.edgeTop,
+      pageSize + 1, page * pageSize]);
+
+  // Transform to Climb[] (same shape as server response)
+  return transformResults(results);
+}
+```
+
+**Key differences from server query:**
+- No `boardsesh_ticks` subqueries (user progress filters only work online)
+- No `ILIKE` (SQLite uses `LIKE` which is case-insensitive by default for ASCII)
+- `ROUND()` works the same in SQLite
+- Offline search returns climb data without user-specific ascent/attempt counts
+
+### Sync Strategy
+
+The local database needs periodic updates as new climbs are added to Aurora's platform:
+
+1. **Initial load:** `copyFromAssets()` copies the bundled SQLite database
+2. **Periodic sync (background):** When online, query the server for climbs updated since `last_sync_timestamp`
+3. **Delta updates:** Insert/update only changed climbs — don't re-download the entire database
+4. **Sync endpoint:** New API route `GET /api/internal/climb-sync?board=kilter&since=2026-03-01` returns recent climbs as JSON
+5. **Sync frequency:** On app launch (if online) + every 24 hours in background
+
+```typescript
+// Sync flow
+async function syncClimbDatabase(boardName: BoardName) {
+  const lastSync = await getPreference(`${boardName}_last_sync`);
+  const response = await fetch(`/api/internal/climb-sync?board=${boardName}&since=${lastSync}`);
+  const { climbs, stats, deletedUuids } = await response.json();
+
+  const db = await getLocalDatabase(boardName);
+  await db.transaction(async (tx) => {
+    for (const climb of climbs) {
+      await tx.run('INSERT OR REPLACE INTO board_climbs ...', climb);
+    }
+    for (const stat of stats) {
+      await tx.run('INSERT OR REPLACE INTO board_climb_stats ...', stat);
+    }
+    for (const uuid of deletedUuids) {
+      await tx.run('DELETE FROM board_climbs WHERE uuid = ?', [uuid]);
+    }
+  });
+
+  await setPreference(`${boardName}_last_sync`, new Date().toISOString());
+}
+```
+
+### Build Pipeline
+
+The SQLite databases must be generated from the PostgreSQL production data:
+
+```bash
+# packages/db/scripts/export-sqlite.sh
+# Run periodically (e.g., weekly) to generate fresh SQLite snapshots
+
+for BOARD in kilter tension moonboard; do
+  pg_dump --data-only --table="board_climbs" --where="board_type='$BOARD'" \
+    | sqlite3 "$BOARD.db"  # Simplified — actual script would handle schema differences
+done
+
+# Compress for bundling
+for BOARD in kilter tension moonboard; do
+  zip "$BOARD.db.zip" "$BOARD.db"
+done
+```
+
+A GitHub Action runs this weekly and publishes the SQLite snapshots as release assets or to a CDN for the app to download.
+
+### Impact on Milestones
+
+This feature adds a new **Milestone 1.5: Embedded Climb Database** between BLE Integration and Native Polish:
+
+**Milestone 1.5: Embedded Climb Database (2 weeks)**
+
+Tasks:
+- [ ] Set up `@capacitor-community/sqlite` plugin
+- [ ] Create PostgreSQL → SQLite export script with proper schema translation
+- [ ] Generate SQLite databases for each board (Kilter, Tension, MoonBoard)
+- [ ] Implement On-Demand Resources (iOS) / Play Asset Delivery (Android) for per-board downloads
+- [ ] Create `searchClimbsLocal()` query function mirroring the server-side search
+- [ ] Implement board selection → download → database init flow
+- [ ] Create sync endpoint (`/api/internal/climb-sync`)
+- [ ] Implement delta sync on app launch
+- [ ] Add offline indicator and graceful degradation (hide user-specific features when offline)
+- [ ] Test search performance locally vs server (should be faster)
+- [ ] Test offline flow: airplane mode → search → build queue → connect BLE → send climb
+
+Exit criteria:
+- Users can search and browse climbs offline after initial board download
+- Climb search is at least as fast as the server-side search
+- Delta sync keeps local database current when online
+- Offline queue + BLE works end-to-end without internet
+
+### Hybrid Offline Strategy
+
+With the embedded database, the offline story becomes much stronger:
+
+| Feature | Online | Offline |
+|---------|--------|---------|
+| Climb search | Local SQLite (fast) | Local SQLite (same) |
+| Climb details | Local + server enrichment | Local only (no user stats) |
+| Queue management | Synced via GraphQL WS | Local queue in IndexedDB |
+| BLE board control | Works | Works |
+| User progress (ticks) | Available | Hidden (requires server) |
+| Social (comments, follows) | Available | Hidden |
+| Party mode | Available | Unavailable |
+| Auth | NextAuth cookies | Cached session (if persisted) |
 
 ---
 
@@ -871,17 +1093,29 @@ jobs:
 
 ### MVP Definition
 
-The MVP includes Milestones 0-2 (~6.5 weeks):
+The MVP includes Milestones 0-2.5 (~8.5 weeks):
 - Native app shell loading the web app with validated auth persistence
 - BLE working on iOS (primary motivation) and Android via abstraction layer
+- **Embedded SQLite climb database** with offline search (per-board On-Demand Resources)
 - Native look and feel (safe areas, status bar, splash screen, haptics)
 - Deep linking for party sessions (scoped paths, not entire domain)
-- Offline fallback screen with cached queue
+- Offline fallback with local climb search + BLE board control
 
 Milestone 3 (App Store submission, ~2 weeks) completes the v1.0 release.
 Push notifications (Milestone 4) ship as a v1.1 update post-launch.
 
-**Realistic total timeline: 10-13 weeks** (including app store review cycles and device-specific debugging).
+**Realistic total timeline: 12-15 weeks** (including app store review cycles, device-specific debugging, and SQLite integration).
+
+### Milestone Summary
+
+| Milestone | Duration | Key Deliverable |
+|-----------|----------|----------------|
+| 0: PoC + Auth | 2 weeks | WebView loads, auth works, bridge injection validated |
+| 1: BLE Integration | 2-3 weeks | Native BLE with abstraction layer, no double-chunking |
+| 1.5: Embedded DB | 2 weeks | SQLite climb database, offline search, delta sync |
+| 2: Native Polish | 1.5 weeks | Safe areas, deep links, haptics, offline UI |
+| 3: App Store | 2 weeks | Store submission, beta testing, review cycles |
+| 4: Push (post-launch) | 2-3 weeks | FCM + APNs, device token backend, notification types |
 
 ### Performance Targets
 
@@ -917,6 +1151,7 @@ Push notifications (Milestone 4) ship as a v1.1 update post-launch.
     "@capacitor/splash-screen": "^6.0.0",
     "@capacitor/status-bar": "^6.0.0",
     "@capacitor-community/bluetooth-le": "^6.0.0",
+    "@capacitor-community/sqlite": "^6.0.0",
     "@capacitor-community/keep-awake": "^6.0.0",
     "@capacitor/network": "^6.0.0"
   },
@@ -967,6 +1202,7 @@ Push notifications (Milestone 4) ship as a v1.1 update post-launch.
 | Feature | Web (Chrome) | Web (Safari iOS) | Capacitor iOS | Capacitor Android |
 |---------|-------------|------------------|---------------|-------------------|
 | BLE | Web Bluetooth | Not supported | Native plugin | Native plugin |
+| Offline Climb Search | Not available | Not available | SQLite (bundled) | SQLite (bundled) |
 | Push Notifications | Web Push | Limited | APNs | FCM |
 | Haptics | Not available | Not available | Native | Native |
 | Deep Links | N/A | N/A | Universal links | App links |
@@ -975,9 +1211,19 @@ Push notifications (Milestone 4) ship as a v1.1 update post-launch.
 
 ---
 
-*Document version: 4.0*
+*Document version: 5.0*
 *Last updated: March 2026*
-*Replaces: v3.0 (March 2026) — updated after adversarial review*
+*Replaces: v4.0 (March 2026) — added embedded SQLite database strategy*
+
+### Changelog (v4.0 → v5.0)
+
+**Major addition:**
+- Added "Embedded Climb Database (SQLite)" section — local SQLite database with per-board On-Demand Resources delivery, offline search, delta sync strategy
+- New Milestone 1.5: Embedded Climb Database (2 weeks)
+- Added `@capacitor-community/sqlite` to dependencies
+- Updated timeline from 10-13 weeks to 12-15 weeks
+- Updated feature matrix with "Offline Climb Search" row
+- Updated hybrid offline strategy table showing online/offline feature availability
 
 ### Changelog (v3.0 → v4.0)
 
