@@ -9,13 +9,15 @@ RUN apk add --no-cache bash curl unzip && \
     ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
     ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
 
-# Copy package files for all workspaces
+# Copy package files for all workspaces (all needed for lockfile resolution)
 COPY package.json bun.lock ./
+COPY packages/web/package.json ./packages/web/
 COPY packages/shared-schema/package.json ./packages/shared-schema/
 COPY packages/crypto/package.json ./packages/crypto/
 COPY packages/db/package.json ./packages/db/
 COPY packages/aurora-sync/package.json ./packages/aurora-sync/
 COPY packages/backend/package.json ./packages/backend/
+COPY packages/moonboard-ocr/package.json ./packages/moonboard-ocr/
 
 # Copy source code for all shared packages and backend
 COPY packages/shared-schema/src ./packages/shared-schema/src
