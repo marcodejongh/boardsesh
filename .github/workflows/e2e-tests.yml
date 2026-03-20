@@ -26,7 +26,7 @@ jobs:
 
     services:
       postgres:
-        image: ghcr.io/marcodejongh/boardsesh-dev-db:latest
+        image: ghcr.io/boardsesh/boardsesh-dev-db:latest
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password

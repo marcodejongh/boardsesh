@@ -383,10 +383,10 @@ The Docker image is automatically built and published to GitHub Container Regist
 
 ```bash
 # Pull latest image
-docker pull ghcr.io/marcodejongh/boardsesh-board-controller:latest
+docker pull ghcr.io/boardsesh/boardsesh-board-controller:latest
 
 # Run with Docker
-docker run -p 8000:8000 -v ./data:/app/data ghcr.io/marcodejongh/boardsesh-board-controller:latest
+docker run -p 8000:8000 -v ./data:/app/data ghcr.io/boardsesh/boardsesh-board-controller:latest
 
 # Or use docker-compose (recommended)
 curl -O https://raw.githubusercontent.com/marcodejongh/boardsesh/main/board-controller/docker-compose.yml
