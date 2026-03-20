@@ -12,7 +12,7 @@ RUN apk add --no-cache bash curl unzip && \
 COPY package.json bun.lock ./
 
 # Install dependencies
-RUN bun install
+RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -33,7 +33,7 @@ RUN apk add --no-cache bash curl unzip && \
 
 # Copy package files and install production dependencies only
 COPY package.json bun.lock ./
-RUN bun install --production
+RUN bun install --production --frozen-lockfile
 
 # Copy built files
 COPY --from=builder /app/dist ./dist
