@@ -7,12 +7,13 @@ This document describes the WebSocket implementation used for real-time party se
 1. [Architecture Overview](#architecture-overview)
 2. [Technology Stack](#technology-stack)
 3. [Connection Flow](#connection-flow)
-4. [Session Management](#session-management)
-5. [Queue State Synchronization](#queue-state-synchronization)
-6. [Multi-Instance Support](#multi-instance-support)
-7. [Failure States and Recovery](#failure-states-and-recovery)
-8. [Client-Side Connection Supervisor](#client-side-connection-supervisor)
-9. [Data Persistence Strategy](#data-persistence-strategy)
+4. [Backend URL Resolution](#backend-url-resolution)
+5. [Session Management](#session-management)
+6. [Queue State Synchronization](#queue-state-synchronization)
+7. [Multi-Instance Support](#multi-instance-support)
+8. [Failure States and Recovery](#failure-states-and-recovery)
+9. [Client-Side Connection Supervisor](#client-side-connection-supervisor)
+10. [Data Persistence Strategy](#data-persistence-strategy)
 
 ---
 
@@ -237,6 +238,62 @@ The `getBaseBoardPath()` utility in `url-utils.ts` extracts the stable board con
 - `/{angle}` - board angle (numeric segment at end)
 
 This ensures `BoardSessionBridge` only calls `activateSession()` when the actual board configuration changes, not when users swipe between climbs or adjust the board angle.
+
+---
+
+## Backend URL Resolution
+
+The WebSocket backend URL is resolved at runtime by `packages/web/app/lib/backend-url.ts` rather than relying solely on the build-time `NEXT_PUBLIC_WS_URL` environment variable. This is necessary because branch deploy previews serve a single build from multiple domains, and a hard-coded URL only works for one of them.
+
+### Preview Domain Pattern
+
+Branch deploy previews use per-PR subdomains:
+
+| Service | Domain pattern | Example (PR #42) |
+|---------|---------------|-------------------|
+| Web frontend | `{N}.preview.boardsesh.com` | `42.preview.boardsesh.com` |
+| WS backend | `{N}.ws.preview.boardsesh.com` | `42.ws.preview.boardsesh.com` |
+
+The runtime resolver maps the frontend hostname to the backend:
+
+```
+42.preview.boardsesh.com  →  wss://42.ws.preview.boardsesh.com/graphql
+```
+
+### Client-Side Resolution Order
+
+`getBackendWsUrl()` checks these sources in order and returns the first match:
+
+1. **`backendUrl` query parameter** (dev builds only) -- allows overriding the backend URL for local testing (e.g., `?backendUrl=ws://localhost:8080/graphql`).
+2. **Host-derived URL** -- if the page hostname matches `{N}.preview.boardsesh.com`, the backend URL is derived automatically. No build-time config needed.
+3. **`NEXT_PUBLIC_WS_URL` build-time fallback** -- the standard env var baked into the Next.js client bundle at build time. Used for production (`boardsesh.com`) and any hostname that doesn't match a known pattern.
+
+On the server side (SSR), only the build-time env var is used.
+
+### Preview Deploy Infrastructure
+
+```
+                                Internet
+                                   │
+                       ┌───────────▼───────────┐
+                       │   Main Traefik Proxy   │
+                       │  (boardsesh.com infra) │
+                       └───────┬───────┬────────┘
+                               │       │
+        *.preview.boardsesh.com│       │*.ws.preview.boardsesh.com
+                               │       │
+                       ┌───────▼───────▼────────┐
+                       │  Branch-Deploy VM       │
+                       │  Traefik Proxy          │
+                       └───────┬───────┬────────┘
+                               │       │
+                    ┌──────────▼──┐ ┌──▼──────────┐
+                    │ PR #42 Web  │ │ PR #42 WS   │
+                    │ Container   │ │ Container    │
+                    └─────────────┘ └──────────────┘
+```
+
+The main Traefik instance routes `*.preview.boardsesh.com` and `*.ws.preview.boardsesh.com` traffic to a dedicated branch-deploy VM. A second Traefik instance on that VM routes to the per-PR containers using the numeric prefix as the routing key.
 
 ---
 
@@ -1299,6 +1356,7 @@ Requires user authentication and controller ownership.
 
 ### Frontend
 
+- `packages/web/app/lib/backend-url.ts` - Runtime backend URL resolver (preview deploys, dev overrides)
 - `packages/web/app/components/graphql-queue/graphql-client.ts` - WebSocket client
 - `packages/web/app/components/graphql-queue/use-queue-session.ts` - Session hook
 - `packages/web/app/components/persistent-session/persistent-session-context.tsx` - Root-level session management
