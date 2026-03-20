@@ -6,11 +6,11 @@
 
 Boardsesh is a monorepo with three deployable services:
 
-| Service | Platform | Database | Purpose |
-|---------|----------|----------|---------|
-| **Web** (`packages/web`) | Vercel (Next.js 15) | Neon PostgreSQL | SSR pages, API routes, auth |
-| **Backend** (`packages/backend`) | Railway (Node.js) | Same Neon DB + Redis | GraphQL WS subscriptions, sessions, sync |
-| **Dev DB** (`packages/db`) | Docker (local only) | PostgreSQL + PostGIS | Local development |
+| Service | Production | Branch Deploys |
+|---------|-----------|----------------|
+| **Web** (`packages/web`) | Vercel (Next.js 15) | Vercel preview at `{PRID}.preview.boardsesh.com` |
+| **Backend** (`packages/backend`) | Railway (Node.js) | Homelab Docker at `{PRID}.ws.preview.boardsesh.com` |
+| **Database** (`packages/db`) | Neon PostgreSQL | `boardsesh-dev-db` Docker image (per PR) |
 
 ### What Broke
 
@@ -21,7 +21,7 @@ Branch deploys stopped working after migrating from Vercel Postgres (which was a
    ```json
    "buildCommand": "if [ \"$VERCEL_ENV\" != \"preview\" ]; then npm run db:migrate; fi && npm run build --workspace=@boardsesh/web"
    ```
-3. **No backend branching** - Railway has no automatic branch deploy mechanism tied to Vercel previews. Preview frontends either point to the production backend or have no backend at all.
+3. **No backend branching** - No automatic branch deploy mechanism tied to Vercel previews. Preview frontends either point to the production backend or have no backend at all.
 4. **`NEXT_PUBLIC_WS_URL` is not set for preview** - Preview deployments don't know where to find a backend, so party mode is non-functional.
 
 ### What Still Works
@@ -41,9 +41,9 @@ Branch deploys stopped working after migrating from Vercel Postgres (which was a
 
 **Effort: ~1-2 days | Impact: Preview deploys become functional for frontend-only changes**
 
-### 1.1 Re-enable Migrations on Preview (with safeguards)
+### 1.1 Re-enable Migrations on Preview
 
-Drizzle migrations are idempotent - running them against production is safe for additive changes. The current skip was a workaround for the broken Neon branching (to avoid running migrations against a non-existent branch DB). Since previews now connect to the main database anyway, migrations should run — but only after CI validates them.
+Drizzle migrations are idempotent - running them against the development database is safe. The current skip was a workaround for the broken Neon branching (to avoid running migrations against a non-existent branch DB). Since branch deploys use the pre-built `boardsesh-dev-db` Docker image (not the production database), migrations should run unconditionally.
 
 **Change in `vercel.json`:**
 ```json
@@ -52,33 +52,7 @@ Drizzle migrations are idempotent - running them against production is safe for 
 }
 ```
 
-> **Risk:** Preview deploys run migrations against the production database on every push. Unmerged PRs can apply schema changes to production before review/merge. While additive migrations (new tables, columns) are safe, destructive migrations (DROP, ALTER...DROP, renames) could affect production.
-
-**Required safeguard — add a CI check before this change goes live:**
-
-Add a GitHub Actions job that blocks merge if migration files contain destructive SQL:
-
-```yaml
-check-migrations:
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
-    - name: Check for destructive migrations
-      run: |
-        # Find migration files changed in this PR
-        CHANGED=$(git diff --name-only origin/main...HEAD -- 'packages/db/drizzle/*.sql')
-        if [ -z "$CHANGED" ]; then
-          echo "No migration files changed"
-          exit 0
-        fi
-        # Flag destructive operations
-        if grep -iE '\b(DROP\s+(TABLE|COLUMN|INDEX|CONSTRAINT)|TRUNCATE|DELETE\s+FROM)\b' $CHANGED; then
-          echo "::error::Destructive SQL detected in migration files. These must be reviewed carefully and should only land via main."
-          exit 1
-        fi
-```
-
-This ensures destructive migrations are flagged before they can run on preview. For Phase 2, migrations will run against isolated Neon branches instead of production, eliminating this risk entirely.
+> **Note:** Migrations run against the development database Docker image, not production. There is no risk of destructive SQL affecting production data.
 
 ### 1.2 Set `NEXT_PUBLIC_WS_URL` for Preview Scope
 
@@ -159,176 +133,227 @@ After Phase 1, every Vercel preview deployment:
 
 ---
 
-## Phase 2: Full-Stack Branch Deploys
+## Phase 2: Full-Stack Branch Deploys on Homelab
 
-**Effort: ~3-5 days | Impact: Isolated backend + database per PR when needed**
+**Effort: ~3-5 days | Impact: Isolated backend + database per PR, $0/month**
 
-### 2.1 Database Branching
+### 2.1 Architecture Overview
 
-#### Option A: Neon API (Primary)
-
-Programmatically create Neon branches via their API, bypassing the broken Vercel integration:
-
-```bash
-# Create a branch from main
-curl -X POST "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
-  -H "Authorization: Bearer ${NEON_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"branch\": {
-      \"name\": \"pr-${PR_NUMBER}\",
-      \"parent_id\": \"${MAIN_BRANCH_ID}\"
-    },
-    \"endpoints\": [{
-      \"type\": \"read_write\"
-    }]
-  }"
+```
+Vercel Preview ──→ Cloudflare ──→ CF Tunnel ──→ Traefik VIP ──→ PR Container
+{N}.preview.        edge TLS      cloudflared    172.16.0.2     172.16.0.10:{10000+N}
+boardsesh.com                      (VM 114)      (HA VIP)       (boardsesh-daemon VM)
 ```
 
-**Pros:** Instant branching (copy-on-write), no data duplication cost, full production data available.
-**Cons:** Requires working Neon API access, adds API key management.
+- **Frontend**: Vercel preview, aliased to `{PRID}.preview.boardsesh.com`
+- **Backend**: Docker container on boardsesh-daemon VM (`172.16.0.10`), host port `10000+N`, internal port 8080
+- **Database**: `ghcr.io/marcodejongh/boardsesh-dev-db:latest`, internal only (no host port — backend connects via Docker network)
+- **Routing**: Traefik dynamic config file per PR in `/etc/traefik/dynamic/`, auto-detected (`watch: true` file provider)
+- **DNS**: `*.preview.boardsesh.com` wildcard CNAME → Cloudflare Tunnel
+- **TLS**: Cloudflare edge TLS for `*.preview.boardsesh.com`
+- **Orchestration**: Ansible playbook `manage_branch_deploys.yml` is the single source of truth
+- **Cost**: $0/month (homelab resources already provisioned)
 
-**GitHub Actions integration:**
-```yaml
-create-db-branch:
-  needs: detect-changes
-  if: needs.detect-changes.outputs.db == 'true'
-  runs-on: ubuntu-latest
-  outputs:
-    connection_string: ${{ steps.create.outputs.connection_string }}
-  steps:
-    - name: Create Neon branch
-      id: create
-      uses: neondatabase/create-branch-action@v5
-      with:
-        project_id: ${{ secrets.NEON_PROJECT_ID }}
-        branch_name: pr-${{ github.event.pull_request.number }}
-        api_key: ${{ secrets.NEON_API_KEY }}
+### 2.2 Public Access via Cloudflare Tunnel
 
-    - name: Run migrations
-      run: |
-        DATABASE_URL="${{ steps.create.outputs.db_url }}" npm run db:migrate
+Existing `cloudflared` (VM 114) gets three configuration additions:
+
+1. **Cloudflare DNS**: Wildcard CNAME `*.preview.boardsesh.com` → tunnel
+2. **Tunnel ingress rule**: `*.ws.preview.boardsesh.com` → `https://172.16.0.2` (Traefik VIP)
+3. **Vercel**: Wildcard custom domain `*.preview.boardsesh.com` for preview aliasing
+
+### 2.3 Prerequisite: Wire up `getBackendWsUrl()`
+
+> **Document only** — code changes happen in a separate task.
+
+`packages/web/app/lib/backend-url.ts` exists with runtime URL resolution but is NOT wired into the codebase. Two changes are needed:
+
+**A) Update `deriveWsUrlFromHost()` pattern**
+
+Currently produces a dash-delimited backend hostname:
+```
+pr-5.preview.boardsesh.com → wss://pr-5-ws.preview.boardsesh.com/graphql
 ```
 
-#### Option B: Railway PostgreSQL with Dev DB Image (Fallback)
-
-If Neon branching remains unreliable, spin up a Railway PostgreSQL service using the pre-built `ghcr.io/marcodejongh/boardsesh-dev-db` image:
-
-```bash
-# Railway CLI - create ephemeral service from Docker image
-railway service create \
-  --name "db-pr-${PR_NUMBER}" \
-  --image ghcr.io/marcodejongh/boardsesh-dev-db:latest
+Must change to a dot subdomain to match the Cloudflare Tunnel / Traefik routing scheme:
+```
+pr-5.preview.boardsesh.com → wss://pr-5.ws.preview.boardsesh.com/graphql
 ```
 
-**Pros:** Fully independent, uses existing Docker image with all board data, no Neon dependency.
-**Cons:** Slower startup (~30-60s), no production data (uses seed data), costs more (full PostgreSQL instance per PR).
+Specifically, in `deriveWsUrlFromHost()` (line 38), the pattern `${prLabel}-ws.${rest}` needs to become `${prLabel}.ws.${rest}` (or equivalent restructure of the regex match groups).
 
-#### Recommendation
+**B) Migrate 11 call sites from `process.env.NEXT_PUBLIC_WS_URL` to `getBackendWsUrl()`**
 
-Use Option A (Neon API) as primary. It's faster, cheaper, and has production data. Keep Option B as documented fallback if Neon proves unreliable.
+The following files read `NEXT_PUBLIC_WS_URL` directly and need to import `getBackendWsUrl()` instead:
 
-### 2.2 Backend Branching via Railway
+1. `packages/web/app/components/connection-manager/connection-settings-context.tsx:9`
+2. `packages/web/app/lib/graphql/client.ts:10`
+3. `packages/web/app/components/party-session/persistent-session-context.tsx:63`
+4. `packages/web/app/components/party-session/join-session-tab.tsx:17`
+5. `packages/web/app/components/notifications/use-notification-subscription.ts:55`
+6. `packages/web/app/components/climbs/use-save-climb.ts:37`
+7. `packages/web/app/components/climbs/comment-section.tsx:39`
+8. `packages/web/app/components/climbs/create-climb-form.tsx:297`
+9. `packages/web/app/components/social/subscribe-button.tsx:43`
+10. `packages/web/app/components/social/new-climb-feed.tsx:47`
+11. `packages/web/app/components/settings/settings-page-content.tsx:36`
 
-Railway supports environments that can be created per-PR:
+### 2.4 Ansible Playbook: `manage_branch_deploys.yml`
 
-```bash
-# Create an ephemeral environment for this PR
-railway environment create "pr-${PR_NUMBER}"
+This is the core of Phase 2. A single playbook that manages all PR environments on the boardsesh-daemon VM. GitHub Actions simply invokes this playbook — all logic lives in Ansible.
 
-# Deploy the backend to this environment
-railway up --environment "pr-${PR_NUMBER}" \
-  --service backend \
-  --detach
+#### Modes of operation
+
+| Mode | Invocation | What it does |
+|------|-----------|--------------|
+| **Deploy** | `-e pr_number=123 -e action=deploy` | Create/update containers + Traefik config for PR #123 |
+| **Cleanup** | `-e pr_number=123 -e action=cleanup` | Remove containers + Traefik config for PR #123 |
+| **Sweep** | `-e action=sweep` | Query GitHub API for open PRs, remove environments for closed PRs |
+
+#### Playbook responsibilities
+
+- Generate `docker-compose.yml` from template into `/opt/boardsesh/pr-{N}/`
+- Pull images, start containers (`docker compose up -d`)
+- Generate Traefik dynamic config into `/etc/traefik/dynamic/boardsesh-pr-{N}.yml` on both Traefik LXCs (VM 141 primary, VM 153 secondary)
+- Health check the backend at `http://localhost:{10000+N}/health`
+- For sweep: use `gh api` or `curl` to list open PRs, compare against running compose projects, remove stale ones
+
+#### New role: `boardsesh_branch_deploy`
+
+Based on existing `boardsesh_daemon` role patterns:
+
+```
+roles/boardsesh_branch_deploy/
+├── defaults/main.yml          # port formula, image defaults, data dir
+├── templates/
+│   ├── docker-compose.pr.yml.j2    # per-PR compose file
+│   └── traefik-pr-router.yml.j2    # per-PR Traefik dynamic config
+└── tasks/
+    ├── deploy.yml             # create dirs, template compose, pull, start, health check
+    ├── cleanup.yml            # compose down -v, rm dirs, rm Traefik config
+    └── sweep.yml              # query GitHub, find stale, loop cleanup
 ```
 
-**Required environment variables for branch backend:**
-```
-DATABASE_URL=<branch database connection string>
-REDIS_URL=<shared or branch Redis>
-BOARDSESH_URL=https://boardsesh-${HASH}-marcodejonghs-projects.vercel.app
-CRON_SECRET=<same as production>
-PORT=8080
-```
+Defaults:
+- `boardsesh_pr_base_port: 10000`
+- `boardsesh_pr_data_dir: /opt/boardsesh`
+- Image defaults for daemon and dev-db
 
-**Redis strategy:** Use the production Redis instance for branch backends. Redis data is ephemeral (pub/sub, session TTLs) and namespaced by session ID, so there's no collision risk. This avoids the cost and complexity of per-PR Redis instances.
-
-### 2.3 Frontend-to-Branch-Backend Connection
-
-The join handler (`packages/backend/src/handlers/join.ts:56`) already constructs a `backendUrl` query param:
-
-```ts
-const redirectUrl = `${boardseshUrl}${sessionInfo.boardPath}?backendUrl=${encodeURIComponent(backendUrl)}&sessionId=${encodeURIComponent(sessionId)}`;
-```
-
-Extend this pattern to allow any preview deployment to connect to its corresponding branch backend.
-
-#### Implementation: Runtime `backendUrl` Override
-
-**Step 1: Refactor `NEXT_PUBLIC_WS_URL` resolution into a shared utility**
-
-Currently, `NEXT_PUBLIC_WS_URL` is read in two places:
-- `packages/web/app/components/connection-manager/connection-settings-context.tsx:9` (client-side, compile-time)
-- `packages/web/app/lib/graphql/client.ts:10` (used in both client and server contexts)
-
-Create a shared resolver that checks (in priority order):
-1. `backendUrl` query parameter (from URL)
-2. `NEXT_PUBLIC_WS_URL` environment variable (compile-time)
-
-```ts
-// packages/web/app/lib/backend-url.ts
-export function resolveBackendUrl(queryParams?: URLSearchParams): string | null {
-  // 1. Runtime override from URL query param
-  if (typeof window !== 'undefined') {
-    const params = queryParams || new URLSearchParams(window.location.search);
-    const override = params.get('backendUrl');
-    if (override) return override;
-  }
-
-  // 2. Build-time env var
-  return process.env.NEXT_PUBLIC_WS_URL || null;
-}
-```
-
-**Step 2: Update `ConnectionSettingsContext` to use the resolver**
-
-The context already exposes `backendUrl` - update it to check query params first:
-
-```ts
-// In ConnectionSettingsProvider
-const [backendUrl, setBackendUrl] = useState<string | null>(BACKEND_URL);
-
-useEffect(() => {
-  if (typeof window === 'undefined') return;
-  const params = new URLSearchParams(window.location.search);
-  const override = params.get('backendUrl');
-  if (override) {
-    setBackendUrl(override);
-  }
-}, []);
-```
-
-**Step 3: Connect preview frontend to branch backend**
-
-> **Important:** `NEXT_PUBLIC_*` values are baked into the Next.js client bundle at build time. Setting `NEXT_PUBLIC_WS_URL` per deployment requires a rebuild, and the baked-in URL is tied to a single domain — if the preview is accessed via a different domain (e.g., a custom preview domain), WebSocket connections will fail. For this reason, the **runtime `backendUrl` approach (Steps 1-2 above) is the primary strategy**.
-
-The runtime `backendUrl` query param approach works without any build configuration changes. The branch backend's `/join/` endpoint already redirects users with the correct `backendUrl` param appended, so users joining a party session are automatically connected to the right backend.
-
-For cases where a rebuild is acceptable, you can also set `NEXT_PUBLIC_WS_URL` as a fallback:
-
-```bash
-# Get the Railway backend URL for this PR
-BRANCH_BACKEND_URL="wss://backend-pr-${PR_NUMBER}.up.railway.app/graphql"
-
-# Set it as a Vercel env var scoped to preview (requires redeploy to take effect)
-vercel env add NEXT_PUBLIC_WS_URL preview <<< "${BRANCH_BACKEND_URL}"
-vercel redeploy --target preview
-```
-
-### 2.4 Cleanup on PR Close
+#### Docker compose template (`docker-compose.pr.yml.j2`)
 
 ```yaml
-# .github/workflows/branch-deploy-cleanup.yml
+services:
+  daemon:
+    image: "{{ boardsesh_pr_daemon_image }}"
+    container_name: boardsesh-pr-{{ pr_number }}-daemon
+    ports:
+      - "{{ 10000 + pr_number | int }}:8080"
+    environment:
+      - DATABASE_URL=postgresql://postgres:{{ boardsesh_pr_postgres_password }}@db:5432/boardsesh
+      - PORT=8080
+      - BOARDSESH_URL=https://{{ pr_number }}.preview.boardsesh.com
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  db:
+    image: ghcr.io/marcodejongh/boardsesh-dev-db:latest
+    container_name: boardsesh-pr-{{ pr_number }}-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  default:
+    name: boardsesh-pr-{{ pr_number }}
+```
+
+Note: The database has no host port — only the backend container can reach it via Docker network. This keeps port allocation simple (one host port per PR).
+
+#### Traefik dynamic config template (`traefik-pr-router.yml.j2`)
+
+```yaml
+http:
+  routers:
+    boardsesh-pr-{{ pr_number }}:
+      rule: "Host(`{{ pr_number }}.ws.preview.boardsesh.com`)"
+      entryPoints:
+        - websecure
+      service: boardsesh-pr-{{ pr_number }}
+      middlewares:
+        - secure-headers
+      tls:
+        certResolver: letsencrypt
+  services:
+    boardsesh-pr-{{ pr_number }}:
+      loadBalancer:
+        servers:
+          - url: "http://172.16.0.10:{{ 10000 + pr_number | int }}"
+```
+
+No Traefik restart needed — the file provider watches `/etc/traefik/dynamic/` and picks up new config files automatically.
+
+### 2.5 GitHub Actions Workflows
+
+Three workflows in the boardsesh repo (`.github/workflows/`), each invoking the Ansible playbook on a self-hosted runner:
+
+#### `branch-deploy.yml` — Deploy on PR events
+
+```yaml
+name: Branch Deploy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, homelab, ephemeral]
+    container:
+      image: ghcr.io/marcodejongh/blackheathdc-ansible/ci-runner:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy PR environment
+        run: |
+          ansible-playbook manage_branch_deploys.yml \
+            -e pr_number=${{ github.event.pull_request.number }} \
+            -e action=deploy \
+            -e daemon_image_tag=pr-${{ github.event.pull_request.number }}
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = ${{ github.event.pull_request.number }};
+            const body = [
+              '### Branch Deploy Ready',
+              '',
+              `| Service | URL |`,
+              `|---------|-----|`,
+              `| Frontend | https://${pr}.preview.boardsesh.com |`,
+              `| Backend WS | wss://${pr}.ws.preview.boardsesh.com/graphql |`,
+              `| Health check | https://${pr}.ws.preview.boardsesh.com/health |`,
+            ].join('\n');
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body,
+            });
+```
+
+#### `branch-deploy-cleanup.yml` — Cleanup on PR close
+
+```yaml
 name: Branch Deploy Cleanup
 
 on:
@@ -337,33 +362,78 @@ on:
 
 jobs:
   cleanup:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab, ephemeral]
+    container:
+      image: ghcr.io/marcodejongh/blackheathdc-ansible/ci-runner:latest
     steps:
-      - name: Delete Neon branch
-        if: always()
-        continue-on-error: true
-        uses: neondatabase/delete-branch-action@v3
-        with:
-          project_id: ${{ secrets.NEON_PROJECT_ID }}
-          branch: pr-${{ github.event.pull_request.number }}
-          api_key: ${{ secrets.NEON_API_KEY }}
-
-      - name: Delete Railway environment
-        if: always()
-        continue-on-error: true
+      - uses: actions/checkout@v4
+      - name: Cleanup PR environment
         run: |
-          railway environment delete "pr-${{ github.event.pull_request.number }}" --yes
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          ansible-playbook manage_branch_deploys.yml \
+            -e pr_number=${{ github.event.pull_request.number }} \
+            -e action=cleanup
 ```
+
+#### `branch-deploy-sweep.yml` — Sweep stale environments
+
+```yaml
+name: Branch Deploy Sweep
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'  # Daily at 3am
+
+jobs:
+  sweep:
+    runs-on: [self-hosted, homelab, ephemeral]
+    container:
+      image: ghcr.io/marcodejongh/blackheathdc-ansible/ci-runner:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sweep stale PR environments
+        run: |
+          ansible-playbook manage_branch_deploys.yml \
+            -e action=sweep \
+            -e github_token=${{ secrets.GITHUB_TOKEN }}
+```
+
+### 2.6 Ansible Changes Summary
+
+**New in `blackheathdc-ansible`:**
+- `roles/boardsesh_branch_deploy/` — new role (defaults, templates, tasks)
+- `playbooks/manage_branch_deploys.yml` — new playbook
+
+**Modified:**
+- `roles/boardsesh_daemon/defaults/main.yml` — add UFW rules for port range 10000-10100 from Traefik VIP
+- `cloudflared` config — add `*.ws.preview.boardsesh.com` ingress rule → `https://172.16.0.2`
+- Cloudflare DNS — add wildcard CNAME `*.preview.boardsesh.com`
+
+**Unchanged:**
+- `group_vars/services.yml` — production boardsesh entry unchanged
+- `roles/traefik/templates/dynamic/routers.yml.j2` — PR routes are separate files, not part of main template
+- Existing `boardsesh_daemon` role tasks — production deployment unchanged
+
+### 2.7 CORS
+
+Already handled — `VERCEL_PREVIEW_REGEX` in `packages/backend/src/handlers/cors.ts` matches all Vercel preview URLs. No changes needed.
+
+### 2.8 Resource Limits & Capacity
+
+- ~700MB per PR environment (200MB Node.js backend + 500MB dev-db PostgreSQL)
+- Boardsesh-daemon VM runs on ms01-beta (96GB node, VM can be sized as needed)
+- Max 5-8 concurrent PR environments recommended
+- Sweep task cleans up daily at 3am + on every push to main
 
 ### Phase 2 Result
 
 After Phase 2, PRs that modify backend or database code get:
-- An isolated Neon database branch (copy-on-write from production)
-- A dedicated Railway backend instance
-- Frontend preview connected to the branch backend
+- An isolated database using the `boardsesh-dev-db` Docker image (full board data, seed users)
+- A dedicated backend container on the homelab
+- Frontend preview connected to the branch backend via `getBackendWsUrl()` host-derived routing
 - Automatic cleanup when the PR is closed/merged
+- Sweep job catches anything the cleanup misses
 
 ---
 
@@ -441,8 +511,8 @@ For each route being migrated:
 
 After API consolidation:
 - Frontend has no direct database dependency (except auth routes)
-- Branch deploys only need: Neon branch + Railway backend
-- Frontend previews connect to branch backend via `NEXT_PUBLIC_WS_URL`
+- Branch deploys only need: dev-db container + backend container
+- Frontend previews connect to branch backend via `getBackendWsUrl()`
 - Single source of truth for all data access (GraphQL schema)
 
 ---
@@ -470,7 +540,7 @@ Sync runs in two places:
 
 2. **Add user migration to backend** - Move the `migrate-users-cron` logic to a backend endpoint.
 
-3. **Set up external cron triggers** - Use Railway's built-in cron or an external service (e.g., cron-job.org, GitHub Actions scheduled workflow) to hit the backend sync endpoints:
+3. **Set up external cron triggers** - Use GitHub Actions scheduled workflow to hit the backend sync endpoints:
    ```yaml
    # .github/workflows/sync-cron.yml
    name: Sync Cron
@@ -496,7 +566,7 @@ Sync runs in two places:
 ### Branch Deploy Sync Strategy
 
 Sync should be **disabled by default** for branch deployments:
-- Branch backends don't need to sync with Aurora API (they use snapshot data from the Neon branch)
+- Branch backends don't need to sync with Aurora API (they use snapshot data from the dev-db image)
 - Running sync on branch databases would waste Aurora API rate limits
 - If sync testing is needed, it can be triggered manually via the endpoint
 
@@ -516,7 +586,7 @@ What changed → what gets deployed:
 | `packages/aurora-sync` | No | No | Optional | Test via manual sync trigger |
 | Multiple packages | Yes | If DB changed | If backend/shared changed | Combines rules above |
 
-**Implementation:** The `dorny/paths-filter` step from Phase 1 (Section 1.3) drives this matrix. Each downstream job has an `if` condition based on the filter outputs.
+**Implementation:** The `dorny/paths-filter` step from Phase 1 (Section 1.3) drives this matrix. Each downstream job has an `if` condition based on the filter outputs. The deploy job invokes the Ansible playbook on a self-hosted runner.
 
 ---
 
@@ -530,15 +600,15 @@ What changed → what gets deployed:
 | GitHub Actions minutes | Free tier (~2000 min/month) | Low - simple workflow |
 | **Total** | **$0/month** | **~1-2 days** |
 
-### Phase 2 (Full-Stack)
+### Phase 2 (Full-Stack on Homelab)
 
 | Item | Cost | Complexity |
 |------|------|------------|
-| Neon branches | Free (included in paid plan, copy-on-write) | Medium - API integration |
-| Railway branch environments | ~$5-10/month per active PR | Medium - CLI scripting |
-| Redis (shared) | $0 incremental | None - reuse production |
-| GitHub Actions | Minimal additional minutes | Medium - cleanup workflows |
-| **Total** | **~$5-20/month** (depends on concurrent PRs) | **~3-5 days** |
+| Docker containers on homelab | $0 (resources already provisioned) | Medium - Ansible role |
+| Cloudflare Tunnel routing | $0 (existing tunnel) | Low - config addition |
+| Traefik dynamic routing | $0 (existing Traefik) | Low - template per PR |
+| GitHub Actions (self-hosted runner) | $0 | Medium - workflow setup |
+| **Total** | **$0/month** | **~3-5 days** |
 
 ### Phase 3 (API Consolidation)
 
@@ -565,17 +635,18 @@ What changed → what gets deployed:
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Preview migration runs destructive SQL against production | Low | High | CI check blocks destructive SQL in migration files (Section 1.1); Phase 2 eliminates risk entirely via isolated Neon branches |
 | Preview deploys create stale sessions on production backend | Low | Low | Sessions auto-expire via TTL (existing `autoEndInterval` in `packages/backend/src/server.ts:294`) |
 
 ### Phase 2
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Neon API is unreliable/slow | Medium | Medium | Documented Railway fallback (Option B in Section 2.1) |
-| Railway branch environments leak (not cleaned up) | Low | Medium | Cleanup workflow on PR close + weekly scheduled sweep |
-| Branch backend connects to wrong database | Low | High | `DATABASE_URL` is set per-environment; add health check that logs DB branch name |
-| Cost creep from forgotten branch environments | Low | Medium | Weekly GH Action that lists Railway environments and posts Slack alert for any > 7 days old |
+| Docker resource exhaustion on boardsesh-daemon VM | Low | Medium | Max 5-8 concurrent PRs, resource limits per container, ~700MB per PR |
+| Stale environments not cleaned up | Low | Medium | Sweep on every push to main + daily cron at 3am |
+| Cloudflare Tunnel downtime | Low | Low | PR backends unreachable temporarily; acceptable for dev environments |
+| Homelab outage | Low | Low | PR environments temporarily unavailable; acceptable for dev environments |
+| Port conflicts | Very Low | Medium | Deterministic formula (`10000 + PR number`) eliminates conflicts |
+| PR number exceeds port range | Very Low | Low | GitHub PR numbers are sequential; 10000+N stays well within valid port range for typical repos |
 
 ### Phase 3
 
@@ -596,19 +667,37 @@ What changed → what gets deployed:
 
 ## Key Files Reference
 
+### BoardSesh repo
+
 | File | Relevance |
 |------|-----------|
-| `vercel.json` | Build command (migration skip), cron definitions |
-| `packages/web/app/components/connection-manager/connection-settings-context.tsx` | `NEXT_PUBLIC_WS_URL` resolution, party mode |
-| `packages/web/app/lib/graphql/client.ts` | GraphQL HTTP client, WS-to-HTTP URL conversion |
-| `packages/backend/src/handlers/cors.ts` | Vercel preview CORS regex |
+| `docs/branch-deploys.md` | This document |
+| `packages/web/app/lib/backend-url.ts` | Runtime WS URL resolver (prerequisite: update pattern + wire into call sites) |
+| `packages/backend/src/handlers/cors.ts` | CORS config (already allows Vercel previews) |
 | `packages/backend/src/handlers/join.ts` | Existing `backendUrl` query param pattern |
 | `packages/backend/src/handlers/sync.ts` | User sync cron endpoint |
 | `packages/backend/src/server.ts` | All backend HTTP routes, session cleanup |
-| `packages/backend/railway.toml` | Railway deploy config, replica count |
 | `packages/backend/Dockerfile` | Backend container build |
 | `packages/aurora-sync/` | Shared sync library used by both web and backend |
+| `vercel.json` | Build command (migration skip), cron definitions |
+| `.github/workflows/branch-deploy.yml` | Triggers Ansible deploy on PR open/sync |
+| `.github/workflows/branch-deploy-cleanup.yml` | Triggers Ansible cleanup on PR close |
+| `.github/workflows/branch-deploy-sweep.yml` | Triggers Ansible sweep on push to main / daily |
 | `.github/workflows/dev-db-docker.yml` | Existing path-filtered CI for DB changes |
 | `.github/workflows/test.yml` | Existing CI for web package |
-| `packages/web/app/api/internal/` | 12 route files to eventually migrate |
-| `packages/web/app/api/v1/` | 16 route files to eventually migrate |
+| `packages/web/app/api/internal/` | 12 route files to eventually migrate (Phase 3) |
+| `packages/web/app/api/v1/` | 16 route files to eventually migrate (Phase 3) |
+
+### Ansible repo (`blackheathdc-ansible`)
+
+| File | Relevance |
+|------|-----------|
+| `roles/boardsesh_branch_deploy/` | New role for PR environments |
+| `playbooks/manage_branch_deploys.yml` | New playbook (deploy/cleanup/sweep) |
+| `roles/boardsesh_daemon/defaults/main.yml` | UFW port range for PR containers |
+| `roles/boardsesh_daemon/templates/docker-compose.yml.j2` | Reference for PR compose template |
+| `roles/traefik/templates/traefik.yml.j2:75` | File provider `watch: true` |
+| `group_vars/services.yml:578-591` | Production boardsesh service definition |
+| `inventories/hosts.yml` | boardsesh-daemon VM at `172.16.0.10` |
+| cloudflared config | `*.ws.preview.boardsesh.com` ingress rule |
+| `.github/workflows/deploy.yml` | Existing deploy pattern (prior art for self-hosted runners) |
