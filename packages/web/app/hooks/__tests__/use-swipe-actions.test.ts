@@ -329,4 +329,104 @@ describe('useSwipeActions', () => {
 
     expect(mockReset).toHaveBeenCalled();
   });
+
+  it('calls onSwipeLeftLong when swiped past long left threshold', () => {
+    const options = {
+      ...createDefaultOptions(),
+      onSwipeLeftLong: vi.fn(),
+      swipeThreshold: 90,
+      longSwipeLeftThreshold: 120,
+    };
+    renderHook(() => useSwipeActions(options));
+
+    mockIsHorizontalRef.current = true;
+    mockDetect.mockReturnValue(true);
+
+    act(() => {
+      capturedSwipeableConfig.onSwiping({
+        deltaX: -130,
+        deltaY: 0,
+        event: { nativeEvent: { preventDefault: vi.fn() } },
+      });
+    });
+
+    act(() => {
+      capturedSwipeableConfig.onSwipedLeft({ deltaX: -130 });
+    });
+
+    expect(options.onSwipeLeftLong).toHaveBeenCalledTimes(1);
+    expect(options.onSwipeLeft).not.toHaveBeenCalled();
+  });
+
+  it('uses short swipe callback when left swipe is below long threshold', () => {
+    const options = {
+      ...createDefaultOptions(),
+      onSwipeLeftLong: vi.fn(),
+      swipeThreshold: 90,
+      longSwipeLeftThreshold: 120,
+    };
+    renderHook(() => useSwipeActions(options));
+
+    mockIsHorizontalRef.current = true;
+    mockDetect.mockReturnValue(true);
+
+    act(() => {
+      capturedSwipeableConfig.onSwiping({
+        deltaX: -100,
+        deltaY: 0,
+        event: { nativeEvent: { preventDefault: vi.fn() } },
+      });
+    });
+
+    act(() => {
+      capturedSwipeableConfig.onSwipedLeft({ deltaX: -100 });
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(options.onSwipeLeft).toHaveBeenCalledTimes(1);
+    expect(options.onSwipeLeftLong).not.toHaveBeenCalled();
+  });
+
+  it('emits swipe zone changes when crossing long-right threshold', () => {
+    const onSwipeZoneChange = vi.fn();
+    const options = {
+      ...createDefaultOptions(),
+      onSwipeRightLong: vi.fn(),
+      longSwipeRightThreshold: 150,
+      maxSwipe: 180,
+      onSwipeZoneChange,
+    };
+    renderHook(() => useSwipeActions(options));
+
+    mockIsHorizontalRef.current = true;
+    mockDetect.mockReturnValue(true);
+
+    act(() => {
+      capturedSwipeableConfig.onSwiping({
+        deltaX: 110,
+        deltaY: 0,
+        event: { nativeEvent: { preventDefault: vi.fn() } },
+      });
+    });
+
+    act(() => {
+      capturedSwipeableConfig.onSwiping({
+        deltaX: 160,
+        deltaY: 0,
+        event: { nativeEvent: { preventDefault: vi.fn() } },
+      });
+    });
+
+    act(() => {
+      capturedSwipeableConfig.onSwipedRight({ deltaX: 160 });
+    });
+
+    expect(onSwipeZoneChange).toHaveBeenCalledWith('right-short');
+    expect(onSwipeZoneChange).toHaveBeenCalledWith('right-long');
+    expect(onSwipeZoneChange).toHaveBeenCalledWith('none');
+    expect(options.onSwipeRightLong).toHaveBeenCalledTimes(1);
+  });
 });

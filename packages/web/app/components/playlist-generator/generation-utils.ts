@@ -57,8 +57,6 @@ export const generateVolumePlan = (options: VolumeOptions): PlannedClimbSlot[] =
 
   // Add main set with variability
   const mainStartIndex = slots.length;
-  const minGrade = clampGrade(options.targetGrade - options.mainSetVariability);
-  const maxGrade = clampGrade(options.targetGrade + options.mainSetVariability);
 
   for (let i = 0; i < options.mainSetClimbs; i++) {
     // Distribute climbs across the grade range

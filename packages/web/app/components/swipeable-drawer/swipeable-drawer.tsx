@@ -36,6 +36,8 @@ export interface SwipeableDrawerProps {
   className?: string;
   height?: string | number;
   width?: string | number;
+  /** Explicitly mark the drawer as full-height for styling (e.g. page-like background). */
+  fullHeight?: boolean;
   extra?: React.ReactNode;
   footer?: React.ReactNode;
   disablePortal?: boolean;
@@ -56,6 +58,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
   title: userTitle,
   height,
   width,
+  fullHeight: fullHeightProp,
   extra,
   footer,
   disablePortal,
@@ -117,7 +120,7 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
           ...userStyles?.header,
         }}
       >
-        <Typography variant="h6" component="div" sx={{ fontWeight: themeTokens.typography.fontWeight.semibold, fontSize: themeTokens.typography.fontSize.base }}>
+        <Typography variant="h6" component="div" sx={{ flex: 1, minWidth: 0, fontWeight: themeTokens.typography.fontWeight.semibold, fontSize: themeTokens.typography.fontSize.base }}>
           {userTitle}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -212,8 +215,22 @@ const SwipeableDrawer: React.FC<SwipeableDrawerProps> = ({
       sx.width = width;
     }
 
+    // Full-height drawers should blend into the app/page background.
+    // Prefer the explicit fullHeight prop. The string-based fallback below is
+    // best-effort for callers that haven't adopted the prop yet — it only
+    // matches exact '100%' / '100vh' / '100dvh' values, not expressions like
+    // calc(100vh) or custom-property references. New callers should always
+    // pass fullHeight explicitly.
+    const normalizedHeight = typeof sx.height === 'string' ? sx.height.trim().toLowerCase() : '';
+    const isFullHeightDrawer =
+      fullHeightProp ??
+      (normalizedHeight === '100%' || normalizedHeight === '100vh' || normalizedHeight === '100dvh');
+    if (isFullHeightDrawer && !sx.backgroundColor) {
+      sx.backgroundColor = 'var(--semantic-background)';
+    }
+
     return sx;
-  }, [userStyles?.wrapper, height, width]);
+  }, [userStyles?.wrapper, height, width, fullHeightProp]);
 
   // SwipeableDrawer onClose handler
   const handleSwipeableClose = useCallback(() => {

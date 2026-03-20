@@ -7,6 +7,8 @@ import { requireAuthenticated, validateInput } from '../shared/helpers';
 import { SaveTickInputSchema } from '../../../validation/schemas';
 import { resolveBoardFromPath } from '../social/boards';
 import { publishSocialEvent } from '../../../events';
+import { assignInferredSession } from '../../../jobs/inferred-session-builder';
+import { publishDebouncedSessionStats } from '../sessions/debounced-stats-publisher';
 
 export const tickMutations = {
   /**
@@ -91,12 +93,25 @@ export const tickMutations = {
       auroraSyncedAt: tick.auroraSyncedAt,
     };
 
+    // Assign inferred session for ticks not in party mode (fire-and-forget).
+    // On failure, the tick stays unassigned until the background builder picks it up (~30 min).
+    if (!validatedInput.sessionId) {
+      assignInferredSession(uuid, userId, climbedAt, validatedInput.status).catch((err) => {
+        console.error(`[saveTick] Failed to assign inferred session for tick ${uuid} (user ${userId}):`, err);
+      });
+    }
+
     // Publish ascent.logged event for feed fan-out (only for successful ascents)
     if (tick.status === 'flash' || tick.status === 'send') {
       // Fire-and-forget with retry: don't block the response on event publishing
       publishAscentEvent(tick, userId, boardId).catch(() => {
         // Final failure already logged inside publishAscentEvent
       });
+    }
+
+    // Publish live session stats updates for active party sessions (debounced, non-blocking).
+    if (tick.sessionId) {
+      publishDebouncedSessionStats(tick.sessionId);
     }
 
     return result;

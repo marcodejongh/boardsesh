@@ -17,8 +17,10 @@ import EditOutlined from '@mui/icons-material/EditOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import dynamic from 'next/dynamic';
+import { usePathname } from 'next/navigation';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite, ClimbActions } from '../climb-actions';
+import PlaylistSelectionContent from '../climb-actions/playlist-selection-content';
 import { ShareBoardButton } from '../board-page/share-button';
 import { TickButton } from '../logbook/tick-button';
 import QueueList, { QueueListHandle } from '../queue-control/queue-list';
@@ -79,10 +81,12 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   const isOpen = activeDrawer === 'play';
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [queueDrawerHeight, setQueueDrawerHeight] = useState<string>('60%');
+  const pathname = usePathname();
   const queueListRef = useRef<QueueListHandle>(null);
   const queueScrollRef = useRef<HTMLDivElement>(null);
   const [queueScrollEl, setQueueScrollEl] = useState<HTMLDivElement | null>(null);
@@ -206,12 +210,12 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
   }, [isOpen, setActiveDrawer]);
 
   const handleClose = useCallback(() => {
-    if (isActionsOpen || isQueueOpen) return;
+    if (isActionsOpen || isQueueOpen || isPlaylistSelectorOpen) return;
     setActiveDrawer('none');
     if (window.location.hash === '#playing') {
       window.history.back();
     }
-  }, [setActiveDrawer, isActionsOpen, isQueueOpen]);
+  }, [setActiveDrawer, isActionsOpen, isQueueOpen, isPlaylistSelectorOpen]);
 
   // Card-swipe navigation
   const nextItem = getNextClimbQueueItem();
@@ -239,9 +243,10 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
     <SwipeableDrawer
       placement="bottom"
       height="100%"
+      fullHeight
       open={isOpen}
       onClose={handleClose}
-      swipeEnabled={!isActionsOpen && !isQueueOpen}
+      swipeEnabled={!isActionsOpen && !isQueueOpen && !isPlaylistSelectorOpen}
       showDragHandle={true}
       styles={{
         body: { padding: 0, overflow: 'hidden' },
@@ -281,7 +286,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
                   showAngle
                   centered
                   titleFontSize={themeTokens.typography.fontSize.xl}
-                  rightAddon={currentClimb && <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} buttonType="text" />}
+                  rightAddon={currentClimb && <TickButton currentClimb={currentClimb} angle={angle} boardDetails={boardDetails} />}
                 />
               </div>
 
@@ -319,15 +324,16 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
             </IconButton>
 
             {/* Party */}
-            <ShareBoardButton buttonType="text" />
+            <ShareBoardButton />
 
             {/* LED */}
-            <SendClimbToBoardButton buttonType="text" />
+            <SendClimbToBoardButton />
 
             {/* More actions */}
             <IconButton
               onClick={() => {
                 setIsQueueOpen(false);
+                setIsPlaylistSelectorOpen(false);
                 setIsActionsOpen(true);
               }}
               aria-label="Climb actions"
@@ -340,6 +346,7 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
               <IconButton
                 onClick={() => {
                   setIsActionsOpen(false);
+                  setIsPlaylistSelectorOpen(false);
                   setIsQueueOpen(true);
                 }}
                 aria-label="Open queue"
@@ -383,8 +390,35 @@ const PlayViewDrawer: React.FC<PlayViewDrawerProps> = ({
               climb={currentClimb}
               boardDetails={boardDetails}
               angle={typeof angle === 'string' ? parseInt(angle, 10) : angle}
+              currentPathname={pathname}
               viewMode="list"
+              onOpenPlaylistSelector={() => {
+                setIsActionsOpen(false);
+                setIsPlaylistSelectorOpen(true);
+              }}
               onActionComplete={() => setIsActionsOpen(false)}
+            />
+          </SwipeableDrawer>
+        )}
+
+        {/* Playlist selector drawer */}
+        {currentClimb && (
+          <SwipeableDrawer
+            title={currentClimb.name}
+            placement="bottom"
+            open={isPlaylistSelectorOpen}
+            onClose={() => setIsPlaylistSelectorOpen(false)}
+            disablePortal
+            styles={{
+              wrapper: { height: 'auto', maxHeight: '70vh' },
+              body: { padding: 0 },
+            }}
+          >
+            <PlaylistSelectionContent
+              climbUuid={currentClimb.uuid}
+              boardDetails={boardDetails}
+              angle={typeof angle === 'string' ? parseInt(angle, 10) : angle}
+              onDone={() => setIsPlaylistSelectorOpen(false)}
             />
           </SwipeableDrawer>
         )}

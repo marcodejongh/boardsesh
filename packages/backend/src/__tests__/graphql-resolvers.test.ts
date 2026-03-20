@@ -79,7 +79,7 @@ describe('GraphQL Resolver Input Validation', () => {
   describe('Session Query Validation', () => {
     it('should reject invalid session ID with special characters', async () => {
       const query = `
-        query TestSession($sessionId: String!) {
+        query TestSession($sessionId: ID!) {
           session(sessionId: $sessionId) {
             id
           }
@@ -98,7 +98,7 @@ describe('GraphQL Resolver Input Validation', () => {
 
     it('should reject empty session ID', async () => {
       const query = `
-        query TestSession($sessionId: String!) {
+        query TestSession($sessionId: ID!) {
           session(sessionId: $sessionId) {
             id
           }
@@ -125,7 +125,7 @@ describe('GraphQL Resolver Input Validation', () => {
           $sizeId: Int!
           $setIds: String!
           $angle: Int!
-          $climbUuid: String!
+          $climbUuid: ID!
         ) {
           climb(
             boardName: $boardName
@@ -165,7 +165,7 @@ describe('GraphQL Resolver Input Validation', () => {
           $sizeId: Int!
           $setIds: String!
           $angle: Int!
-          $climbUuid: String!
+          $climbUuid: ID!
         ) {
           climb(
             boardName: $boardName
@@ -205,7 +205,7 @@ describe('GraphQL Resolver Input Validation', () => {
           $sizeId: Int!
           $setIds: String!
           $angle: Int!
-          $climbUuid: String!
+          $climbUuid: ID!
         ) {
           climb(
             boardName: $boardName
@@ -241,7 +241,7 @@ describe('GraphQL Resolver Input Validation', () => {
   describe('Search Climbs Validation', () => {
     it('should reject pageSize exceeding MAX_PAGE_SIZE', async () => {
       const query = `
-        mutation SearchClimbs($input: ClimbSearchInput!) {
+        query SearchClimbs($input: ClimbSearchInput!) {
           searchClimbs(input: $input) {
             climbs {
               uuid
@@ -273,7 +273,7 @@ describe('GraphQL Resolver Input Validation', () => {
 
     it('should accept valid pageSize', async () => {
       const query = `
-        mutation SearchClimbs($input: ClimbSearchInput!) {
+        query SearchClimbs($input: ClimbSearchInput!) {
           searchClimbs(input: $input) {
             climbs {
               uuid
@@ -290,7 +290,7 @@ describe('GraphQL Resolver Input Validation', () => {
           input: {
             boardName: 'kilter',
             layoutId: 1,
-            sizeId: 1,
+            sizeId: 7,
             setIds: '1',
             angle: 40,
             page: 0,
@@ -307,7 +307,7 @@ describe('GraphQL Resolver Input Validation', () => {
   describe('Board Name Validation (SQL Injection Prevention)', () => {
     it('should reject SQL injection attempt in board name', async () => {
       const query = `
-        mutation SearchClimbs($input: ClimbSearchInput!) {
+        query SearchClimbs($input: ClimbSearchInput!) {
           searchClimbs(input: $input) {
             climbs {
               uuid

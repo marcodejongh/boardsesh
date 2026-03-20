@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tokenizeLine, tokenizeGraphQL, type Token } from '../graphql-tokenizer';
+import { tokenizeLine, tokenizeGraphQL } from '../graphql-tokenizer';
 
 describe('GraphQL Tokenizer', () => {
   describe('tokenizeLine', () => {

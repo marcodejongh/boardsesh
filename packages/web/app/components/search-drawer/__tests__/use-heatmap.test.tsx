@@ -23,7 +23,7 @@ describe('useHeatmapData', () => {
 
   beforeEach(() => {
     mockFetch = vi.fn();
-    global.fetch = mockFetch;
+    global.fetch = mockFetch as unknown as typeof fetch;
   });
 
   afterEach(() => {
@@ -163,7 +163,7 @@ describe('useHeatmapData', () => {
     });
 
     const { rerender } = renderHook(
-      (props) => useHeatmapData(props),
+      (props: typeof defaultProps) => useHeatmapData(props),
       { initialProps: defaultProps },
     );
 

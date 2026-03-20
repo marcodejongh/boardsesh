@@ -39,6 +39,10 @@
     "controller:format:check": "find embedded -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror"
   },
   "engines": {
-    "node": ">=18"
+    "node": "22.x"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }

@@ -6,6 +6,7 @@ import {
   getGradeColorWithOpacity,
   isLightColor,
   getGradeTextColor,
+  formatVGrade,
   V_GRADE_COLORS,
   FONT_GRADE_COLORS,
 } from '../grade-colors';
@@ -156,6 +157,56 @@ describe('Grade Colors', () => {
 
     it('returns "inherit" for undefined input', () => {
       expect(getGradeTextColor(undefined)).toBe('inherit');
+    });
+  });
+
+  describe('getVGradeColor with "+" suffix', () => {
+    it('strips "+" and returns correct color', () => {
+      expect(getVGradeColor('V5+')).toBe(V_GRADE_COLORS['V5']);
+      expect(getVGradeColor('V3+')).toBe(V_GRADE_COLORS['V3']);
+    });
+  });
+
+  describe('formatVGrade', () => {
+    it('extracts V-grade from combined Font/V-grade strings', () => {
+      expect(formatVGrade('6a/V3')).toBe('V3');
+      expect(formatVGrade('6b/V4')).toBe('V4');
+    });
+
+    it('adds "+" when Font grade has "+" and V-grade has multiple Font grades', () => {
+      expect(formatVGrade('6a+/V3')).toBe('V3+');  // V3 has 6a and 6a+
+      expect(formatVGrade('6c+/V5')).toBe('V5+');  // V5 has 6c and 6c+
+      expect(formatVGrade('6b+/V4')).toBe('V4+');  // V4 has 6b and 6b+
+      expect(formatVGrade('7b+/V8')).toBe('V8+');  // V8 has 7b and 7b+
+    });
+
+    it('does not add "+" when V-grade has only one Font grade', () => {
+      expect(formatVGrade('7a+/V7')).toBe('V7');   // V7 only has 7a+
+      expect(formatVGrade('7c+/V10')).toBe('V10'); // V10 only has 7c+
+      expect(formatVGrade('8a+/V12')).toBe('V12'); // V12 only has 8a+
+      expect(formatVGrade('8b+/V14')).toBe('V14'); // V14 only has 8b+
+      expect(formatVGrade('8c+/V16')).toBe('V16'); // V16 only has 8c+
+    });
+
+    it('returns plain V-grade when Font grade has no "+"', () => {
+      expect(formatVGrade('6c/V5')).toBe('V5');
+      expect(formatVGrade('7a/V6')).toBe('V6');
+    });
+
+    it('passes through bare V-grade strings without "+"', () => {
+      expect(formatVGrade('V3')).toBe('V3');
+      expect(formatVGrade('V10')).toBe('V10');
+    });
+
+    it('returns null for strings without V-grade', () => {
+      expect(formatVGrade('6A')).toBeNull();
+      expect(formatVGrade('0')).toBeNull();
+    });
+
+    it('returns null for null/undefined/empty', () => {
+      expect(formatVGrade(null)).toBeNull();
+      expect(formatVGrade(undefined)).toBeNull();
+      expect(formatVGrade('')).toBeNull();
     });
   });
 });

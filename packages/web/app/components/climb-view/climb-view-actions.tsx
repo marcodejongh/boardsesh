@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import styles from './climb-view-actions.module.css';
 import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
@@ -15,6 +16,8 @@ type ClimbViewActionsProps = {
 };
 
 const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbViewActionsProps) => {
+  const pathname = usePathname();
+
   const getBackToListUrl = () => {
     const { board_name, layout_name, size_name, size_description, set_names } = boardDetails;
 
@@ -40,6 +43,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
             climb={climb}
             boardDetails={boardDetails}
             angle={angle}
+            currentPathname={pathname}
             viewMode="button"
             include={['favorite', 'queue']}
             size="default"
@@ -49,6 +53,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
             climb={climb}
             boardDetails={boardDetails}
             angle={angle}
+            currentPathname={pathname}
             viewMode="dropdown"
             include={['tick', 'share', 'openInApp']}
             auroraAppUrl={auroraAppUrl}
@@ -65,6 +70,7 @@ const ClimbViewActions = ({ climb, boardDetails, auroraAppUrl, angle }: ClimbVie
             climb={climb}
             boardDetails={boardDetails}
             angle={angle}
+            currentPathname={pathname}
             viewMode="button"
             include={['favorite', 'tick', 'queue', 'share', 'openInApp']}
             auroraAppUrl={auroraAppUrl}

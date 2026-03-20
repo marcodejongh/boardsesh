@@ -6,7 +6,8 @@ import { z } from 'zod';
 import AuroraClimbingClient from '@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client';
 import { BoardOnlyRouteParameters } from '@/app/lib/types';
 import { syncUserData } from '@/app/lib/data-sync/aurora/user-sync';
-import { Session, BoardName as AuroraBoardName } from '@/app/lib/api-wrappers/aurora-rest-client/types';
+import { Session } from '@/app/lib/api-wrappers/aurora-rest-client/types';
+import { AuroraBoardName } from '@/app/lib/api-wrappers/aurora/types';
 import { getSession } from '@/app/lib/session';
 import { isAuroraBoardName } from '@/app/lib/board-constants';
 

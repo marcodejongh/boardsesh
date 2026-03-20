@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Boardsesh is a monorepo containing a Next.js 15 application for controlling standardized interactive climbing training boards (Kilter, Tension). It adds missing functionality to boards using Aurora Climbing's software, including queue management and real-time collaborative control.
 
+## Project Rules
+
+- Work autonomously end-to-end. Backend + frontend + deploy + QA. Never stop at "the API is ready but the UI isn't updated."
+- Use subagents (always Opus) for all grunt work. Pair every implementation subagent with a QA/reviewer subagent.
+- Work high-level: divide work, subagents execute, you orchestrate and fix issues.
+- No AI-generated images ever. Real photos or diagrams only.
+- No buzzwords. Concrete numbers and simple language.
+- Keep `REQUESTS.md` updated as the feature backlog. Mark items as you complete them.
+- No unnecessary check-ins. Default to action. Full autonomy except no data deletion without asking.
+
 ## Documentation
 
 Before working on a specific part of the codebase, check the `docs/` directory for relevant documentation:

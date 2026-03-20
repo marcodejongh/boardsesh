@@ -79,6 +79,13 @@ export function getRateLimitStatus(connectionId: string): {
   };
 }
 
+/**
+ * Reset all rate limit state. Used in tests to prevent state leaking between test cases.
+ */
+export function resetAllRateLimits(): void {
+  rateLimitMap.clear();
+}
+
 // Periodically clean up expired entries to prevent memory leaks
 setInterval(() => {
   const now = Date.now();

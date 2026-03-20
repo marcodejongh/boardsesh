@@ -1,3 +1,4 @@
+import { eq, and, gte, desc } from 'drizzle-orm';
 import type { ClimbSearchInput, ConnectionContext, BoardName } from '@boardsesh/shared-schema';
 import { SUPPORTED_BOARDS } from '@boardsesh/shared-schema';
 import type { ClimbSearchParams, ParsedBoardRouteParameters } from '../../../db/queries/climbs/index';
@@ -7,6 +8,8 @@ import { isValidBoardName } from '../../../db/queries/util/table-select';
 import { validateInput } from '../shared/helpers';
 import { ClimbSearchInputSchema, BoardNameSchema, ExternalUUIDSchema } from '../../../validation/schemas';
 import type { ClimbSearchContext } from '../shared/types';
+import { db } from '../../../db/client';
+import * as dbSchema from '@boardsesh/db/schema';
 
 // Debug logging flag - only log in development
 const DEBUG = process.env.NODE_ENV === 'development';
@@ -110,5 +113,44 @@ export const climbQueries = {
     });
 
     return climb;
+  },
+
+  /**
+   * Get climb stats history for the last 12 months
+   */
+  climbStatsHistory: async (
+    _: unknown,
+    { boardName, climbUuid }: { boardName: string; climbUuid: string },
+  ) => {
+    validateInput(BoardNameSchema, boardName, 'boardName');
+    validateInput(ExternalUUIDSchema, climbUuid, 'climbUuid');
+
+    if (!isValidBoardName(boardName)) {
+      throw new Error(`Invalid board name: ${boardName}. Must be one of: ${SUPPORTED_BOARDS.join(', ')}`);
+    }
+
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+    const rows = await db
+      .select({
+        angle: dbSchema.boardClimbStatsHistory.angle,
+        ascensionistCount: dbSchema.boardClimbStatsHistory.ascensionistCount,
+        qualityAverage: dbSchema.boardClimbStatsHistory.qualityAverage,
+        difficultyAverage: dbSchema.boardClimbStatsHistory.difficultyAverage,
+        displayDifficulty: dbSchema.boardClimbStatsHistory.displayDifficulty,
+        createdAt: dbSchema.boardClimbStatsHistory.createdAt,
+      })
+      .from(dbSchema.boardClimbStatsHistory)
+      .where(
+        and(
+          eq(dbSchema.boardClimbStatsHistory.boardType, boardName),
+          eq(dbSchema.boardClimbStatsHistory.climbUuid, climbUuid),
+          gte(dbSchema.boardClimbStatsHistory.createdAt, twelveMonthsAgo.toISOString()),
+        ),
+      )
+      .orderBy(desc(dbSchema.boardClimbStatsHistory.createdAt));
+
+    return rows;
   },
 };

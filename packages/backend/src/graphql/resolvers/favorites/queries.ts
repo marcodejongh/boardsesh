@@ -3,7 +3,7 @@ import type { ConnectionContext } from '@boardsesh/shared-schema';
 import { db } from '../../../db/client';
 import * as dbSchema from '@boardsesh/db/schema';
 import { requireAuthenticated, validateInput } from '../shared/helpers';
-import { BoardNameSchema } from '../../../validation/schemas';
+import { BoardNameSchema, FavoritesQueryClimbUuidsSchema } from '../../../validation/schemas';
 
 export const favoriteQueries = {
   /**
@@ -20,6 +20,7 @@ export const favoriteQueries = {
     }
 
     validateInput(BoardNameSchema, boardName, 'boardName');
+    validateInput(FavoritesQueryClimbUuidsSchema, climbUuids, 'climbUuids');
 
     const favorites = await db
       .select({ climbUuid: dbSchema.userFavorites.climbUuid })

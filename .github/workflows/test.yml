@@ -9,7 +9,6 @@ on:
       - 'packages/db/**'
       - '.github/workflows/test.yml'
   pull_request:
-    branches: [ main, develop ]
     paths:
       - 'packages/web/**'
       - 'packages/shared-schema/**'

@@ -2,7 +2,6 @@ import { gql } from 'graphql-request';
 import type {
   Gym,
   GymConnection,
-  GymMember,
   GymMemberConnection,
   CreateGymInput,
   UpdateGymInput,

@@ -1,16 +1,15 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { track } from '@vercel/analytics';
 import { useQueueContext } from '../graphql-queue';
 import { useFavorite } from './use-favorite';
 import {
-  constructClimbViewUrl,
-  constructClimbViewUrlWithSlugs,
   constructCreateClimbUrl,
   constructClimbInfoUrl,
+  getContextAwareClimbViewUrl,
 } from '@/app/lib/url-utils';
 import { Climb, BoardDetails } from '@/app/lib/types';
 import { UseClimbActionsReturn } from './types';
@@ -31,6 +30,7 @@ export function useClimbActions({
   onActionComplete,
 }: UseClimbActionsOptions): UseClimbActionsReturn {
   const router = useRouter();
+  const pathname = usePathname();
   const { addToQueue, queue, mirrorClimb } = useQueueContext();
   const { showMessage } = useSnackbar();
 
@@ -53,32 +53,14 @@ export function useClimbActions({
   // URLs
   const viewDetailsUrl = useMemo(() => {
     if (!climb) return '';
-
-    if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
-      return constructClimbViewUrlWithSlugs(
-        boardDetails.board_name,
-        boardDetails.layout_name,
-        boardDetails.size_name,
-        boardDetails.size_description,
-        boardDetails.set_names,
-        angle,
-        climb.uuid,
-        climb.name,
-      );
-    }
-
-    return constructClimbViewUrl(
-      {
-        board_name: boardDetails.board_name,
-        layout_id: boardDetails.layout_id,
-        size_id: boardDetails.size_id,
-        set_ids: boardDetails.set_ids,
-        angle,
-      },
+    return getContextAwareClimbViewUrl(
+      pathname,
+      boardDetails,
+      angle,
       climb.uuid,
       climb.name,
     );
-  }, [climb, boardDetails, angle]);
+  }, [climb, pathname, boardDetails, angle]);
 
   const forkUrl = useMemo(() => {
     if (!climb || !canFork) return null;
@@ -96,7 +78,7 @@ export function useClimbActions({
 
   const openInAppUrl = useMemo(() => {
     if (!climb) return '';
-    return auroraAppUrl || constructClimbInfoUrl(boardDetails, climb.uuid, angle);
+    return auroraAppUrl || constructClimbInfoUrl(boardDetails, climb.uuid);
   }, [climb, boardDetails, angle, auroraAppUrl]);
 
   // Action handlers

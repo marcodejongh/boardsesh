@@ -6,9 +6,11 @@ import { userProfiles } from '../src/schema/auth/credentials.js';
 import { userFollows } from '../src/schema/app/follows.js';
 import { boardseshTicks } from '../src/schema/app/ascents.js';
 import { userBoards, boardFollows } from '../src/schema/app/boards.js';
+import { boardSessions } from '../src/schema/app/sessions.js';
 import { boardClimbs, boardClimbStats, boardDifficultyGrades } from '../src/schema/boards/unified.js';
 import { notifications } from '../src/schema/app/notifications.js';
 import { comments, votes } from '../src/schema/app/social.js';
+import { feedItems } from '../src/schema/app/feed.js';
 import { createScriptDb, getScriptDatabaseUrl } from './db-connection.js';
 import {
   pickTickComment,
@@ -362,7 +364,7 @@ async function seedSocialData() {
 
     // Get climbs for each board type
     const boardTypes = ['kilter', 'tension', 'moonboard'];
-    const climbsByBoard: Record<string, { uuid: string; boardType: string; angle: number | null }[]> = {};
+    const climbsByBoard: Record<string, { uuid: string; boardType: string; angle: number | null; name: string | null }[]> = {};
     const gradesByBoard: Record<string, number[]> = {};
 
     for (const boardType of boardTypes) {
@@ -371,6 +373,7 @@ async function seedSocialData() {
           uuid: boardClimbs.uuid,
           boardType: boardClimbs.boardType,
           angle: boardClimbs.angle,
+          name: boardClimbs.name,
         })
         .from(boardClimbs)
         .where(
@@ -625,63 +628,79 @@ async function seedSocialData() {
     }
 
     function generateTicks(userId: string, count: number) {
-      for (let i = 0; i < count; i++) {
-        const boardType = faker.helpers.arrayElement(availableBoardTypes);
-        const climbs = climbsByBoard[boardType];
-        const grades = gradesByBoard[boardType];
+      // Cluster ticks into sessions: 3-8 ticks per session, 10-30 min apart.
+      // Sessions are separated by 1-7 days.
+      let remaining = count;
+      let sessionStartDaysAgo = faker.number.float({ min: 0, max: 25 });
 
-        if (climbs.length === 0 || grades.length === 0) continue;
+      while (remaining > 0) {
+        const sessionSize = Math.min(remaining, faker.number.int({ min: 3, max: 8 }));
+        const sessionBoardType = faker.helpers.arrayElement(availableBoardTypes);
+        const climbs = climbsByBoard[sessionBoardType];
+        const grades = gradesByBoard[sessionBoardType];
 
-        const climb = faker.helpers.arrayElement(climbs);
-
-        // Weighted status: flash 20%, send 50%, attempt 30%
-        const statusRoll = faker.number.float({ min: 0, max: 1 });
-        const status = statusRoll < 0.2 ? 'flash' as const
-          : statusRoll < 0.7 ? 'send' as const
-          : 'attempt' as const;
-
-        // Exponential distribution favoring recent dates
-        const exponentialRandom = -Math.log(1 - faker.number.float({ min: 0, max: 0.999 })) / 3;
-        const daysAgo = Math.min(exponentialRandom * 10, 30);
-        const climbedAt = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
-
-        const difficulty = status !== 'attempt' ? faker.helpers.arrayElement(grades) : null;
-        const quality = status !== 'attempt' ? faker.number.int({ min: 1, max: 5 }) : null;
-        const attemptCount = status === 'flash' ? 1 : status === 'send' ? faker.number.int({ min: 2, max: 15 }) : faker.number.int({ min: 1, max: 5 });
-
-        const comment = faker.datatype.boolean(0.3)
-          ? pickTickComment(status)
-          : '';
-
-        // ~60% of ticks get linked to a matching board (if any exist for this boardType)
-        let boardId: number | null = null;
-        const matchingBoards = boardsByType[boardType];
-        if (matchingBoards && matchingBoards.length > 0 && faker.datatype.boolean(0.6)) {
-          boardId = faker.helpers.arrayElement(matchingBoards).id;
+        if (climbs.length === 0 || grades.length === 0) {
+          remaining -= sessionSize;
+          continue;
         }
 
-        tickRecords.push({
-          uuid: faker.string.uuid(),
-          userId,
-          boardType,
-          climbUuid: climb.uuid,
-          angle: climb.angle ?? 40,
-          isMirror: false,
-          status,
-          attemptCount,
-          quality,
-          difficulty,
-          isBenchmark: false,
-          comment,
-          climbedAt: climbedAt.toISOString(),
-          boardId,
-        });
+        const sessionBaseTime = now - sessionStartDaysAgo * 24 * 60 * 60 * 1000;
+
+        for (let j = 0; j < sessionSize; j++) {
+          const climb = faker.helpers.arrayElement(climbs);
+
+          // Weighted status: flash 20%, send 50%, attempt 30%
+          const statusRoll = faker.number.float({ min: 0, max: 1 });
+          const status = statusRoll < 0.2 ? 'flash' as const
+            : statusRoll < 0.7 ? 'send' as const
+            : 'attempt' as const;
+
+          // Each tick in the session is 10-30 minutes after the previous
+          const minutesIntoSession = j * faker.number.int({ min: 10, max: 30 });
+          const climbedAt = new Date(sessionBaseTime + minutesIntoSession * 60 * 1000);
+
+          const difficulty = status !== 'attempt' ? faker.helpers.arrayElement(grades) : null;
+          const quality = status !== 'attempt' ? faker.number.int({ min: 1, max: 5 }) : null;
+          const attemptCount = status === 'flash' ? 1 : status === 'send' ? faker.number.int({ min: 2, max: 15 }) : faker.number.int({ min: 1, max: 5 });
+
+          const comment = faker.datatype.boolean(0.3)
+            ? pickTickComment(status)
+            : '';
+
+          // ~60% of ticks get linked to a matching board (if any exist for this boardType)
+          let boardId: number | null = null;
+          const matchingBoards = boardsByType[sessionBoardType];
+          if (matchingBoards && matchingBoards.length > 0 && faker.datatype.boolean(0.6)) {
+            boardId = faker.helpers.arrayElement(matchingBoards).id;
+          }
+
+          tickRecords.push({
+            uuid: faker.string.uuid(),
+            userId,
+            boardType: sessionBoardType,
+            climbUuid: climb.uuid,
+            angle: climb.angle ?? 40,
+            isMirror: false,
+            status,
+            attemptCount,
+            quality,
+            difficulty,
+            isBenchmark: false,
+            comment,
+            climbedAt: climbedAt.toISOString(),
+            boardId,
+          });
+        }
+
+        remaining -= sessionSize;
+        // Next session is 1-7 days earlier
+        sessionStartDaysAgo += faker.number.float({ min: 1, max: 7 });
       }
     }
 
-    // 5-25 ticks per fake user
+    // 10-30 ticks per fake user (enough for 2-5 sessions)
     for (const fakeId of fakeUserIds) {
-      const tickCount = faker.number.int({ min: 5, max: 25 });
+      const tickCount = faker.number.int({ min: 10, max: 30 });
       generateTicks(fakeId, tickCount);
     }
 
@@ -708,31 +727,53 @@ async function seedSocialData() {
     const DAY_MS = 24 * 60 * 60 * 1000;
     const fixtureTickRecords: (typeof boardseshTicks.$inferInsert)[] = [];
 
+    // Group fixture ticks by user so we can cluster them into sessions.
+    // Each user's ticks are grouped into sessions with 15-minute spacing
+    // between ticks. Sessions are separated by 2 days.
+    const fixtureTicksByUser = new Map<string, typeof FIXTURE_TICKS>();
     for (const tick of FIXTURE_TICKS) {
-      // Use the fixture boardType if available, fall back to first available
-      const bt = climbsByBoard[tick.boardType]?.length ? tick.boardType : availableBoardTypes[0];
-      const climbs = climbsByBoard[bt];
-      if (!climbs || climbs.length === 0) continue;
+      const existing = fixtureTicksByUser.get(tick.userId) ?? [];
+      existing.push(tick);
+      fixtureTicksByUser.set(tick.userId, existing);
+    }
 
-      const climb = climbs[tick.globalIndex % climbs.length];
-      const climbedAt = new Date(FIXTURE_BASE_TIMESTAMP + tick.globalIndex * DAY_MS);
+    let userSessionDay = 0;
+    for (const [, userTicks] of fixtureTicksByUser) {
+      // Split user's ticks into sessions of 3-4 ticks each
+      const SESSION_SIZE = 3;
+      for (let si = 0; si < userTicks.length; si++) {
+        const sessionIndex = Math.floor(si / SESSION_SIZE);
+        const tickInSession = si % SESSION_SIZE;
+        const sessionBase = FIXTURE_BASE_TIMESTAMP + (userSessionDay + sessionIndex * 2) * DAY_MS;
+        // Each tick in session is 15 minutes after previous
+        const climbedAt = new Date(sessionBase + tickInSession * 15 * 60 * 1000);
+        const tick = userTicks[si];
 
-      fixtureTickRecords.push({
-        uuid: tick.uuid,
-        userId: tick.userId,
-        boardType: bt,
-        climbUuid: climb.uuid,
-        angle: tick.angle,
-        isMirror: tick.isMirror,
-        status: tick.status,
-        attemptCount: tick.attemptCount,
-        quality: tick.quality,
-        difficulty: null,
-        isBenchmark: false,
-        comment: tick.comment,
-        climbedAt: climbedAt.toISOString(),
-        boardId: null,
-      });
+        const bt = climbsByBoard[tick.boardType]?.length ? tick.boardType : availableBoardTypes[0];
+        const climbs = climbsByBoard[bt];
+        if (!climbs || climbs.length === 0) continue;
+
+        const climb = climbs[tick.globalIndex % climbs.length];
+
+        fixtureTickRecords.push({
+          uuid: tick.uuid,
+          userId: tick.userId,
+          boardType: bt,
+          climbUuid: climb.uuid,
+          angle: tick.angle,
+          isMirror: tick.isMirror,
+          status: tick.status,
+          attemptCount: tick.attemptCount,
+          quality: tick.quality,
+          difficulty: null,
+          isBenchmark: false,
+          comment: tick.comment,
+          climbedAt: climbedAt.toISOString(),
+          boardId: null,
+        });
+      }
+      // Offset each user by a few days so sessions don't all start at the same time
+      userSessionDay += 1;
     }
 
     for (let i = 0; i < fixtureTickRecords.length; i += BATCH_SIZE) {
@@ -740,6 +781,176 @@ async function seedSocialData() {
       await db.insert(boardseshTicks).values(batch).onConflictDoNothing();
     }
     console.log(`  Fixture ticks: ${fixtureTickRecords.length}`);
+
+    // =========================================================================
+    // Step 8.55: Seed party mode sessions (real sessions with multiple users)
+    // =========================================================================
+    console.log('\n  Seeding party mode sessions...');
+
+    const SESSION_NAMES = [
+      'Friday Night Sesh', 'Morning Crush', 'Project Time', 'Comp Training',
+      'Team Practice', 'Saturday Send Train', 'Moonboard Monday', null, null,
+    ];
+    const SESSION_GOALS = [
+      'Send V7', 'Flash V5', 'Work on crimps', 'Practice volumes',
+      null, null, null,
+    ];
+
+    let partySessions = 0;
+    let partyTicks = 0;
+
+    // Create 6 party mode sessions with 2-4 participants each
+    for (let si = 0; si < 6; si++) {
+      const sessionId = `fx-party-session-${String(si + 1).padStart(3, '0')}`;
+      const daysAgo = si * 3 + faker.number.int({ min: 0, max: 2 });
+      const sessionBaseTime = now - daysAgo * DAY_MS;
+      const sessionBoardType = availableBoardTypes[si % availableBoardTypes.length];
+      const climbs = climbsByBoard[sessionBoardType];
+      const grades = gradesByBoard[sessionBoardType];
+
+      if (!climbs || climbs.length === 0 || !grades || grades.length === 0) continue;
+
+      // Pick 2-4 participants from fixture users
+      const numParticipants = faker.number.int({ min: 2, max: 4 });
+      const participantIds = faker.helpers
+        .shuffle(FIXTURE_USERS.map(u => u.id))
+        .slice(0, numParticipants);
+
+      const sessionName = faker.helpers.arrayElement(SESSION_NAMES);
+      const sessionGoal = faker.helpers.arrayElement(SESSION_GOALS);
+
+      // Insert the board_session
+      await db.insert(boardSessions).values({
+        id: sessionId,
+        boardPath: `/${sessionBoardType}/1/1/1/40`,
+        createdAt: new Date(sessionBaseTime),
+        lastActivity: new Date(sessionBaseTime + 2 * 60 * 60 * 1000),
+        status: 'ended',
+        createdByUserId: participantIds[0],
+        name: sessionName,
+        goal: sessionGoal,
+        isPublic: true,
+        startedAt: new Date(sessionBaseTime),
+        endedAt: new Date(sessionBaseTime + 2 * 60 * 60 * 1000),
+      }).onConflictDoNothing();
+
+      partySessions++;
+
+      // Generate 4-8 ticks per participant
+      for (const participantId of participantIds) {
+        const ticksForUser = faker.number.int({ min: 4, max: 8 });
+        for (let ti = 0; ti < ticksForUser; ti++) {
+          const climb = faker.helpers.arrayElement(climbs);
+          const statusRoll = faker.number.float({ min: 0, max: 1 });
+          const status = statusRoll < 0.2 ? 'flash' as const
+            : statusRoll < 0.7 ? 'send' as const
+            : 'attempt' as const;
+
+          const minutesIntoSession = ti * faker.number.int({ min: 8, max: 20 });
+          const climbedAt = new Date(sessionBaseTime + minutesIntoSession * 60 * 1000);
+
+          const difficulty = status !== 'attempt' ? faker.helpers.arrayElement(grades) : null;
+          const quality = status !== 'attempt' ? faker.number.int({ min: 1, max: 5 }) : null;
+          const attemptCount = status === 'flash' ? 1 : status === 'send' ? faker.number.int({ min: 2, max: 10 }) : faker.number.int({ min: 1, max: 5 });
+
+          await db.insert(boardseshTicks).values({
+            uuid: faker.string.uuid(),
+            userId: participantId,
+            boardType: sessionBoardType,
+            climbUuid: climb.uuid,
+            angle: climb.angle ?? 40,
+            isMirror: false,
+            status,
+            attemptCount,
+            quality,
+            difficulty,
+            isBenchmark: false,
+            comment: '',
+            climbedAt: climbedAt.toISOString(),
+            boardId: null,
+            sessionId,
+          }).onConflictDoNothing();
+
+          partyTicks++;
+        }
+      }
+    }
+
+    console.log(`  Party sessions: ${partySessions} (${partyTicks} ticks)`);
+
+    // =========================================================================
+    // Step 8.6: Seed feed_items for authenticated activity feed
+    // =========================================================================
+    console.log('\n--- Step 8.6: Seeding feed_items for activity feed ---');
+
+    // Find which fake users the test user follows
+    const testUserFollowing = followRecords
+      .filter(f => f.followerId === TEST_USER_ID)
+      .map(f => f.followingId!);
+
+    // Collect ticks from followed users (flash/send only, matching the trendingFeed filter)
+    const followedUserTicks = tickRecords.filter(
+      t => testUserFollowing.includes(t.userId!) && (t.status === 'flash' || t.status === 'send')
+    );
+
+    // Build a profile lookup for metadata
+    const profileLookup = new Map<string, { displayName: string | null; avatarUrl: string | null }>();
+    for (const p of profileRecords) {
+      profileLookup.set(p.userId!, { displayName: p.displayName ?? null, avatarUrl: p.avatarUrl ?? null });
+    }
+    // Include fixture user profiles
+    for (const u of FIXTURE_USERS) {
+      profileLookup.set(u.id, { displayName: u.displayName ?? null, avatarUrl: u.avatarUrl ?? null });
+    }
+
+    // Build a climb name lookup
+    const climbNameLookup = new Map<string, string>();
+    for (const boardType of availableBoardTypes) {
+      const climbs = climbsByBoard[boardType];
+      for (const c of climbs) {
+        climbNameLookup.set(`${c.boardType}:${c.uuid}`, c.name || 'Unknown Climb');
+      }
+    }
+
+    // Create feed items — take up to 60 ticks so pagination (page size 20) triggers
+    const feedItemTicks = faker.helpers.shuffle([...followedUserTicks]).slice(0, 60);
+    const feedItemRecords: (typeof feedItems.$inferInsert)[] = [];
+
+    for (const tick of feedItemTicks) {
+      const profile = profileLookup.get(tick.userId!) || { displayName: null, avatarUrl: null };
+
+      feedItemRecords.push({
+        recipientId: TEST_USER_ID,
+        actorId: tick.userId!,
+        type: 'ascent',
+        entityType: 'tick',
+        entityId: tick.uuid!,
+        boardUuid: null,
+        metadata: {
+          actorDisplayName: profile.displayName,
+          actorAvatarUrl: profile.avatarUrl,
+          climbName: climbNameLookup.get(`${tick.boardType}:${tick.climbUuid}`) || 'Seeded Climb',
+          climbUuid: tick.climbUuid,
+          boardType: tick.boardType,
+          status: tick.status,
+          angle: tick.angle,
+          isMirror: tick.isMirror ?? false,
+          isBenchmark: tick.isBenchmark ?? false,
+          difficulty: tick.difficulty,
+          quality: tick.quality,
+          attemptCount: tick.attemptCount,
+          comment: tick.comment || null,
+        },
+        createdAt: new Date(tick.climbedAt!),
+      });
+    }
+
+    // Batch insert feed items
+    for (let i = 0; i < feedItemRecords.length; i += BATCH_SIZE) {
+      const batch = feedItemRecords.slice(i, i + BATCH_SIZE);
+      await db.insert(feedItems).values(batch).onConflictDoNothing();
+    }
+    console.log(`Inserted ${feedItemRecords.length} feed items for test user activity feed`);
 
     // =========================================================================
     // Step 9: Create threaded comments on ticks
@@ -1217,6 +1428,7 @@ async function seedSocialData() {
     console.log(`  Comments: ${parentCount + replyCount} (${parentCount} top-level, ${replyCount} replies in ${threadCount} threads)`);
     console.log(`  Fixture comments: ${fixtureCommentIdMap.size} (${fixtureParentCount} parents + ${fixtureReplyCount} replies)`);
     console.log(`  Fixture votes: ${fixtureVoteRecords.length}`);
+    console.log(`  Feed items: ${feedItemRecords.length} (for test user activity feed)`);
     console.log(`  Notifications: ${notificationRecords.length} (${unreadNotifications} unread)`);
     console.log(`    Dev user notifications: ${devUserNotifications} (${devUserUnread} unread)`);
 

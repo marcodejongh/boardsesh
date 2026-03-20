@@ -47,7 +47,7 @@ export default function LikedClimbsViewContent({
   const { addToQueue } = useQueueContext();
 
   const getBackUrl = () => {
-    return '/my-library';
+    return '/playlists';
   };
 
   const handleAddAllToQueue = useCallback(async () => {

@@ -10,6 +10,8 @@
  * - V11+: Purple/magenta
  */
 
+import { BOULDER_GRADES } from './board-data';
+
 // V-grade to hex color mapping
 export const V_GRADE_COLORS: Record<string, string> = {
   'V0': '#FFEB3B',   // Yellow
@@ -61,13 +63,14 @@ export const FONT_GRADE_COLORS: Record<string, string> = {
 };
 
 /**
- * Get color for a V-grade string (e.g., "V3", "V10")
- * @param vGrade - V-grade string like "V3" or "V10"
+ * Get color for a V-grade string (e.g., "V3", "V10", "V5+")
+ * @param vGrade - V-grade string like "V3", "V10", or "V5+"
  * @returns Hex color string, or undefined if not found
  */
 export function getVGradeColor(vGrade: string | null | undefined): string | undefined {
   if (!vGrade) return undefined;
-  const normalized = vGrade.toUpperCase();
+  // Strip trailing "+" so "V5+" looks up the same color as "V5"
+  const normalized = vGrade.toUpperCase().replace(/\+$/, '');
   return V_GRADE_COLORS[normalized];
 }
 
@@ -107,13 +110,55 @@ export function getGradeColor(difficulty: string | null | undefined): string | u
 
 /**
  * Extract V-grade from a difficulty string (e.g., "6a/V3" -> "V3")
+ * Internal helper - not exported.
  * @param difficulty - Difficulty string that may contain V-grade
  * @returns Uppercase V-grade string (e.g., "V3") or null if not found
  */
-export function extractVGrade(difficulty: string | null | undefined): string | null {
+function extractVGrade(difficulty: string | null | undefined): string | null {
   if (!difficulty) return null;
   const vGradeMatch = difficulty.match(/V\d+/i);
   return vGradeMatch ? vGradeMatch[0].toUpperCase() : null;
+}
+
+// Build set of V-grades that have more than one Font grade mapping.
+// Only these V-grades should show "+" to disambiguate (e.g., V3 vs V3+).
+// V-grades with a single Font grade (e.g., V7 from 7a+) don't need "+".
+const V_GRADES_WITH_MULTIPLE_FONT_GRADES: Set<string> = (() => {
+  const countByVGrade = new Map<string, number>();
+  for (const g of BOULDER_GRADES) {
+    countByVGrade.set(g.v_grade, (countByVGrade.get(g.v_grade) ?? 0) + 1);
+  }
+  const result = new Set<string>();
+  for (const [vGrade, count] of countByVGrade) {
+    if (count > 1) result.add(vGrade);
+  }
+  return result;
+})();
+
+/**
+ * Format a difficulty string to a V-grade display label.
+ * When the Font grade has a "+" suffix AND the V-grade has multiple Font grade
+ * mappings (e.g., "6c+/V5" where V5 maps from both 6c and 6c+), the result
+ * includes "+" for disambiguation (e.g., "V5+").
+ * When a V-grade has only one Font grade (e.g., V7 from 7a+), no "+" is added.
+ * @param difficulty - Difficulty string (e.g., "6c+/V5", "7a+/V7", "V3")
+ * @returns Formatted V-grade string (e.g., "V5+", "V7", "V3") or null if not found
+ */
+export function formatVGrade(difficulty: string | null | undefined): string | null {
+  if (!difficulty) return null;
+  const vGrade = extractVGrade(difficulty);
+  if (!vGrade) return null;
+
+  // Only add "+" when the Font grade has "+" AND the V-grade has multiple Font grades
+  const slashIndex = difficulty.indexOf('/');
+  if (slashIndex > 0) {
+    const fontPart = difficulty.substring(0, slashIndex);
+    if (fontPart.endsWith('+') && V_GRADES_WITH_MULTIPLE_FONT_GRADES.has(vGrade)) {
+      return `${vGrade}+`;
+    }
+  }
+
+  return vGrade;
 }
 
 /**

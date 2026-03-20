@@ -21,7 +21,7 @@ vi.mock('@/app/lib/graphql/operations/favorites', () => ({
 
 vi.mock('@/app/lib/graphql/operations/playlists', () => ({
   GET_ALL_USER_PLAYLISTS: 'GET_ALL_USER_PLAYLISTS',
-  GET_PLAYLISTS_FOR_CLIMB: 'GET_PLAYLISTS_FOR_CLIMB',
+  GET_PLAYLISTS_FOR_CLIMBS: 'GET_PLAYLISTS_FOR_CLIMBS',
   ADD_CLIMB_TO_PLAYLIST: 'ADD_CLIMB_TO_PLAYLIST',
   REMOVE_CLIMB_FROM_PLAYLIST: 'REMOVE_CLIMB_FROM_PLAYLIST',
   CREATE_PLAYLIST: 'CREATE_PLAYLIST',
@@ -61,8 +61,7 @@ describe('useClimbActionsData', () => {
     mockRequest.mockResolvedValueOnce({ favorites: ['climb-1'] });
     // Playlists queries
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
@@ -103,8 +102,7 @@ describe('useClimbActionsData', () => {
   it('isFavorited returns true for favorited climb', async () => {
     mockRequest.mockResolvedValueOnce({ favorites: ['climb-2'] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
@@ -118,8 +116,7 @@ describe('useClimbActionsData', () => {
   it('toggleFavorite sends mutation and returns result', async () => {
     mockRequest.mockResolvedValueOnce({ favorites: [] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
@@ -145,8 +142,7 @@ describe('useClimbActionsData', () => {
   it('optimistic update: adds uuid on toggle', async () => {
     mockRequest.mockResolvedValueOnce({ favorites: [] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
@@ -184,8 +180,7 @@ describe('useClimbActionsData', () => {
   it('rolls back on toggleFavorite error', async () => {
     mockRequest.mockResolvedValueOnce({ favorites: ['climb-1'] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
@@ -217,8 +212,7 @@ describe('useClimbActionsData', () => {
   it('shows error snackbar on toggle failure', async () => {
     mockRequest.mockResolvedValueOnce({ favorites: [] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
@@ -255,8 +249,7 @@ describe('useClimbActionsData', () => {
     ];
     mockRequest.mockResolvedValueOnce({ favorites: [] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: playlists });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
@@ -266,11 +259,10 @@ describe('useClimbActionsData', () => {
     });
   });
 
-  it('addToPlaylist sends mutation and updates local state', async () => {
+  it('addToPlaylist sends mutation and updates accumulated cache', async () => {
     mockRequest.mockResolvedValueOnce({ favorites: [] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [{ uuid: 'pl-1', name: 'Test', climbCount: 2 }] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
@@ -286,27 +278,22 @@ describe('useClimbActionsData', () => {
       await result.current.playlistsProviderProps.addToPlaylist('pl-1', 'climb-1', 40);
     });
 
-    // Membership should be updated locally
-    expect(result.current.playlistsProviderProps.playlistMemberships.get('climb-1')?.has('pl-1')).toBe(true);
+    // Membership should be updated via accumulated cache
+    await waitFor(() => {
+      expect(result.current.playlistsProviderProps.playlistMemberships.get('climb-1')?.has('pl-1')).toBe(true);
+    });
   });
 
-  it('removeFromPlaylist sends mutation and updates local state', async () => {
+  it('removeFromPlaylist sends mutation and updates accumulated cache', async () => {
     mockRequest.mockResolvedValueOnce({ favorites: [] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [{ uuid: 'pl-1', name: 'Test', climbCount: 5 }] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: ['pl-1'] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [{ climbUuid: 'climb-1', playlistUuids: ['pl-1'] }] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.playlistsProviderProps.isLoading).toBe(false);
-    });
-
-    // First add to ensure membership exists in local state
-    mockRequest.mockResolvedValueOnce({ addClimbToPlaylist: { success: true } });
-    await act(async () => {
-      await result.current.playlistsProviderProps.addToPlaylist('pl-1', 'climb-1', 40);
+      expect(result.current.playlistsProviderProps.playlistMemberships.get('climb-1')?.has('pl-1')).toBe(true);
     });
 
     // Now remove
@@ -315,16 +302,17 @@ describe('useClimbActionsData', () => {
       await result.current.playlistsProviderProps.removeFromPlaylist('pl-1', 'climb-1');
     });
 
-    // Membership should be removed
-    const memberships = result.current.playlistsProviderProps.playlistMemberships.get('climb-1');
-    expect(memberships?.has('pl-1')).toBe(false);
+    // Membership should be removed via accumulated cache
+    await waitFor(() => {
+      const memberships = result.current.playlistsProviderProps.playlistMemberships.get('climb-1');
+      expect(memberships?.has('pl-1')).toBe(false);
+    });
   });
 
   it('createPlaylist sends mutation and updates cache', async () => {
     mockRequest.mockResolvedValueOnce({ favorites: [] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
@@ -352,8 +340,7 @@ describe('useClimbActionsData', () => {
   it('refreshPlaylists invalidates query', async () => {
     mockRequest.mockResolvedValueOnce({ favorites: [] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
     const { result } = renderHook(() => useClimbActionsData(defaultOptions), { wrapper });
@@ -379,11 +366,53 @@ describe('useClimbActionsData', () => {
     });
   });
 
-  it('sorts climbUuids for stable query key', async () => {
+  it('only fetches new UUIDs incrementally', async () => {
+    // Initial fetch for climb-1 and climb-2
+    mockRequest.mockResolvedValueOnce({ favorites: ['climb-1'] });
+    mockRequest.mockResolvedValueOnce({ allUserPlaylists: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
+
+    const wrapper = createQueryWrapper();
+    const { result, rerender } = renderHook(
+      (props) => useClimbActionsData(props),
+      {
+        wrapper,
+        initialProps: defaultOptions,
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.favoritesProviderProps.isFavorited('climb-1')).toBe(true);
+    });
+
+    const callCountAfterInit = mockRequest.mock.calls.length;
+
+    // Add climb-3 — only climb-3 should be fetched, not climb-1 and climb-2 again
+    mockRequest.mockResolvedValueOnce({ favorites: ['climb-3'] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
+
+    rerender({ ...defaultOptions, climbUuids: ['climb-1', 'climb-2', 'climb-3'] });
+
+    await waitFor(() => {
+      expect(result.current.favoritesProviderProps.isFavorited('climb-3')).toBe(true);
+    });
+
+    // The favorites fetch should only include climb-3 (not climb-1, climb-2)
+    const favCalls = mockRequest.mock.calls.filter(
+      (call: any[]) => call[0] === 'GET_FAVORITES',
+    );
+    // Second favorites call should only contain the new UUID
+    const lastFavCall = favCalls[favCalls.length - 1];
+    expect(lastFavCall[1].climbUuids).toEqual(['climb-3']);
+
+    // Original favorites should still be available
+    expect(result.current.favoritesProviderProps.isFavorited('climb-1')).toBe(true);
+  });
+
+  it('does not refetch when UUIDs are reordered', async () => {
     mockRequest.mockResolvedValueOnce({ favorites: [] });
     mockRequest.mockResolvedValueOnce({ allUserPlaylists: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
-    mockRequest.mockResolvedValueOnce({ playlistsForClimb: [] });
+    mockRequest.mockResolvedValueOnce({ playlistsForClimbs: [] });
 
     const wrapper = createQueryWrapper();
 
@@ -407,7 +436,7 @@ describe('useClimbActionsData', () => {
 
     // Wait a tick to ensure no new requests
     await waitFor(() => {
-      // Should not have made additional favorites request since sorted keys are identical
+      // Should not have made additional favorites request since UUIDs are already fetched
       expect(mockRequest.mock.calls.length).toBe(callCount);
     });
   });

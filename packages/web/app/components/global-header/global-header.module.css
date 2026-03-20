@@ -1,0 +1,77 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--global-header-height);
+  padding: 0 16px;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.6));
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  touch-action: manipulation;
+}
+
+.header button,
+.header a,
+.header input {
+  touch-action: manipulation;
+}
+
+.searchPillButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-200);
+  cursor: pointer;
+  transition: box-shadow 200ms ease;
+  font-size: 14px;
+  color: var(--neutral-500);
+  line-height: 1.4;
+}
+
+.searchPillButton:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.searchPillButton:active {
+  background: var(--neutral-100);
+}
+
+.searchPillIcon {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+
+.searchPillText {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.searchPillActiveIndicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+:global(html[data-theme="dark"]) .header {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.4));
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}

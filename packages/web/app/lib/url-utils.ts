@@ -6,7 +6,7 @@ import {
   SearchRequestPagination,
   ClimbUuid,
   BoardDetails,
-  Angle,
+  BoardName,
 } from '@/app/lib/types';
 import { BOARD_NAME_PREFIX_REGEX } from '@/app/lib/board-constants';
 import { PAGE_LIMIT } from '../components/board-page/constants';
@@ -218,7 +218,7 @@ export const constructClimbViewUrl = (
 ) => {
   const baseUrl = `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/view/`;
   if (climbName && climbName.trim()) {
-    const slug = generateClimbSlug(climbName.trim());
+    const slug = generateSlugFromText(climbName.trim());
     if (slug) {
       return `${baseUrl}${slug}-${climb_uuid}`;
     }
@@ -243,7 +243,7 @@ export const constructClimbViewUrlWithSlugs = (
 
   const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/view/`;
   if (climbName && climbName.trim()) {
-    const climbSlug = generateClimbSlug(climbName.trim());
+    const climbSlug = generateSlugFromText(climbName.trim());
     if (climbSlug) {
       return `${baseUrl}${climbSlug}-${climb_uuid}`;
     }
@@ -254,19 +254,9 @@ export const constructClimbViewUrlWithSlugs = (
 export const constructClimbInfoUrl = (
   { board_name }: BoardDetails,
   climb_uuid: ClimbUuid,
-   
-  angle: Angle,
 ) => `https://${board_name}boardapp${board_name === 'tension' ? '2' : ''}.com/climbs/${climb_uuid}`;
 
 //`/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/info/${climb_uuid}`;
-
-export const constructClimbList = ({ board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters) =>
-  `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/list`;
-
-export const constructClimbSearchUrl = (
-  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
-  queryString: string,
-) => `/api/v1/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/search?${queryString}`;
 
 export const constructSetterStatsUrl = (
   { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
@@ -289,30 +279,6 @@ export const constructClimbListWithSlugs = (
   const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
   const setSlug = generateSetSlug(setNames);
   return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/list`;
-};
-
-export const constructCreateClimbWithSlugs = (
-  board_name: string,
-  layoutName: string,
-  sizeName: string,
-  sizeDescription: string | undefined,
-  setNames: string[],
-  angle: number,
-) => {
-  const layoutSlug = generateLayoutSlug(layoutName);
-  const sizeSlug = generateSizeSlug(sizeName, sizeDescription);
-  const setSlug = generateSetSlug(setNames);
-  return `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/create`;
-};
-
-export const generateClimbSlug = (climbName: string): string => {
-  return climbName
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
 };
 
 /**
@@ -451,26 +417,6 @@ export const isNumericId = (value: string): boolean => {
   return /^\d+$/.test(value);
 };
 
-export const isSlugFormat = (value: string): boolean => {
-  return !isNumericId(value);
-};
-
-// Construct URL for play mode (fullscreen queue view)
-export const constructPlayUrl = (
-  { board_name, layout_id, angle, size_id, set_ids }: ParsedBoardRouteParameters,
-  climb_uuid: ClimbUuid,
-  climbName?: string,
-) => {
-  const baseUrl = `/${board_name}/${layout_id}/${size_id}/${set_ids}/${angle}/play/`;
-  if (climbName && climbName.trim()) {
-    const slug = generateClimbSlug(climbName.trim());
-    if (slug) {
-      return `${baseUrl}${slug}-${climb_uuid}`;
-    }
-  }
-  return `${baseUrl}${climb_uuid}`;
-};
-
 // Construct play URL with slug-based board parameters
 export const constructPlayUrlWithSlugs = (
   board_name: string,
@@ -488,7 +434,7 @@ export const constructPlayUrlWithSlugs = (
 
   const baseUrl = `/${board_name}/${layoutSlug}/${sizeSlug}/${setSlug}/${angle}/play/`;
   if (climbName && climbName.trim()) {
-    const climbSlug = generateClimbSlug(climbName.trim());
+    const climbSlug = generateSlugFromText(climbName.trim());
     if (climbSlug) {
       return `${baseUrl}${climbSlug}-${climb_uuid}`;
     }
@@ -622,5 +568,112 @@ export const constructBoardSlugPlayUrl = (slug: string, angle: number, climbUuid
  * Construct a board slug URL for the climb view.
  * /b/{board-slug}/{angle}/view/{climb_uuid}
  */
-export const constructBoardSlugViewUrl = (slug: string, angle: number, climbUuid: string) =>
-  constructBoardSlugUrl(slug, angle, `view/${climbUuid}`);
+export const constructBoardSlugViewUrl = (
+  slug: string,
+  angle: number,
+  climbUuid: string,
+  climbName?: string,
+) => {
+  if (climbName && climbName.trim()) {
+    const climbSlug = generateSlugFromText(climbName.trim());
+    if (climbSlug) {
+      return constructBoardSlugUrl(slug, angle, `view/${climbSlug}-${climbUuid}`);
+    }
+  }
+  return constructBoardSlugUrl(slug, angle, `view/${climbUuid}`);
+};
+
+/**
+ * Construct a board slug URL for the playlists library.
+ * /b/{board-slug}/{angle}/playlists
+ */
+export const constructBoardSlugPlaylistsUrl = (slug: string, angle: number) =>
+  constructBoardSlugUrl(slug, angle, 'playlists');
+
+const getBoardSlugRouteContext = (pathname: string): { slug: string; angle: number } | null => {
+  const match = pathname.match(/^\/b\/([^/]+)\/(-?\d+)(?:\/|$)/);
+  if (!match) return null;
+
+  const angle = Number(match[2]);
+  if (Number.isNaN(angle)) return null;
+
+  return { slug: match[1], angle };
+};
+
+/**
+ * Build a climb-view URL that preserves board-slug routing context when present.
+ * - On /b/{slug}/{angle}/... routes, returns /b/{slug}/{angle}/view/{slug-uuid|uuid}
+ * - Otherwise, falls back to canonical board URLs.
+ */
+export const getContextAwareClimbViewUrl = (
+  pathname: string,
+  boardDetails: BoardDetails,
+  angle: number,
+  climbUuid: string,
+  climbName?: string,
+): string => {
+  const boardSlugRoute = getBoardSlugRouteContext(pathname);
+  if (boardSlugRoute) {
+    return constructBoardSlugViewUrl(boardSlugRoute.slug, boardSlugRoute.angle, climbUuid, climbName);
+  }
+
+  if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
+    return constructClimbViewUrlWithSlugs(
+      boardDetails.board_name,
+      boardDetails.layout_name,
+      boardDetails.size_name,
+      boardDetails.size_description,
+      boardDetails.set_names,
+      angle,
+      climbUuid,
+      climbName,
+    );
+  }
+
+  return constructClimbViewUrl(
+    {
+      board_name: boardDetails.board_name,
+      layout_id: boardDetails.layout_id,
+      size_id: boardDetails.size_id,
+      set_ids: boardDetails.set_ids,
+      angle,
+    },
+    climbUuid,
+    climbName,
+  );
+};
+
+/**
+ * Extract the playlists base path from the current pathname.
+ * - On a /b/{slug}/{angle}/... route → /b/{slug}/{angle}/playlists
+ * - On an old-style /{board}/{layout}/{size}/{sets}/{angle}/... route → /{board}/{layout}/{size}/{sets}/{angle}/playlists
+ * - Otherwise → /playlists
+ */
+export const getPlaylistsBasePath = (pathname: string): string => {
+  // Board slug route: /b/{slug}/{angle}/...
+  if (pathname.startsWith('/b/')) {
+    const segments = pathname.split('/');
+    if (segments.length >= 4) {
+      return `/b/${segments[2]}/${segments[3]}/playlists`;
+    }
+  }
+
+  // Old-style route: /{board_name}/{layout_id}/{size_id}/{set_ids}/{angle}/...
+  const oldStyleMatch = pathname.match(/^\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+)/);
+  if (oldStyleMatch) {
+    const [, boardName] = oldStyleMatch;
+    const validBoardNames: readonly string[] = ['kilter', 'tension', 'moonboard'] satisfies readonly BoardName[];
+    if (validBoardNames.includes(boardName)) {
+      return `/${oldStyleMatch.slice(1, 6).join('/')}/playlists`;
+    }
+  }
+
+  return '/playlists';
+};
+
+/**
+ * Build a context-aware URL for a specific playlist detail page.
+ * Uses the current pathname to determine whether to use board-scoped or global URL.
+ */
+export const getContextAwarePlaylistUrl = (pathname: string, playlistUuid: string): string =>
+  `${getPlaylistsBasePath(pathname)}/${playlistUuid}`;

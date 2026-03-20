@@ -1,9 +1,13 @@
 import React from 'react';
+import { getServerAuthToken } from './lib/auth/server-auth';
 import ConsolidatedBoardConfig from './components/setup-wizard/consolidated-board-config';
 import { getAllBoardConfigs } from './lib/server-board-configs';
 import HomePageContent from './home-page-content';
-import { cachedTrendingFeed } from './lib/graphql/server-cached-client';
-import type { SortMode } from '@boardsesh/shared-schema';
+import { cachedSessionGroupedFeed, serverMyBoards } from './lib/graphql/server-cached-client';
+import type { SessionFeedResult } from '@boardsesh/shared-schema';
+
+type FeedTab = 'sessions' | 'proposals' | 'comments';
+const VALID_TABS: FeedTab[] = ['sessions', 'proposals', 'comments'];
 
 type HomeProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -19,28 +23,41 @@ export default async function Home({ searchParams }: HomeProps) {
   }
 
   // Parse URL state
-  const tab = (params.tab === 'newClimbs' ? 'newClimbs' : 'activity') as 'activity' | 'newClimbs';
+  const tab = (VALID_TABS.includes(params.tab as FeedTab) ? params.tab : 'sessions') as FeedTab;
   const boardUuid = typeof params.board === 'string' ? params.board : undefined;
-  const sortBy = (['new', 'top', 'controversial', 'hot'].includes(params.sort as string)
-    ? params.sort : 'new') as SortMode;
 
-  // SSR: fetch initial trending feed (no auth needed)
-  let initialTrendingFeed = null;
-  if (tab === 'activity') {
+  // Read auth cookie to determine if user is authenticated at SSR time
+  const authToken = await getServerAuthToken();
+  const isAuthenticatedSSR = !!authToken;
+
+  // SSR: fetch boards + feed in parallel
+  let initialFeedResult: SessionFeedResult | null = null;
+  let initialMyBoards: import('@boardsesh/shared-schema').UserBoard[] | null = null;
+
+  if (authToken) {
+    const feedPromise = tab === 'sessions'
+      ? cachedSessionGroupedFeed(boardUuid).catch(() => null)
+      : Promise.resolve(null);
+    const boardsPromise = serverMyBoards(authToken);
+
+    const [feedResult, boardsResult] = await Promise.all([feedPromise, boardsPromise]);
+    initialFeedResult = feedResult;
+    initialMyBoards = boardsResult;
+  } else if (tab === 'sessions') {
     try {
-      initialTrendingFeed = await cachedTrendingFeed(sortBy, boardUuid);
+      initialFeedResult = await cachedSessionGroupedFeed(boardUuid);
     } catch {
-      // Trending feed fetch failed, client will retry
+      // Feed fetch failed, client will retry
     }
   }
 
   return (
     <HomePageContent
-      boardConfigs={boardConfigs}
       initialTab={tab}
       initialBoardUuid={boardUuid}
-      initialSortBy={sortBy}
-      initialTrendingFeed={initialTrendingFeed}
+      initialFeedResult={initialFeedResult}
+      isAuthenticatedSSR={isAuthenticatedSSR}
+      initialMyBoards={initialMyBoards}
     />
   );
 }

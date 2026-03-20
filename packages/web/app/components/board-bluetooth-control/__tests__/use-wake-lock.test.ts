@@ -28,7 +28,6 @@ function createMockWakeLockSentinel(): WakeLockSentinel {
 
 describe('useWakeLock', () => {
   let mockRequest: ReturnType<typeof vi.fn>;
-  let originalWakeLock: WakeLock | undefined;
 
   beforeEach(() => {
     mockRequest = vi.fn();

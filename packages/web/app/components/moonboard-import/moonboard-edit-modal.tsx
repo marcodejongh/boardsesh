@@ -111,7 +111,6 @@ export default function MoonBoardEditModal({
     handCount,
     totalHolds,
     isValid,
-    resetHolds,
   } = useMoonBoardCreateClimb({ initialHoldsMap });
 
   // Reset to initial state when climb changes

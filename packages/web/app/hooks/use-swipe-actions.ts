@@ -9,13 +9,27 @@ const DEFAULT_SWIPE_THRESHOLD = 100;
 // Maximum swipe distance
 const DEFAULT_MAX_SWIPE = 120;
 
+export type SwipeZone = 'none' | 'left-short' | 'left-long' | 'right-short' | 'right-long';
+
 export interface UseSwipeActionsOptions {
   /** Called when the user swipes left past the threshold */
   onSwipeLeft: () => void;
+  /** Called when the user swipes left past the long-swipe threshold */
+  onSwipeLeftLong?: () => void;
   /** Called when the user swipes right past the threshold */
   onSwipeRight: () => void;
+  /** Called when the user swipes right past the long-swipe threshold */
+  onSwipeRightLong?: () => void;
   /** Pixel threshold to trigger action (default: 100) */
   swipeThreshold?: number;
+  /** Pixel threshold to trigger long left swipe action (optional) */
+  longSwipeLeftThreshold?: number;
+  /** Pixel threshold to trigger long right swipe action (optional) */
+  longSwipeRightThreshold?: number;
+  /** Called when swipe zone changes during gesture (e.g. short -> long threshold crossing) */
+  onSwipeZoneChange?: (zone: SwipeZone) => void;
+  /** Called with current swipe offset during gesture and reset */
+  onSwipeOffsetChange?: (offset: number) => void;
   /** Maximum swipe distance in pixels (default: 120) */
   maxSwipe?: number;
   /** Whether swipe is disabled (e.g. in edit mode) */
@@ -47,8 +61,14 @@ export interface UseSwipeActionsReturn {
  */
 export function useSwipeActions({
   onSwipeLeft,
+  onSwipeLeftLong,
   onSwipeRight,
+  onSwipeRightLong,
   swipeThreshold = DEFAULT_SWIPE_THRESHOLD,
+  longSwipeLeftThreshold,
+  longSwipeRightThreshold,
+  onSwipeZoneChange,
+  onSwipeOffsetChange,
   maxSwipe = DEFAULT_MAX_SWIPE,
   disabled = false,
   completionAnimationMs = 200,
@@ -62,7 +82,14 @@ export function useSwipeActions({
 
   // Gesture state (not React state -- no re-renders)
   const offsetRef = useRef(0);
+  const swipeZoneRef = useRef<SwipeZone>('none');
   const { detect: detectDirection, reset: resetDirection, isHorizontalRef } = useSwipeDirection();
+
+  const updateSwipeZone = useCallback((zone: SwipeZone) => {
+    if (swipeZoneRef.current === zone) return;
+    swipeZoneRef.current = zone;
+    onSwipeZoneChange?.(zone);
+  }, [onSwipeZoneChange]);
 
   const contentRef = useCallback((node: HTMLElement | null) => {
     contentEl.current = node;
@@ -79,6 +106,7 @@ export function useSwipeActions({
   /** Apply the current offset to the DOM elements directly */
   const applyOffset = useCallback((offset: number) => {
     offsetRef.current = offset;
+    onSwipeOffsetChange?.(offset);
 
     if (contentEl.current) {
       contentEl.current.style.transform = `translateX(${offset}px)`;
@@ -100,12 +128,13 @@ export function useSwipeActions({
       rightActionEl.current.style.opacity = String(offset < 0 ? opacity : 0);
       rightActionEl.current.style.visibility = offset < 0 ? 'visible' : 'hidden';
     }
-  }, [swipeThreshold]);
+  }, [swipeThreshold, onSwipeOffsetChange]);
 
   /** Snap offset back to zero (no action taken) */
   const resetOffset = useCallback(() => {
     applyOffset(0);
-  }, [applyOffset]);
+    updateSwipeZone('none');
+  }, [applyOffset, updateSwipeZone]);
 
   const handleSwipeLeftComplete = useCallback(() => {
     setIsSwipeComplete(true);
@@ -116,17 +145,31 @@ export function useSwipeActions({
     setTimeout(() => {
       onSwipeLeft();
       applyOffset(0);
+      updateSwipeZone('none');
       if (contentEl.current) {
         contentEl.current.style.opacity = '';
       }
       setIsSwipeComplete(false);
     }, completionAnimationMs);
-  }, [onSwipeLeft, applyOffset, completionAnimationMs]);
+  }, [onSwipeLeft, applyOffset, completionAnimationMs, updateSwipeZone]);
 
   const handleSwipeRightComplete = useCallback(() => {
     applyOffset(0);
+    updateSwipeZone('none');
     onSwipeRight();
-  }, [onSwipeRight, applyOffset]);
+  }, [onSwipeRight, applyOffset, updateSwipeZone]);
+
+  const handleSwipeLeftLongComplete = useCallback(() => {
+    applyOffset(0);
+    updateSwipeZone('none');
+    onSwipeLeftLong?.();
+  }, [applyOffset, onSwipeLeftLong, updateSwipeZone]);
+
+  const handleSwipeRightLongComplete = useCallback(() => {
+    applyOffset(0);
+    updateSwipeZone('none');
+    onSwipeRightLong?.();
+  }, [applyOffset, onSwipeRightLong, updateSwipeZone]);
 
   const swipeHandlers = useSwipeable({
     onSwiping: (eventData) => {
@@ -139,7 +182,10 @@ export function useSwipeActions({
       if (isHorizontal === null) return;
 
       // Let vertical swipes pass through for scrolling
-      if (!isHorizontal) return;
+      if (!isHorizontal) {
+        updateSwipeZone('none');
+        return;
+      }
 
       // Horizontal swipe -- prevent scroll and update offset via DOM
       if ('nativeEvent' in event) {
@@ -150,9 +196,31 @@ export function useSwipeActions({
 
       const clampedOffset = Math.max(-maxSwipe, Math.min(maxSwipe, deltaX));
       applyOffset(clampedOffset);
+
+      const absOffset = Math.abs(clampedOffset);
+      if (clampedOffset > 0) {
+        if (typeof longSwipeRightThreshold === 'number' && absOffset >= longSwipeRightThreshold) {
+          updateSwipeZone('right-long');
+        } else {
+          updateSwipeZone('right-short');
+        }
+      } else if (clampedOffset < 0) {
+        if (typeof longSwipeLeftThreshold === 'number' && absOffset >= longSwipeLeftThreshold) {
+          updateSwipeZone('left-long');
+        } else {
+          updateSwipeZone('left-short');
+        }
+      } else {
+        updateSwipeZone('none');
+      }
     },
     onSwipedLeft: (eventData) => {
-      if (isHorizontalRef.current && Math.abs(eventData.deltaX) >= swipeThreshold) {
+      const swipeDistance = Math.abs(eventData.deltaX);
+      const longSwipeReady = typeof longSwipeLeftThreshold === 'number' && swipeDistance >= longSwipeLeftThreshold;
+
+      if (isHorizontalRef.current && longSwipeReady && onSwipeLeftLong) {
+        handleSwipeLeftLongComplete();
+      } else if (isHorizontalRef.current && swipeDistance >= swipeThreshold) {
         handleSwipeLeftComplete();
       } else {
         resetOffset();
@@ -160,7 +228,12 @@ export function useSwipeActions({
       resetDirection();
     },
     onSwipedRight: (eventData) => {
-      if (isHorizontalRef.current && Math.abs(eventData.deltaX) >= swipeThreshold) {
+      const swipeDistance = Math.abs(eventData.deltaX);
+      const longSwipeReady = typeof longSwipeRightThreshold === 'number' && swipeDistance >= longSwipeRightThreshold;
+
+      if (isHorizontalRef.current && longSwipeReady && onSwipeRightLong) {
+        handleSwipeRightLongComplete();
+      } else if (isHorizontalRef.current && swipeDistance >= swipeThreshold) {
         handleSwipeRightComplete();
       } else {
         resetOffset();
@@ -172,6 +245,7 @@ export function useSwipeActions({
         resetOffset();
       }
       resetDirection();
+      updateSwipeZone('none');
     },
     trackMouse: false,
     trackTouch: true,

@@ -8,7 +8,7 @@ import { Climb, BoardDetails, Angle } from '@/app/lib/types';
 import { useQueueContext } from '@/app/components/graphql-queue';
 import SwipeBoardCarousel from '@/app/components/board-renderer/swipe-board-carousel';
 import ClimbTitle from '@/app/components/climb-card/climb-title';
-import { AscentStatus } from '@/app/components/queue-control/queue-list-item';
+import { AscentStatus } from '@/app/components/climb-card/ascent-status';
 import { constructClimbListWithSlugs, constructPlayUrlWithSlugs } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import { EmptyState } from '@/app/components/ui/empty-state';

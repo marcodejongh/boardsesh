@@ -17,6 +17,8 @@ export const PLAYLIST_FIELDS = gql`
     lastAccessedAt
     climbCount
     userRole
+    followerCount
+    isFollowedByMe
   }
 `;
 
@@ -54,6 +56,16 @@ export const GET_PLAYLIST = gql`
 export const GET_PLAYLISTS_FOR_CLIMB = gql`
   query GetPlaylistsForClimb($input: GetPlaylistsForClimbInput!) {
     playlistsForClimb(input: $input)
+  }
+`;
+
+// Get playlist memberships for multiple climbs in a single request
+export const GET_PLAYLISTS_FOR_CLIMBS = gql`
+  query GetPlaylistsForClimbs($input: GetPlaylistsForClimbsInput!) {
+    playlistsForClimbs(input: $input) {
+      climbUuid
+      playlistUuids
+    }
   }
 `;
 
@@ -112,6 +124,7 @@ export const GET_PLAYLIST_CLIMBS = gql`
       climbs {
         uuid
         layoutId
+        boardType
         setter_username
         name
         description
@@ -148,10 +161,13 @@ export interface Playlist {
   lastAccessedAt?: string | null;
   climbCount: number;
   userRole?: string;
+  followerCount: number;
+  isFollowedByMe: boolean;
 }
 
 export interface GetAllUserPlaylistsInput {
   boardType?: string;
+  layoutId?: number;
 }
 
 export interface GetAllUserPlaylistsQueryVariables {
@@ -195,6 +211,25 @@ export interface GetPlaylistsForClimbQueryVariables {
 
 export interface GetPlaylistsForClimbQueryResponse {
   playlistsForClimb: string[];
+}
+
+export interface GetPlaylistsForClimbsInput {
+  boardType: string;
+  layoutId: number;
+  climbUuids: string[];
+}
+
+export interface GetPlaylistsForClimbsQueryVariables {
+  input: GetPlaylistsForClimbsInput;
+}
+
+export interface ClimbPlaylistMembership {
+  climbUuid: string;
+  playlistUuids: string[];
+}
+
+export interface GetPlaylistsForClimbsQueryResponse {
+  playlistsForClimbs: ClimbPlaylistMembership[];
 }
 
 export interface CreatePlaylistInput {
@@ -275,11 +310,11 @@ export interface RemoveClimbFromPlaylistMutationResponse {
 
 export interface GetPlaylistClimbsInput {
   playlistId: string;
-  boardName: string;
-  layoutId: number;
-  sizeId: number;
-  setIds: string;
-  angle: number;
+  boardName?: string;
+  layoutId?: number;
+  sizeId?: number;
+  setIds?: string;
+  angle?: number;
   page?: number;
   pageSize?: number;
 }
@@ -292,6 +327,7 @@ export interface PlaylistClimbsResult {
   climbs: Array<{
     uuid: string;
     layoutId?: number | null;
+    boardType?: string;
     setter_username: string;
     name: string;
     description: string;
@@ -342,8 +378,8 @@ export interface DiscoverablePlaylist {
 }
 
 export interface DiscoverPlaylistsInput {
-  boardType: string;
-  layoutId: number;
+  boardType?: string;
+  layoutId?: number;
   name?: string;
   creatorIds?: string[];
   sortBy?: 'recent' | 'popular';
@@ -473,4 +509,40 @@ export interface SearchPlaylistsQueryResponse {
     totalCount: number;
     hasMore: boolean;
   };
+}
+
+// ============================================
+// Playlist Follow Types and Operations
+// ============================================
+
+export const FOLLOW_PLAYLIST = gql`
+  mutation FollowPlaylist($input: FollowPlaylistInput!) {
+    followPlaylist(input: $input)
+  }
+`;
+
+export const UNFOLLOW_PLAYLIST = gql`
+  mutation UnfollowPlaylist($input: FollowPlaylistInput!) {
+    unfollowPlaylist(input: $input)
+  }
+`;
+
+export interface FollowPlaylistInput {
+  playlistUuid: string;
+}
+
+export interface FollowPlaylistMutationVariables {
+  input: FollowPlaylistInput;
+}
+
+export interface FollowPlaylistMutationResponse {
+  followPlaylist: boolean;
+}
+
+export interface UnfollowPlaylistMutationVariables {
+  input: FollowPlaylistInput;
+}
+
+export interface UnfollowPlaylistMutationResponse {
+  unfollowPlaylist: boolean;
 }

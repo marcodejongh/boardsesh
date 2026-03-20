@@ -131,4 +131,37 @@ describe('Feed Cursor', () => {
       expect(decodeOffsetCursor(keysetCursor)).toBeNull();
     });
   });
+
+  describe('timezone safety', () => {
+    it('encoded cursor contains ISO UTC string suitable for ::timestamp cast', () => {
+      const encoded = encodeCursor('2024-06-15T14:30:00.000Z', 99);
+      const decoded = decodeCursor(encoded);
+      expect(decoded).not.toBeNull();
+      // The timestamp should be a valid ISO 8601 UTC string ending in Z
+      expect(decoded!.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      // PostgreSQL's ::timestamp cast accepts this format
+      expect(decoded!.createdAt).toBe('2024-06-15T14:30:00.000Z');
+    });
+
+    it('Date objects encode as ISO UTC with no local timezone offset', () => {
+      // Create a Date — regardless of local timezone, toISOString() always returns UTC
+      const date = new Date('2024-12-25T23:59:59.000Z');
+      const encoded = encodeCursor(date, 1);
+      const decoded = decodeCursor(encoded);
+      expect(decoded).not.toBeNull();
+      // Should always be UTC (ending in Z), never a local offset like +05:00
+      expect(decoded!.createdAt).toBe('2024-12-25T23:59:59.000Z');
+      expect(decoded!.createdAt).not.toMatch(/[+-]\d{2}:\d{2}$/);
+    });
+
+    it('string timestamps pass through without timezone conversion', () => {
+      // A PG-style timestamp without timezone indicator should be preserved as-is
+      const pgTimestamp = '2024-03-10 08:00:00';
+      const encoded = encodeCursor(pgTimestamp, 50);
+      const decoded = decodeCursor(encoded);
+      expect(decoded).not.toBeNull();
+      // The string should be preserved exactly — no JS Date parsing that could shift timezones
+      expect(decoded!.createdAt).toBe(pgTimestamp);
+    });
+  });
 });

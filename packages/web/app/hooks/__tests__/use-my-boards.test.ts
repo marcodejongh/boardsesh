@@ -82,7 +82,7 @@ describe('useMyBoards', () => {
       error: null,
     });
 
-    const { result } = renderHook(() => useMyBoards(true));
+    renderHook(() => useMyBoards(true));
 
     expect(mockRequest).not.toHaveBeenCalled();
   });

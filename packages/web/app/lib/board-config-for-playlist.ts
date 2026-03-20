@@ -1,3 +1,4 @@
+import type { UserBoard } from '@boardsesh/shared-schema';
 import { BoardName, BoardDetails } from './types';
 import {
   getSizesForLayoutId,
@@ -89,10 +90,33 @@ export function getDefaultLayoutForBoard(boardType: string): number | null {
   return ids.length > 0 ? ids[0] : null;
 }
 
+/** Default angle fallback when no angle specified. 40 is the most common training angle. */
+const DEFAULT_ANGLE = 40;
+
 /**
  * Get a default angle for a board type.
- * Returns 40 for all board types.
+ * Returns the default training angle for all board types.
  */
 export function getDefaultAngleForBoard(_boardType: string): number {
-  return 40;
+  return DEFAULT_ANGLE;
+}
+
+/**
+ * Get BoardDetails for a UserBoard by resolving its board type, layout, size, and sets.
+ */
+export function getUserBoardDetails(board: UserBoard): BoardDetails | null {
+  try {
+    const setIds = board.setIds.split(',').map(Number);
+    if (board.boardType === 'moonboard') {
+      return getMoonBoardDetails({ layout_id: board.layoutId, set_ids: setIds }) as BoardDetails;
+    }
+    return getBoardDetails({
+      board_name: board.boardType as BoardName,
+      layout_id: board.layoutId,
+      size_id: board.sizeId,
+      set_ids: setIds,
+    });
+  } catch {
+    return null;
+  }
 }

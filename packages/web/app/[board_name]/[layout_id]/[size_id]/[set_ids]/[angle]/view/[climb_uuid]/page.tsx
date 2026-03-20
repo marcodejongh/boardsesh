@@ -4,13 +4,11 @@ import { BoardRouteParametersWithUuid } from '@/app/lib/types';
 import { getClimb } from '@/app/lib/data/queries';
 import { getBoardDetailsForBoard } from '@/app/lib/board-utils';
 import {
-  extractUuidFromSlug,
   constructClimbViewUrl,
   isUuidOnly,
   constructClimbViewUrlWithSlugs,
-  parseBoardRouteParams,
 } from '@/app/lib/url-utils';
-import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { parseRouteParams } from '@/app/lib/url-utils.server';
 import { convertLitUpHoldsStringToMap } from '@/app/components/board-renderer/util';
 import { Metadata } from 'next';
 import { fetchClimbDetailData } from '@/app/lib/data/climb-detail-data.server';
@@ -20,7 +18,7 @@ export async function generateMetadata(props: { params: Promise<BoardRouteParame
   const params = await props.params;
 
   try {
-    const parsedParams = await parseBoardRouteParamsWithSlugs(params);
+    const { parsedParams } = await parseRouteParams(params);
     const [boardDetails, currentClimb] = await Promise.all([getBoardDetailsForBoard(parsedParams), getClimb(parsedParams)]);
 
     const climbName = currentClimb.name || `${boardDetails.board_name} Climb`;
@@ -73,22 +71,9 @@ export default async function DynamicResultsPage(props: { params: Promise<BoardR
   const params = await props.params;
 
   try {
-    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-      param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-    );
+    const { parsedParams, isNumericFormat } = await parseRouteParams(params);
 
-    let parsedParams;
-
-    if (hasNumericParams) {
-      parsedParams = parseBoardRouteParams({
-        ...params,
-        climb_uuid: extractUuidFromSlug(params.climb_uuid),
-      });
-    } else {
-      parsedParams = await parseBoardRouteParamsWithSlugs(params);
-    }
-
-    if (hasNumericParams || isUuidOnly(params.climb_uuid)) {
+    if (isNumericFormat || isUuidOnly(params.climb_uuid)) {
       const currentClimb = await getClimb(parsedParams);
       const layouts = await import('@/app/lib/data/queries').then((m) => m.getLayouts(parsedParams.board_name));
       const sizes = await import('@/app/lib/data/queries').then((m) =>

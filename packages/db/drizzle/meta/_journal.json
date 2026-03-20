@@ -400,6 +400,62 @@
       "when": 1770990200931,
       "tag": "0056_add-board-angle",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1771058771575,
+      "tag": "0057_volatile_miss_america",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1772114675674,
+      "tag": "0058_wealthy_zarek",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1772121188986,
+      "tag": "0059_thin_colossus",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1772150000000,
+      "tag": "0060_backfill_inferred_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1772364755993,
+      "tag": "0061_silky_cassandra_nova",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1772368267377,
+      "tag": "0062_add-playlist-follows-uuid-fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1772483284982,
+      "tag": "0063_mixed_arclight",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1772484823930,
+      "tag": "0064_useful_nocturne",
+      "breakpoints": true
     }
   ]
 }

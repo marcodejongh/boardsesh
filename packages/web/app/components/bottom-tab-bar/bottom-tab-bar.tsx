@@ -17,10 +17,9 @@ import EditOutlined from '@mui/icons-material/EditOutlined';
 import NotificationsOutlined from '@mui/icons-material/NotificationsOutlined';
 import Badge from '@mui/material/Badge';
 import { usePathname, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { track } from '@vercel/analytics';
 import { BoardDetails } from '@/app/lib/types';
-import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug, searchParamsToUrlParams } from '@/app/lib/url-utils';
+import { constructClimbListWithSlugs, generateLayoutSlug, generateSizeSlug, generateSetSlug, searchParamsToUrlParams, getContextAwarePlaylistUrl, getPlaylistsBasePath } from '@/app/lib/url-utils';
 import { themeTokens } from '@/app/theme/theme-config';
 import { useColorMode } from '@/app/hooks/use-color-mode';
 import { PlaylistsContext } from '../climb-actions/playlists-batch-context';
@@ -31,8 +30,12 @@ import { getRecentSearches } from '@/app/components/search-drawer/recent-searche
 import BoardSelectorDrawer from '../board-selector-drawer/board-selector-drawer';
 import { BoardConfigData } from '@/app/lib/server-board-configs';
 import { useUnreadNotificationCount } from '@/app/hooks/use-unread-notification-count';
+import { useClimbActionsData } from '@/app/hooks/use-climb-actions-data';
+import type { StoredBoardConfig } from '@/app/lib/saved-boards-db';
+import { isValidHexColor } from '@/app/lib/color-utils';
 
 type Tab = 'home' | 'climbs' | 'library' | 'create' | 'notifications';
+type PendingCreateAction = 'climb' | 'playlist' | null;
 
 interface BottomTabBarProps {
   boardDetails?: BoardDetails | null;
@@ -40,19 +43,38 @@ interface BottomTabBarProps {
   boardConfigs?: BoardConfigData;
 }
 
-// Validate hex color format
-const isValidHexColor = (color: string): boolean => {
-  return /^#([0-9A-Fa-f]{3}){1,2}$/.test(color);
-};
+interface SelectedBoardContext {
+  boardName: string;
+  layoutId: number;
+  angle: number;
+}
 
 const getActiveTab = (pathname: string): Tab => {
   if (pathname === '/') return 'home';
   if (pathname.startsWith('/notifications')) return 'notifications';
-  if (pathname.startsWith('/my-library') || pathname.includes('/playlist/')) return 'library';
+  if (pathname.startsWith('/playlists') || pathname.includes('/playlists')) return 'library';
   return 'climbs';
 };
 
 const INITIAL_PLAYLIST_FORM = { name: '', description: '', color: '' };
+
+const getBoardContextFromSelector = (config?: StoredBoardConfig): SelectedBoardContext | null => {
+  if (!config || typeof config.layoutId !== 'number' || config.layoutId <= 0) {
+    return null;
+  }
+  return {
+    boardName: config.board,
+    layoutId: config.layoutId,
+    angle: config.angle ?? 40,
+  };
+};
+
+const listUrlToCreateUrl = (url: string): string => {
+  const [path, query = ''] = url.split('?');
+  if (!path.endsWith('/list')) return url;
+  const createPath = `${path.slice(0, -5)}/create`;
+  return query ? `${createPath}?${query}` : createPath;
+};
 
 const actionSx = {
   color: 'var(--neutral-400)',
@@ -70,6 +92,8 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isBoardSelectorOpen, setIsBoardSelectorOpen] = useState(false);
+  const [pendingCreateAction, setPendingCreateAction] = useState<PendingCreateAction>(null);
+  const [selectedBoardContext, setSelectedBoardContext] = useState<SelectedBoardContext | null>(null);
   const [playlistFormValues, setPlaylistFormValues] = useState(INITIAL_PLAYLIST_FORM);
   const [playlistFormErrors, setPlaylistFormErrors] = useState<Record<string, string>>({});
   const pathname = usePathname();
@@ -77,10 +101,8 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
 
   const notificationUnreadCount = useUnreadNotificationCount();
 
-  // PlaylistsContext is only available on board routes (within PlaylistsProvider)
+  // Playlist context may be absent at root-level routes; use a local fallback for create flow.
   const playlistsContext = useContext(PlaylistsContext);
-  const createPlaylist = playlistsContext?.createPlaylist;
-  const isAuthenticated = playlistsContext?.isAuthenticated ?? false;
   const { showMessage } = useSnackbar();
 
   // Use the active queue's board details as a fallback when no boardDetails prop
@@ -98,9 +120,22 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     ?? (activeSession ? activeSession.parsedParams.angle : undefined)
     ?? localCurrentClimbQueueItem?.climb?.angle
     ?? 0;
+  const playlistBoardName = effectiveBoardDetails?.board_name ?? selectedBoardContext?.boardName ?? '';
+  const playlistLayoutId = effectiveBoardDetails?.layout_id ?? selectedBoardContext?.layoutId ?? 0;
+  const playlistAngle = effectiveAngle ?? selectedBoardContext?.angle ?? 0;
+
+  const { playlistsProviderProps } = useClimbActionsData({
+    boardName: playlistBoardName,
+    layoutId: playlistLayoutId,
+    angle: playlistAngle,
+    climbUuids: [],
+  });
+  const createPlaylist = playlistsContext?.createPlaylist ?? playlistsProviderProps.createPlaylist;
+  const isAuthenticated = playlistsContext?.isAuthenticated ?? playlistsProviderProps.isAuthenticated;
+  const canCreatePlaylistHere = !!playlistBoardName && playlistLayoutId > 0;
 
   // Hide playlists for moonboard (not yet supported)
-  const isMoonboard = effectiveBoardDetails?.board_name === 'moonboard';
+  const isMoonboard = playlistBoardName === 'moonboard';
 
   // Determine active tab from pathname
   const activeTabFromPath = getActiveTab(pathname);
@@ -134,8 +169,8 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
   })();
 
   const getPlaylistUrl = useCallback((playlistUuid: string) => {
-    return `/my-library/playlist/${playlistUuid}`;
-  }, []);
+    return getContextAwarePlaylistUrl(pathname, playlistUuid);
+  }, [pathname]);
 
   const handleHomeTab = () => {
     setIsCreateOpen(false);
@@ -144,22 +179,37 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     track('Bottom Tab Bar', { tab: 'home' });
   };
 
+  // Whether we're currently on a board page (URL derived from pathname is reliable)
+  const isOnBoardPage = pathname.startsWith('/b/') || (!!effectiveBoardDetails && pathname !== '/' && !pathname.startsWith('/notifications') && !pathname.startsWith('/playlists'));
+
   const handleClimbsTab = async () => {
     setIsCreateOpen(false);
     setIsCreatePlaylistOpen(false);
 
-    // 1. Try effectiveBoardDetails (from current route or active session)
-    let url = listUrl;
+    let url: string | null = null;
 
-    // 2. Try getLastUsedBoard() from IndexedDB
-    if (!url) {
+    if (isOnBoardPage) {
+      // On a board page, use listUrl derived from the current pathname
+      url = listUrl;
+    } else {
+      // Not on a board page: prefer the stored URL (preserves /b/ format)
       const lastUsed = await getLastUsedBoard();
       if (lastUsed?.url) {
         url = lastUsed.url;
       }
+      // Fall back to computed listUrl from session board details
+      if (!url) {
+        url = listUrl;
+      }
     }
 
-    // 3. Open board selector drawer if no board context
+    // Final fallback for isOnBoardPage case where listUrl is null
+    if (!url) {
+      const lastUsed = await getLastUsedBoard();
+      url = lastUsed?.url ?? null;
+    }
+
+    // Open board selector drawer if no board context
     if (!url) {
       if (boardConfigs) {
         setIsBoardSelectorOpen(true);
@@ -190,13 +240,14 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     track('Bottom Tab Bar', { tab: 'climbs' });
   };
 
+  const playlistsUrl = getPlaylistsBasePath(pathname);
+
   const handleLibraryTab = () => {
     setIsCreateOpen(false);
     setIsCreatePlaylistOpen(false);
-    const url = '/my-library';
     const currentUrl = pathname + (typeof window !== 'undefined' ? window.location.search : '');
-    if (url !== currentUrl) {
-      router.push(url);
+    if (playlistsUrl !== currentUrl) {
+      router.push(playlistsUrl);
     }
     track('Bottom Tab Bar', { tab: 'library' });
   };
@@ -209,15 +260,8 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
   };
 
   const handleCreateTab = () => {
-    if (!playlistsContext) {
-      if (createClimbUrl) {
-        router.push(createClimbUrl);
-      } else if (boardConfigs) {
-        setIsBoardSelectorOpen(true);
-      }
-    } else {
-      setIsCreateOpen(true);
-    }
+    setIsCreatePlaylistOpen(false);
+    setIsCreateOpen(true);
     track('Bottom Tab Bar', { tab: 'create' });
   };
 
@@ -241,16 +285,67 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     }
   };
 
+  const handleOpenCreateClimb = () => {
+    setIsCreateOpen(false);
+    if (createClimbUrl) {
+      router.push(createClimbUrl);
+      return;
+    }
+
+    if (boardConfigs) {
+      setPendingCreateAction('climb');
+      setIsBoardSelectorOpen(true);
+    }
+  };
+
   const handleOpenCreatePlaylist = () => {
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
     }
+
+    if (!canCreatePlaylistHere) {
+      setIsCreateOpen(false);
+      if (boardConfigs) {
+        setPendingCreateAction('playlist');
+        setIsBoardSelectorOpen(true);
+      } else {
+        showMessage('Select a board before creating a playlist', 'error');
+      }
+      return;
+    }
+
     setIsCreateOpen(false);
     setIsCreatePlaylistOpen(true);
   };
 
-  const validatePlaylistForm = (): boolean => {
+  const handleBoardSelected = useCallback((url: string, config?: StoredBoardConfig) => {
+    const selectedContext = getBoardContextFromSelector(config);
+    if (selectedContext) {
+      setSelectedBoardContext(selectedContext);
+    }
+
+    if (pendingCreateAction === 'climb') {
+      router.push(listUrlToCreateUrl(url));
+      setPendingCreateAction(null);
+      return;
+    }
+
+    if (pendingCreateAction === 'playlist') {
+      if (!selectedContext) {
+        showMessage('Unable to determine board details for playlist creation', 'error');
+        setPendingCreateAction(null);
+        return;
+      }
+      setIsCreatePlaylistOpen(true);
+      setPendingCreateAction(null);
+      return;
+    }
+
+    router.push(url);
+  }, [pendingCreateAction, router, showMessage]);
+
+  const validatePlaylistForm = useCallback((): boolean => {
     const errors: Record<string, string> = {};
     if (!playlistFormValues.name.trim()) {
       errors.name = 'Please enter a playlist name';
@@ -262,10 +357,15 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     }
     setPlaylistFormErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [playlistFormValues]);
 
   const handleCreatePlaylist = useCallback(async () => {
     if (!validatePlaylistForm() || !createPlaylist) {
+      return;
+    }
+
+    if (!canCreatePlaylistHere) {
+      showMessage('Select a board before creating a playlist', 'error');
       return;
     }
 
@@ -282,7 +382,7 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
 
       showMessage(`Created playlist "${playlistFormValues.name}"`, 'success');
       track('Create Playlist', {
-        boardName: effectiveBoardDetails?.board_name ?? 'unknown',
+        boardName: playlistBoardName || 'unknown',
         playlistName: playlistFormValues.name,
         source: 'bottom-tab-bar',
       });
@@ -298,12 +398,12 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
     } finally {
       setIsCreatingPlaylist(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playlistFormValues, createPlaylist, effectiveBoardDetails?.board_name, router, getPlaylistUrl, showMessage]);
+  }, [validatePlaylistForm, createPlaylist, canCreatePlaylistHere, playlistFormValues, playlistBoardName, router, getPlaylistUrl, showMessage]);
 
   return (
     <>
       <BottomNavigation
+        data-testid="bottom-tab-bar"
         value={activeTab}
         onChange={handleTabChange}
         showLabels
@@ -375,30 +475,25 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
         }}
       >
         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-          {createClimbUrl && (
-            <Link
-              href={createClimbUrl}
-              onClick={() => setIsCreateOpen(false)}
-              style={{ textDecoration: 'none' }}
-            >
-              <MuiButton
-                variant="text"
-                startIcon={<EditOutlined />}
-                fullWidth
-                sx={{
-                  height: 48,
-                  justifyContent: 'flex-start',
-                  paddingLeft: themeTokens.spacing[4],
-                  fontSize: themeTokens.typography.fontSize.base,
-                  color: 'inherit',
-                }}
-              >
-                Climb
-              </MuiButton>
-            </Link>
-          )}
+          <MuiButton
+            data-testid="create-climb-option"
+            variant="text"
+            startIcon={<EditOutlined />}
+            fullWidth
+            onClick={handleOpenCreateClimb}
+            sx={{
+              height: 48,
+              justifyContent: 'flex-start',
+              paddingLeft: themeTokens.spacing[4],
+              fontSize: themeTokens.typography.fontSize.base,
+              color: 'inherit',
+            }}
+          >
+            Create Climb
+          </MuiButton>
           {!isMoonboard && (
             <MuiButton
+              data-testid="create-playlist-option"
               variant="text"
               startIcon={<LocalOfferOutlined />}
               fullWidth
@@ -492,7 +587,11 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
       {boardConfigs && (
         <BoardSelectorDrawer
           open={isBoardSelectorOpen}
-          onClose={() => setIsBoardSelectorOpen(false)}
+          onClose={() => {
+            setIsBoardSelectorOpen(false);
+            setPendingCreateAction(null);
+          }}
+          onBoardSelected={handleBoardSelected}
           boardConfigs={boardConfigs}
         />
       )}
@@ -502,6 +601,16 @@ function BottomTabBar({ boardDetails, angle, boardConfigs }: BottomTabBarProps) 
         onClose={() => setShowAuthModal(false)}
         onSuccess={() => {
           setShowAuthModal(false);
+          setIsCreateOpen(false);
+          if (!canCreatePlaylistHere) {
+            if (boardConfigs) {
+              setPendingCreateAction('playlist');
+              setIsBoardSelectorOpen(true);
+            } else {
+              showMessage('Select a board before creating a playlist', 'error');
+            }
+            return;
+          }
           setIsCreatePlaylistOpen(true);
         }}
         title="Sign in to create playlists"

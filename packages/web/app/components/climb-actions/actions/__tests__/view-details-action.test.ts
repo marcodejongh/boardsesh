@@ -10,8 +10,7 @@ vi.mock('next/link', () => ({
 }));
 
 vi.mock('@/app/lib/url-utils', () => ({
-  constructClimbViewUrl: vi.fn(() => '/id-based-url'),
-  constructClimbViewUrlWithSlugs: vi.fn(() => '/slug-based-url'),
+  getContextAwareClimbViewUrl: vi.fn(() => '/context-aware-url'),
 }));
 
 vi.mock('@/app/theme/theme-config', () => ({
@@ -34,7 +33,7 @@ vi.mock('../../action-tooltip', () => ({
 }));
 
 import { ViewDetailsAction } from '../view-details-action';
-import { constructClimbViewUrl, constructClimbViewUrlWithSlugs } from '@/app/lib/url-utils';
+import { getContextAwareClimbViewUrl } from '@/app/lib/url-utils';
 import type { ClimbActionProps } from '../../types';
 import type { BoardDetails, Climb } from '@/app/lib/types';
 
@@ -115,61 +114,32 @@ describe('ViewDetailsAction', () => {
   });
 
   describe('URL construction strategy', () => {
-    it('uses slug-based URL when layout_name, size_name, and set_names all present', () => {
+    it('delegates URL generation to getContextAwareClimbViewUrl', () => {
       const props = createTestProps();
       ViewDetailsAction(props);
 
-      expect(constructClimbViewUrlWithSlugs).toHaveBeenCalledWith(
-        'kilter',
-        'Original',
-        '12x12',
-        'Full Size',
-        ['Standard', 'Extended'],
+      expect(getContextAwareClimbViewUrl).toHaveBeenCalledWith(
+        '',
+        props.boardDetails,
         40,
         'test-uuid-456',
         'Test Climb',
       );
-      expect(constructClimbViewUrl).not.toHaveBeenCalled();
     });
 
-    it('falls back to ID-based URL when layout_name is missing', () => {
+    it('passes current pathname when provided', () => {
       const props = createTestProps({
-        boardDetails: createTestBoardDetails({ layout_name: undefined }),
+        currentPathname: '/b/my-board/40/list',
       });
       ViewDetailsAction(props);
 
-      expect(constructClimbViewUrl).toHaveBeenCalledWith(
-        {
-          board_name: 'kilter',
-          layout_id: 1,
-          size_id: 10,
-          set_ids: '1,2',
-          angle: 40,
-        },
+      expect(getContextAwareClimbViewUrl).toHaveBeenCalledWith(
+        '/b/my-board/40/list',
+        props.boardDetails,
+        40,
         'test-uuid-456',
         'Test Climb',
       );
-      expect(constructClimbViewUrlWithSlugs).not.toHaveBeenCalled();
-    });
-
-    it('falls back to ID-based URL when size_name is missing', () => {
-      const props = createTestProps({
-        boardDetails: createTestBoardDetails({ size_name: undefined }),
-      });
-      ViewDetailsAction(props);
-
-      expect(constructClimbViewUrl).toHaveBeenCalled();
-      expect(constructClimbViewUrlWithSlugs).not.toHaveBeenCalled();
-    });
-
-    it('falls back to ID-based URL when set_names is missing', () => {
-      const props = createTestProps({
-        boardDetails: createTestBoardDetails({ set_names: undefined }),
-      });
-      ViewDetailsAction(props);
-
-      expect(constructClimbViewUrl).toHaveBeenCalled();
-      expect(constructClimbViewUrlWithSlugs).not.toHaveBeenCalled();
     });
   });
 

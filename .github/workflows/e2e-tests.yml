@@ -5,13 +5,14 @@ on:
     branches: [ main, develop ]
     paths:
       - 'packages/web/**'
+      - 'packages/backend/**'
       - 'packages/shared-schema/**'
       - 'packages/db/**'
       - '.github/workflows/e2e-tests.yml'
   pull_request:
-    branches: [ main, develop ]
     paths:
       - 'packages/web/**'
+      - 'packages/backend/**'
       - 'packages/shared-schema/**'
       - 'packages/db/**'
       - '.github/workflows/e2e-tests.yml'
@@ -20,30 +21,44 @@ jobs:
   e2e:
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-noble
 
     services:
       postgres:
-        image: ghcr.io/marcodejongh/boardsesh-postgres-postgis:latest
+        image: ghcr.io/marcodejongh/boardsesh-dev-db:latest
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: boardsesh_test
-        ports:
-          - 5432:5432
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: main
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          --shm-size 256mb
+
+      neon-proxy:
+        image: ghcr.io/timowilhelm/local-neon-http-proxy:main
+        env:
+          PG_CONNECTION_STRING: postgres://postgres:password@postgres:5432/main
+          POSTGRES_DB: main
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Point db.localtest.me to neon-proxy service
+      run: |
+        # Resolve the neon-proxy service IP and add a hosts entry so the
+        # Neon driver's fetchEndpoint (http://db.localtest.me:4444/sql) reaches
+        # the proxy container instead of localhost.
+        PROXY_IP=$(getent hosts neon-proxy | awk '{ print $1 }')
+        echo "$PROXY_IP db.localtest.me" >> /etc/hosts
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
 
     - name: Install dependencies
       run: npm ci --legacy-peer-deps
@@ -54,9 +69,8 @@ jobs:
     - name: Build db package
       run: npm run build --workspace=@boardsesh/db
 
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps chromium
-      working-directory: packages/web
+    - name: Build backend
+      run: npm run build --workspace=boardsesh-backend
 
     - name: Build web application
       run: npm run build --workspace=@boardsesh/web
@@ -64,24 +78,30 @@ jobs:
         # Provide minimal env vars needed for build
         NEXTAUTH_SECRET: test-secret-for-ci
         NEXTAUTH_URL: http://localhost:3000
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/boardsesh_test
+        DATABASE_URL: postgresql://postgres:password@db.localtest.me:5432/main
+        NEXT_PUBLIC_WS_URL: ws://localhost:8080/graphql
 
     - name: Run database migrations
       run: npx drizzle-kit migrate
-      working-directory: packages/web
+      working-directory: packages/db
       env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/boardsesh_test
+        DATABASE_URL: postgresql://postgres:password@postgres:5432/main
 
-    - name: Start server and run E2E tests
+    - name: Start backend and web server, then run E2E tests
       run: |
+        npm run start --workspace=boardsesh-backend &
+        npx wait-on http-get://localhost:8080/health --timeout 30000
         npm run start --workspace=@boardsesh/web &
         npx wait-on http://localhost:3000 --timeout 60000
         npm run test:e2e --workspace=@boardsesh/web
       env:
         PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/boardsesh_test
+        DATABASE_URL: postgresql://postgres:password@db.localtest.me:5432/main
         NEXTAUTH_SECRET: test-secret-for-ci
         NEXTAUTH_URL: http://localhost:3000
+        NEXT_PUBLIC_WS_URL: ws://localhost:8080/graphql
+        TEST_USER_EMAIL: test@boardsesh.com
+        TEST_USER_PASSWORD: test
 
     - name: Upload Playwright Report
       uses: actions/upload-artifact@v4

@@ -38,6 +38,7 @@ export function PlaylistAction({
   disabled,
   className,
   onComplete,
+  onOpenPlaylistSelector,
 }: ClimbActionProps): ClimbActionResult {
   // Playlists not supported for moonboard yet
   const isMoonboard = boardDetails.board_name === 'moonboard';
@@ -71,9 +72,15 @@ export function PlaylistAction({
         return;
       }
 
+      if (viewMode === 'list' && onOpenPlaylistSelector) {
+        onOpenPlaylistSelector();
+        onComplete?.();
+        return;
+      }
+
       setPopoverOpen((prev) => !prev);
     },
-    [isAuthenticated]
+    [isAuthenticated, onComplete, onOpenPlaylistSelector, viewMode]
   );
 
   const { showMessage } = useSnackbar();
@@ -131,7 +138,7 @@ export function PlaylistAction({
       const newPlaylist = await createPlaylist(createFormValues.name, createFormValues.description, colorHex, undefined);
 
       // Automatically add current climb to new playlist
-      await addToPlaylist(newPlaylist.id);
+      await addToPlaylist(newPlaylist.uuid);
 
       showMessage(`Created playlist "${createFormValues.name}"`, 'success');
       track('Create Playlist', {

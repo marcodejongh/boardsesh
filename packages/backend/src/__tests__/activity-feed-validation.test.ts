@@ -7,8 +7,6 @@ describe('ActivityFeedInputSchema', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.limit).toBe(20);
-      expect(result.data.sortBy).toBe('new');
-      expect(result.data.topPeriod).toBe('all');
       expect(result.data.cursor).toBeUndefined();
       expect(result.data.boardUuid).toBeUndefined();
     }
@@ -29,36 +27,6 @@ describe('ActivityFeedInputSchema', () => {
 
   it('should reject limit less than 1', () => {
     const result = ActivityFeedInputSchema.safeParse({ limit: 0 });
-    expect(result.success).toBe(false);
-  });
-
-  it('should accept valid sort modes', () => {
-    for (const sortBy of ['new', 'top', 'controversial', 'hot']) {
-      const result = ActivityFeedInputSchema.safeParse({ sortBy });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.sortBy).toBe(sortBy);
-      }
-    }
-  });
-
-  it('should reject invalid sort mode', () => {
-    const result = ActivityFeedInputSchema.safeParse({ sortBy: 'random' });
-    expect(result.success).toBe(false);
-  });
-
-  it('should accept valid time periods', () => {
-    for (const topPeriod of ['hour', 'day', 'week', 'month', 'year', 'all']) {
-      const result = ActivityFeedInputSchema.safeParse({ topPeriod });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.topPeriod).toBe(topPeriod);
-      }
-    }
-  });
-
-  it('should reject invalid time period', () => {
-    const result = ActivityFeedInputSchema.safeParse({ topPeriod: 'decade' });
     expect(result.success).toBe(false);
   });
 

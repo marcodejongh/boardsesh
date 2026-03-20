@@ -7,7 +7,6 @@ on:
       - 'packages/moonboard-ocr/**'
       - '.github/workflows/moonboard-ocr-tests.yml'
   pull_request:
-    branches: [ main, develop ]
     paths:
       - 'packages/moonboard-ocr/**'
       - '.github/workflows/moonboard-ocr-tests.yml'

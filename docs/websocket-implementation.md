@@ -11,7 +11,8 @@ This document describes the WebSocket implementation used for real-time party se
 5. [Queue State Synchronization](#queue-state-synchronization)
 6. [Multi-Instance Support](#multi-instance-support)
 7. [Failure States and Recovery](#failure-states-and-recovery)
-8. [Data Persistence Strategy](#data-persistence-strategy)
+8. [Client-Side Connection Supervisor](#client-side-connection-supervisor)
+9. [Data Persistence Strategy](#data-persistence-strategy)
 
 ---
 
@@ -396,6 +397,20 @@ sequenceDiagram
 -- Atomically sets new leader
 ```
 
+### Session Update Events
+
+`sessionUpdates(sessionId)` emits membership/lifecycle events and live stats updates.
+
+| Event | When emitted | Key fields |
+|-------|--------------|------------|
+| `UserJoined` | A client joins the session | `user` |
+| `UserLeft` | A client disconnects/leaves | `userId` |
+| `LeaderChanged` | Leader election selects a new leader | `leaderId` |
+| `SessionEnded` | Session is ended explicitly or by cleanup | `reason`, `newPath` |
+| `SessionStatsUpdated` | A tick is saved for an active party session | `totalSends`, `totalFlashes`, `totalAttempts`, `tickCount`, `participants`, `gradeDistribution`, `boardTypes`, `hardestGrade`, `durationMinutes`, `goal`, `ticks` |
+
+`SessionStatsUpdated` payloads now include full `ticks` rows so clients can update charts and climbs/attempt lists without issuing an extra session detail refetch.
+
 ---
 
 ## Queue State Synchronization
@@ -602,6 +617,7 @@ sequenceDiagram
 - On reconnection: re-join session and sync state
 - Delta sync attempted if gap ≤ 100 events
 - Falls back to full sync if gap too large
+- Client-side supervisor detects stale connections and triggers reconnect (see [Client-Side Connection Supervisor](#client-side-connection-supervisor))
 
 ### 2. Redis Connection Failure
 
@@ -804,6 +820,88 @@ sequenceDiagram
 
 ---
 
+## Client-Side Connection Supervisor
+
+The `WebSocketConnectionManager` (`packages/web/app/components/connection-manager/websocket-connection-manager.ts`) is a singleton that sits between the raw `graphql-ws` clients and the React UI. It provides health monitoring, staleness detection, and a unified connection state for the reconnect UX.
+
+### Architecture
+
+```
+graphql-ws Client(s)
+        │
+        │  on('connected' | 'closed' | 'ping' | 'pong' | 'error' | ...)
+        ▼
+┌──────────────────────────────┐
+│  WebSocketConnectionManager  │  (singleton)
+│                              │
+│  - Registered clients map    │
+│  - Primary name selection    │
+│  - Health check interval     │
+│  - Visibility change handler │
+└──────────┬───────────────────┘
+           │  subscribe(snapshot)
+           ▼
+┌──────────────────────────────┐
+│  WebSocketConnectionProvider │  (React context)
+│                              │
+│  - Exposes state, error,     │
+│    lastActivity, name        │
+│  - forceReconnect() action   │
+└──────────────────────────────┘
+```
+
+### Connection States
+
+| State | Meaning |
+|-------|---------|
+| `idle` | No clients registered |
+| `connecting` | Client is establishing a WebSocket connection |
+| `connected` | Client connected and receiving keep-alive pongs |
+| `reconnecting` | Connection lost — `graphql-ws` is retrying |
+| `stale` | No activity received within `STALE_GRACE_MS` |
+| `error` | Client reported an error event |
+
+### Health Check
+
+A 1-second interval (`HEALTH_CHECK_INTERVAL_MS`) monitors each registered client:
+
+1. If `document.visibilityState !== 'visible'`, skip (avoid terminating background tabs).
+2. If `Date.now() - lastActivity > STALE_GRACE_MS` (10s, or 2x the server keep-alive interval), mark the client as `reconnecting` and call `client.terminate()` to force a fresh connection.
+
+This catches silent connection deaths that are common on iOS Safari when the app is backgrounded and the OS kills the socket without a close frame.
+
+### Visibility Change Handler
+
+When the page returns to the foreground (`visibilitychange` → `visible`):
+
+- If the primary client's `lastActivity` exceeds `STALE_GRACE_MS`, or its state is `error`/`reconnecting`, immediately call `forceReconnect()`.
+
+This provides instant recovery when users switch back to the Boardsesh tab.
+
+### Multi-Client Support
+
+Multiple `graphql-ws` clients can be registered simultaneously (e.g., one for queue subscriptions, one for session control). Each is tracked independently with its own state and activity timestamp. The `primaryName` determines which client's state is surfaced to the UI — it auto-promotes to `'session'` on registration and can be switched via `setPrimaryName()`.
+
+### Lifecycle
+
+- **Registration**: `registerClient(client, name)` attaches event listeners and returns an `unregister` function.
+- **Unregister**: Removes all event listeners and deletes the client from the map. When the last client is removed, state returns to `idle`.
+- **Dispose**: `dispose()` removes the `visibilitychange` listener and clears the health check interval. Used during HMR teardown.
+
+### SSR Shim
+
+On the server (`typeof window === 'undefined'`), the exported `connectionManager` is a no-op shim with the same interface, returning `idle` state. This allows importing in server components without conditional guards.
+
+### Reconnect UX
+
+The `QueueControlBar` reads connection state from the provider. When `state` is `reconnecting`, `stale`, or `error`:
+
+1. The normal climb info is replaced with a spinner and "Reconnecting..." / "Connection error – retrying..." message.
+2. A "Cancel" button reveals a confirmation row: "Leave session" (calls `endSession` or `disconnect`) vs "Keep reconnecting".
+3. When the connection recovers, the bar automatically returns to normal.
+
+---
+
 ## Data Persistence Strategy
 
 ### Hybrid Storage Architecture
@@ -832,6 +930,15 @@ sequenceDiagram
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### Postgres-Only Fallback (Single Instance Mode)
+
+When Redis is unavailable, RoomManager falls back to **Postgres-only mode**:
+
+- Queue mutations write **directly to Postgres** (no debouncing, since there's no Redis to serve as a fast read layer)
+- Session restoration from Redis is skipped; only Postgres restoration is available
+- Distributed state (cross-instance leader election, connection tracking) is disabled
+- This mode only supports a single backend instance (no horizontal scaling)
+
 ### Session State Tiers
 
 | Tier | Storage | TTL | Use Case |
@@ -839,6 +946,19 @@ sequenceDiagram
 | **Hot** | In-Memory + Redis | 4 hours | Active sessions with connected users |
 | **Warm** | Redis only | 4 hours | Recently inactive (users left) |
 | **Cold** | PostgreSQL | Indefinite | Historical sessions, dormant restoration |
+
+### Participant Tracking (Postgres)
+
+Session participation is tracked in two layers:
+
+| Layer | Table / Key | Granularity | Lifetime |
+|-------|-------------|-------------|----------|
+| **Real-time** (Redis) | `boardsesh:session:{id}:members` | Per connection ID | Ephemeral (4h TTL) |
+| **Historical** (Postgres) | `board_session_participants` | Per authenticated user | Permanent |
+
+**`board_session_participants`** records one row per (session_id, user_id) with a `joined_at` timestamp. It is upserted (`ON CONFLICT DO NOTHING`) when an authenticated user joins a session. Rows are never deleted on disconnect — they serve as a permanent historical record of who participated.
+
+> **Note:** The legacy `board_session_clients` table (one row per WebSocket connection) is no longer written to. Leader state is managed exclusively in Redis via the `DistributedStateManager`.
 
 ### Key Redis Data Structures
 
@@ -854,11 +974,11 @@ boardsesh:lock:session:restore:{id} # String - distributed lock (10s TTL)
 
 **Distributed State (DistributedStateManager):**
 ```
-boardsesh:conn:{connectionId}       # Hash - connection data (instanceId, sessionId, username, etc.)
-boardsesh:session:{id}:members      # Set - connection IDs in session (cross-instance)
-boardsesh:session:{id}:leader       # String - leader connection ID
-boardsesh:instance:{id}:conns       # Set - connections owned by instance
-boardsesh:instance:{id}:heartbeat   # String - instance heartbeat timestamp (60s TTL)
+boardsesh:conn:{connectionId}       # Hash - connection data (1h TTL, refreshed on activity)
+boardsesh:session:{id}:members      # Set - connection IDs in session (4h TTL)
+boardsesh:session:{id}:leader       # String - leader connection ID (4h TTL)
+boardsesh:instance:{id}:conns       # Set - connections owned by instance (2h TTL, refreshed on heartbeat)
+boardsesh:instance:{id}:heartbeat   # String - instance heartbeat timestamp (60s TTL, refreshed every 30s)
 ```
 
 **Pub/Sub Channels:**
@@ -908,63 +1028,50 @@ sequenceDiagram
     P->>P: Exit
 ```
 
-### Dead Instance Detection and TTL Cleanup
+### Dead Instance Detection and Active Cleanup
 
-When an instance crashes or terminates without graceful shutdown, the system relies on TTL-based cleanup:
+When an instance crashes or terminates without graceful shutdown, the system uses a combination of active cleanup and TTL-based self-healing:
 
-**1. Instance Heartbeat Expiry (60s TTL)**
+**1. Instance Heartbeat (60s TTL, refreshed every 30s)**
 
-Each instance updates its heartbeat every 30 seconds:
 ```
 boardsesh:instance:{id}:heartbeat = timestamp (60s TTL)
 ```
 
-When an instance dies unexpectedly:
-- The heartbeat key expires after 60 seconds
-- Redis automatically removes the heartbeat key
+When an instance dies unexpectedly, its heartbeat key expires after 60 seconds.
 
-**2. Connection Data Expiry (1 hour TTL)**
+**2. Active Dead Instance Cleanup**
 
-Connection data has its own TTL:
-```
-boardsesh:conn:{connectionId} = {...} (1 hour TTL)
-```
+The `DistributedStateManager` actively discovers and cleans up dead instances:
 
-Connections from dead instances:
-- Continue to exist until their 1-hour TTL expires
-- Are refreshed on client activity (extends TTL)
-- Eventually expire if no activity
+- **On startup**: `cleanupDeadInstanceConnections()` runs asynchronously after the first heartbeat
+- **Periodically**: Piggybacks on the 30s heartbeat cycle, running every 4th heartbeat (~2 minutes)
 
-**3. Session Member Sets (4 hour TTL)**
+The cleanup process:
+1. SCANs for `boardsesh:instance:*:conns` keys
+2. Checks if the corresponding heartbeat key exists (skip current instance)
+3. For each dead instance: fetches its connection IDs, groups by session
+4. Deletes all orphaned connection hashes and instance tracking keys
+5. Runs `PRUNE_STALE_SESSION_MEMBERS_SCRIPT` (Lua) per affected session to atomically remove stale members and re-elect leader if needed
 
-Session member sets track all connection IDs:
-```
-boardsesh:session:{id}:members = Set of connectionIds (4 hour TTL)
-```
+**3. Stale-Filtering at Read Time**
 
-**Limitation: No Active Cleanup for Dead Instances**
+Even between cleanup cycles, stale entries never inflate participant counts:
 
-Currently, there is no background job that actively scans for dead instances and cleans up their orphaned connections. This means:
+- `getSessionMemberCount()` pipelines `EXISTS` checks against each member's connection hash — only live connections are counted
+- `getSessionMembers()` filters out members whose connection data is missing
+- `hasSessionMembers()` delegates to the filtered count
 
-- Session member sets may temporarily contain connection IDs from dead instances
-- `getSessionMembers()` may return connections that no longer exist (gracefully handled by filtering out missing connection data)
-- Leader election may initially select a connection from a dead instance (but will re-elect on next leader action)
-- Connection data remains until TTL expires naturally
+**4. TTL Self-Healing (defense in depth)**
 
-**Implications for Clients**
+| Key | TTL | Refreshed |
+|-----|-----|-----------|
+| `boardsesh:conn:{id}` | 1 hour | On client activity |
+| `boardsesh:instance:{id}:conns` | 2 hours | On every heartbeat (30s) |
+| `boardsesh:instance:{id}:heartbeat` | 60 seconds | Every 30s |
+| `boardsesh:session:{id}:members` | 4 hours | On join/leave/refresh |
 
-- Clients should handle the case where a session "member" is no longer reachable
-- Leader changes may occur when the elected leader from a dead instance is detected as unresponsive
-- User lists may temporarily show stale entries that get filtered out on refresh
-
-**Future Improvement**
-
-A background cleanup job could periodically:
-1. Scan for instances with expired heartbeats
-2. Remove their orphaned connections from session member sets
-3. Trigger leader re-election if the current leader's instance is dead
-
-This would reduce the window of stale data but is not currently implemented.
+Even if active cleanup fails, orphaned data expires naturally via these TTLs.
 
 ---
 

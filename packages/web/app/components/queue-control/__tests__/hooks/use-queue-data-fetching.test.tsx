@@ -4,17 +4,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useQueueDataFetching } from '../../hooks/use-queue-data-fetching';
 import { ParsedBoardRouteParameters, SearchRequestPagination, Climb } from '@/app/lib/types';
 import { ClimbQueue } from '../../types';
-import { useBoardProvider } from '../../../board-provider/board-provider-context';
+import { useBoardProvider, useOptionalBoardProvider } from '../../../board-provider/board-provider-context';
 import React from 'react';
 
 // Mock dependencies
 vi.mock('@/app/lib/url-utils', () => ({
-  constructClimbSearchUrl: vi.fn(() => 'http://test.com/search'),
   searchParamsToUrlParams: vi.fn(() => new URLSearchParams('page=1'))
 }));
 
 vi.mock('../../../board-provider/board-provider-context', () => ({
   useBoardProvider: vi.fn(() => ({
+    getLogbook: vi.fn().mockResolvedValue(true)
+  })),
+  useOptionalBoardProvider: vi.fn(() => ({
     getLogbook: vi.fn().mockResolvedValue(true)
   }))
 }));
@@ -59,6 +61,7 @@ Object.defineProperty(window, 'location', {
 });
 
 const mockUseBoardProvider = vi.mocked(useBoardProvider);
+const mockUseOptionalBoardProvider = vi.mocked(useOptionalBoardProvider);
 
 const mockClimb: Climb = {
   uuid: 'climb-1',
@@ -146,8 +149,32 @@ describe('useQueueDataFetching', () => {
       boardName: 'kilter'
     });
 
+    mockUseOptionalBoardProvider.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      isInitialized: true,
+      getLogbook: mockGetLogbook,
+      logbook: [],
+      saveTick: vi.fn(),
+      saveClimb: vi.fn(),
+      boardName: 'kilter'
+    });
+
+    mockUseOptionalBoardProvider.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      isInitialized: true,
+      getLogbook: mockGetLogbook,
+      logbook: [],
+      saveTick: vi.fn(),
+      saveClimb: vi.fn(),
+      boardName: 'kilter'
+    });
+
     // Mock GraphQL client requests
-    mockGraphQLRequest.mockImplementation(async (document, variables) => {
+    mockGraphQLRequest.mockImplementation(async (document) => {
       const query = String(document);
 
       // Check which query is being made

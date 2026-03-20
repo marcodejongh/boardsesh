@@ -1,7 +1,6 @@
 import React from 'react';
 import { BoardRouteParameters } from '@/app/lib/types';
-import { parseBoardRouteParams } from '@/app/lib/url-utils';
-import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { parseRouteParams } from '@/app/lib/url-utils.server';
 import MoonBoardBulkImport from '@/app/components/moonboard-import/moonboard-bulk-import';
 import {
   MOONBOARD_LAYOUTS,
@@ -37,18 +36,7 @@ function getMoonBoardHoldSetImages(layoutKey: MoonBoardLayoutKey, setIds: number
 export default async function ImportPage(props: ImportPageProps) {
   const params = await props.params;
 
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
-
-  let parsedParams;
-
-  if (hasNumericParams) {
-    parsedParams = parseBoardRouteParams(params);
-  } else {
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
-  }
+  const { parsedParams } = await parseRouteParams(params);
 
   // Only MoonBoard supports bulk import for now
   if (parsedParams.board_name !== 'moonboard') {

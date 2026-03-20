@@ -19,31 +19,35 @@ function createPosition(
   longitude: number,
   accuracy: number,
 ): GeolocationPosition {
-  return {
-    coords: {
-      latitude,
-      longitude,
-      accuracy,
-      altitude: null,
-      altitudeAccuracy: null,
-      heading: null,
-      speed: null,
+  const coords: GeolocationCoordinates = {
+    latitude,
+    longitude,
+    accuracy,
+    altitude: null,
+    altitudeAccuracy: null,
+    heading: null,
+    speed: null,
+    toJSON() {
+      return { latitude, longitude, accuracy, altitude: null, altitudeAccuracy: null, heading: null, speed: null };
     },
-    timestamp: Date.now(),
+  };
+  const timestamp = Date.now();
+  return {
+    coords,
+    timestamp,
+    toJSON() {
+      return { coords, timestamp };
+    },
   };
 }
 
 describe('useGeolocation', () => {
   let mockGetCurrentPosition: ReturnType<typeof vi.fn>;
   let mockPermissionQuery: ReturnType<typeof vi.fn>;
-  let originalNavigator: Navigator;
 
   beforeEach(() => {
     mockGetCurrentPosition = vi.fn();
     mockPermissionQuery = vi.fn();
-
-    // Store the original navigator descriptor to restore later
-    originalNavigator = navigator;
 
     // Set up geolocation mock
     Object.defineProperty(navigator, 'geolocation', {

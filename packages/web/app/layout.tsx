@@ -32,13 +32,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <SessionProviderWrapper>
             <AppRouterCacheProvider>
               <ColorModeProvider>
-                <PersistentSessionWrapper boardConfigs={boardConfigs}>
-                  <SnackbarProvider>
+                <SnackbarProvider>
+                  <PersistentSessionWrapper boardConfigs={boardConfigs}>
                     <NavigationLoadingProvider>
                       <NotificationSubscriptionManager>{children}</NotificationSubscriptionManager>
                     </NavigationLoadingProvider>
-                  </SnackbarProvider>
-                </PersistentSessionWrapper>
+                  </PersistentSessionWrapper>
+                </SnackbarProvider>
               </ColorModeProvider>
             </AppRouterCacheProvider>
           </SessionProviderWrapper>

@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import React, { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import IconButton from '@mui/material/IconButton';
 import Box from '@mui/material/Box';
 import AppsOutlined from '@mui/icons-material/AppsOutlined';
@@ -11,6 +11,7 @@ import ClimbListItem from '../climb-card/climb-list-item';
 import { ClimbCardSkeleton, ClimbListItemSkeleton } from './board-page-skeleton';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getPreference, setPreference } from '@/app/lib/user-preferences-db';
+import { useInfiniteScroll } from '@/app/hooks/use-infinite-scroll';
 
 type ViewMode = 'grid' | 'list';
 
@@ -18,6 +19,10 @@ const VIEW_MODE_PREFERENCE_KEY = 'climbListViewMode';
 
 export type ClimbsListProps = {
   boardDetails: BoardDetails;
+  /** Map of "boardType:layoutId" -> BoardDetails for multi-board contexts */
+  boardDetailsMap?: Record<string, BoardDetails>;
+  /** Set of climb UUIDs that are unsupported (no matching user board) */
+  unsupportedClimbs?: Set<string>;
   climbs: Climb[];
   selectedClimbUuid?: string | null;
   isFetching: boolean;
@@ -27,6 +32,10 @@ export type ClimbsListProps = {
   header?: React.ReactNode;
   headerInline?: React.ReactNode;
   hideEndMessage?: boolean;
+  /** Optional extra content to render below each climb item (e.g., per-user tick details in sessions) */
+  renderItemExtra?: (climb: Climb) => React.ReactNode;
+  /** When true, adds a bottom spacer to prevent the mobile Safari bottom nav bar from covering the last item */
+  showBottomSpacer?: boolean;
 };
 
 const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; viewMode: ViewMode }) => {
@@ -44,6 +53,8 @@ const ClimbsListSkeleton = ({ aspectRatio, viewMode }: { aspectRatio: number; vi
 
 const ClimbsList = ({
   boardDetails,
+  boardDetailsMap,
+  unsupportedClimbs,
   climbs,
   selectedClimbUuid,
   isFetching,
@@ -53,8 +64,15 @@ const ClimbsList = ({
   header,
   headerInline,
   hideEndMessage,
+  renderItemExtra,
+  showBottomSpacer,
 }: ClimbsListProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+
+  // Keep a ref to onClimbSelect so handleClimbDoubleClick stays stable
+  // while always calling the latest callback (avoids stale closure from ClimbListItem's custom memo)
+  const onClimbSelectRef = useRef(onClimbSelect);
+  onClimbSelectRef.current = onClimbSelect;
 
   // Read stored view mode preference after mount to avoid hydration mismatch
   useEffect(() => {
@@ -71,41 +89,31 @@ const ClimbsList = ({
     track('View Mode Changed', { mode });
   }, []);
 
-  // Ref for the intersection observer sentinel element
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const handleLoadMore = useCallback(() => {
+    track('Infinite Scroll Load More', {
+      currentCount: climbs.length,
+      hasMore,
+    });
+    onLoadMore();
+  }, [climbs.length, hasMore, onLoadMore]);
 
-  // Refs for observer callback values — prevents observer recreation on every page load
-  const fetchMoreClimbsRef = useRef(onLoadMore);
-  const hasMoreResultsRef = useRef(hasMore);
-  const climbsCountRef = useRef(climbs.length);
-  fetchMoreClimbsRef.current = onLoadMore;
-  hasMoreResultsRef.current = hasMore;
-  climbsCountRef.current = climbs.length;
-
-  // Intersection Observer callback for infinite scroll — stable ref, never recreated
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [target] = entries;
-      if (target.isIntersecting && hasMoreResultsRef.current) {
-        track('Infinite Scroll Load More', {
-          currentCount: climbsCountRef.current,
-          hasMore: hasMoreResultsRef.current,
-        });
-        fetchMoreClimbsRef.current();
-      }
-    },
-    [],
-  );
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: handleLoadMore,
+    hasMore,
+    isFetching,
+  });
 
   // Memoized handler for climb card double-click
+  // Uses ref so this callback is stable and never stale, even when
+  // ClimbListItem's custom memo skips re-renders on onSelect changes
   const handleClimbDoubleClick = useCallback(
     (climb: Climb) => {
-      onClimbSelect?.(climb);
+      onClimbSelectRef.current?.(climb);
       track('Climb List Card Clicked', {
         climbUuid: climb.uuid,
       });
     },
-    [onClimbSelect],
+    [],
   );
 
   // Memoize climb-specific handlers to prevent unnecessary re-renders
@@ -117,12 +125,24 @@ const ClimbsList = ({
     return map;
   }, [climbs, handleClimbDoubleClick]);
 
+  // Resolve per-climb boardDetails when boardDetailsMap is provided
+  const resolveBoardDetails = useCallback(
+    (climb: Climb): BoardDetails => {
+      if (boardDetailsMap && climb.boardType && climb.layoutId != null) {
+        const key = `${climb.boardType}:${climb.layoutId}`;
+        return boardDetailsMap[key] || boardDetails;
+      }
+      return boardDetails;
+    },
+    [boardDetails, boardDetailsMap],
+  );
+
   // Memoize sx prop objects to prevent recreation on every render
   const headerBoxSx = useMemo(() => ({
     display: 'flex',
     alignItems: 'center',
     position: 'relative' as const,
-    padding: `${themeTokens.spacing[1]}px 60px ${themeTokens.spacing[2]}px ${themeTokens.spacing[1]}px`,
+    padding: `0px 60px ${themeTokens.spacing[1]}px ${themeTokens.spacing[1]}px`,
     minWidth: 0,
   }), []);
 
@@ -147,7 +167,7 @@ const ClimbsList = ({
   }), []);
 
   const cardBoxSx = useMemo(() => ({
-    width: { xs: '100%', lg: '50%' },
+    width: { xs: '100%', lg: `calc(50% - ${themeTokens.spacing[4] / 2}px)` },
   }), []);
 
   const sentinelBoxSx = useMemo(() => ({
@@ -161,26 +181,8 @@ const ClimbsList = ({
     color: 'var(--neutral-400)',
   }), []);
 
-  // Set up Intersection Observer
-  useEffect(() => {
-    const element = loadMoreRef.current;
-    if (!element) return;
-
-    const observer = new IntersectionObserver(handleObserver, {
-      root: null,
-      rootMargin: '100px',
-      threshold: 0,
-    });
-
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [handleObserver]);
-
   return (
-    <Box sx={{ pt: `${themeTokens.spacing[1]}px` }}>
+    <Box>
       {/* Optional header content (e.g. BoardCreationBanner) */}
       {header}
       {/* View mode toggle + optional inline header content */}
@@ -218,11 +220,13 @@ const ClimbsList = ({
               >
                 <ClimbCard
                   climb={climb}
-                  boardDetails={boardDetails}
+                  boardDetails={resolveBoardDetails(climb)}
                   selected={selectedClimbUuid === climb.uuid}
                   onCoverDoubleClick={climbHandlersMap.get(climb.uuid)}
+                  unsupported={unsupportedClimbs?.has(climb.uuid)}
                 />
               </div>
+              {renderItemExtra?.(climb)}
             </Box>
           ))}
           {isFetching && (!climbs || climbs.length === 0) ? (
@@ -239,10 +243,12 @@ const ClimbsList = ({
             >
               <ClimbListItem
                 climb={climb}
-                boardDetails={boardDetails}
+                boardDetails={resolveBoardDetails(climb)}
                 selected={selectedClimbUuid === climb.uuid}
                 onSelect={climbHandlersMap.get(climb.uuid)}
+                unsupported={unsupportedClimbs?.has(climb.uuid)}
               />
+              {renderItemExtra?.(climb)}
             </div>
           ))}
           {isFetching && (!climbs || climbs.length === 0) ? (
@@ -252,7 +258,7 @@ const ClimbsList = ({
       )}
 
       {/* Sentinel element for Intersection Observer - needs min-height to be observable */}
-      <Box ref={loadMoreRef} sx={sentinelBoxSx}>
+      <Box ref={sentinelRef} sx={sentinelBoxSx}>
         {isFetching && climbs.length > 0 && (
           viewMode === 'grid' ? (
             <Box sx={gridContainerSx}>
@@ -268,6 +274,11 @@ const ClimbsList = ({
           </Box>
         )}
       </Box>
+
+      {/* Bottom spacer to prevent bottom nav bar from covering last item on mobile Safari */}
+      {showBottomSpacer && (
+        <Box sx={{ height: themeTokens.layout.bottomNavSpacer }} aria-hidden />
+      )}
     </Box>
   );
 };

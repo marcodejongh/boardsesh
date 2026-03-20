@@ -7,7 +7,7 @@ import { z } from "zod";
 import { authOptions } from "@/app/lib/auth/auth-options";
 import { encrypt, decrypt } from "@boardsesh/crypto";
 import AuroraClimbingClient from "@/app/lib/api-wrappers/aurora-rest-client/aurora-rest-client";
-import { BoardName as AuroraBoardName } from "@/app/lib/api-wrappers/aurora-rest-client/types";
+import { AuroraBoardName } from "@/app/lib/api-wrappers/aurora/types";
 import { syncUserData } from "@/app/lib/data-sync/aurora/user-sync";
 
 const saveCredentialsSchema = z.object({

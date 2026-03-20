@@ -4,6 +4,7 @@ import { SetIdList } from './board-data';
 export type Climb = {
   uuid: string;
   layoutId?: number | null; // Layout the climb belongs to - used to identify cross-layout climbs
+  boardType?: string; // Board type this climb belongs to (e.g. 'kilter', 'tension'). Populated in multi-board contexts.
   setter_username: string;
   name: string;
   description: string;
@@ -217,14 +218,6 @@ export type BoardRouteParameters = {
 // Route parameters for routes with only board_name
 export type BoardOnlyRouteParameters = {
   board_name: string;
-};
-
-// Route parameters for routes without angle (e.g., /details endpoint)
-export type BoardDetailsRouteParameters = {
-  board_name: string;
-  layout_id: string;
-  size_id: string;
-  set_ids: string;
 };
 
 export type FetchCurrentProblemResponse = Climb;

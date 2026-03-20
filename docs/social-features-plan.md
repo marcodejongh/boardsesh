@@ -55,7 +55,7 @@ The polymorphic system uses a string enum `entity_type` to identify what's being
 | `proposal` | A community proposal on a climb | proposal `uuid` | Discussion thread on the proposal |
 | `board` | A user-created board entity | board `uuid` | Board discussion / community thread |
 
-This is extensible -- new entity types (e.g. `session`) can be added later by extending the enum.
+The `session` entity type has been implemented — see [`docs/inferred-sessions.md`](./inferred-sessions.md) for the inferred session system, session-grouped activity feed, and session editing mutations (rename, add/remove users).
 
 **Key distinction**: A climb can have comments in two independent scopes:
 - `playlist_climb` with `entity_id = "{playlist_uuid}:{climb_uuid}"` -- discussion in the context of a curated playlist
@@ -63,7 +63,9 @@ This is extensible -- new entity types (e.g. `session`) can be added later by ex
 
 ### Ranking Algorithms
 
-Four Reddit-style sort modes are available wherever sortable content is displayed (comments, activity feed, playlist climb lists). The `sortBy` field in GraphQL inputs accepts these values:
+Four Reddit-style sort modes are available wherever sortable content is displayed (comments, playlist climb lists). The `sortBy` field in GraphQL inputs accepts these values:
+
+> **Note**: The activity feed no longer uses sort modes. The home page now has three dedicated tabs — **Sessions** (chronological), **Proposals** (open first), and **Comments** (global feed) — each with board filtering. The `sortBy`/`topPeriod` fields have been removed from `ActivityFeedInput` — all activity feed queries now use chronological ordering.
 
 #### `new` (Chronological)
 ```sql
@@ -124,7 +126,7 @@ The `hot` sort is the default for entity discovery (e.g., "Discover playlists" c
 The ranking formulas are computed in SQL at query time using the `votes` table aggregation. For the initial implementation:
 
 1. **Comments**: Sort computed inline via subquery that aggregates votes per comment
-2. **Activity feed**: Sort computed inline on the merged result set
+2. **Activity feed**: Always chronological (sort modes removed). Home page uses three tabs: Sessions, Proposals, Comments.
 3. **Playlist climbs**: Sort computed via JOIN with `bulkVoteSummaries`-style aggregation
 
 If performance becomes an issue (Milestone 9), the `vote_counts` materialized table can store pre-computed `upvotes`, `downvotes`, and `score` columns, making the ranking formulas simple column references instead of aggregations.
@@ -1079,10 +1081,7 @@ input CommentsInput {
 input ActivityFeedInput {
   cursor: String
   limit: Int         # default 20, max 50
-  boardType: String  # optional filter by board type
-  boardUuid: ID      # optional filter: only show activity on a specific board entity
-  sortBy: SortMode   # new (default), top, controversial, hot
-  topPeriod: TimePeriod  # Only used when sortBy=top. Defaults to 'week'
+  boardUuid: String  # optional filter: only show activity on a specific board entity
 }
 
 input FollowInput {
@@ -1536,12 +1535,8 @@ New file: `packages/backend/src/graphql/resolvers/social/feed.ts`
 - **Primary query**: `SELECT * FROM feed_items WHERE recipient_id = $me ORDER BY created_at DESC LIMIT $limit`
 - **Board scoping**: When `boardUuid` is provided, filter to `WHERE recipient_id = $me AND board_uuid = $boardUuid ORDER BY created_at DESC`. On the home page, this defaults to the user's `defaultBoard`.
 - The `metadata` JSONB column contains denormalized rendering data (climb name, grade, user avatar URL, etc.) so the feed renders without JOINing back to source tables.
-- **Sort modes** (via `sortBy` parameter):
-  - `new` (default): `ORDER BY created_at DESC`. Pure chronological. Fast, fully indexed.
-  - `top`: Items ranked by net vote score. Vote counts can be stored in `metadata` (updated periodically by a background job) or JOINed from `votes` at query time (acceptable since the result set is already filtered to one user's feed). When `topPeriod` is set, add a time window filter on `created_at`.
-  - `controversial`: Items with high total votes but divisive scores. Uses vote data from `metadata` or JOIN.
-  - `hot`: Items ranked by the hot formula -- recent items with high vote velocity surface first.
-- **Cursor**: Encode `(created_at, id)` as opaque base64 cursor for `new` sort. For other sort modes, encode `(sort_score, created_at, id)`. Sort score varies by mode (net score for `top`, controversy score for `controversial`, hot score for `hot`).
+- **Sort**: Always chronological (`ORDER BY session_last_tick DESC`).
+- **Cursor**: Offset-based cursor encoded as base64.
 - **Default limit**: 20 items per page, max 50
 
 **For unauthenticated users:**
@@ -2250,7 +2245,7 @@ packages/web/app/components/search-drawer/
   playlist-search-results.tsx # NEW: Playlist search result list
   search-dropdown.tsx        # MODIFIED: Add category pill at top, switch form per category
   accordion-search-form.tsx  # MODIFIED: Only render when category = 'climbs'
-  search-pill.tsx            # MODIFIED: Show active category in pill summary
+  search-drawer-bridge-context.tsx # EXISTING: Bridge context that exposes search drawer open/summary/filter state to GlobalHeader
 
 packages/web/app/components/board-page/
   header.tsx                 # MODIFIED: Search bar also appears on home page
@@ -2383,7 +2378,7 @@ The search drawer is extended with a **search category pill bar** at the top, al
 #### Current Architecture (reference)
 
 The existing search system consists of:
-- `SearchPill` (in `header.tsx`) -- triggers `SearchDropdown`
+- `SearchDrawerBridgeInjector` (in `header.tsx`) -- registers the search drawer opener with `GlobalHeader` via bridge context
 - `SearchDropdown` -- full-screen swipeable drawer with `AccordionSearchForm`
 - `AccordionSearchForm` -- 4 collapsible filter panels (Climb, Quality, Progress, Holds)
 - `UISearchParamsProvider` -- manages filter state with 500ms debounce
@@ -2477,10 +2472,10 @@ The playlist search category shows a simplified form:
 #### Home Page Integration
 
 The home page (`packages/web/app/(app)/page.tsx` or equivalent) is modified to:
-1. Include the `SearchPill` component in the page header (same as climb list page)
+1. Use the `SearchDrawerBridgeInjector` to register a search drawer opener with `GlobalHeader` via the bridge context
 2. Pass `defaultCategory="users"` to the search drawer
-3. The search pill shows "Search users..." as placeholder text when on the home page
-4. Tapping the pill opens the unified search drawer with the Users category pre-selected
+3. The search summary in `GlobalHeader` shows "Search users..." as placeholder text when on the home page
+4. Tapping the search area in the header opens the unified search drawer with the Users category pre-selected
 
 #### Climb List Page Integration
 
@@ -3057,6 +3052,8 @@ Add `gym` to `social_entity_type` enum: `ALTER TYPE social_entity_type ADD VALUE
 
 ### Milestone 11: Enhanced Sessions
 
+> **Note**: Inferred sessions and session editing have been implemented. See [`docs/inferred-sessions.md`](./inferred-sessions.md) for the current system: automatic session grouping via 4-hour gap heuristic, session-grouped activity feed, and mutations for renaming sessions and adding/removing users. The plan below covers additional party mode enhancements not yet built.
+
 **User value**: "I can set goals for my session, see a summary when I'm done, and sessions automatically end when everyone leaves."
 
 **DB schema changes to `board_sessions`** (`packages/db/src/schema/app/sessions.ts`):
@@ -3152,7 +3149,7 @@ Constraints: Unique `(session_id, board_id)`. All boards must belong to the same
 2. `sessionFeedSummary` query -- returns grouped ascent data for a session/time-window: grade distribution, participant list, hardest climbs
 3. @mention parsing: extract `@username` from comment body, resolve to `user_id`
 4. @mention notifications: new `mention` notification type, wire to notification pipeline
-5. Activity feed SSR endpoint: accept URL search params for `boardUuid`, `sortBy`, `topPeriod`
+5. Activity feed SSR endpoint: accept URL search params for `boardUuid` and `tab` (sessions/proposals/comments)
 6. Proposal feed items: include proposals from boards/climbs the user follows in feed fanout
 
 **Frontend:**

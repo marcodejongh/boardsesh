@@ -2,7 +2,6 @@
 export { createGraphQLClient, execute, subscribe } from './graphql-client';
 export type { Client } from './graphql-client';
 
-export { useQueueSession } from './use-queue-session';
-export type { UseQueueSessionOptions, UseQueueSessionReturn, Session } from './use-queue-session';
 
 export { GraphQLQueueProvider, useGraphQLQueueContext, useQueueContext, useOptionalQueueContext, QueueContext } from './QueueContext';
+export type { GraphQLQueueContextType } from './types';

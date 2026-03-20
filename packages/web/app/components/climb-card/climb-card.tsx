@@ -5,6 +5,7 @@ import MuiCard from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
+import { usePathname } from 'next/navigation';
 
 import ClimbCardCover from './climb-card-cover';
 import ClimbTitle from './climb-title';
@@ -13,6 +14,7 @@ import { ClimbActions } from '../climb-actions';
 import { themeTokens } from '@/app/theme/theme-config';
 import { getGradeTintColor } from '@/app/lib/grade-colors';
 import { useColorMode } from '@/app/hooks/use-color-mode';
+import { getExcludedClimbActions } from '@/app/lib/climb-action-utils';
 
 type ClimbCardProps = {
   climb?: Climb;
@@ -21,6 +23,8 @@ type ClimbCardProps = {
   onCoverClick?: () => void;
   onCoverDoubleClick?: () => void;
   selected?: boolean;
+  /** When true, the card is visually dimmed (greyed out) but still interactive */
+  unsupported?: boolean;
   actions?: React.JSX.Element[];
   /** Optional expanded content to render over the cover */
   expandedContent?: React.ReactNode;
@@ -59,31 +63,25 @@ function ClimbCardWithActions({
   onCoverClick,
   onCoverDoubleClick,
   selected,
+  unsupported,
 }: {
   climb: Climb;
   boardDetails: BoardDetails;
   onCoverClick?: () => void;
   onCoverDoubleClick?: () => void;
   selected?: boolean;
+  unsupported?: boolean;
 }) {
+  const pathname = usePathname();
   const { mode } = useColorMode();
   const isDark = mode === 'dark';
   const cover = <ClimbCardCover climb={climb} boardDetails={boardDetails} onClick={onCoverClick} onDoubleClick={onCoverDoubleClick} />;
   const cardTitle = <ClimbTitle climb={climb} layout="horizontal" showSetterInfo />;
 
-  // Build exclude list - MoonBoard doesn't have a view details page yet
-  const excludeActions: ('tick' | 'openInApp' | 'mirror' | 'share' | 'viewDetails')[] = [
-    'tick',
-    'openInApp',
-    'mirror',
-    'share',
-  ];
-  if (boardDetails.board_name === 'moonboard') {
-    excludeActions.push('viewDetails');
-  }
+  const excludeActions = getExcludedClimbActions(boardDetails.board_name, 'card');
 
   return (
-    <div data-testid="climb-card">
+    <div data-testid="climb-card" style={unsupported ? { opacity: 0.5, filter: 'grayscale(80%)' } : undefined}>
       <MuiCard>
         <CardHeader
           title={cardTitle}
@@ -110,6 +108,7 @@ function ClimbCardWithActions({
             climb={climb}
             boardDetails={boardDetails}
             angle={climb.angle}
+            currentPathname={pathname}
             viewMode="icon"
             exclude={excludeActions}
           />
@@ -209,7 +208,7 @@ ClimbCardStatic.displayName = 'ClimbCardStatic';
  * - When no climb, shows loading state
  */
 function ClimbCard(props: ClimbCardProps) {
-  const { climb, boardDetails, onCoverClick, onCoverDoubleClick, selected, actions, expandedContent } = props;
+  const { climb, boardDetails, onCoverClick, onCoverDoubleClick, selected, unsupported, actions, expandedContent } = props;
 
   // When actions or expandedContent are provided externally, use the memoized static version
   if (actions !== undefined || expandedContent !== undefined) {
@@ -236,6 +235,7 @@ function ClimbCard(props: ClimbCardProps) {
         onCoverClick={onCoverClick}
         onCoverDoubleClick={onCoverDoubleClick}
         selected={selected}
+        unsupported={unsupported}
       />
     );
   }

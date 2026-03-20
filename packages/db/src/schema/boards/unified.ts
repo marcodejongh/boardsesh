@@ -260,6 +260,10 @@ export const boardClimbs = pgTable('board_climbs', {
     table.edgeBottom,
     table.edgeTop,
   ),
+  setterUsernameIdx: index('board_climbs_setter_username_idx').on(
+    table.boardType,
+    table.setterUsername,
+  ),
   // Note: No FK to board_layouts - climbs may reference layouts that don't exist during sync
 }));
 

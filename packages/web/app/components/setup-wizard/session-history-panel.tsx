@@ -24,8 +24,6 @@ import {
   extractBoardName,
 } from '@/app/lib/session-history-db';
 
-// Re-export for backwards compatibility with existing consumers
-export { saveSessionToHistory } from '@/app/lib/session-history-db';
 
 const SessionHistoryPanel = () => {
   const router = useRouter();

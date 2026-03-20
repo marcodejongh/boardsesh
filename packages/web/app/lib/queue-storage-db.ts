@@ -93,6 +93,40 @@ export const clearStoredQueue = async (boardPath: string): Promise<void> => {
 };
 
 /**
+ * Get the most recently updated stored queue across all board paths.
+ * Used to auto-restore the queue on app startup (non-board routes).
+ */
+export const getMostRecentQueue = async (): Promise<StoredQueueState | null> => {
+  try {
+    const db = await getDB();
+    if (!db) return null;
+    const allKeys = await db.getAllKeys(STORE_NAME);
+    let mostRecent: StoredQueueState | null = null;
+
+    for (const key of allKeys) {
+      const stored = await db.get(STORE_NAME, key);
+      if (stored && (!mostRecent || stored.updatedAt > mostRecent.updatedAt)) {
+        mostRecent = stored;
+      }
+    }
+
+    if (mostRecent) {
+      // Filter corrupted items (same as getStoredQueue)
+      const filteredQueue = (mostRecent.queue || []).filter(
+        (item: ClimbQueueItem | null | undefined): item is ClimbQueueItem =>
+          item != null && item.climb != null,
+      );
+      return { ...mostRecent, queue: filteredQueue };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[QueueStorage] Failed to get most recent queue:', error);
+    return null;
+  }
+};
+
+/**
  * Get all stored queue states (for debugging or cleanup)
  */
 export const getAllStoredQueues = async (): Promise<StoredQueueState[]> => {

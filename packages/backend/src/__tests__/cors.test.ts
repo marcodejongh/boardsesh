@@ -1,10 +1,28 @@
+import { execFileSync } from 'node:child_process';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('node:child_process', () => ({
+  execFileSync: vi.fn(),
+}));
+
 import { initCors, isOriginAllowed, applyCorsHeaders, getAllowedOrigins } from '../handlers/cors';
 
 describe('CORS Handler', () => {
   beforeEach(() => {
-    // Reset to a known state before each test
+    vi.mocked(execFileSync).mockReset();
+    vi.mocked(execFileSync).mockImplementation(() => {
+      const error = new Error('tailscale command not found') as NodeJS.ErrnoException;
+      error.code = 'ENOENT';
+      throw error;
+    });
+    delete process.env.TAILSCALE_HOSTNAME;
+    delete process.env.DEV_ALLOWED_ORIGINS;
+
+    // Reset to a known state before each test.
+    // initCors invokes execFileSync (for Tailscale discovery), so clear the
+    // call history afterwards so individual tests start with a clean count.
     initCors('https://boardsesh.com');
+    vi.mocked(execFileSync).mockClear();
   });
 
   describe('initCors', () => {
@@ -61,6 +79,36 @@ describe('CORS Handler', () => {
       // Should not contain empty strings
       expect(origins.every((o) => o.length > 0)).toBe(true);
       delete process.env.DEV_ALLOWED_ORIGINS;
+    });
+
+    it('adds Tailscale hostname origins from TAILSCALE_HOSTNAME env var', () => {
+      process.env.TAILSCALE_HOSTNAME = 'My-Laptop.tailnet123.ts.net';
+      initCors('https://boardsesh.com');
+
+      const origins = getAllowedOrigins();
+      expect(origins).toContain('http://my-laptop.tailnet123.ts.net:3000');
+      expect(origins).toContain('http://my-laptop.tailnet123.ts.net:3001');
+      expect(execFileSync).not.toHaveBeenCalled();
+    });
+
+    it('adds Tailscale hostname origins from tailscale status when available', () => {
+      vi.mocked(execFileSync).mockReturnValue(
+        JSON.stringify({ Self: { DNSName: 'my-mac.tailnet123.ts.net.' } })
+      );
+
+      initCors('https://boardsesh.com');
+
+      const origins = getAllowedOrigins();
+      expect(origins).toContain('http://my-mac.tailnet123.ts.net:3000');
+      expect(origins).toContain('http://my-mac.tailnet123.ts.net:3001');
+      expect(execFileSync).toHaveBeenCalledWith('tailscale', ['status', '--json'], expect.any(Object));
+    });
+
+    it('fails gracefully when tailscale is unavailable', () => {
+      expect(() => initCors('https://boardsesh.com')).not.toThrow();
+      const origins = getAllowedOrigins();
+      expect(origins).not.toContain('http://my-mac.tailnet123.ts.net:3000');
+      expect(origins).toContain('http://localhost:3000');
     });
   });
 

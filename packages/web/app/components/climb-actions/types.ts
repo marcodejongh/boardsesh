@@ -36,6 +36,8 @@ export interface ClimbActionBaseProps {
   climb: Climb;
   boardDetails: BoardDetails;
   angle: number;
+  /** Current route pathname for context-aware URL construction (e.g. preserving /b/{slug}/{angle}). */
+  currentPathname?: string;
 }
 
 /**
@@ -48,6 +50,7 @@ export interface ClimbActionProps extends ClimbActionBaseProps {
   disabled?: boolean;
   className?: string;
   onComplete?: () => void;
+  onOpenPlaylistSelector?: () => void;
 }
 
 /**
@@ -66,6 +69,8 @@ export interface ClimbActionsProps extends ClimbActionBaseProps {
   className?: string;
   /** Callback when any action is performed */
   onActionComplete?: (action: ClimbActionType) => void;
+  /** Callback to transition into a dedicated playlist selector UI */
+  onOpenPlaylistSelector?: () => void;
   /** Aurora app URL for Open in App action */
   auroraAppUrl?: string;
 }

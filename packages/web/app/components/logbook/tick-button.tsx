@@ -23,10 +23,9 @@ interface TickButtonProps {
   angle: Angle;
   currentClimb: Climb | null;
   boardDetails: BoardDetails;
-  buttonType?: 'default' | 'text';
 }
 
-export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails, buttonType = 'default' }) => {
+export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boardDetails }) => {
   const { logbook, isAuthenticated } = useBoardProvider();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -39,7 +38,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
     });
 
     if (!isAuthenticated && alwaysUseApp && loaded && currentClimb) {
-      const url = constructClimbInfoUrl(boardDetails, currentClimb.uuid, angle);
+      const url = constructClimbInfoUrl(boardDetails, currentClimb.uuid);
       window.open(url, '_blank', 'noopener');
       return;
     }
@@ -50,7 +49,7 @@ export const TickButton: React.FC<TickButtonProps> = ({ currentClimb, angle, boa
 
   const handleOpenInApp = () => {
     if (!currentClimb) return;
-    const url = constructClimbInfoUrl(boardDetails, currentClimb.uuid, angle);
+    const url = constructClimbInfoUrl(boardDetails, currentClimb.uuid);
     window.open(url, '_blank', 'noopener');
     closeDrawer();
   };

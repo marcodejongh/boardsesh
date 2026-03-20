@@ -1,14 +1,12 @@
 import { createClient, Client, Sink } from 'graphql-ws';
+import { connectionManager, KEEP_ALIVE_MS } from '../connection-manager/websocket-connection-manager';
 
 export type { Client };
 
 const DEBUG = process.env.NODE_ENV === 'development';
 const MUTATION_TIMEOUT_MS = 30_000; // 30 second timeout for mutations
 
-// Exponential backoff configuration for reconnection
-const INITIAL_RETRY_DELAY_MS = 1000; // Start with 1 second
-const MAX_RETRY_DELAY_MS = 30_000; // Cap at 30 seconds
-const BACKOFF_MULTIPLIER = 2; // Double the delay each retry
+import { INITIAL_RETRY_DELAY_MS, MAX_RETRY_DELAY_MS, BACKOFF_MULTIPLIER } from './retry-constants';
 
 let clientCounter = 0;
 
@@ -36,6 +34,7 @@ export interface GraphQLClientOptions {
   url: string;
   authToken?: string | null;
   onReconnect?: () => void;
+  connectionName?: string;
 }
 
 /**
@@ -56,7 +55,8 @@ export function createGraphQLClient(
     ? { url: urlOrOptions, onReconnect }
     : urlOrOptions;
 
-  const { url, authToken, onReconnect: onReconnectCallback } = options;
+  const { url, authToken, onReconnect: onReconnectCallback, connectionName } = options;
+  const managerConnectionName = connectionName ?? 'primary';
 
   const clientId = ++clientCounter;
 
@@ -80,7 +80,7 @@ export function createGraphQLClient(
     // Lazy connection - only connects when first subscription/mutation is made
     lazy: true,
     // Keep alive to detect disconnections
-    keepAlive: 10_000,
+    keepAlive: KEEP_ALIVE_MS,
     // Pass auth token in connection params for backend validation
     connectionParams: authToken ? { authToken } : undefined,
     on: {
@@ -101,6 +101,16 @@ export function createGraphQLClient(
     },
   }) as ExtendedClient;
 
+  // Register with the centralized connection manager for proactive reconnection/health checks
+  if (typeof window !== 'undefined') {
+    const unregister = connectionManager.registerClient(client, managerConnectionName);
+    const originalDispose = client.dispose.bind(client);
+    client.dispose = () => {
+      unregister();
+      originalDispose();
+    };
+  }
+
   return client;
 }
 
@@ -118,7 +128,7 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
   if (DEBUG) console.log(`[GraphQL] execute START: ${opName}`);
 
   const executionPromise = new Promise<TData>((resolve, reject) => {
-    let result: TData;
+    let result: TData | undefined;
     let hasResolved = false;
 
     const unsubscribe = client.subscribe<TData>(
@@ -126,8 +136,9 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
       {
         next: (data) => {
           if (DEBUG) console.log(`[GraphQL] execute NEXT: ${opName}`, data.data ? 'has data' : 'no data', data.errors ? 'has errors' : 'no errors');
-          if (data.data) {
-            result = data.data;
+          // GraphQL can return null data values; keep the latest payload when present.
+          if ('data' in data) {
+            result = data.data as TData;
           }
           if (data.errors) {
             if (!hasResolved) {
@@ -150,6 +161,10 @@ export function execute<TData = unknown, TVariables = Record<string, unknown>>(
           if (!hasResolved) {
             hasResolved = true;
             unsubscribe();
+            if (result === undefined) {
+              reject(new Error(`GraphQL operation '${opName}' completed without data`));
+              return;
+            }
             resolve(result);
           }
         },

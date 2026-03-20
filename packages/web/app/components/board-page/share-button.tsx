@@ -34,6 +34,7 @@ import SessionCreationForm from '../session-creation/session-creation-form';
 import type { SessionCreationFormData } from '../session-creation/session-creation-form';
 import { useCreateSession } from '@/app/hooks/use-create-session';
 import { getBaseBoardPath } from '@/app/lib/url-utils';
+import { deduplicateBy } from '@/app/utils/deduplicate';
 
 const getShareUrl = (pathname: string, sessionId: string | null) => {
   try {
@@ -170,7 +171,7 @@ function LedConnectionTab() {
   );
 }
 
-export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'default' | 'text' }) => {
+export const ShareBoardButton = () => {
   const { showMessage } = useSnackbar();
   const {
     users,
@@ -213,6 +214,13 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
   const isConnected = !!(sessionId && hasConnected);
 
   const shareUrl = getShareUrl(pathname, sessionId);
+  // Defensive dedup: during WebSocket reconnection race conditions the server
+  // may briefly report the same user twice. Deduplicating by ID keeps the UI
+  // stable until the next authoritative state sync arrives.
+  const uniqueUsers = React.useMemo(
+    () => deduplicateBy(users ?? [], (u) => u.id),
+    [users],
+  );
 
   const copyToClipboard = () => {
     navigator.clipboard
@@ -278,7 +286,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
     showMessage('Left party mode', 'info');
   };
 
-  const connectionCount = users?.length ?? 0;
+  const connectionCount = uniqueUsers.length;
   const currentUserId = clientId;
 
   // Session info content (shared between active and inactive states)
@@ -333,9 +341,9 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
         </Box>
       )}
 
-      {users && users.length > 0 && (
+      {uniqueUsers.length > 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography variant="body2" component="span" fontWeight={600}>Connected Users ({users.length}):</Typography>
+          <Typography variant="body2" component="span" fontWeight={600}>Connected Users ({uniqueUsers.length}):</Typography>
           <Box
             sx={{
               display: 'flex',
@@ -346,7 +354,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
               padding: '4px',
             }}
           >
-            {users.map((user) => (
+            {uniqueUsers.map((user) => (
               <Box
                 key={user.id}
                 sx={{
@@ -477,6 +485,7 @@ export const ShareBoardButton = ({ buttonType = 'default' }: { buttonType?: 'def
     <>
       <Badge badgeContent={connectionCount} max={100} color="primary" invisible={connectionCount === 0}>
         <IconButton
+          aria-label="Party Mode"
           onClick={showDrawer}
           color={isSessionActive ? 'primary' : 'default'}
         >

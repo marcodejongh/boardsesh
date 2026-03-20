@@ -52,7 +52,7 @@ const helpSections = [
               <Typography variant="body2" component="span" fontWeight={600}>To access the heatmap:</Typography>
             </Typography>
             <ol>
-              <li>Go to the &quot;Search by Hold&quot; tab in the side panel</li>
+              <li>Open the search drawer and expand the &quot;Holds&quot; section</li>
               <li>Click the &quot;Show Heatmap&quot; button</li>
               <li>The board will display a color overlay from green (low usage) to red (high usage)</li>
             </ol>
@@ -132,7 +132,7 @@ const helpSections = [
               <Typography variant="body2" component="span" fontWeight={600}>To start a session:</Typography>
             </Typography>
             <ol>
-              <li>Click the team icon in the header</li>
+              <li>Tap the group icon in the queue bar at the bottom</li>
               <li>Sign in if not already logged in</li>
               <li>Click &quot;Start Party Mode&quot; to create a new session</li>
               <li>Share the session with friends using QR code or link</li>
@@ -177,7 +177,7 @@ const helpSections = [
               <Typography variant="body2" component="span" fontWeight={600}>Queue actions:</Typography>
             </Typography>
             <ul>
-              <li><Typography variant="body2" component="span" fontWeight={600}>Add climbs:</Typography> Click the + icon on any climb card</li>
+              <li><Typography variant="body2" component="span" fontWeight={600}>Add climbs:</Typography> Double-tap any climb in the list to add it to your queue</li>
               <li><Typography variant="body2" component="span" fontWeight={600}>Reorder:</Typography> Drag and drop climbs to change order</li>
               <li><Typography variant="body2" component="span" fontWeight={600}>Set current:</Typography> Click a climb to make it the active climb</li>
               <li><Typography variant="body2" component="span" fontWeight={600}>Remove:</Typography> Click the X on any queued climb</li>
@@ -324,7 +324,7 @@ const helpSections = [
               <Typography variant="body2" component="span" fontWeight={600}>To search by holds:</Typography>
             </Typography>
             <ol>
-              <li>Go to the &quot;Search by Hold&quot; tab</li>
+              <li>Open the search drawer and expand the &quot;Holds&quot; section</li>
               <li>Select &quot;Include&quot; or &quot;Exclude&quot; mode from the dropdown</li>
               <li>Tap holds on the board to select them</li>
               <li>Results update automatically as you select holds</li>
@@ -371,7 +371,7 @@ const helpSections = [
               <Typography variant="body2" component="span" fontWeight={600}>To connect:</Typography>
             </Typography>
             <ol>
-              <li>Click the lightbulb icon in the header</li>
+              <li>Tap the group icon in the queue bar, then go to the &quot;Connect to Board&quot; tab</li>
               <li>Select your board from the device list</li>
               <li>Once connected, LEDs automatically show the current climb</li>
             </ol>
@@ -400,7 +400,7 @@ const helpSections = [
               <Typography variant="body2" component="span" fontWeight={600}>To link your account:</Typography>
             </Typography>
             <ol>
-              <li>Go to Settings (click your profile icon)</li>
+              <li>Open the menu (tap your avatar) and go to Settings</li>
               <li>Find the &quot;Aurora Accounts&quot; section</li>
               <li>Enter your Kilter or Tension credentials</li>
               <li>Click &quot;Link Account&quot;</li>

@@ -8,6 +8,7 @@ import { UNIFIED_TABLES } from '../../db/queries/util/table-select';
 import { boardseshTicks, auroraCredentials, playlists, playlistClimbs, playlistOwnership } from '../../db/schema';
 import { randomUUID } from 'crypto';
 import { convertQuality } from './convert-quality';
+import { buildInferredSessionsForUser } from './inferred-session-builder';
 
 /**
  * Get NextAuth user ID from Aurora user ID
@@ -425,24 +426,6 @@ export async function getLastSyncTimes(boardName: AuroraBoardName, userId: numbe
   }
 }
 
-export async function getLastSharedSyncTimes(boardName: AuroraBoardName, tableNames: string[]) {
-  const sharedSyncsSchema = UNIFIED_TABLES.sharedSyncs;
-  const pool = getPool();
-  const client = await pool.connect();
-
-  try {
-    const db = drizzle(client);
-    const result = await db
-      .select()
-      .from(sharedSyncsSchema)
-      .where(and(eq(sharedSyncsSchema.boardType, boardName), inArray(sharedSyncsSchema.tableName, tableNames)));
-
-    return result;
-  } finally {
-    client.release();
-  }
-}
-
 export async function syncUserData(
   board: AuroraBoardName,
   token: string,
@@ -567,6 +550,29 @@ export async function syncUserData(
 
     if (syncAttempts >= maxSyncAttempts) {
       console.warn(`Sync reached maximum attempts (${maxSyncAttempts}) for user ${userId}`);
+    }
+
+    // Build inferred sessions for any newly-imported ticks
+    const hasTickData = (totalResults['ascents']?.synced ?? 0) > 0 || (totalResults['bids']?.synced ?? 0) > 0;
+    if (hasTickData) {
+      try {
+        const pool = getPool();
+        const client = await pool.connect();
+        try {
+          const tx = drizzle(client);
+          const nextAuthUserId = await getNextAuthUserId(tx, board, userId);
+          if (nextAuthUserId) {
+            const assigned = await buildInferredSessionsForUser(nextAuthUserId);
+            if (assigned > 0) {
+              console.log(`Built inferred sessions: assigned ${assigned} ticks for user ${nextAuthUserId}`);
+            }
+          }
+        } finally {
+          client.release();
+        }
+      } catch (error) {
+        console.error('Error building inferred sessions after sync:', error);
+      }
     }
 
     return totalResults;

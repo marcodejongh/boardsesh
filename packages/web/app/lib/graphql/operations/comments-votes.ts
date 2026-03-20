@@ -12,6 +12,34 @@ import type {
 // Comment Queries
 // ============================================
 
+export const GET_GLOBAL_COMMENT_FEED = gql`
+  query GetGlobalCommentFeed($input: GlobalCommentFeedInput) {
+    globalCommentFeed(input: $input) {
+      comments {
+        uuid
+        userId
+        userDisplayName
+        userAvatarUrl
+        entityType
+        entityId
+        parentCommentUuid
+        body
+        isDeleted
+        replyCount
+        upvotes
+        downvotes
+        voteScore
+        userVote
+        createdAt
+        updatedAt
+      }
+      totalCount
+      hasMore
+      cursor
+    }
+  }
+`;
+
 export const GET_COMMENTS = gql`
   query GetComments($input: CommentsInput!) {
     comments(input: $input) {
@@ -141,6 +169,18 @@ export const VOTE = gql`
 // ============================================
 // Query/Mutation Variable Types
 // ============================================
+
+export interface GetGlobalCommentFeedVariables {
+  input?: {
+    cursor?: string | null;
+    limit?: number;
+    boardUuid?: string | null;
+  };
+}
+
+export interface GetGlobalCommentFeedResponse {
+  globalCommentFeed: CommentConnection;
+}
 
 export interface GetCommentsQueryVariables {
   input: {

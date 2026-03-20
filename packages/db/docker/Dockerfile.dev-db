@@ -110,7 +110,7 @@ RUN set -e && \
     mkdir -p "$PGDATA" /var/run/postgresql && \
     chown postgres:postgres "$PGDATA" /var/run/postgresql && \
     gosu postgres initdb -D "$PGDATA" --auth-local=trust --auth-host=trust && \
-    echo "host all all 0.0.0.0/0 trust" >> "$PGDATA/pg_hba.conf" && \
+    echo "host all all 0.0.0.0/0 md5" >> "$PGDATA/pg_hba.conf" && \
     gosu postgres pg_ctl -D "$PGDATA" start \
       -o "-c listen_addresses='localhost' -c unix_socket_directories='/var/run/postgresql' -c log_min_messages=warning -c max_wal_size=2GB" && \
     until gosu postgres pg_isready -h /var/run/postgresql; do sleep 1; done && \

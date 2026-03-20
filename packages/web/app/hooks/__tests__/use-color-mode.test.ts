@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 import { useColorMode, ColorModeContext, type ColorModeContextValue } from '../use-color-mode';
@@ -66,7 +66,7 @@ describe('useColorMode', () => {
       currentMode = currentMode === 'light' ? 'dark' : 'light';
     });
 
-    const { result, rerender } = renderHook(() => useColorMode(), {
+    const { result } = renderHook(() => useColorMode(), {
       wrapper: createWrapper({ mode: currentMode, toggleMode }),
     });
 

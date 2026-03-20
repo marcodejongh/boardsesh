@@ -5,7 +5,6 @@ import type {
   Proposal,
   ProposalConnection,
   ClimbCommunityStatusType,
-  ClimbClassicStatusType,
   CommunityRoleAssignment,
   CommunityRoleType,
   CommunitySettingType,
@@ -38,6 +37,15 @@ export const GET_CLIMB_PROPOSALS = gql`
         weightedDownvotes
         requiredUpvotes
         userVote
+        climbName
+        frames
+        layoutId
+        climbSetterUsername
+        climbDifficulty
+        climbQualityAverage
+        climbAscensionistCount
+        climbDifficultyError
+        climbBenchmarkDifficulty
       }
       totalCount
       hasMore
@@ -109,6 +117,15 @@ export const BROWSE_PROPOSALS = gql`
         weightedDownvotes
         requiredUpvotes
         userVote
+        climbName
+        frames
+        layoutId
+        climbSetterUsername
+        climbDifficulty
+        climbQualityAverage
+        climbAscensionistCount
+        climbDifficultyError
+        climbBenchmarkDifficulty
       }
       totalCount
       hasMore
@@ -151,6 +168,15 @@ export const CREATE_PROPOSAL = gql`
       weightedDownvotes
       requiredUpvotes
       userVote
+      climbName
+      frames
+      layoutId
+      climbSetterUsername
+      climbDifficulty
+      climbQualityAverage
+      climbAscensionistCount
+      climbDifficultyError
+      climbBenchmarkDifficulty
     }
   }
 `;
@@ -177,6 +203,15 @@ export const VOTE_ON_PROPOSAL = gql`
       weightedDownvotes
       requiredUpvotes
       userVote
+      climbName
+      frames
+      layoutId
+      climbSetterUsername
+      climbDifficulty
+      climbQualityAverage
+      climbAscensionistCount
+      climbDifficultyError
+      climbBenchmarkDifficulty
     }
   }
 `;
@@ -192,6 +227,15 @@ export const RESOLVE_PROPOSAL = gql`
       weightedDownvotes
       requiredUpvotes
       userVote
+      climbName
+      frames
+      layoutId
+      climbSetterUsername
+      climbDifficulty
+      climbQualityAverage
+      climbAscensionistCount
+      climbDifficultyError
+      climbBenchmarkDifficulty
     }
   }
 `;
@@ -354,6 +398,7 @@ export interface GetBulkClimbCommunityStatusResponse {
 export interface BrowseProposalsVariables {
   input: {
     boardType?: string | null;
+    boardUuid?: string | null;
     type?: ProposalType | null;
     status?: ProposalStatus | null;
     limit?: number;

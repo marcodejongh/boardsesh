@@ -111,12 +111,6 @@ export const END_SESSION = `
   }
 `;
 
-export const UPDATE_USERNAME = `
-  mutation UpdateUsername($username: String!, $avatarUrl: String) {
-    updateUsername(username: $username, avatarUrl: $avatarUrl)
-  }
-`;
-
 export const ADD_QUEUE_ITEM = `
   mutation AddQueueItem($item: ClimbQueueItemInput!, $position: Int) {
     addQueueItem(item: $item, position: $position) {
@@ -224,6 +218,53 @@ export const SESSION_UPDATES = `
       ... on SessionEnded {
         reason
         newPath
+      }
+      ... on SessionStatsUpdated {
+        sessionId
+        totalSends
+        totalFlashes
+        totalAttempts
+        tickCount
+        participants {
+          userId
+          displayName
+          avatarUrl
+          sends
+          flashes
+          attempts
+        }
+        gradeDistribution {
+          grade
+          flash
+          send
+          attempt
+        }
+        boardTypes
+        hardestGrade
+        durationMinutes
+        goal
+        ticks {
+          uuid
+          userId
+          climbUuid
+          climbName
+          boardType
+          layoutId
+          angle
+          status
+          attemptCount
+          difficulty
+          difficultyName
+          quality
+          isMirror
+          isBenchmark
+          comment
+          frames
+          setterUsername
+          climbedAt
+          upvotes
+          totalAttempts
+        }
       }
     }
   }

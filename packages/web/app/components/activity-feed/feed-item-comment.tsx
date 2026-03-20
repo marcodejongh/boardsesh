@@ -23,7 +23,7 @@ export default function FeedItemComment({ item }: FeedItemCommentProps) {
   const timeAgo = dayjs(item.createdAt).fromNow();
 
   return (
-    <MuiCard className={styles.feedItem}>
+    <MuiCard className={styles.feedItem} data-testid="activity-feed-item">
       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
         {/* User header */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>

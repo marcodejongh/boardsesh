@@ -1,95 +1,30 @@
 import React, { Suspense } from 'react';
 import { PropsWithChildren } from 'react';
-import { ParsedBoardRouteParameters, BoardRouteParameters, BoardDetails } from '@/app/lib/types';
-import { parseBoardRouteParams, constructClimbListWithSlugs } from '@/app/lib/url-utils';
-import { parseBoardRouteParamsWithSlugs } from '@/app/lib/url-utils.server';
+import { BoardRouteParameters } from '@/app/lib/types';
+import { constructClimbListWithSlugs } from '@/app/lib/url-utils';
+import { parseRouteParams } from '@/app/lib/url-utils.server';
 import { permanentRedirect } from 'next/navigation';
-import QueueControlBar from '@/app/components/queue-control/queue-control-bar';
-import { getBoardDetails } from '@/app/lib/__generated__/product-sizes-data';
-import { getMoonBoardDetails } from '@/app/lib/moonboard-config';
+import { getBoardDetailsForBoard, generateBoardTitle } from '@/app/lib/board-utils';
 import BoardSeshHeader from '@/app/components/board-page/header';
 import { GraphQLQueueProvider } from '@/app/components/graphql-queue';
 import { ConnectionSettingsProvider } from '@/app/components/connection-manager/connection-settings-context';
+import { WebSocketConnectionProvider } from '@/app/components/connection-manager/websocket-connection-provider';
 import { PartyProvider } from '@/app/components/party-manager/party-context';
 import { BoardSessionBridge } from '@/app/components/persistent-session';
 import { Metadata } from 'next';
 import BoardPageSkeleton from '@/app/components/board-page/board-page-skeleton';
-import BottomTabBar from '@/app/components/bottom-tab-bar/bottom-tab-bar';
 import { BluetoothProvider } from '@/app/components/board-bluetooth-control/bluetooth-context';
 import { UISearchParamsProvider } from '@/app/components/queue-control/ui-searchparams-provider';
+import { QueueBridgeInjector } from '@/app/components/queue-control/queue-bridge-context';
 import LastUsedBoardTracker from '@/app/components/board-page/last-used-board-tracker';
 import { themeTokens } from '@/app/theme/theme-config';
-import { getAllBoardConfigs } from '@/app/lib/server-board-configs';
-import { BoardRouteBottomBarRegistrar } from '@/app/components/bottom-tab-bar/board-route-bottom-bar-context';
-import layoutStyles from './layout.module.css';
-
-// Helper to get board details for any board type
-function getBoardDetailsUniversal(parsedParams: ParsedBoardRouteParameters): BoardDetails {
-  if (parsedParams.board_name === 'moonboard') {
-    return getMoonBoardDetails({
-      layout_id: parsedParams.layout_id,
-      set_ids: parsedParams.set_ids,
-    }) as BoardDetails;
-  }
-  return getBoardDetails(parsedParams);
-}
-
-/**
- * Generates a user-friendly page title from board details.
- * Example output: "Kilter Original 12x12 | Boardsesh"
- */
-function generateBoardTitle(boardDetails: BoardDetails): string {
-  const parts: string[] = [];
-
-  // Capitalize board name
-  const boardName = boardDetails.board_name.charAt(0).toUpperCase() + boardDetails.board_name.slice(1);
-  parts.push(boardName);
-
-  // Add layout name if available, but strip out board name prefix to avoid duplication
-  if (boardDetails.layout_name) {
-    // Remove board name prefix (e.g., "Kilter Board Original" -> "Original")
-    const layoutName = boardDetails.layout_name
-      .replace(new RegExp(`^${boardDetails.board_name}\\s*(board)?\\s*`, 'i'), '')
-      .trim();
-
-    if (layoutName) {
-      parts.push(layoutName);
-    }
-  }
-
-  // Add size info - prefer size_name, fallback to size_description
-  if (boardDetails.size_name) {
-    // Extract dimensions if present (e.g., "12 x 12 Commercial" -> "12x12")
-    const sizeMatch = boardDetails.size_name.match(/(\d+)\s*x\s*(\d+)/i);
-    if (sizeMatch) {
-      parts.push(`${sizeMatch[1]}x${sizeMatch[2]}`);
-    } else {
-      parts.push(boardDetails.size_name);
-    }
-  } else if (boardDetails.size_description) {
-    parts.push(boardDetails.size_description);
-  }
-
-  return `${parts.join(' ')} | Boardsesh`;
-}
 
 export async function generateMetadata(props: { params: Promise<BoardRouteParameters> }): Promise<Metadata> {
   const params = await props.params;
 
   try {
-    const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-      param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-    );
-
-    let parsedParams: ParsedBoardRouteParameters;
-
-    if (hasNumericParams) {
-      parsedParams = parseBoardRouteParams(params);
-    } else {
-      parsedParams = await parseBoardRouteParamsWithSlugs(params);
-    }
-
-    const boardDetails = getBoardDetailsUniversal(parsedParams);
+    const { parsedParams } = await parseRouteParams(params);
+    const boardDetails = getBoardDetailsForBoard(parsedParams);
     const title = generateBoardTitle(boardDetails);
 
     return {
@@ -113,20 +48,11 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
   const { children } = props;
 
-  // Parse the route parameters
-  // Check if any parameters are in numeric format (old URLs)
-  const hasNumericParams = [params.layout_id, params.size_id, params.set_ids].some((param) =>
-    param.includes(',') ? param.split(',').every((id) => /^\d+$/.test(id.trim())) : /^\d+$/.test(param),
-  );
+  const { parsedParams, isNumericFormat } = await parseRouteParams(params);
 
-  let parsedParams: ParsedBoardRouteParameters;
-
-  if (hasNumericParams) {
-    // For old URLs, use the simple parsing function first
-    parsedParams = parseBoardRouteParams(params);
-
-    // Redirect old URLs to new slug format
-    const boardDetails = getBoardDetailsUniversal(parsedParams);
+  // Redirect old numeric URLs to new slug format
+  if (isNumericFormat) {
+    const boardDetails = getBoardDetailsForBoard(parsedParams);
 
     if (boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names) {
       const newUrl = constructClimbListWithSlugs(
@@ -140,18 +66,12 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
       permanentRedirect(newUrl);
     }
-  } else {
-    // For new URLs, use the slug parsing function
-    parsedParams = await parseBoardRouteParamsWithSlugs(params);
   }
 
   const { angle } = parsedParams;
 
-  // Fetch the board details and board configs server-side
-  const [boardDetails, boardConfigs] = await Promise.all([
-    Promise.resolve(getBoardDetailsUniversal(parsedParams)),
-    getAllBoardConfigs(),
-  ]);
+  // Fetch the board details server-side
+  const boardDetails = getBoardDetailsForBoard(parsedParams);
 
   // Compute the list URL for last-used-board tracking
   const listUrl = boardDetails.layout_name && boardDetails.size_name && boardDetails.set_names
@@ -167,7 +87,6 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', padding: 0, background: 'var(--semantic-surface)' }}>
-      <BoardRouteBottomBarRegistrar />
       <LastUsedBoardTracker
         url={listUrl}
         boardName={boardDetails.board_name}
@@ -179,35 +98,33 @@ export default async function BoardLayout(props: PropsWithChildren<BoardLayoutPr
       />
       <BoardSessionBridge boardDetails={boardDetails} parsedParams={parsedParams}>
         <ConnectionSettingsProvider>
-          <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
-            <PartyProvider>
-              <BluetoothProvider boardDetails={boardDetails}>
-                <UISearchParamsProvider>
-                  <BoardSeshHeader boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} />
+          <WebSocketConnectionProvider>
+            <GraphQLQueueProvider parsedParams={parsedParams} boardDetails={boardDetails}>
+              <PartyProvider>
+                <BluetoothProvider boardDetails={boardDetails}>
+                  <UISearchParamsProvider>
+                    <QueueBridgeInjector boardDetails={boardDetails} angle={angle} />
 
-                  <main
-                    id="content-for-scrollable"
-                    style={{
-                      flex: 1,
-                      paddingLeft: `${themeTokens.spacing[2]}px`,
-                      paddingRight: `${themeTokens.spacing[2]}px`,
-                      paddingTop: 'calc(max(8dvh, 48px) + env(safe-area-inset-top, 0px))',
-                      paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
-                    }}
-                  >
-                    <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
-                      {children}
-                    </Suspense>
-                  </main>
-
-                  <div className={layoutStyles.bottomBarWrapper} data-testid="bottom-bar-wrapper">
-                    <QueueControlBar boardDetails={boardDetails} angle={angle} />
-                    <BottomTabBar boardDetails={boardDetails} angle={angle} boardConfigs={boardConfigs} />
-                  </div>
-                </UISearchParamsProvider>
-              </BluetoothProvider>
-            </PartyProvider>
-          </GraphQLQueueProvider>
+                    <main
+                      id="content-for-scrollable"
+                      style={{
+                        flex: 1,
+                        paddingLeft: `${themeTokens.spacing[2]}px`,
+                        paddingRight: `${themeTokens.spacing[2]}px`,
+                        paddingTop: 'var(--global-header-height)',
+                        paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
+                      }}
+                    >
+                      <BoardSeshHeader boardDetails={boardDetails} angle={angle} />
+                      <Suspense fallback={<BoardPageSkeleton aspectRatio={boardDetails.boardWidth / boardDetails.boardHeight} />}>
+                        {children}
+                      </Suspense>
+                    </main>
+                  </UISearchParamsProvider>
+                </BluetoothProvider>
+              </PartyProvider>
+            </GraphQLQueueProvider>
+          </WebSocketConnectionProvider>
         </ConnectionSettingsProvider>
       </BoardSessionBridge>
     </div>

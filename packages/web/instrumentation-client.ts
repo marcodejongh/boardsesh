@@ -38,6 +38,16 @@ Sentry.init({
       return null;
     }
 
+    // Ignore Safari/WebKit "Load failed" errors caused by in-flight fetch requests
+    // being aborted during page navigation (e.g., RSC fetches interrupted by route changes)
+    if (
+      errorMessage === "Load failed" ||
+      errorMessage === "Failed to fetch" ||
+      errorMessage === "cancelled"
+    ) {
+      return null;
+    }
+
     return event;
   },
 });

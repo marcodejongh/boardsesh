@@ -6,7 +6,7 @@ import { HeatmapData } from './types';
 import { LitUpHoldsMap } from './types';
 import { scaleLog } from 'd3-scale';
 import useHeatmapData from '../search-drawer/use-heatmap';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useUISearchParams } from '@/app/components/queue-control/ui-searchparams-provider';
 import MuiSelect from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
@@ -61,7 +61,6 @@ type ColorMode =
 
 const BoardHeatmap: React.FC<BoardHeatmapProps> = ({ boardDetails, litUpHoldsMap, onHoldClick }) => {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { uiSearchParams } = useUISearchParams();
 
   const [colorMode, setColorMode] = useState<ColorMode>('ascents');

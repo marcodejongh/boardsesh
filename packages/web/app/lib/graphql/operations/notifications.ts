@@ -2,7 +2,6 @@ import { gql } from 'graphql-request';
 import type {
   Notification,
   NotificationConnection,
-  GroupedNotification,
   GroupedNotificationConnection,
   NotificationType,
   SocialEntityType,
@@ -57,6 +56,7 @@ export const GET_GROUPED_NOTIFICATIONS = gql`
         climbUuid
         boardType
         proposalUuid
+        setterUsername
         isRead
         createdAt
       }
