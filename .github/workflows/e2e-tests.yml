@@ -60,20 +60,25 @@ jobs:
       with:
         node-version: '20'
 
+    - name: Install Bun
+      run: |
+        curl -fsSL https://bun.sh/install | bash
+        echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
     - name: Install dependencies
-      run: npm ci --legacy-peer-deps
+      run: bun install --frozen-lockfile
 
     - name: Build shared-schema
-      run: npm run build --workspace=@boardsesh/shared-schema
+      run: bun run --filter=@boardsesh/shared-schema build
 
     - name: Build db package
-      run: npm run build --workspace=@boardsesh/db
+      run: bun run --filter=@boardsesh/db build
 
     - name: Build backend
-      run: npm run build --workspace=boardsesh-backend
+      run: bun run --filter=boardsesh-backend build
 
     - name: Build web application
-      run: npm run build --workspace=@boardsesh/web
+      run: bun run --filter=@boardsesh/web build
       env:
         # Provide minimal env vars needed for build
         NEXTAUTH_SECRET: test-secret-for-ci
@@ -82,18 +87,18 @@ jobs:
         NEXT_PUBLIC_WS_URL: ws://localhost:8080/graphql
 
     - name: Run database migrations
-      run: npx drizzle-kit migrate
+      run: bunx drizzle-kit migrate
       working-directory: packages/db
       env:
         DATABASE_URL: postgresql://postgres:password@postgres:5432/main
 
     - name: Start backend and web server, then run E2E tests
       run: |
-        npm run start --workspace=boardsesh-backend &
-        npx wait-on http-get://localhost:8080/health --timeout 30000
-        npm run start --workspace=@boardsesh/web &
-        npx wait-on http://localhost:3000 --timeout 60000
-        npm run test:e2e --workspace=@boardsesh/web
+        bun run --filter=boardsesh-backend start &
+        bunx wait-on http-get://localhost:8080/health --timeout 30000
+        bun run --filter=@boardsesh/web start &
+        bunx wait-on http://localhost:3000 --timeout 60000
+        bun run --filter=@boardsesh/web test:e2e
       env:
         PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
         DATABASE_URL: postgresql://postgres:password@db.localtest.me:5432/main

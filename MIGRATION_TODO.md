@@ -120,15 +120,15 @@ export function createSubscription(sessionId: string, emit: (event: QueueEvent) 
 
 After pulling this branch, run:
 ```bash
-npm install  # From root - installs all workspace packages
-npm run build:shared  # Build shared-schema first
-npm run dev  # Start web dev server
-npm run backend:dev  # Start backend (in separate terminal)
+bun install  # From root - installs all workspace packages
+bun run build:shared  # Build shared-schema first
+bun run dev  # Start web dev server
+bun run backend:dev  # Start backend (in separate terminal)
 ```
 
 ## Testing the Migration
 
-1. Start backend: `npm run backend:dev`
-2. Start web: `npm run dev`
+1. Start backend: `bun run backend:dev`
+2. Start web: `bun run dev`
 3. Navigate to a board page with `?backendUrl=ws://localhost:8080/graphql`
 4. Verify queue operations work between multiple browser tabs

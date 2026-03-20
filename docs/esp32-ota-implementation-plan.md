@@ -55,7 +55,7 @@ Create migrations for OTA tables in `packages/db/`:
 
 ```bash
 # From packages/db/
-npx drizzle-kit generate
+bunx drizzle-kit generate
 ```
 
 **Tables to create**:

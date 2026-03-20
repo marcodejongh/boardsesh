@@ -22,20 +22,20 @@ docker-compose up -d
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Set up environment
 export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/boardsesh_backend"
 
 # Run database migrations
-npm run db:migrate
+bun run db:migrate
 
 # Start in development mode
-npm run dev
+bun run dev
 
 # Or build and run in production
-npm run build
-npm start
+bun run build
+bun start
 ```
 
 ## Configuration

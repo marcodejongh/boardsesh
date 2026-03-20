@@ -32,7 +32,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 //   - problems Mini MoonBoard 2020 40.json
 //
 // The import is baked into the dev-db Docker image during build, and can also
-// be run manually with `npm run db:import-moonboard [/path/to/dump]`.
+// be run manually with `bun run db:import-moonboard [/path/to/dump]`.
 // =============================================================================
 
 // =============================================================================
@@ -138,7 +138,7 @@ async function importMoonBoardProblems() {
   // Verify dump directory exists
   if (!fs.existsSync(dumpPath)) {
     console.error(`❌ Dump directory not found: ${dumpPath}`);
-    console.error('   Usage: npm run db:import-moonboard [/path/to/dump]');
+    console.error('   Usage: bun run db:import-moonboard [/path/to/dump]');
     process.exit(1);
   }
 

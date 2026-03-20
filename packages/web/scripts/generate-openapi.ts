@@ -6,7 +6,7 @@
  * This is typically run as part of the build process or CI pipeline.
  *
  * Usage:
- *   npx tsx scripts/generate-openapi.ts
+ *   bunx tsx scripts/generate-openapi.ts
  *
  * Output:
  *   public/openapi.json

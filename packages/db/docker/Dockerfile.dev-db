@@ -65,7 +65,8 @@ COPY tsconfig.json /app/tsconfig.json
 # only src/schema/app/sessions.ts uses it, and no scripts touch that file)
 RUN cd /app && \
     sed -i '/"@boardsesh\/shared-schema"/d' package.json && \
-    npm install --ignore-scripts
+    npm install -g bun && \
+    bun install --ignore-scripts
 
 # Single RUN: download → extract → fix → start PG → import → migrate → stop PG → clean
 RUN set -e && \
@@ -178,15 +179,15 @@ RUN set -e && \
     unzip -o /tmp/moonboard/problems_2023_01_30.zip -d /tmp/moonboard/problems_2023_01_30 && \
     echo ">>> Importing MoonBoard problems via Node.js..." && \
     cd /app && \
-    DATABASE_URL=postgresql://postgres@localhost/main npx tsx scripts/import-moonboard-problems.ts /tmp/moonboard/problems_2023_01_30 && \
+    DATABASE_URL=postgresql://postgres@localhost/main bunx tsx scripts/import-moonboard-problems.ts /tmp/moonboard/problems_2023_01_30 && \
     \
     # ── Create test user ─────────────────────────────────────────────── \
     echo ">>> Creating test user..." && \
-    DATABASE_URL=postgresql://postgres@localhost/main npx tsx scripts/create-test-user.ts && \
+    DATABASE_URL=postgresql://postgres@localhost/main bunx tsx scripts/create-test-user.ts && \
     \
     # ── Seed social data ─────────────────────────────────────────────── \
     echo ">>> Seeding social data..." && \
-    DATABASE_URL=postgresql://postgres@localhost/main npx tsx scripts/seed-social.ts && \
+    DATABASE_URL=postgresql://postgres@localhost/main bunx tsx scripts/seed-social.ts && \
     \
     # ── Stop PostgreSQL ──────────────────────────────────────────────── \
     echo ">>> Stopping PostgreSQL..." && \

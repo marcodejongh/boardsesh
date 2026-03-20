@@ -137,12 +137,12 @@ if [ -d "/app/node_modules" ] && [ "$(ls -A /app/node_modules)" ]; then
 else
   export PYTHON=/usr/bin/python3
   # Install only what we need for drizzle-kit to work
-  npm install --legacy-peer-deps
+  bun install
   echo "   ✅ Dependencies installed"
 fi
 
 echo "🔄 Step 8/8: Running drizzle migrations..."
-npx drizzle-kit migrate
+bunx drizzle-kit migrate
 echo "   ✅ Drizzle migrations completed!"
 
 echo "✨ Boardsesh development database is ready!" 

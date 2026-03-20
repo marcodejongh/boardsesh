@@ -568,8 +568,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cd packages/mobile && npm install
-      - run: npx cap sync android
+      - run: cd packages/mobile && bun install
+      - run: bunx cap sync android
       - run: cd android && ./gradlew assembleRelease
       - uses: actions/upload-artifact@v4
         with:
@@ -580,8 +580,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cd packages/mobile && npm install
-      - run: npx cap sync ios
+      - run: cd packages/mobile && bun install
+      - run: bunx cap sync ios
       - run: xcodebuild -workspace ios/App/App.xcworkspace -scheme App -archivePath build/App.xcarchive archive
       # ... signing and export steps
 ```
