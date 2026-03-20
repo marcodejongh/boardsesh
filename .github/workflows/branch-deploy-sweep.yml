@@ -24,7 +24,7 @@ jobs:
           # Find all branch deploy containers
           for container in $(docker ps -a --filter "name=web-pr-" --filter "name=backend-pr-" --format "{{.Names}}"); do
             # Extract PR number from container name
-            PR_NUM=$(echo "$container" | grep -oP '\d+')
+            PR_NUM=$(echo "$container" | grep -Eo '[0-9]+')
 
             if ! echo "$OPEN_PRS" | grep -qw "$PR_NUM"; then
               echo "Removing stale container: $container (PR #${PR_NUM} is closed)"

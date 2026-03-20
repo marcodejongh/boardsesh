@@ -10,9 +10,8 @@
  * the current hostname, so every access path reaches the right backend.
  *
  * Resolution order (client-side):
- * 1. `backendUrl` URL search parameter (dev-only override for testing)
- * 2. Host-derived URL for preview domains ({N}.preview.boardsesh.com)
- * 3. NEXT_PUBLIC_WS_URL build-time fallback
+ * 1. Host-derived URL for preview domains ({N}.preview.boardsesh.com)
+ * 2. NEXT_PUBLIC_WS_URL build-time fallback
  */
 
 /**
@@ -50,25 +49,14 @@ export function getBackendWsUrl(): string | null {
     return process.env.NEXT_PUBLIC_WS_URL || null;
   }
 
-  // 1. Dev-only: explicit override via query parameter for local testing
-  if (process.env.NODE_ENV === 'development') {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const override = params.get('backendUrl');
-      if (override) return override;
-    } catch {
-      // URLSearchParams can throw in obscure environments; ignore
-    }
-  }
-
-  // 2. Host-derived URL for known domain patterns
+  // 1. Host-derived URL for known domain patterns
   const derived = deriveWsUrlFromHost(
     window.location.hostname,
     window.location.protocol === 'https:',
   );
   if (derived) return derived;
 
-  // 3. Build-time fallback
+  // 2. Build-time fallback
   return process.env.NEXT_PUBLIC_WS_URL || null;
 }
 

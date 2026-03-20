@@ -264,9 +264,8 @@ The runtime resolver maps the frontend hostname to the backend:
 
 `getBackendWsUrl()` checks these sources in order and returns the first match:
 
-1. **`backendUrl` query parameter** (dev builds only) -- allows overriding the backend URL for local testing (e.g., `?backendUrl=ws://localhost:8080/graphql`).
-2. **Host-derived URL** -- if the page hostname matches `{N}.preview.boardsesh.com`, the backend URL is derived automatically. No build-time config needed.
-3. **`NEXT_PUBLIC_WS_URL` build-time fallback** -- the standard env var baked into the Next.js client bundle at build time. Used for production (`boardsesh.com`) and any hostname that doesn't match a known pattern.
+1. **Host-derived URL** -- if the page hostname matches `{N}.preview.boardsesh.com`, the backend URL is derived automatically. No build-time config needed.
+2. **`NEXT_PUBLIC_WS_URL` build-time fallback** -- the standard env var baked into the Next.js client bundle at build time. Used for production (`boardsesh.com`) and any hostname that doesn't match a known pattern.
 
 On the server side (SSR), only the build-time env var is used.
 
