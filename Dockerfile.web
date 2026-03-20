@@ -33,15 +33,8 @@ RUN apk add --no-cache bash curl unzip && \
     ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
     ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
 
-# Copy node_modules from deps stage
+# Copy node_modules from deps stage (bun hoists all deps to root)
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/web/node_modules ./packages/web/node_modules
-COPY --from=deps /app/packages/shared-schema/node_modules ./packages/shared-schema/node_modules
-COPY --from=deps /app/packages/crypto/node_modules ./packages/crypto/node_modules
-COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
-COPY --from=deps /app/packages/aurora-sync/node_modules ./packages/aurora-sync/node_modules
-COPY --from=deps /app/packages/backend/node_modules ./packages/backend/node_modules
-COPY --from=deps /app/packages/moonboard-ocr/node_modules ./packages/moonboard-ocr/node_modules
 
 # Copy all source code
 COPY package.json bun.lock ./
