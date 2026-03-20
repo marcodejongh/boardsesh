@@ -41,9 +41,9 @@ Branch deploys stopped working after migrating from Vercel Postgres (which was a
 
 **Effort: ~1-2 days | Impact: Preview deploys become functional for frontend-only changes**
 
-### 1.1 Re-enable Migrations on Preview
+### 1.1 Re-enable Migrations on Preview (with safeguards)
 
-Drizzle migrations are idempotent - running them against production is safe. The current skip was a workaround for the broken Neon branching (to avoid running migrations against a non-existent branch DB). Since previews now connect to the main database anyway, migrations should run.
+Drizzle migrations are idempotent - running them against production is safe for additive changes. The current skip was a workaround for the broken Neon branching (to avoid running migrations against a non-existent branch DB). Since previews now connect to the main database anyway, migrations should run — but only after CI validates them.
 
 **Change in `vercel.json`:**
 ```json
@@ -52,7 +52,33 @@ Drizzle migrations are idempotent - running them against production is safe. The
 }
 ```
 
-> **Risk:** Preview deploys run migrations against the production database. This is safe for additive migrations (new tables, columns) but destructive migrations (drops, renames) could affect production. Mitigation: enforce migration review in PR process - destructive migrations should only land on main after careful review.
+> **Risk:** Preview deploys run migrations against the production database on every push. Unmerged PRs can apply schema changes to production before review/merge. While additive migrations (new tables, columns) are safe, destructive migrations (DROP, ALTER...DROP, renames) could affect production.
+
+**Required safeguard — add a CI check before this change goes live:**
+
+Add a GitHub Actions job that blocks merge if migration files contain destructive SQL:
+
+```yaml
+check-migrations:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - name: Check for destructive migrations
+      run: |
+        # Find migration files changed in this PR
+        CHANGED=$(git diff --name-only origin/main...HEAD -- 'packages/db/drizzle/*.sql')
+        if [ -z "$CHANGED" ]; then
+          echo "No migration files changed"
+          exit 0
+        fi
+        # Flag destructive operations
+        if grep -iE '\b(DROP\s+(TABLE|COLUMN|INDEX|CONSTRAINT)|TRUNCATE|DELETE\s+FROM)\b' $CHANGED; then
+          echo "::error::Destructive SQL detected in migration files. These must be reviewed carefully and should only land via main."
+          exit 1
+        fi
+```
+
+This ensures destructive migrations are flagged before they can run on preview. For Phase 2, migrations will run against isolated Neon branches instead of production, eliminating this risk entirely.
 
 ### 1.2 Set `NEXT_PUBLIC_WS_URL` for Preview Scope
 
@@ -148,15 +174,15 @@ Programmatically create Neon branches via their API, bypassing the broken Vercel
 curl -X POST "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
   -H "Authorization: Bearer ${NEON_API_KEY}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "branch": {
-      "name": "pr-${PR_NUMBER}",
-      "parent_id": "${MAIN_BRANCH_ID}"
+  -d "{
+    \"branch\": {
+      \"name\": \"pr-${PR_NUMBER}\",
+      \"parent_id\": \"${MAIN_BRANCH_ID}\"
     },
-    "endpoints": [{
-      "type": "read_write"
+    \"endpoints\": [{
+      \"type\": \"read_write\"
     }]
-  }'
+  }"
 ```
 
 **Pros:** Instant branching (copy-on-write), no data duplication cost, full production data available.
@@ -282,22 +308,22 @@ useEffect(() => {
 }, []);
 ```
 
-**Step 3: Set `NEXT_PUBLIC_WS_URL` per Vercel preview via GitHub Actions**
+**Step 3: Connect preview frontend to branch backend**
 
-After creating a Railway branch backend, use the Vercel CLI to set the env var for that specific deployment:
+> **Important:** `NEXT_PUBLIC_*` values are baked into the Next.js client bundle at build time. Setting `NEXT_PUBLIC_WS_URL` per deployment requires a rebuild, and the baked-in URL is tied to a single domain — if the preview is accessed via a different domain (e.g., a custom preview domain), WebSocket connections will fail. For this reason, the **runtime `backendUrl` approach (Steps 1-2 above) is the primary strategy**.
+
+The runtime `backendUrl` query param approach works without any build configuration changes. The branch backend's `/join/` endpoint already redirects users with the correct `backendUrl` param appended, so users joining a party session are automatically connected to the right backend.
+
+For cases where a rebuild is acceptable, you can also set `NEXT_PUBLIC_WS_URL` as a fallback:
 
 ```bash
 # Get the Railway backend URL for this PR
 BRANCH_BACKEND_URL="wss://backend-pr-${PR_NUMBER}.up.railway.app/graphql"
 
-# Set it as a Vercel env var scoped to preview
+# Set it as a Vercel env var scoped to preview (requires redeploy to take effect)
 vercel env add NEXT_PUBLIC_WS_URL preview <<< "${BRANCH_BACKEND_URL}"
-
-# Trigger a redeploy of the preview
 vercel redeploy --target preview
 ```
-
-Alternatively, rely entirely on the `backendUrl` query param approach, which requires no Vercel env var changes but means users must navigate via the backend's `/join/` endpoint or append the param manually.
 
 ### 2.4 Cleanup on PR Close
 
@@ -539,7 +565,7 @@ What changed → what gets deployed:
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Preview migration runs destructive SQL against production | Low | High | Code review process for migrations; add CI check that flags `DROP`/`ALTER...DROP` in migration files |
+| Preview migration runs destructive SQL against production | Low | High | CI check blocks destructive SQL in migration files (Section 1.1); Phase 2 eliminates risk entirely via isolated Neon branches |
 | Preview deploys create stale sessions on production backend | Low | Low | Sessions auto-expire via TTL (existing `autoEndInterval` in `packages/backend/src/server.ts:294`) |
 
 ### Phase 2
