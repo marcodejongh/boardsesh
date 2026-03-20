@@ -9,6 +9,7 @@ type HostResolution = {
 const DEFAULT_WEB_PORT = '3000';
 const DEFAULT_BACKEND_PORT = '8080';
 const TAILSCALE_STATUS_TIMEOUT_MS = 1500;
+const DEFAULT_OTLP_PORT = '4318';
 
 function normalizeHostname(value: string): string | null {
   const trimmed = value.trim().replace(/\.$/, '');
@@ -100,6 +101,7 @@ function main(): void {
   setDefaultEnv('NEXT_PUBLIC_WS_URL', `ws://${resolution.hostname}:${backendPort}/graphql`);
   setDefaultEnv('NEXTAUTH_URL', `http://${resolution.hostname}:${webPort}`);
   setDefaultEnv('BASE_URL', `http://${resolution.hostname}:${webPort}`);
+  setDefaultEnv('NEXT_PUBLIC_OTEL_EXPORTER_OTLP_ENDPOINT', `http://${resolution.hostname}:${DEFAULT_OTLP_PORT}/v1/traces`);
 
   console.log(`[dev] Hostname: ${resolution.hostname} (${resolution.source})`);
   if (resolution.reason) {
