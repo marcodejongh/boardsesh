@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useWsAuthToken } from './use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { createGraphQLClient, subscribe } from '@/app/components/graphql-queue/graphql-client';
+import { getBackendWsUrl } from '@/app/lib/backend-url';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_UNREAD_NOTIFICATION_COUNT,
@@ -52,7 +53,7 @@ export function useNotificationSubscription() {
   useEffect(() => {
     if (!isAuthenticated || !token) return;
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    const wsUrl = getBackendWsUrl();
     if (!wsUrl) return;
 
     const refreshUnreadCount = async () => {

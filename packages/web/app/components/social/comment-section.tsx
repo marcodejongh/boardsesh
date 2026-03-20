@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
+import { getBackendWsUrl } from '@/app/lib/backend-url';
 import { createGraphQLClient, subscribe } from '@/app/components/graphql-queue/graphql-client';
 import {
   ADD_COMMENT,
@@ -36,7 +37,7 @@ export default function CommentSection({ entityType, entityId, title = 'Discussi
 
   // Set up live comment updates subscription
   useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    const wsUrl = getBackendWsUrl();
     if (!wsUrl) return;
 
     const wsClient = createGraphQLClient({ url: wsUrl, authToken: token });

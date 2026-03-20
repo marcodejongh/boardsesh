@@ -9,6 +9,7 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Client } from '../graphql-queue/graphql-client';
 import { createGraphQLClient, subscribe } from '../graphql-queue/graphql-client';
+import { getBackendWsUrl } from '@/app/lib/backend-url';
 import { createGraphQLHttpClient } from '@/app/lib/graphql/client';
 import {
   GET_NEW_CLIMB_FEED,
@@ -44,7 +45,7 @@ export default function NewClimbFeed({ boardType, layoutId, isAuthenticated, isS
   const ensureWsClient = useCallback(() => {
     if (!clientRef.current) {
       clientRef.current = createGraphQLClient({
-        url: process.env.NEXT_PUBLIC_WS_URL!,
+        url: getBackendWsUrl()!,
         authToken: wsAuthToken,
       });
     }

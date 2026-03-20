@@ -128,6 +128,24 @@ describe('CORS Handler', () => {
       ).toBe(true);
     });
 
+    it('returns true for homelab preview deployments matching regex', () => {
+      expect(isOriginAllowed('https://42.preview.boardsesh.com')).toBe(true);
+      expect(isOriginAllowed('https://123.preview.boardsesh.com')).toBe(true);
+    });
+
+    it('returns false for non-numeric preview subdomains', () => {
+      expect(isOriginAllowed('https://abc.preview.boardsesh.com')).toBe(false);
+      expect(isOriginAllowed('https://pr-5.preview.boardsesh.com')).toBe(false);
+    });
+
+    it('returns false for preview origins with http (not https)', () => {
+      expect(isOriginAllowed('http://42.preview.boardsesh.com')).toBe(false);
+    });
+
+    it('returns false for preview origins with extra path or suffix', () => {
+      expect(isOriginAllowed('https://42.preview.boardsesh.com.evil.com')).toBe(false);
+    });
+
     it('returns false for origins not in list and not matching regex', () => {
       expect(isOriginAllowed('https://evil.com')).toBe(false);
       expect(isOriginAllowed('https://notboardsesh.com')).toBe(false);

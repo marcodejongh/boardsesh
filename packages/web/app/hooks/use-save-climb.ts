@@ -10,6 +10,7 @@ import {
   type SaveClimbMutationResponse,
 } from '@/app/lib/graphql/operations/new-climb-feed';
 import { createGraphQLClient, execute } from '@/app/components/graphql-queue/graphql-client';
+import { getBackendWsUrl } from '@/app/lib/backend-url';
 import type { BoardName } from '@/app/lib/types';
 import type { SaveClimbOptions } from '@/app/lib/api-wrappers/aurora/types';
 
@@ -34,7 +35,7 @@ export function useSaveClimb(boardName: BoardName) {
       // Create a fresh client per mutation to avoid stale token refs.
       // The client is disposed immediately after the request completes.
       const client = createGraphQLClient({
-        url: process.env.NEXT_PUBLIC_WS_URL!,
+        url: getBackendWsUrl()!,
         authToken: token,
       });
 

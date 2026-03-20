@@ -1,0 +1,90 @@
+# Stage 1: Install dependencies
+FROM node:22-alpine AS deps
+
+WORKDIR /app
+
+# Install bun
+RUN apk add --no-cache bash curl unzip && \
+    curl -fsSL https://bun.sh/install | bash && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
+    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
+
+# Copy package files for all workspaces
+COPY package.json bun.lock ./
+COPY packages/web/package.json ./packages/web/
+COPY packages/shared-schema/package.json ./packages/shared-schema/
+COPY packages/crypto/package.json ./packages/crypto/
+COPY packages/db/package.json ./packages/db/
+COPY packages/aurora-sync/package.json ./packages/aurora-sync/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/moonboard-ocr/package.json ./packages/moonboard-ocr/
+
+# Install all dependencies (need devDependencies for the build)
+RUN bun install --frozen-lockfile
+
+# Stage 2: Build the Next.js application
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Install bun
+RUN apk add --no-cache bash curl unzip && \
+    curl -fsSL https://bun.sh/install | bash && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
+    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
+
+# Copy node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/web/node_modules ./packages/web/node_modules
+COPY --from=deps /app/packages/shared-schema/node_modules ./packages/shared-schema/node_modules
+COPY --from=deps /app/packages/crypto/node_modules ./packages/crypto/node_modules
+COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=deps /app/packages/aurora-sync/node_modules ./packages/aurora-sync/node_modules
+COPY --from=deps /app/packages/backend/node_modules ./packages/backend/node_modules
+COPY --from=deps /app/packages/moonboard-ocr/node_modules ./packages/moonboard-ocr/node_modules
+
+# Copy all source code
+COPY package.json bun.lock ./
+COPY packages/ ./packages/
+
+# Accept build arguments for environment variables baked into the Next.js build
+ARG NEXT_PUBLIC_WS_URL
+ARG BASE_URL
+
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+ENV BASE_URL=$BASE_URL
+
+# Build the Next.js application (standalone output)
+RUN bun run build:web
+
+# Stage 3: Production runner
+FROM node:22-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy public assets
+COPY --from=builder /app/packages/web/public ./packages/web/public
+
+# Copy standalone server output (includes server.js and required node_modules)
+COPY --from=builder --chown=nextjs:nodejs /app/packages/web/.next/standalone/ ./
+
+# Copy static assets
+COPY --from=builder --chown=nextjs:nodejs /app/packages/web/.next/static ./packages/web/.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+
+CMD ["node", "packages/web/server.js"]

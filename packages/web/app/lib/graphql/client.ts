@@ -1,4 +1,5 @@
 import { GraphQLClient, RequestDocument, Variables } from 'graphql-request';
+import { getGraphQLHttpUrl as _getGraphQLHttpUrl } from '@/app/lib/backend-url';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 
@@ -7,14 +8,7 @@ const DEBUG = process.env.NODE_ENV === 'development';
  * Converts WebSocket URL to HTTP URL if needed
  */
 export function getGraphQLHttpUrl(): string {
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
-
-  if (!wsUrl) {
-    throw new Error('NEXT_PUBLIC_WS_URL environment variable is not set');
-  }
-
-  // Convert ws:// to http:// and wss:// to https://
-  return wsUrl.replace(/^ws(s?):\/\//, 'http$1://');
+  return _getGraphQLHttpUrl();
 }
 
 /**

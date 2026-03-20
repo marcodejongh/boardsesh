@@ -11,16 +11,11 @@ import LocationOnOutlined from '@mui/icons-material/LocationOnOutlined';
 import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
 import { useGeolocation, getGeolocationErrorMessage } from '@/app/hooks/use-geolocation';
 import { themeTokens } from '@/app/theme/theme-config';
+import { getBackendWsUrl, getBackendHttpUrl } from '@/app/lib/backend-url';
 import NearbySessionCard from './nearby-session-card';
 
-// Backend URL from environment variable
-const BACKEND_WS_URL = process.env.NEXT_PUBLIC_WS_URL || null;
-
-// Convert WebSocket URL to HTTP URL for API calls
-function getBackendHttpUrl(): string | null {
-  if (!BACKEND_WS_URL) return null;
-  return BACKEND_WS_URL.replace('ws://', 'http://').replace('wss://', 'https://').replace('/graphql', '');
-}
+// Backend URL resolved at runtime (supports PR preview domains)
+const BACKEND_WS_URL = getBackendWsUrl();
 
 // Type for discoverable sessions from GraphQL
 type DiscoverableSession = {

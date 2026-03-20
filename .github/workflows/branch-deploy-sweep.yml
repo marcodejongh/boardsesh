@@ -1,0 +1,41 @@
+name: Branch Deploy Sweep
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Run daily at 3am UTC
+    - cron: '0 3 * * *'
+
+jobs:
+  sweep:
+    runs-on: [self-hosted, homelab, ephemeral]
+    steps:
+      - name: Sweep stale preview containers
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Sweeping stale branch deploy containers..."
+
+          # Get list of open PR numbers
+          OPEN_PRS=$(gh pr list --repo ${{ github.repository }} --state open --json number --jq '.[].number' | sort)
+          echo "Open PRs: ${OPEN_PRS:-none}"
+
+          # Find all branch deploy containers
+          for container in $(docker ps -a --filter "name=web-pr-" --filter "name=backend-pr-" --format "{{.Names}}"); do
+            # Extract PR number from container name
+            PR_NUM=$(echo "$container" | grep -oP '\d+')
+
+            if ! echo "$OPEN_PRS" | grep -qw "$PR_NUM"; then
+              echo "Removing stale container: $container (PR #${PR_NUM} is closed)"
+              docker stop "$container" 2>/dev/null || true
+              docker rm "$container" 2>/dev/null || true
+            else
+              echo "Keeping container: $container (PR #${PR_NUM} is open)"
+            fi
+          done
+
+          # Prune dangling images
+          docker image prune -f --filter "label=org.opencontainers.image.source=https://github.com/marcodejongh/boardsesh" 2>/dev/null || true
+
+          echo "Sweep complete"

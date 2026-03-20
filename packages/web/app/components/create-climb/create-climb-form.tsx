@@ -36,6 +36,7 @@ import { themeTokens } from '@/app/theme/theme-config';
 import { parseScreenshot } from '@boardsesh/moonboard-ocr/browser';
 import { convertOcrHoldsToMap } from '@/app/lib/moonboard-climbs-db';
 import { createGraphQLClient, execute, type Client } from '../graphql-queue/graphql-client';
+import { getBackendWsUrl } from '@/app/lib/backend-url';
 import AuthModal from '../auth/auth-modal';
 import { useSnackbar } from '../providers/snackbar-provider';
 import CreateClimbHeatmapOverlay from './create-climb-heatmap-overlay';
@@ -294,7 +295,7 @@ export default function CreateClimbForm({
 
       if (!graphqlClientRef.current) {
         graphqlClientRef.current = createGraphQLClient({
-          url: process.env.NEXT_PUBLIC_WS_URL!,
+          url: getBackendWsUrl()!,
           authToken: wsAuthToken,
         });
       }
