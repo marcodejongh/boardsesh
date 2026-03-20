@@ -68,10 +68,10 @@ The CLI is available via the `@boardsesh/aurora-sync` package:
 
 ```bash
 # From repo root
-npx tsx packages/aurora-sync/src/cli/index.ts <command>
+bunx tsx packages/aurora-sync/src/cli/index.ts <command>
 
 # Or after build
-npx aurora-sync <command>
+bunx aurora-sync <command>
 ```
 
 ### Commands
@@ -106,7 +106,7 @@ AURORA_CREDENTIALS_SECRET="op://Boardsesh/Encryption key/password"
 
 Run with:
 ```bash
-op run --env-file=packages/aurora-sync/.env.1password -- npx aurora-sync all -v
+op run --env-file=packages/aurora-sync/.env.1password -- bunx aurora-sync all -v
 ```
 
 ## Railway Deployment

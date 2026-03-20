@@ -1,7 +1,7 @@
 /**
  * Backfill script: assign inferred sessions to all historical unassigned ticks.
  *
- * Usage: npx tsx src/scripts/backfill-inferred-sessions.ts
+ * Usage: bunx tsx src/scripts/backfill-inferred-sessions.ts
  *
  * Also migrates orphaned votes/comments that reference ungrouped session IDs
  * (like "ug:userId:groupNumber") to the corresponding inferred session IDs.

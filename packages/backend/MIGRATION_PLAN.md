@@ -202,13 +202,13 @@ type Favorite { climbUuid: String!, angle: Int! }
 
 ```bash
 # Start databases
-npm run db:up
+bun run db:up
 
 # Start backend
-npm run backend:dev
+bun run backend:dev
 
 # Start frontend
-npm run dev
+bun run dev
 
 # Test health endpoint
 curl http://localhost:8080/health
@@ -224,9 +224,9 @@ REST vs GraphQL parity tests compare responses from the public REST API against 
 
 ```bash
 # Run parity tests locally (requires dev database)
-npm run test -w boardsesh-backend -- --config vitest.parity.config.ts
+bun run test -w boardsesh-backend -- --config vitest.parity.config.ts
 ```
 
 **Note:** Parity tests are excluded from CI (`vitest.config.ts` excludes `*parity*.test.ts`). They require:
-- Local development database running (`npm run db:up`)
+- Local development database running (`bun run db:up`)
 - Access to public REST API at www.boardsesh.com

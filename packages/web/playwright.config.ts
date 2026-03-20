@@ -45,7 +45,7 @@ export default defineConfig({
   webServer: process.env.CI
     ? undefined // In CI, we expect the server to be started separately
     : {
-        command: 'npm run dev',
+        command: 'bun run dev',
         url: 'http://localhost:3000',
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,

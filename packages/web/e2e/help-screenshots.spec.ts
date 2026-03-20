@@ -5,15 +5,15 @@
  * They use a mobile viewport since the help screenshots show the mobile UI.
  *
  * Run all tests (unauthenticated only):
- *   npx playwright test e2e/help-screenshots.spec.ts
+ *   bunx playwright test e2e/help-screenshots.spec.ts
  *
  * Run with authenticated tests using 1Password CLI:
  *   TEST_USER_EMAIL=$(op read "op://Boardsesh/Boardsesh local/username") \
  *   TEST_USER_PASSWORD=$(op read "op://Boardsesh/Boardsesh local/password") \
- *   npx playwright test e2e/help-screenshots.spec.ts
+ *   bunx playwright test e2e/help-screenshots.spec.ts
  *
  * Prerequisites:
- *   - Dev server running: npm run dev
+ *   - Dev server running: bun run dev
  *   - For authenticated tests: 1Password CLI installed and signed in
  */
 import { test, expect } from '@playwright/test';

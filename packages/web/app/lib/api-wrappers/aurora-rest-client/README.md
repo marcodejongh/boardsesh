@@ -28,7 +28,7 @@ This document provides comprehensive documentation for the TypeScript client tha
 To use the Aurora Climbing API client in your project:
 
 ```bash
-npm install aurora-climbing-api
+bun add aurora-climbing-api
 ```
 
 ## Getting Started

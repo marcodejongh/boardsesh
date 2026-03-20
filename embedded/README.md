@@ -114,10 +114,10 @@ choco install llvm
 
 ```bash
 # Format all C++ files in-place
-npm run controller:format
+bun run controller:format
 
 # Check formatting without modifying (useful for CI)
-npm run controller:format:check
+bun run controller:format:check
 ```
 
 ### Editor Integration
@@ -131,9 +131,9 @@ Most editors support clang-format:
 ## Convenience Scripts (from repo root)
 
 ```bash
-npm run controller:build         # Build board-controller
-npm run controller:upload        # Flash board-controller
-npm run controller:monitor       # Serial monitor
-npm run controller:format        # Format all C++ code
-npm run controller:format:check  # Check C++ formatting
+bun run controller:build         # Build board-controller
+bun run controller:upload        # Flash board-controller
+bun run controller:monitor       # Serial monitor
+bun run controller:format        # Format all C++ code
+bun run controller:format:check  # Check C++ formatting
 ```

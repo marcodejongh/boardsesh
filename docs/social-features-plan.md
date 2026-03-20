@@ -155,7 +155,7 @@ enum TimePeriod {
 
 ## Phase 1: Database Schema (new tables)
 
-All new tables in `packages/db/src/schema/app/`. Migrations via `npx drizzle-kit generate` from `packages/db/`.
+All new tables in `packages/db/src/schema/app/`. Migrations via `bunx drizzle-kit generate` from `packages/db/`.
 
 ### 1.1 `social_entity_type` Postgres Enum
 

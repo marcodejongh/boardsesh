@@ -4,9 +4,9 @@
  * These tests verify authorization, validation, and error paths using mocked
  * database calls. For full integration tests that verify actual tick reassignment,
  * stats recalculation, and session_member_overrides behavior against a real
- * database, run with DATABASE_URL set (requires `npm run db:up`):
+ * database, run with DATABASE_URL set (requires `bun run db:up`):
  *
- *   DATABASE_URL=postgres://... npx vitest run src/__tests__/session-mutations.test.ts
+ *   DATABASE_URL=postgres://... bunx vitest run src/__tests__/session-mutations.test.ts
  *
  * The mocked tests below cover:
  * - Authentication enforcement

@@ -41,14 +41,14 @@ Before working on a specific part of the codebase, check the `docs/` directory f
 
 ### Development Setup
 
-The development database uses a **pre-built Docker image** (`ghcr.io/marcodejongh/boardsesh-dev-db`) that already contains all Kilter, Tension, and MoonBoard board data, a test user, and social seed data with migrations applied. This means `npm run db:up` is fast — it just pulls the image, starts containers, and runs any newer migrations.
+The development database uses a **pre-built Docker image** (`ghcr.io/marcodejongh/boardsesh-dev-db`) that already contains all Kilter, Tension, and MoonBoard board data, a test user, and social seed data with migrations applied. This means `bun run db:up` is fast — it just pulls the image, starts containers, and runs any newer migrations.
 
 ```bash
 # Start development databases (PostgreSQL, Neon proxy, Redis)
 # First run pulls the pre-built image (~1GB) with all board data included.
 # Subsequent runs start in seconds.
 # Test user: test@boardsesh.com / test
-npm run db:up
+bun run db:up
 
 # Environment files are in packages/web/:
 # .env.local contains generic config (tracked in git)
@@ -62,13 +62,13 @@ TENSION_SYNC_TOKEN=your_tension_token_here
 # For local development, the app defaults to http://localhost:3000
 
 # Install all dependencies (from root)
-npm install
+bun install
 
 # Start web development server
-npm run dev
+bun run dev
 
 # Start backend development server
-npm run backend:dev
+bun run backend:dev
 ```
 
 #### Pre-built database image
@@ -76,34 +76,34 @@ npm run backend:dev
 The `boardsesh-dev-db` image is published to GHCR and contains PostgreSQL 17 + PostGIS with all Kilter/Tension/MoonBoard board data pre-loaded, a test user (`test@boardsesh.com` / `test`), social seed data (fake users, follows, ticks, comments, notifications), and all drizzle migrations applied. It is rebuilt automatically when files in `packages/db/docker/`, `packages/db/scripts/`, `packages/db/src/schema/`, `packages/db/drizzle/`, or `packages/db/package.json` change on main.
 
 - **Pull directly**: `docker pull ghcr.io/marcodejongh/boardsesh-dev-db:latest`
-- **Reset your local database**: `docker compose down -v && npm run db:up`
+- **Reset your local database**: `docker compose down -v && bun run db:up`
 - **Build locally** (e.g. to test Dockerfile changes): `docker compose up -d --build postgres`
 
 ### Common Commands (from root)
 
-- `npm run dev` - Start web development server with Turbopack
-- `npm run build` - Build all packages
-- `npm run build:web` - Build web package only
-- `npm run build:backend` - Build backend package only
-- `npm run lint` - Run oxlint on web package
-- `npm run typecheck` - Type check all packages (use this instead of build for validation)
-- `npm run typecheck:web` - Type check web package only
-- `npm run typecheck:backend` - Type check backend package only
-- `npm run typecheck:db` - Type check db package only
-- `npm run typecheck:shared` - Type check shared-schema package only
-- `npm run backend:dev` - Start backend in development mode
-- `npm run backend:start` - Start backend in production mode
-- `npm run db:up` - Start development databases, run migrations, and import MoonBoard data (uses pre-built image with Kilter/Tension data)
+- `bun run dev` - Start web development server with Turbopack
+- `bun run build` - Build all packages
+- `bun run build:web` - Build web package only
+- `bun run build:backend` - Build backend package only
+- `bun run lint` - Run oxlint on web package
+- `bun run typecheck` - Type check all packages (use this instead of build for validation)
+- `bun run typecheck:web` - Type check web package only
+- `bun run typecheck:backend` - Type check backend package only
+- `bun run typecheck:db` - Type check db package only
+- `bun run typecheck:shared` - Type check shared-schema package only
+- `bun run backend:dev` - Start backend in development mode
+- `bun run backend:start` - Start backend in production mode
+- `bun run db:up` - Start development databases, run migrations, and import MoonBoard data (uses pre-built image with Kilter/Tension data)
 
 ### Database Commands (run from root or packages/db/)
 
-- `npm run db:migrate` - Apply migrations (also runs on Vercel build)
-- `npm run db:studio` - Open Drizzle Studio for database exploration
-- From packages/db: `npx drizzle-kit generate` - Generate new migrations
+- `bun run db:migrate` - Apply migrations (also runs on Vercel build)
+- `bun run db:studio` - Open Drizzle Studio for database exploration
+- From packages/db: `bunx drizzle-kit generate` - Generate new migrations
 
 ### Creating Database Migrations
 
-**IMPORTANT**: Always use `npx drizzle-kit generate` from `packages/db/` to create new migrations. This command:
+**IMPORTANT**: Always use `bunx drizzle-kit generate` from `packages/db/` to create new migrations. This command:
 1. Detects schema changes in `packages/db/src/schema/`
 2. Generates the SQL migration file in `packages/db/drizzle/`
 3. Automatically adds the migration to `packages/db/drizzle/meta/_journal.json`
@@ -112,10 +112,10 @@ The `boardsesh-dev-db` image is published to GHCR and contains PostgreSQL 17 + P
 
 ```bash
 # From packages/db directory:
-npx drizzle-kit generate
+bunx drizzle-kit generate
 
 # Then apply locally to test:
-npm run db:migrate
+bun run db:migrate
 ```
 
 ## Architecture Overview
@@ -183,13 +183,13 @@ We are using next.js app router, it's important we try to use server side compon
 ### Testing
 
 - Vitest configured but tests not yet implemented
-- Run tests with `npm test` when available
+- Run tests with `bun test` when available
 
 ## Development Guidelines
 
 ### Important rules
 
-- **Use `npm run typecheck` instead of `npm run build` for TypeScript validation** - Running build interferes with the local dev server and `npx` commands can mess with lock files. Use the typecheck scripts for validating TypeScript.
+- **Use `bun run typecheck` instead of `bun run build` for TypeScript validation** - Running build interferes with the local dev server and `bunx` commands can mess with lock files. Use the typecheck scripts for validating TypeScript.
 - Always try to use server side rendering wherever possibe. But do note that for some parts such as the QueueList and related components, thats impossible, so dont try to force SSR there.
 - Always use MUI (Material UI) components and their properties.
 - Try to avoid use of the style property

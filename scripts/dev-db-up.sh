@@ -115,7 +115,7 @@ if [ "$attempts" -ge "$max_attempts" ]; then
 fi
 
 echo "Running database migrations..."
-npm run db:migrate
+bun run db:migrate
 
 echo ""
 echo "Development database is ready."

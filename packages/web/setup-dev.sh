@@ -60,9 +60,9 @@ if ! command_exists node; then
     print_error "Node.js is not installed. Please install Node.js 18+ from https://nodejs.org/"
 fi
 
-# Check npm
-if ! command_exists npm; then
-    print_error "npm is not installed. Please install npm."
+# Check bun
+if ! command_exists bun; then
+    print_error "Bun is not installed. Please install Bun from https://bun.sh/"
 fi
 
 # Check Docker
@@ -98,9 +98,9 @@ print_success "Docker version: $(docker --version | cut -d' ' -f3 | cut -d',' -f
 
 print_step "Step 2: Installing Dependencies"
 
-echo "Installing npm packages..."
-if ! npm install; then
-    print_error "Failed to install npm dependencies"
+echo "Installing packages with Bun..."
+if ! bun install; then
+    print_error "Failed to install dependencies"
 fi
 print_success "Dependencies installed successfully"
 
@@ -280,13 +280,13 @@ echo ""
 echo "You can now start developing:"
 echo ""
 echo -e "${BLUE}Start the development server:${NC}"
-echo "  npm run dev"
+echo "  bun run dev"
 echo ""
 echo -e "${BLUE}View your database:${NC}"
-echo "  npx drizzle-kit studio"
+echo "  bunx drizzle-kit studio"
 echo ""
 echo -e "${BLUE}Format code:${NC}"
-echo "  npm run format"
+echo "  bun run format"
 echo ""
 echo -e "${BLUE}Need help?${NC}"
 echo "  Check CLAUDE.md for development guidelines"

@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "tsx scripts/dev-with-tailscale.ts",
-    "build": "npm run generate:openapi && next build",
-    "build:ci": "npm run generate:openapi && next build",
+    "build": "bun run generate:openapi && next build",
+    "build:ci": "bun run generate:openapi && next build",
     "generate:openapi": "tsx scripts/generate-openapi.ts",
     "start": "next start",
     "lint": "oxlint .",

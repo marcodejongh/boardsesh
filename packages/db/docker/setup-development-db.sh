@@ -136,4 +136,4 @@ fi
 echo ""
 echo "✨ Boardsesh database import complete!"
 echo ""
-echo "Next step: Run 'npm run db:up' to start containers and run migrations." 
+echo "Next step: Run 'bun run db:up' to start containers and run migrations." 

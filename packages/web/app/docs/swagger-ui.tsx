@@ -72,7 +72,7 @@ export default function SwaggerUIComponent() {
             Run the following command to generate it:
           </Typography>
           <pre className={styles.swaggerCommandBlock}>
-            npm run generate:openapi
+            bun run generate:openapi
           </pre>
           <Typography variant="body1" component="p" color="text.secondary" className={styles.swaggerNote}>
             In production, this runs automatically during the build process.

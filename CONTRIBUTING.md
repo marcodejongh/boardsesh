@@ -29,7 +29,7 @@ Once you've ran setup, you will have a copy of both the Tension and Kilter climb
 After setup completes, there will be a docker container running with the database and shared date, you can then start the development server:
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

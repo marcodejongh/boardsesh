@@ -2,26 +2,38 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Install Bun (curl avoids npm overhead)
+RUN apk add --no-cache bash curl unzip && \
+    curl -fsSL https://bun.sh/install | bash && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
+    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
+
 # Copy package files
-COPY package*.json ./
+COPY package.json bun.lock ./
 
 # Install dependencies
-RUN npm install
+RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
 # Build TypeScript
-RUN npm run build
+RUN bun run build
 
 # Production stage
 FROM node:22-alpine
 
 WORKDIR /app
 
+# Install Bun (curl avoids npm overhead)
+RUN apk add --no-cache bash curl unzip && \
+    curl -fsSL https://bun.sh/install | bash && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
+    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
+
 # Copy package files and install production dependencies only
-COPY package*.json ./
-RUN npm install --omit=dev
+COPY package.json bun.lock ./
+RUN bun install --production --frozen-lockfile
 
 # Copy built files
 COPY --from=builder /app/dist ./dist
