@@ -1,0 +1,1 @@
+CREATE INDEX "board_climb_stats_history_trending_idx" ON "board_climb_stats_history" USING btree ("board_type","created_at");

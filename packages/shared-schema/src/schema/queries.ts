@@ -319,6 +319,16 @@ export const queriesTypeDefs = /* GraphQL */ `
     """
     myNewClimbSubscriptions: [NewClimbSubscription!]!
 
+    """
+    Get climbs with the biggest percentage increase in ascents over a time period.
+    """
+    trendingClimbs(input: TrendingClimbFeedInput): TrendingClimbFeedResult!
+
+    """
+    Get climbs with the largest absolute increase in ascents over a time period.
+    """
+    hotClimbs(input: TrendingClimbFeedInput): TrendingClimbFeedResult!
+
     # ============================================
     # Board Entity Queries
     # ============================================

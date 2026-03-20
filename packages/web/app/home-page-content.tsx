@@ -7,6 +7,7 @@ import Tab from '@mui/material/Tab';
 import ActivityFeed from '@/app/components/activity-feed/activity-feed';
 import ProposalFeed from '@/app/components/activity-feed/proposal-feed';
 import CommentFeed from '@/app/components/activity-feed/comment-feed';
+import TrendingClimbFeed from '@/app/components/activity-feed/trending-climb-feed';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -18,8 +19,8 @@ import { useMyBoards } from '@/app/hooks/use-my-boards';
 import boardScrollStyles from '@/app/components/board-scroll/board-scroll.module.css';
 import UnifiedSearchDrawer from '@/app/components/search-drawer/unified-search-drawer';
 
-type FeedTab = 'sessions' | 'proposals' | 'comments';
-const VALID_TABS: FeedTab[] = ['sessions', 'proposals', 'comments'];
+type FeedTab = 'sessions' | 'proposals' | 'comments' | 'trending' | 'hot';
+const VALID_TABS: FeedTab[] = ['sessions', 'proposals', 'comments', 'trending', 'hot'];
 
 interface HomePageContentProps {
   initialTab?: FeedTab;
@@ -112,11 +113,14 @@ export default function HomePageContent({
         <Tabs
           value={activeTab}
           onChange={handleTabChange}
-          variant="fullWidth"
+          variant="scrollable"
+          scrollButtons="auto"
           sx={{ mb: 2 }}
           aria-label="Home feed tabs"
         >
           <Tab label="Sessions" value="sessions" />
+          <Tab label="Trending" value="trending" />
+          <Tab label="Hot" value="hot" />
           <Tab label="Proposals" value="proposals" />
           <Tab label="Comments" value="comments" />
         </Tabs>
@@ -127,6 +131,22 @@ export default function HomePageContent({
             boardUuid={selectedBoardUuid}
             initialFeedResult={initialFeedResult}
             onFindClimbers={() => setFindClimbersOpen(true)}
+          />
+        )}
+
+        {activeTab === 'trending' && (
+          <TrendingClimbFeed
+            isAuthenticated={isAuthenticated}
+            boardUuid={selectedBoardUuid}
+            mode="trending"
+          />
+        )}
+
+        {activeTab === 'hot' && (
+          <TrendingClimbFeed
+            isAuthenticated={isAuthenticated}
+            boardUuid={selectedBoardUuid}
+            mode="hot"
           />
         )}
 

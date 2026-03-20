@@ -39,6 +39,30 @@ export const searchClimbs = async (
       FROM ${boardClimbStats} cs
       WHERE cs.board_type = ${params.board_name} AND cs.climb_uuid = ${tables.climbs.uuid}
     )`,
+    // Trending: % increase in ascents over last 7 days
+    // Uses a single aggregation subquery instead of correlated per-row subqueries.
+    // The existing (board_type, climb_uuid, angle) index covers this efficiently.
+    trending: sql`COALESCE((
+      SELECT CASE
+        WHEN MIN(h.ascensionist_count) > 0
+        THEN ((MAX(h.ascensionist_count) - MIN(h.ascensionist_count))::float / MIN(h.ascensionist_count)) * 100
+        ELSE 0
+      END
+      FROM board_climb_stats_history h
+      WHERE h.board_type = ${params.board_name}
+        AND h.climb_uuid = ${tables.climbs.uuid}
+        AND h.angle = ${params.angle}
+        AND h.created_at >= NOW() - INTERVAL '7 days'
+    ), 0)`,
+    // Hot: absolute increase in ascents over last 7 days
+    hot: sql`COALESCE((
+      SELECT MAX(h.ascensionist_count) - MIN(h.ascensionist_count)
+      FROM board_climb_stats_history h
+      WHERE h.board_type = ${params.board_name}
+        AND h.climb_uuid = ${tables.climbs.uuid}
+        AND h.angle = ${params.angle}
+        AND h.created_at >= NOW() - INTERVAL '7 days'
+    ), 0)`,
   };
 
   // Get the selected sort column or fall back to ascensionist_count
