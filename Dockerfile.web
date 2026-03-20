@@ -29,7 +29,7 @@ WORKDIR /app
 
 # Copy bun binary from deps stage (avoid re-downloading)
 COPY --from=deps /root/.bun/bin/bun /usr/local/bin/bun
-COPY --from=deps /root/.bun/bin/bunx /usr/local/bin/bunx
+RUN ln -s /usr/local/bin/bun /usr/local/bin/bunx
 
 # Copy node_modules from deps stage (bun hoists all deps to root)
 COPY --from=deps /app/node_modules ./node_modules
