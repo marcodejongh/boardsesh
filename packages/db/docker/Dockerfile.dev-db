@@ -65,7 +65,9 @@ COPY tsconfig.json /app/tsconfig.json
 # only src/schema/app/sessions.ts uses it, and no scripts touch that file)
 RUN cd /app && \
     sed -i '/"@boardsesh\/shared-schema"/d' package.json && \
-    npm install -g bun && \
+    curl -fsSL https://bun.sh/install | bash && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
+    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx && \
     bun install --ignore-scripts
 
 # Single RUN: download → extract → fix → start PG → import → migrate → stop PG → clean
