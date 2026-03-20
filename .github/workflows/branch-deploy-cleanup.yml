@@ -19,7 +19,7 @@ jobs:
           docker rm web-pr-${PR_NUM} backend-pr-${PR_NUM} 2>/dev/null || true
 
           # Remove PR-specific images
-          docker rmi ghcr.io/marcodejongh/boardsesh-web:pr-${PR_NUM} 2>/dev/null || true
-          docker rmi ghcr.io/marcodejongh/boardsesh-daemon:pr-${PR_NUM} 2>/dev/null || true
+          docker rmi ghcr.io/boardsesh/boardsesh-web:pr-${PR_NUM} 2>/dev/null || true
+          docker rmi ghcr.io/boardsesh/boardsesh-daemon:pr-${PR_NUM} 2>/dev/null || true
 
           echo "Cleanup complete for PR #${PR_NUM}"

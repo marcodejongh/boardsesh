@@ -33,7 +33,7 @@ jobs:
           context: .
           file: Dockerfile.web
           push: true
-          tags: ghcr.io/marcodejongh/boardsesh-web:pr-${{ github.event.pull_request.number }}
+          tags: ghcr.io/boardsesh/boardsesh-web:pr-${{ github.event.pull_request.number }}
           build-args: |
             NEXT_PUBLIC_WS_URL=wss://${{ github.event.pull_request.number }}.ws.preview.boardsesh.com/graphql
             BASE_URL=https://${{ github.event.pull_request.number }}.preview.boardsesh.com
@@ -48,7 +48,7 @@ jobs:
           context: .
           file: Dockerfile.backend
           push: true
-          tags: ghcr.io/marcodejongh/boardsesh-daemon:pr-${{ github.event.pull_request.number }}
+          tags: ghcr.io/boardsesh/boardsesh-daemon:pr-${{ github.event.pull_request.number }}
           cache-from: |
             type=gha,scope=backend-pr-${{ github.event.pull_request.number }}
             type=gha,scope=backend-main
@@ -68,8 +68,8 @@ jobs:
           docker rm web-pr-${PR_NUM} backend-pr-${PR_NUM} 2>/dev/null || true
 
           # Pull new images
-          docker pull ghcr.io/marcodejongh/boardsesh-web:pr-${PR_NUM}
-          docker pull ghcr.io/marcodejongh/boardsesh-daemon:pr-${PR_NUM}
+          docker pull ghcr.io/boardsesh/boardsesh-web:pr-${PR_NUM}
+          docker pull ghcr.io/boardsesh/boardsesh-daemon:pr-${PR_NUM}
 
           # Start backend
           docker run -d \
@@ -86,7 +86,7 @@ jobs:
             --label "traefik.http.services.backend-pr-${PR_NUM}.loadbalancer.server.port=8080" \
             --memory=256m \
             --restart unless-stopped \
-            ghcr.io/marcodejongh/boardsesh-daemon:pr-${PR_NUM}
+            ghcr.io/boardsesh/boardsesh-daemon:pr-${PR_NUM}
 
           # Start web
           docker run -d \
@@ -105,7 +105,7 @@ jobs:
             --label "traefik.http.services.web-pr-${PR_NUM}.loadbalancer.server.port=3000" \
             --memory=512m \
             --restart unless-stopped \
-            ghcr.io/marcodejongh/boardsesh-web:pr-${PR_NUM}
+            ghcr.io/boardsesh/boardsesh-web:pr-${PR_NUM}
 
       - name: Wait for containers to be healthy
         env:
