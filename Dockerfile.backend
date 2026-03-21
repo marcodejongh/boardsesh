@@ -7,7 +7,7 @@ WORKDIR /app
 RUN apk add --no-cache bash curl unzip && \
     curl -fsSL https://bun.sh/install | bash && \
     ln -s /root/.bun/bin/bun /usr/local/bin/bun && \
-    ln -s /root/.bun/bin/bunx /usr/local/bin/bunx
+    ln -s /usr/local/bin/bun /usr/local/bin/bunx
 
 # Copy package files for all workspaces (all needed for lockfile resolution)
 COPY package.json bun.lock ./
