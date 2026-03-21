@@ -58,6 +58,9 @@ jobs:
     needs: build-images
     runs-on: [self-hosted, homelab, ephemeral]
     steps:
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
       - name: Deploy preview containers
         env:
           PR_NUM: ${{ github.event.pull_request.number }}
