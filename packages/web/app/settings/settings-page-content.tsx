@@ -24,29 +24,10 @@ import BackButton from '@/app/components/back-button';
 import { useWsAuthToken } from '@/app/hooks/use-ws-auth-token';
 import { usePartyProfile } from '@/app/components/party-manager/party-profile-context';
 import { useSnackbar } from '@/app/components/providers/snackbar-provider';
+import { getBackendHttpUrl } from '@/app/lib/backend-url';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-
-/**
- * Get the backend HTTP URL from the WebSocket URL
- * Converts ws:// to http:// and wss:// to https://
- */
-function getBackendHttpUrl(): string | null {
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
-  if (!wsUrl) return null;
-
-  try {
-    const url = new URL(wsUrl);
-    // Convert ws/wss to http/https
-    url.protocol = url.protocol === 'wss:' ? 'https:' : 'http:';
-    // Remove the /graphql path if present
-    url.pathname = '';
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return null;
-  }
-}
 
 interface UserProfile {
   id: string;

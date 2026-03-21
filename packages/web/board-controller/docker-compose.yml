@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   board-controller:
-    image: ghcr.io/marcodejongh/boardsesh-board-controller:latest
+    image: ghcr.io/boardsesh/boardsesh-board-controller:latest
     build: .
     ports:
       - "8000:8000"

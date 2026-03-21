@@ -3,6 +3,9 @@ import { execFileSync } from 'node:child_process';
 
 // Vercel preview deployment pattern: https://boardsesh-{hash}-marcodejonghs-projects.vercel.app
 const VERCEL_PREVIEW_REGEX = /^https:\/\/boardsesh-[a-z0-9]+-marcodejonghs-projects\.vercel\.app$/;
+
+// Homelab branch deploy pattern: https://{N}.preview.boardsesh.com
+const PREVIEW_ORIGIN_REGEX = /^https:\/\/\d+\.preview\.boardsesh\.com$/;
 const DEV_WEB_PORTS = [3000, 3001];
 const TAILSCALE_STATUS_TIMEOUT_MS = 1500;
 
@@ -112,7 +115,9 @@ export function initCors(boardseshUrl: string): void {
  */
 export function isOriginAllowed(origin: string): boolean {
   if (allowedOrigins.includes(origin)) return true;
-  return VERCEL_PREVIEW_REGEX.test(origin);
+  if (VERCEL_PREVIEW_REGEX.test(origin)) return true;
+  if (PREVIEW_ORIGIN_REGEX.test(origin)) return true;
+  return false;
 }
 
 /**

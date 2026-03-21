@@ -2,11 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { getPreference, setPreference, removePreference } from '@/app/lib/user-preferences-db';
+import { getBackendWsUrl } from '@/app/lib/backend-url';
 
 const PARTY_MODE_PREFERENCE_KEY = 'boardsesh:partyMode';
 
-// Backend URL from environment variable (for production deployment)
-const BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
+// Backend URL resolved at runtime (supports PR preview domains)
+const BACKEND_URL = getBackendWsUrl();
 
 export type PartyMode = 'direct' | 'backend';
 

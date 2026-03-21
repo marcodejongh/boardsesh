@@ -1,4 +1,5 @@
 import type { MutableRefObject } from 'react';
+import { getBackendWsUrl } from '@/app/lib/backend-url';
 import type { SessionUser, SubscriptionQueueEvent, SessionEvent, SessionLiveStats, SessionSummary, QueueState } from '@boardsesh/shared-schema';
 import type { ClimbQueueItem as LocalClimbQueueItem } from '../queue-control/types';
 import type { BoardDetails, ParsedBoardRouteParameters } from '@/app/lib/types';
@@ -165,8 +166,8 @@ export interface SharedRefs {
   sessionEventSubscribersRef: MutableRefObject<Set<(event: SessionEvent) => void>>;
 }
 
-// Default backend URL from environment variable
-export const DEFAULT_BACKEND_URL = process.env.NEXT_PUBLIC_WS_URL || null;
+// Default backend URL resolved at runtime (supports PR preview domains)
+export const DEFAULT_BACKEND_URL = getBackendWsUrl();
 
 // Key for persisting ActiveSessionInfo in user-preferences IndexedDB
 export const ACTIVE_SESSION_KEY = 'activeSession';

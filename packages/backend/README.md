@@ -102,7 +102,7 @@ http:
 ```yaml
 services:
   backend:
-    image: ghcr.io/marcodejongh/boardsesh-backend:latest
+    image: ghcr.io/boardsesh/boardsesh-backend:latest
     # No ports exposed - only accessible via Traefik
     environment:
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/boardsesh_backend

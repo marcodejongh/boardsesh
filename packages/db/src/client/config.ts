@@ -41,15 +41,15 @@ export function getConnectionConfig(): ConnectionConfig {
 export function configureNeonForEnvironment(): void {
   const { connectionString } = getConnectionConfig();
   const connectionStringUrl = new URL(connectionString);
-  const isLocalDb = connectionStringUrl.hostname === 'db.localtest.me';
+  const neonProxyHost = process.env.NEON_PROXY_HOST;
+  const isLocalDb = connectionStringUrl.hostname === 'db.localtest.me' || !!neonProxyHost;
 
-  // Only apply local Neon proxy settings for the local Docker database
+  // Apply Neon proxy settings for local Docker database or preview containers
   if (isLocalDb) {
-    neonConfig.fetchEndpoint = (host) => {
-      const [protocol, port] = host === 'db.localtest.me' ? ['http', 4444] : ['https', 443];
-      return `${protocol}://${host}:${port}/sql`;
-    };
+    const proxyHost = neonProxyHost || connectionStringUrl.hostname;
+    const proxyPort = parseInt(process.env.NEON_PROXY_PORT || '4444', 10);
+    neonConfig.fetchEndpoint = () => `http://${proxyHost}:${proxyPort}/sql`;
     neonConfig.useSecureWebSocket = false;
-    neonConfig.wsProxy = (host) => (host === 'db.localtest.me' ? `${host}:4444/v2` : `${host}/v2`);
+    neonConfig.wsProxy = () => `${proxyHost}:${proxyPort}/v2`;
   }
 }
